@@ -1,14 +1,17 @@
 % a script to raytrace each rotated masked file and save the results to a
 % file
 %
-
 clear
 define_params
 load(paths.subset_files, 'filelist')
+addpath ../src
+addpath ../src/findfirst
 
-addpath ../findfirst
 
 %%
+plotting = false;
+saving = true;
+
 for ii = 1:length(filelist)
     
     % load in this image
@@ -24,24 +27,27 @@ for ii = 1:length(filelist)
         % raytracing
         this_raytraced_depth = raytrace_2d(this_rotated_image);
         
-        if 0
-                    
+        
+        if plotting
             % plot this image
             subplot(121)
             imagesc(this_rotated_image)
-            axis image
-            
+            axis image 
+                        
             subplot(122)
-            plot(this_raytraced_depth)
-            %set(gca,'YDir','reverse');
+            bar(this_raytraced_depth)
+            set(gca,'YDir','reverse');
             set(gca, 'xlim', [0, params.im_width])
             axis equal tight
             set(gca, 'ylim', [0, params.im_height])
             
         end
+        
         % save this rotated image
-        savename = sprintf(paths.raytraced_savename, ii, jj);
-        imwrite(uint16(this_raytraced_depth), savename);
+        if saving
+            savename = sprintf(paths.raytraced_savename, ii, jj);
+            imwrite(uint16(this_raytraced_depth), savename);
+        end
         
     end
     ii

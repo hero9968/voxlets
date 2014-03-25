@@ -1,7 +1,7 @@
 % script to generate subset of the MPEG-7 dataset
 % ... and to save a struct with the subset info
-
-params
+clear
+define_params
 
 %% 
 all_files = dir(paths.mpeg);
@@ -26,17 +26,18 @@ unique_classes(1) = [];
 
 %% now for each unique class, copy the first 3 examples to the new foler
 old_path = [paths.mpeg, '%s-%d.gif'];
-system(['rm  ' paths.subset '/*'])
+%system(['rm  ' paths.subset '/*'])
 filelist = [];
 
 for ii = 1:length(unique_classes)
     inliers = cellfun(@(x)(strcmp(x, unique_classes{ii})), class_name);
     this_class_idx = find(inliers, 3, 'first');
     
-    for jj = 1:3
+    for jj = 1:params.number_subclasses
+        
         this_name = all_files(this_class_idx(jj)).name;
-        this_path = [mpeg_path, this_name];
-        copyfile(this_path, subset_path);
+        this_path = [paths.mpeg, this_name];
+        copyfile(this_path, paths.subset);
         
         % maintaining a list of the subset info
         this_struct.name = this_name;

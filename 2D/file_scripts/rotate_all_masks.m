@@ -5,6 +5,7 @@
 clear
 define_params
 load(paths.subset_files, 'filelist')
+addpath('../src')
 
 %%
 for ii = 1:length(filelist)
@@ -20,13 +21,17 @@ for ii = 1:length(filelist)
         this_rotated_image = rotate_mask(this_image,  this_angle, params);
         
         % plot this image
-        %subplot(4, 4, jj)
-        %imagesc(this_rotated_image)
-        %axis image
+        if 0
+            subplot(4, 4, jj)
+            imagesc(this_rotated_image)
+            axis image
+        end
         
         % save this rotated image
-        savename = sprintf(paths.rotated_savename, ii, jj);
-        imwrite(this_rotated_image==1, savename);
+        if 1
+            savename = sprintf(paths.rotated_savename, ii, jj);
+            imwrite(this_rotated_image>=1, savename);
+        end
         
     end
     ii
