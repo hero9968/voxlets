@@ -34,6 +34,10 @@ params.scale = 0.2;
 params.gauss_model.mu = 0;
 params.gauss_model.sigma = 10;
 
+% feature computation params
+params.shape_dist.num_samples = 2000;
+params.shape_dist.bin_edges = [0:5:150, inf];
+
 
 % parameters for the predictors
 predictor(1).name = 'per_ray_gaussian';

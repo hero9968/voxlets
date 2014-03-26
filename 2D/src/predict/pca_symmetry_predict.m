@@ -50,7 +50,7 @@ transformed_shape = ([new_x_transformed; y_transformed]' * inv(A))';
 
 
 
-if 1
+if 0
     subplot(231); plot(X, Y); axis image
     subplot(232); 
     plot(x_transformed, y_transformed); 
@@ -86,7 +86,7 @@ object_edge = fill_grid_from_depth(Y, height, 0);
 mask_out = (grid1-grid2) == 1;
 mask_out(object_edge==1) = 1;
 
-if 1
+if 0
     figure
     subplot(131); imagesc(grid1); axis image
     subplot(132); imagesc(grid2); axis image
