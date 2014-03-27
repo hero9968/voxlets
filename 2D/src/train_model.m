@@ -3,34 +3,34 @@
 clear
 cd ~/projects/shape_sharing/2D/src
 run('../define_params')
-load(paths.split_path, 'split')
-addpath predict utils
+addpath('predict', genpath('utils'))
 cd ~/projects/shape_sharing/2D/src
 
 %% loading in all depths and shapes from disk...
-N = length(split.train_data);
-
-depths = cell(1, N);
-images = cell(1, N);
-
-for ii = 1:N
-
-    % loading in the depth for this image
-    this_filename = split.train_data{ii};
-    this_depth_path = fullfile(paths.raytraced, this_filename);
-    this_image_path = fullfile(paths.rotated, this_filename);
-    
-    depths{ii} = imread([this_depth_path '.png']);
-    depths{ii} = smooth(double(depths{ii}));
-    images{ii} = imread([this_image_path '.gif']);
-    
-    ii
-
-end
+load(paths.train_data, 'train_data')
 
 %% now compute the model
 run ../define_params
-model = train_fitting_model(images, depths, params);
+model = train_fitting_model(train_data.images, train_data.depths, params);
+model.images = train_data.images;
+model.depths = train_data.depths;
 all_dists = cell2mat(model.shape_dists);
-
 imagesc(all_dists)
+num = 10
+%%
+%close
+clf
+%num = num+1;
+for ii = 1:3
+    subplot(1, 3,ii); 
+    combine_mask_and_depth(model.images{num}, model.depths{num})
+    set(gca, 'xlim', [-50, 150]);
+    set(gca, 'ylim', [-50, 200]);
+end
+
+test_fitting_model(model, train_data.depths{num}, params)
+
+
+
+
+

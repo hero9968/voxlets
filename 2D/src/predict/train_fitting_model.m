@@ -20,14 +20,14 @@ M = cell(1, N);
 
 for ii = 1:N
 
-    Y = smooth(double(depth{ii}));
+    Y = (double(depth{ii}));
     X = 1:length(Y);
     
     % computing the shape distributions
     shape_dists{ii} = shape_distribution_2d(X(:), Y(:), num_samples, bin_edges);   
     
     % find the translation and rotation using PCA...
-    [translations{ii}, rotations{ii}, M{ii}] = get_trans_rot(X, Y);
+    [translations{ii}, rotations{ii}, M{ii}] = transformation_to_origin_2d(X, Y);
     
 end
 
