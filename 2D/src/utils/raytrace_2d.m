@@ -4,3 +4,4 @@ function depth = raytrace_2d(mask)
 % non-zero position encountered from the bottom of the image
 
 depth = findfirst(mask, 1, 1, 'first');
+depth(depth==0) = nan;

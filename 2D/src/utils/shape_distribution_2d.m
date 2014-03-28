@@ -15,3 +15,4 @@ to_remove = dists < min(bin_edges) | dists > max(bin_edges);
 dists( to_remove ) = [];
 
 [fv, ~] = histc(dists, bin_edges);
+fv = fv/sum(fv);

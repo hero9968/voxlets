@@ -9,3 +9,6 @@ rotate_all_masks
 
 %% raytrace these shapes to create depth images
 raytrace_all_masks
+
+%% save images to mat file for quciker access
+save_images_mat_files

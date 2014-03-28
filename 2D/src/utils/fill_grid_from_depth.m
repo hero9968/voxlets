@@ -9,6 +9,7 @@ if nargin < 3
 end
 
 width = length(depth_in);
+depth_in = round(depth_in);
 
 % fill out grid
 grid_out = zeros(image_height, width);

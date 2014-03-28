@@ -9,12 +9,17 @@ paths.rotated_filename = '%02d_%02d_mask.gif';
 paths.rotated_savename = [paths.rotated, paths.rotated_filename];
 
 paths.raytraced = [paths.data, '2D_shapes/raytraced/'];
-paths.raytraced_savename = [paths.raytraced, '%02d_%02d_mask.png'];
+paths.raytraced_savename = [paths.raytraced, '%02d_%02d_mask.mat'];
 
 % train/test split
 paths.split_path = [paths.data, '2D_shapes/split.mat'];
+paths.test_data = [paths.data, '2D_shapes/test_data.mat'];
+paths.train_data = [paths.data, '2D_shapes/train_data.mat'];
+
 
 paths.predictions = [paths.data, '2D_shapes/predict/'];
+
+
 
 % params for setting up file lists
 params.number_subclasses = 1; % how many subclasses from each shape to use
@@ -35,7 +40,7 @@ params.gauss_model.mu = 0;
 params.gauss_model.sigma = 10;
 
 % feature computation params
-params.shape_dist.num_samples = 2000;
+params.shape_dist.num_samples = 5000;
 params.shape_dist.bin_edges = [0:5:150, inf];
 
 
