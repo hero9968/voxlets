@@ -18,6 +18,7 @@ paths.train_data = [paths.data, '2D_shapes/train_data.mat'];
 
 
 paths.predictions = [paths.data, '2D_shapes/predict/'];
+paths.structured_predict_model_path = [paths.data, '2D_shapes/models/structured_predict.mat'];
 
 
 
@@ -45,12 +46,22 @@ params.shape_dist.bin_edges = [0:5:150, inf];
 
 params.icp.outlier_distance = 10;
 
+% loading data for the predictors
+
+load(paths.structured_predict_model_path, 'model');
+
 % parameters for the predictors
 predictor(1).name = 'per_ray_gaussian';
+predictor(1).nicename = 'Per ray Gaussian';
 predictor(1).handle = @(x)(per_ray_gaussian_prediction(x, params.gauss_model, params));
 predictor(1).outpath = fullfile(paths.predictions, 'per_ray_gaussian/');
 
 predictor(2).name = 'pca_symmetry';
+predictor(2).nicename = 'PCA symmetry';
 predictor(2).handle = @(x)(pca_symmetry_predict(x, params));
 predictor(2).outpath = fullfile(paths.predictions, 'pca_symmetry/');
 
+predictor(3).name = 'structured_depth';
+predictor(3).nicename = 'Structured depth';
+predictor(3).handle = @(x)(test_fitting_model(model, x, params));
+predictor(3).outpath = fullfile(paths.predictions, 'structured_depth/');

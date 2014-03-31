@@ -11,27 +11,32 @@ load(paths.train_data, 'train_data')
 load(paths.test_data, 'test_data')
 
 %% now compute the model
-run ../define_params
 model = train_fitting_model(train_data.images, train_data.depths, params);
 model.images = train_data.images;
 model.depths = train_data.depths;
 all_dists = cell2mat(model.shape_dists);
 
+%% save the model
+save(paths.structured_predict_model_path, 'model');
+
 %%
-clf
-num = 124;
+%num = 140;
+num = 190
 %num = num+1;
-for ii = 1:6
-    subplot(2, 3,ii); 
+for ii = 1:3
+    subplot(1, 4,ii); 
     combine_mask_and_depth(test_data.images{num}, test_data.depths{num})
     width = length(test_data.depths{num})
     set(gca, 'xlim', round([-width/2, 1.5*width]));
     set(gca, 'ylim',round([-width/2, 1.5*width]));
 end
 
-test_fitting_model(model, test_data.depths{num}, params)
+stacked_image = test_fitting_model(model, test_data.depths{num}, params);
+subplot(1, 4, 4);
+imagesc(stacked_image);
+axis image
 
-
+%% running prediction on each of the images and saving to disk
 
 
 
