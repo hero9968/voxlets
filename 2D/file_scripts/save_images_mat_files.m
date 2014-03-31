@@ -23,6 +23,7 @@ for ii = 1:N
     temp = load([this_depth_path '.mat']);
     train_data.depths{ii} = double(temp.this_raytraced_depth);
     train_data.images{ii} = imread([this_image_path '.gif']);
+    train_data.filename{ii} = this_filename;
     
     ii
 end
@@ -47,7 +48,8 @@ for ii = 1:N
     temp = load([this_depth_path '.mat']);
     test_data.depths{ii} = double(temp.this_raytraced_depth);
     test_data.images{ii} = imread([this_image_path '.gif']);
-    
+    test_data.filename{ii} = this_filename;        
+
     ii
 end
 

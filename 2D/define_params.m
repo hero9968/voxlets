@@ -43,6 +43,7 @@ params.gauss_model.sigma = 10;
 params.shape_dist.num_samples = 5000;
 params.shape_dist.bin_edges = [0:5:150, inf];
 
+params.icp.outlier_distance = 10;
 
 % parameters for the predictors
 predictor(1).name = 'per_ray_gaussian';

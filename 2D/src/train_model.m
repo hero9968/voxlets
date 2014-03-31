@@ -16,18 +16,13 @@ model = train_fitting_model(train_data.images, train_data.depths, params);
 model.images = train_data.images;
 model.depths = train_data.depths;
 all_dists = cell2mat(model.shape_dists);
-imagesc(all_dists)
-num = 10
 
 %%
-
-%%
-%close
 clf
-%num = 60;
-num = num+1;
-for ii = 1:3
-    subplot(1, 3,ii); 
+num = 124;
+%num = num+1;
+for ii = 1:6
+    subplot(2, 3,ii); 
     combine_mask_and_depth(test_data.images{num}, test_data.depths{num})
     width = length(test_data.depths{num})
     set(gca, 'xlim', round([-width/2, 1.5*width]));
@@ -38,7 +33,9 @@ test_fitting_model(model, test_data.depths{num}, params)
 
 
 
-%% fixing the rotating bug
+
+
+%% fixing the rotating bug - DONE
 clf
 num = num+1;
 depth = test_data.depths{num};
