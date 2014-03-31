@@ -12,25 +12,27 @@ end
 
 [~, tidx] = min(abs(thresh-0.5));
 
-old_hold = ishold;
+if nargout > 0
+    old_hold = ishold;
 
-plot(TPR, FPR, colour); 
-hold on
-%H = plot(TPR(tidx), FPR(tidx), '.', 'markersize', 10, 'color', colour);
-H = plot(TPR(tidx), FPR(tidx), [colour(1), '.'], 'markersize', 10);
-
-% exclude point from the legend
-set(get(get(H,'Annotation'),'LegendInformation'),...
-    'IconDisplayStyle','off');
-
-if old_hold
+    plot(TPR, FPR, colour); 
     hold on
-else
-    hold off
-end
+    %H = plot(TPR(tidx), FPR(tidx), '.', 'markersize', 10, 'color', colour);
+    H = plot(TPR(tidx), FPR(tidx), [colour(1), '.'], 'markersize', 10);
 
-axis equal; 
-set(gca, 'xlim', [0, 1]), 
-set(gca, 'ylim', [0, 1]); 
-xlabel('FPR')
-ylabel('TPR')
+    % exclude point from the legend
+    set(get(get(H,'Annotation'),'LegendInformation'),...
+        'IconDisplayStyle','off');
+
+    if old_hold
+        hold on
+    else
+        hold off
+    end
+
+    axis equal; 
+    set(gca, 'xlim', [0, 1]), 
+    set(gca, 'ylim', [0, 1]); 
+    xlabel('FPR')
+    ylabel('TPR')
+end
