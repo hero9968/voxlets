@@ -4,11 +4,10 @@
 % similarity or differences
 
 clear
-cd ~/projects/shape_sharing/2D/testing
-run ../define_params.m
+cd ~/projects/shape_sharing/2D
+define_params
 load(paths.split_path, 'split')
 length_test_data = length(split.test_data);
-cd ~/projects/shape_sharing/2D/testing
 
 %% loading in the ground truth files
 ground_truth_path = paths.rotated;
@@ -29,7 +28,7 @@ end
 
 
 %%
-for ii = 1:3
+for ii = 1:4
     
     predicted_path = predictor(ii).outpath;
     all_pred = cell(length_test_data, 1);
@@ -64,8 +63,8 @@ for ii = 1:3
 end
 
 %% plotting ROC curves
-cols = {'r-', 'b:', 'g--'};
-for ii = 1:3
+cols = {'r-', 'b:', 'g--', 'k-'};
+for ii = 1:4
     plot(pred(ii).tpr, pred(ii).fpr, cols{ii}); 
     hold on
 end

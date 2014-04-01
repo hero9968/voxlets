@@ -1,19 +1,16 @@
 % script to run a prediction algorithm
-
 clear
-cd ~/projects/shape_sharing/2D
-define_params
+cd ~/projects/shape_sharing/2D/src
+run ../define_params
 load(paths.split_path, 'split')
-addpath src/predict
-addpath src/utils
-addpath src/external
-addpath src/external/findfirst
+addpath(genpath('src'))
+
 
 %%
 close all
 %profile on
-for ii = 4%:length(predictor)
-    for jj = 1:length(split.test_data)
+for ii = 3%:length(predictor)
+    for jj = 18%550:length(split.test_data)
 
         % loading in the depth for this image
         this_filename = split.test_data{jj};
@@ -33,5 +30,4 @@ for ii = 4%:length(predictor)
         
     end
 end
-
 %profile off viewer

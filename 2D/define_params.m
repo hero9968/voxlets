@@ -19,6 +19,7 @@ paths.train_data = [paths.data, '2D_shapes/train_data.mat'];
 
 paths.predictions = [paths.data, '2D_shapes/predict/'];
 paths.structured_predict_model_path = [paths.data, '2D_shapes/models/structured_predict.mat'];
+paths.gaussian_predict_model_path = [paths.data, '2D_shapes/models/gaussian_predict.mat'];
 
 
 
@@ -40,6 +41,8 @@ params.scale = 0.2;
 params.gauss_model.mu = 0;
 params.gauss_model.sigma = 10;
 
+params.gauss_model.number_bins = 25;
+
 % feature computation params
 params.shape_dist.num_samples = 5000;
 params.shape_dist.bin_edges = [0:5:150, inf];
@@ -47,8 +50,6 @@ params.shape_dist.bin_edges = [0:5:150, inf];
 params.icp.outlier_distance = 10;
 
 % loading data for the predictors
-
-load(paths.structured_predict_model_path, 'model');
 
 % parameters for the predictors
 predictor(1).name = 'per_ray_gaussian';
@@ -61,7 +62,14 @@ predictor(2).nicename = 'PCA symmetry';
 predictor(2).handle = @(x)(pca_symmetry_predict(x, params));
 predictor(2).outpath = fullfile(paths.predictions, 'pca_symmetry/');
 
+load(paths.structured_predict_model_path, 'model');
 predictor(3).name = 'structured_depth';
 predictor(3).nicename = 'Structured depth';
 predictor(3).handle = @(x)(test_fitting_model(model, x, params));
 predictor(3).outpath = fullfile(paths.predictions, 'structured_depth/');
+
+load(paths.gaussian_predict_model_path, 'model');
+predictor(4).name = 'trained_gaussian';
+predictor(4).nicename = 'Trained Gaussian';
+predictor(4).handle = @(x)(gaussian_model_predict(model, x, params));
+predictor(4).outpath = fullfile(paths.predictions, 'trained_gaussian/');
