@@ -65,13 +65,11 @@ end
 %% plotting ROC curves
 cols = {'r-', 'b:', 'g--', 'k-'};
 for ii = 1:4
-    plot(pred(ii).tpr, pred(ii).fpr, cols{ii}); 
+    plot_roc_curve(pred(ii).tpr, pred(ii).fpr, cols{ii}); 
     hold on
 end
-hold off
-axis image
-xlabel('FPR'); ylabel('TPR')
 legend({predictor.nicename}, 'Location', 'SouthEast')
+hold off
 
 
 %% finding best and worst matches
