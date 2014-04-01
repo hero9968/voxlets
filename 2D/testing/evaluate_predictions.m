@@ -80,7 +80,7 @@ legend({predictor.nicename}, 'Location', 'SouthEast')
 this_alg = 3;
 [~, idx] = sort(pred(this_alg).ssd, 'ascend');
 
-for ii = 15%10:20
+for ii = 20:40
     this_idx = idx(ii);
     
     this_predicted_path = fullfile(predicted_path, [split.test_data{this_idx}, '.png']);
