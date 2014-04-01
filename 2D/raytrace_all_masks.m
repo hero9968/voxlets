@@ -2,11 +2,11 @@
 % file
 %
 clear
-run ../define_params
+run define_params
 load(paths.subset_files, 'filelist')
-addpath ../src
-addpath ../src/utils
-addpath ../src/utils/findfirst
+addpath src
+addpath src/utils
+addpath src/external/findfirst
 
 
 %%

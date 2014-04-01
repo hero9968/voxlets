@@ -3,7 +3,7 @@
 % shape must be in different spits
 
 clear
-run('../define_params.m')
+define_params
 load(paths.subset_files)
 test_fraction = 0.5;
 

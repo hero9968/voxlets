@@ -5,7 +5,7 @@
 clear
 define_params
 load(paths.subset_files, 'filelist')
-addpath('../src')
+addpath src
 
 %%
 for ii = 1:length(filelist)

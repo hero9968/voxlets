@@ -1,10 +1,13 @@
 % script to run a prediction algorithm
-clear
-cd ~/projects/shape_sharing/2D/src
-run ../define_params
-load(paths.split_path, 'split')
-addpath(genpath('src'))
 
+clear
+cd ~/projects/shape_sharing/2D
+define_params
+load(paths.split_path, 'split')
+addpath src/predict
+addpath src/utils
+addpath src/external
+addpath src/external/findfirst
 
 %%
 close all

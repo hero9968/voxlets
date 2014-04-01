@@ -1,10 +1,11 @@
 % a script to train a model from the training data...
 
+cd ~/projects/shape_sharing/2D
 clear
-cd ~/projects/shape_sharing/2D/src
-run('../define_params')
-addpath('predict', genpath('utils'))
-cd ~/projects/shape_sharing/2D/src
+define_params
+addpath src/predict
+addpath src/external/
+addpath src/external/findfirst
 
 %% loading in all depths and shapes from disk...
 load(paths.train_data, 'train_data')
@@ -27,17 +28,14 @@ for ii = 1:3
     subplot(1, 4,ii); 
     combine_mask_and_depth(test_data.images{num}, test_data.depths{num})
     width = length(test_data.depths{num})
-    set(gca, 'xlim', round([-width/2, 1.5*width]));
-    set(gca, 'ylim',round([-width/2, 1.5*width]));
+    set(gca, 'xlim', round([-width/2, 2.5*width]));
+    set(gca, 'ylim',round([-width/2, 2.5*width]));
 end
 
 stacked_image = test_fitting_model(model, test_data.depths{num}, params);
 subplot(1, 4, 4);
 imagesc(stacked_image);
 axis image
-
-%% running prediction on each of the images and saving to disk
-
 
 
 %% fixing the rotating bug - DONE

@@ -1,9 +1,8 @@
 % a script to save training and test images and depths to mat files...
 
 clear 
-run ../define_params
+define_params
 load(paths.split_path, 'split')
-
 
 %%
 clear train_data

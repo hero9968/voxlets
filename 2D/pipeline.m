@@ -12,3 +12,15 @@ raytrace_all_masks
 
 %% save images to mat file for quciker access
 save_images_mat_files
+
+%% creating a train and test split and save to file
+create_train_test_split
+
+%% train the structured prediction model
+train_model
+
+%% run a specified prediciton algorithm on all files and save results to disk
+run_prediction_algorithm
+
+%% evaluate the accuracy of the predictions made
+evaluate_predictions
