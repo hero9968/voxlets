@@ -4,6 +4,7 @@ cd ~/projects/shape_sharing/2D
 clear
 define_params
 addpath src/predict
+addpath src/utils
 addpath src/external/
 addpath src/external/findfirst
 
