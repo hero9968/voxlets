@@ -24,7 +24,7 @@ for ii = 1:N
     X = 1:length(Y);
     
     % computing the shape distributions
-    shape_dists{ii} = shape_distribution_2d(X(:), Y(:), num_samples, bin_edges);   
+    shape_dists{ii} = shape_distribution_2d_scale_invarient(X(:), Y(:), num_samples, bin_edges);   
     
     % find the translation and rotation using PCA...
     [translations{ii}, rotations{ii}, M{ii}] = transformation_to_origin_2d(X, Y);
