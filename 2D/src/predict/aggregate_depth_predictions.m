@@ -27,8 +27,9 @@ for ii = 1:N
     % translating masks
     %prediction_transforms{ii}'
     
-    if any(isnan(prediction_transforms{ii}(:))) || ...
-        abs(abs(det(prediction_transforms{ii}))-1) > 0.0001
+    if any(isnan(prediction_transforms{ii}(:))) 
+        %|| ...
+        %abs(abs(det(prediction_transforms{ii}))-1) > 0.0001
         disp(['Seems like the transform is not very nice'])
         keyboard
     end
@@ -40,6 +41,11 @@ for ii = 1:N
     
     T = maketform('affine', prediction_transforms{ii}');
     [transformed_masks{ii}, x_data{ii}, y_data{ii}] = imtransform(this_mask, T, 'bilinear');
+    
+    if ii == 19
+        %keyboard
+    end
+    
     %subplot(4, 4, ii);
     %imagesc(transformed_masks{ii});
 end
@@ -58,6 +64,13 @@ end
 
 
 for ii = 1:N
+    % checking the size of the image lines up with the x and y data
+    x_diff = abs(round(x_data{ii}(1)) - round(x_data{ii}(2))) +1;
+    assert(x_diff == size(transformed_masks{ii} , 2))
+    y_diff = abs(round(y_data{ii}(1)) - round(y_data{ii}(2))) +1;
+    assert(y_diff == size(transformed_masks{ii} , 1))
+    
+    % forming the destination ranges
     x_range = (round(x_data{ii}(1)-x_min):round(x_data{ii}(2)-x_min)) +1;
     y_range = (round(y_data{ii}(1)-y_min):round(y_data{ii}(2)-y_min)) +1;
     

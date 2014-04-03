@@ -1,25 +1,26 @@
 paths.data = '~/projects/shape_sharing/data/';
-paths.mpeg = [paths.data, '2D_shapes/MPEG7_CE-Shape-1_Part_B/'];
-paths.subset = [paths.data, '2D_shapes/MPEG7_subset/'];
+paths.data_2d = [paths.data, '2D_shapes/'];
+paths.mpeg = [paths.data_2d, 'MPEG7_CE-Shape-1_Part_B/'];
+paths.subset = [paths.data_2d, 'MPEG7_subset/'];
 
 paths.subset_files = [paths.subset, 'filelist.mat'];
 
-paths.rotated = [paths.data, '2D_shapes/rotated/'];
+paths.rotated = [paths.data_2d, 'rotated/'];
 paths.rotated_filename = '%02d_%02d_mask.gif';
 paths.rotated_savename = [paths.rotated, paths.rotated_filename];
 
-paths.raytraced = [paths.data, '2D_shapes/raytraced/'];
+paths.raytraced = [paths.data_2d, 'raytraced/'];
 paths.raytraced_savename = [paths.raytraced, '%02d_%02d_mask.mat'];
 
 % train/test split
-paths.split_path = [paths.data, '2D_shapes/split.mat'];
-paths.test_data = [paths.data, '2D_shapes/test_data.mat'];
-paths.train_data = [paths.data, '2D_shapes/train_data.mat'];
+paths.split_path = [paths.data_2d, 'split.mat'];
+paths.test_data = [paths.data_2d, 'test_data.mat'];
+paths.train_data = [paths.data_2d, 'train_data.mat'];
 
-
-paths.predictions = [paths.data, '2D_shapes/predict/'];
-paths.structured_predict_model_path = [paths.data, '2D_shapes/models/structured_predict.mat'];
-paths.gaussian_predict_model_path = [paths.data, '2D_shapes/models/gaussian_predict.mat'];
+paths.predictions = [paths.data_2d, 'predict/'];
+paths.structured_predict_model_path = [paths.data_2d, 'models/structured_predict.mat'];
+paths.structured_predict_si_model_path = [paths.data_2d, 'models/structured_predict_si.mat'];
+paths.gaussian_predict_model_path = [paths.data_2d, 'models/gaussian_predict.mat'];
 
 
 
@@ -46,30 +47,9 @@ params.gauss_model.number_bins = 25;
 % feature computation params
 params.shape_dist.num_samples = 5000;
 params.shape_dist.bin_edges = [0:5:150, inf];
+params.shape_dist.si_bin_edges = linspace(0, 1, 20);
 
 params.icp.outlier_distance = 10;
 
 % loading data for the predictors
 
-% parameters for the predictors
-predictor(1).name = 'per_ray_gaussian';
-predictor(1).nicename = 'Per ray Gaussian';
-predictor(1).handle = @(x)(per_ray_gaussian_prediction(x, params.gauss_model, params));
-predictor(1).outpath = fullfile(paths.predictions, 'per_ray_gaussian/');
-
-predictor(2).name = 'pca_symmetry';
-predictor(2).nicename = 'PCA symmetry';
-predictor(2).handle = @(x)(pca_symmetry_predict(x, params));
-predictor(2).outpath = fullfile(paths.predictions, 'pca_symmetry/');
-
-load(paths.structured_predict_model_path, 'model');
-predictor(3).name = 'structured_depth';
-predictor(3).nicename = 'Structured depth';
-predictor(3).handle = @(x)(test_fitting_model(model, x, params));
-predictor(3).outpath = fullfile(paths.predictions, 'structured_depth/');
-
-load(paths.gaussian_predict_model_path, 'model');
-predictor(4).name = 'trained_gaussian';
-predictor(4).nicename = 'Trained Gaussian';
-predictor(4).handle = @(x)(gaussian_model_predict(model, x, params));
-predictor(4).outpath = fullfile(paths.predictions, 'trained_gaussian/');

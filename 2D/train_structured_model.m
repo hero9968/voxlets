@@ -7,23 +7,38 @@ addpath src/predict
 addpath src/utils
 addpath src/external/
 addpath src/external/findfirst
+addpath src/external/libicp/matlab
 
 %% loading in all depths and shapes from disk...
 load(paths.train_data, 'train_data')
 load(paths.test_data, 'test_data')
 
 %% now compute the model
+params.scale_invariant = false;
 model = train_fitting_model(train_data.images, train_data.depths, params);
 model.images = train_data.images;
 model.depths = train_data.depths;
 all_dists = cell2mat(model.shape_dists);
+imagesc(all_dists)
 
 %% save the model
 save(paths.structured_predict_model_path, 'model');
 
+%% now compute the model
+params.scale_invariant = true;
+model = train_fitting_model(train_data.images, train_data.depths, params);
+model.images = train_data.images;
+model.depths = train_data.depths;
+all_dists = cell2mat(model.shape_dists);
+imagesc(all_dists)
+
+%% save the model
+save(paths.structured_predict_si_model_path, 'model');
+
 %%
 %num = 140;
-num = 190
+params.aggregating = 0;
+num = 123
 %num = num+1;
 for ii = 1:3
     subplot(1, 4,ii); 
@@ -36,7 +51,19 @@ end
 stacked_image = test_fitting_model(model, test_data.depths{num}, params);
 subplot(1, 4, 4);
 imagesc(stacked_image);
-axis image
+
+
+%% showing the closest matching features to the input image
+clf
+num = num-1;
+params.aggregating = 0;
+subplot(3, 4, 1);
+combine_mask_and_depth(test_data.images{num}(1:100, :), test_data.depths{num})
+
+load(paths.structured_predict_si_model_path, 'model');
+test_fitting_model(model, test_data.depths{num}, params);
+load(paths.structured_predict_model_path, 'model');
+test_fitting_model(model, test_data.depths{num}, params);
 
 
 %% fixing the rotating bug - DONE

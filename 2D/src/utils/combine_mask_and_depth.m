@@ -9,6 +9,10 @@ image_height = size(mask, 1);
 
 depth_image = fill_grid_from_depth(depth, image_height, 0);
 
+if size(depth_image, 1) > size(mask, 1)
+    depth_image = depth_image(1:size(mask, 1), :);
+end
+
 combined = double(mask) + 3 * depth_image;
 
 % plotting if no output arguments

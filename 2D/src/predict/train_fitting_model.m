@@ -10,13 +10,13 @@ N = length(training_images);
 
 % set up params etc.
 num_samples = params.shape_dist.num_samples;
-bin_edges = params.shape_dist.bin_edges;
 
 % for each depth, compute a shape distriution feature
 shape_dists = cell(1, N);
 translations = cell(1, N);
 rotations = cell(1, N);
 M = cell(1, N);
+scale = nan(1, N);
 
 for ii = 1:N
 
@@ -24,7 +24,16 @@ for ii = 1:N
     X = 1:length(Y);
     
     % computing the shape distributions
-    shape_dists{ii} = shape_distribution_2d_scale_invarient(X(:), Y(:), num_samples, bin_edges);   
+    if params.scale_invariant
+        bin_edges = params.shape_dist.si_bin_edges;
+        scale(ii) = normalise_scale([X;Y]);
+    else
+        bin_edges = params.shape_dist.bin_edges;
+        scale(ii) = 1;
+    end
+    tX = scale(ii) * X(:);
+    tY = scale(ii) * X(:);
+    shape_dists{ii} = shape_distribution_2d(tX, tY, num_samples, bin_edges);
     
     % find the translation and rotation using PCA...
     [translations{ii}, rotations{ii}, M{ii}] = transformation_to_origin_2d(X, Y);
@@ -35,7 +44,9 @@ model.shape_dists = shape_dists;
 model.translations = translations;
 model.rotations = rotations;
 model.transf = M;
-
+model.scale_invariant = params.scale_invariant;
+model.bin_edges = bin_edges;
+model.scales = scale;
 
 
 

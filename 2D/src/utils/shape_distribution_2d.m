@@ -11,7 +11,7 @@ inds2 = randi(num_points, 1, num_samples);
 dists = (X(inds1) - X(inds2)).^2 + (Y(inds1) - Y(inds2)).^2;
 dists = sqrt(dists);
 
-to_remove = dists < min(bin_edges) | dists > max(bin_edges);
+to_remove = dists < min(bin_edges) | dists > max(bin_edges) | dists == 0;
 dists( to_remove ) = [];
 
 [fv, ~] = histc(dists, bin_edges);

@@ -1,6 +1,10 @@
 function fv = shape_distribution_2d_scale_invarient(X, Y, num_samples, bin_edges)
 % compute shape distribution for 2d points
 
+to_remove = isnan(X) | isnan(Y);
+X(to_remove) = [];
+Y(to_remove) = [];
+
 num_points = length(X);
 
 % choosing indices of random points

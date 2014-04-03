@@ -1,6 +1,9 @@
 function fv = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges)
 % compute shape distribution for 2d points
 
+% for now should I compute the normals in this function?
+
+
 % input checks and setup
 num_points = size(XY, 2);
 assert(size(norms, 2) == num_points);
