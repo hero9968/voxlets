@@ -39,8 +39,8 @@ for ii = 1:N
         keyboard
     end
     
-    T = maketform('affine', prediction_transforms{ii}');
-    [transformed_masks{ii}, x_data{ii}, y_data{ii}] = imtransform(this_mask, T, 'bilinear');
+    T = maketform('projective', prediction_transforms{ii}');
+    [transformed_masks{ii}, x_data{ii}, y_data{ii}] = imtransform(this_mask, T, 'bilinear', 'XYScale',1);
     
     if ii == 19
         %keyboard
@@ -65,6 +65,7 @@ end
 
 for ii = 1:N
     % checking the size of the image lines up with the x and y data
+    %{
     x_diff = abs(round(x_data{ii}(1)) - round(x_data{ii}(2))) +1;
     assert(x_diff == size(transformed_masks{ii} , 2))
     y_diff = abs(round(y_data{ii}(1)) - round(y_data{ii}(2))) +1;
@@ -73,6 +74,11 @@ for ii = 1:N
     % forming the destination ranges
     x_range = (round(x_data{ii}(1)-x_min):round(x_data{ii}(2)-x_min)) +1;
     y_range = (round(y_data{ii}(1)-y_min):round(y_data{ii}(2)-y_min)) +1;
+    %}
+    x1 = round(x_data{ii}(1) - x_min) + 1;
+    y1 = round(y_data{ii}(1) - y_min) + 1;
+    x_range = x1:(x1 + size(transformed_masks{ii}, 2) - 1);
+    y_range = y1:(y1 + size(transformed_masks{ii}, 1) - 1);
     
     to_add = prediction_weights(ii) * double(transformed_masks{ii});
     

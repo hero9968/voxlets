@@ -31,9 +31,19 @@ for ii = 1:N
         bin_edges = params.shape_dist.bin_edges;
         scale(ii) = 1;
     end
+    
     tX = scale(ii) * X(:);
-    tY = scale(ii) * X(:);
-    shape_dists{ii} = shape_distribution_2d(tX, tY, num_samples, bin_edges);
+    tY = scale(ii) * Y(:);
+    
+    if params.sd_angles
+        %fv = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges)
+        norms = normals_radius_2d([tX'; tY'], scale(ii) * params.normal_radius);
+        xy_bin_edges = bin_edges;
+        angles_bin_edges = params.angle_edges;
+        shape_dists{ii} = shape_distribution_2d_angles([tX'; tY'], norms, num_samples, xy_bin_edges, angles_bin_edges);
+    else
+        shape_dists{ii} = shape_distribution_2d(tX, tY, num_samples, bin_edges);
+    end
     
     % find the translation and rotation using PCA...
     [translations{ii}, rotations{ii}, M{ii}] = transformation_to_origin_2d(X, Y);
@@ -46,9 +56,9 @@ model.rotations = rotations;
 model.transf = M;
 model.scale_invariant = params.scale_invariant;
 model.bin_edges = bin_edges;
+model.angle_edges = params.angle_edges;
 model.scales = scale;
-
-
+model.sd_angles = params.sd_angles;
 
 
 

@@ -1,4 +1,4 @@
-function [AUC, TPR, FPR ] = plot_roc(GT, pred, colour)
+function [AUC, TPR, FPR, thresh ] = plot_roc(GT, pred, colour)
 % my customised roc plotting
 
 assert(all(size(GT)==size(pred)))

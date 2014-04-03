@@ -21,7 +21,7 @@ for ii = 1:N
     if size(t_XY, 2) > 2
         [rot, dummy] = eig(cov(t_XY'));
         idx = diag(dummy)==min(diag(dummy));
-        normal = rot(:, idx);
+        normal = rot(:, idx(1));
     else
         normal = [0, -1];
     end

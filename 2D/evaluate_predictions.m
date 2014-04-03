@@ -6,6 +6,7 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
+set_up_predictors
 load(paths.split_path, 'split')
 length_test_data = length(split.test_data);
 
@@ -28,7 +29,7 @@ end
 
 
 %%
-for ii = 1:4
+for ii = 1:length(predictor)
     
     predicted_path = predictor(ii).outpath;
     all_pred = cell(length_test_data, 1);
@@ -46,6 +47,8 @@ for ii = 1:4
         diffs = single(all_GT{jj}) - single(this_predicted_image(:));
         pred(ii).ssd(jj) = sqrt(sum(diffs.^2)) / length(diffs);
         pred(ii).sd(jj) = sum(abs(diffs)) / length(diffs);
+        
+        pred(ii).image_auc(jj) = plot_roc(all_GT{jj}, this_predicted_image(:));
 
         % saving the images    
         all_pred{jj} = this_predicted_image(:);
@@ -56,16 +59,16 @@ for ii = 1:4
     all_GT2 = single(cell2mat(all_GT));
     all_pred2 = single(cell2mat(all_pred));
 
-    [pred(ii).auc, pred(ii).tpr, pred(ii).fpr] = plot_roc(all_GT2, all_pred2);
+    [pred(ii).auc, pred(ii).tpr, pred(ii).fpr, pred(ii).thresh] = plot_roc(all_GT2, all_pred2);
     %hold on
     ii
 
 end
 
 %% plotting ROC curves
-cols = {'r-', 'b:', 'g--', 'k-'};
-for ii = 1:4
-    plot_roc_curve(pred(ii).tpr, pred(ii).fpr, cols{ii}); 
+cols = {'r-', 'b:', 'g--', 'k-', 'c-'};
+for ii = 1:length(predictor)
+    plot_roc_curve(pred(ii).tpr, pred(ii).fpr, cols{ii}, pred(ii).thresh); 
     hold on
 end
 legend({predictor.nicename}, 'Location', 'SouthEast')
@@ -74,10 +77,10 @@ hold off
 
 %% finding best and worst matches
 
-this_alg = 3;
-[~, idx] = sort(pred(this_alg).ssd, 'ascend');
+this_alg = 5;
+[~, idx] = sort(pred(this_alg).sd, 'ascend');
 
-for ii = 20:40
+for ii = length(idx):-1:(length(idx)-20)
     this_idx = idx(ii);
     
     this_predicted_path = fullfile(predicted_path, [split.test_data{this_idx}, '.png']);
@@ -88,16 +91,21 @@ for ii = 20:40
     this_GT_image = imread(this_GT_path);
 
     % plot the gt image next to the predicted
+    entries = sum(this_GT_image, 2);
+    height = length(entries) - findfirst(flipud(entries), 1, 1, 'first') + 20;
     subplot(131)
-    imagesc(this_GT_image(1:100, :)); axis image off; colormap(gray)
+    imagesc(this_GT_image(1:height, :)); axis image off; colormap(gray)
     subplot(132)
-    imagesc(fill_grid_from_depth(raytrace_2d(this_GT_image), 100, 0.5))
+    imagesc(fill_grid_from_depth(raytrace_2d(this_GT_image), height, 0.5))
     axis image off
     subplot(133)
-    imagesc(this_predicted_image(1:100, :)); axis image off; colormap(gray)
-    title(num2str(pred(this_alg).ssd(this_idx)));
-    pause(1.5)
+    imagesc(this_predicted_image(1:height, :)); axis image off; colormap(gray)
+    %title(num2str(pred(this_alg).sd(this_idx)));
+    %drawnow
+    %pause(0.5)
     
+    filename = sprintf('../media/structured_si_best_worst/%03d.png', ii);
+    print(gcf, filename, '-dpng')
     
 end
 

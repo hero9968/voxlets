@@ -48,8 +48,13 @@ params.gauss_model.number_bins = 25;
 params.shape_dist.num_samples = 5000;
 params.shape_dist.bin_edges = [0:5:150, inf];
 params.shape_dist.si_bin_edges = linspace(0, 1, 20);
+params.angle_edges = linspace(-1, 1, 10);
 
 params.icp.outlier_distance = 10;
+
+params.normal_radius = 10;
+
+
 
 % loading data for the predictors
 

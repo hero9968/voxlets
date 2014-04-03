@@ -3,6 +3,7 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
+set_up_predictors
 load(paths.split_path, 'split')
 addpath src/predict
 addpath src/utils
@@ -12,7 +13,7 @@ addpath src/external/findfirst
 %%
 close all
 %profile on
-for ii = 4%:length(predictor)
+for ii = 5%:length(predictor)
     for jj = 1:length(split.test_data)
 
         % loading in the depth for this image

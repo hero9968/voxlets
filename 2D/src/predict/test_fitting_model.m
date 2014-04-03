@@ -4,10 +4,10 @@ function stacked_image = test_fitting_model(data, depth, params)
 % applys the learned model to predict the image that might be present which
 % gave the depth. The parameters in params might eventually be moved to
 % model.
-plotting = 1;
+plotting = 0;
 plotting_matches = 0;
 outlier_distance = 10;%params.icp.outlier_distance;
-number_matches_to_use = 1;
+number_matches_to_use = 10;
 
 % input checks
 assert(isvector(depth));
@@ -17,10 +17,10 @@ model_XY = [1:length(depth); double(depth)];
 model_XY(:, any(isnan(model_XY), 1)) = [];
 
 if data.scale_invariant
-    bin_edges = params.shape_dist.si_bin_edges;
+    bin_edges = data.bin_edges;
     scale = normalise_scale(model_XY);
 else
-    bin_edges = params.shape_dist.bin_edges;
+    bin_edges = data.bin_edges;
     scale = 1;
 end
 
@@ -29,7 +29,13 @@ num_samples = params.shape_dist.num_samples;
 tX = scale * model_XY(1, :)';
 tY = scale * model_XY(2, :)';
 
-shape_dist = shape_distribution_2d(tX, tY, num_samples, bin_edges);
+if data.sd_angles
+    angle_edges = data.angle_edges;
+    norms = normals_radius_2d(model_XY, params.normal_radius);
+    shape_dist = shape_distribution_2d_angles([tX'; tY'], norms, num_samples, bin_edges, angle_edges);
+else
+    shape_dist = shape_distribution_2d(tX, tY, num_samples, bin_edges);
+end
 
 % find top matching shape distribution(s) by chi-squared distance
 all_dists = cell2mat(data.shape_dists)';
@@ -145,6 +151,13 @@ if params.aggregating
     if isempty(stacked_image_cropped)
         stacked_image_cropped = zeros(params.im_height, length(depth));
     else
+        
+        pad_left_size = max(0, x_data(1) - 1 );
+        stacked_image_cropped = [zeros(size(stacked_image_cropped, 1), pad_left_size), stacked_image_cropped];
+        
+        pad_right_size = max(0, length(depth) - size(stacked_image_cropped, 2));
+        stacked_image_cropped = [stacked_image_cropped, zeros(size(stacked_image_cropped, 1), pad_right_size)];
+        
         extra_height = params.im_height - size(stacked_image_cropped, 1);
         stacked_image_cropped = [stacked_image_cropped; zeros(extra_height, length(depth))];
     end

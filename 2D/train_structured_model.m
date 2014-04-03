@@ -6,6 +6,7 @@ define_params
 addpath src/predict
 addpath src/utils
 addpath src/external/
+addpath src/external/hist2
 addpath src/external/findfirst
 addpath src/external/libicp/matlab
 
@@ -15,6 +16,7 @@ load(paths.test_data, 'test_data')
 
 %% now compute the model
 params.scale_invariant = false;
+params.sd_angles = 0;
 model = train_fitting_model(train_data.images, train_data.depths, params);
 model.images = train_data.images;
 model.depths = train_data.depths;
@@ -26,6 +28,7 @@ save(paths.structured_predict_model_path, 'model');
 
 %% now compute the model
 params.scale_invariant = true;
+params.sd_angles = 1;
 model = train_fitting_model(train_data.images, train_data.depths, params);
 model.images = train_data.images;
 model.depths = train_data.depths;
@@ -37,8 +40,8 @@ save(paths.structured_predict_si_model_path, 'model');
 
 %%
 %num = 140;
-params.aggregating = 0;
-num = 123
+params.aggregating = 1;
+num = 144
 %num = num+1;
 for ii = 1:3
     subplot(1, 4,ii); 
@@ -50,7 +53,7 @@ end
 
 stacked_image = test_fitting_model(model, test_data.depths{num}, params);
 subplot(1, 4, 4);
-imagesc(stacked_image);
+imagesc(stacked_image); axis image
 
 
 %% showing the closest matching features to the input image
