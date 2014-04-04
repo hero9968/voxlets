@@ -81,6 +81,7 @@ this_alg = 5;
 [~, idx] = sort(pred(this_alg).sd, 'ascend');
 
 for ii = length(idx):-1:(length(idx)-20)
+    
     this_idx = idx(ii);
     
     this_predicted_path = fullfile(predicted_path, [split.test_data{this_idx}, '.png']);
@@ -101,11 +102,11 @@ for ii = length(idx):-1:(length(idx)-20)
     subplot(133)
     imagesc(this_predicted_image(1:height, :)); axis image off; colormap(gray)
     %title(num2str(pred(this_alg).sd(this_idx)));
-    %drawnow
-    %pause(0.5)
+    drawnow
+    pause(0.5)
     
-    filename = sprintf('../media/structured_si_best_worst/%03d.png', ii);
-    print(gcf, filename, '-dpng')
+    %filename = sprintf('../media/structured_si_best_worst/%03d.png', ii);
+    %print(gcf, filename, '-dpng')
     
 end
 
