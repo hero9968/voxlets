@@ -17,10 +17,10 @@ load(paths.structured_predict_si_model_path, 'model');
 
 %% 
 clf
-num = 128;
+num = 122;
 depth = test_data.depths{num};
 transforms = propose_transforms(model, depth, params);
-[out_img, out_img_cropped, transformed] = full_aggregation(transforms, params.im_height, depth);
+[out_img, out_img_cropped, transformed] = aggregate_masks(transforms, params.im_height, depth);
 
 subplot(4, 5, 1); 
 imagesc(test_data.images{num})
