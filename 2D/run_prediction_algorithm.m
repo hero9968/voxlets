@@ -8,6 +8,8 @@ load(paths.split_path, 'split')
 addpath src/predict
 addpath src/utils
 addpath src/external
+addpath src/external/hist2
+addpath src/external/libicp/matlab/
 addpath src/external/findfirst
 
 %%
@@ -23,7 +25,7 @@ for ii = 5%:length(predictor)
          
 
         % making the prediction
-        this_prediction = predictor(ii).handle(this_raytraced_depth);
+        this_prediction = predictor(ii).handle(this_raytraced_depth, jj);
         
         % saving the prediction to disk
         out_file = [split.test_data{jj}, '.png'];

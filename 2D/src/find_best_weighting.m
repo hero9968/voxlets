@@ -17,7 +17,7 @@ load(paths.structured_predict_si_model_path, 'model');
 
 %% 
 clf
-num = 332;
+num = 33;
 depth = test_data.depths{num};
 transforms = propose_transforms(model, depth, params);
 [out_img, out_img_cropped, transformed] = aggregate_masks(transforms, params.im_height, depth);
@@ -28,10 +28,10 @@ plot_transforms(transformed, out_img_cropped, test_data.images{num});
 % hidden part of the image
 gt_img = single(test_data.images{num});
 mask_stack = single(cell2mat(reshape({transformed.cropped_mask}, 1, 1, [])));
-
 [weights, other] = find_optimal_weights(depth, mask_stack, gt_img);
-%
-clf; 
+
+%%
+
 subplot(121)
 imagesc(gt_img(1:other.height, :))
 axis image
@@ -43,8 +43,9 @@ set(gca, 'clim', [0, 1])
 colormap(gray)
 
 
-
-
+%%
+% full image = 2.27
+% part image = 0.706
 
 
 

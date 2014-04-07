@@ -25,3 +25,13 @@ predictor(4).name = 'structured_depth_si';
 predictor(4).nicename = 'Structured depth scale invariant';
 predictor(4).handle = @(x)(test_fitting_model(model, x, params));
 predictor(4).outpath = fullfile(paths.predictions, 'structured_depth_si/');
+
+load(paths.structured_predict_si_model_path, 'model');
+load(paths.test_data, 'test_data')
+params.scale_invariant = true;
+predictor(5).name = 'gt_weighted';
+predictor(5).nicename = 'Weighted aggregation of SI, using GT img';
+predictor(5).handle = @(x, y)(weights_predict_with_gt(model, x, params, test_data.images, y));
+predictor(5).outpath = fullfile(paths.predictions, 'gt_weighted/');
+
+

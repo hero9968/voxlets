@@ -66,7 +66,7 @@ for ii = 1:length(predictor)
 end
 
 %% plotting ROC curves
-cols = {'r-', 'b:', 'g--', 'k-', 'c-'};
+cols = {'r-', 'b-', 'g-', 'k-', 'r:'};
 for ii = 1:length(predictor)
     plot_roc_curve(pred(ii).tpr, pred(ii).fpr, cols{ii}, pred(ii).thresh); 
     hold on
