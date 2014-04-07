@@ -39,7 +39,7 @@ imagesc(all_dists)
 save(paths.structured_predict_si_model_path, 'model');
 
 %%
-profile on
+
 %num = 140;
 params.aggregating = 1;
 num = 144
@@ -55,7 +55,7 @@ end
 stacked_image = test_fitting_model(model, test_data.depths{num}, params);
 subplot(1, 4, 4);
 imagesc(stacked_image); axis image
-profile off viewer
+
 
 %% showing the closest matching features to the input image
 clf

@@ -1,55 +1,86 @@
-function [output_image, x_data, y_data] = ...
-    aggregate_depth_predictions(prediction_masks, prediction_transforms, prediction_weights)
+function [output_image, output_image_cropped, transformed] = ...
+    aggregate_depth_predictions(prediction, image_size)
+
+
+assert(isfield(prediction, 'mask'));
+assert(isfield(prediction, 'transform'));
+assert(isfield(prediction, 'weight'));
 
 adding = false;
 
 % input checks
-assert(iscell(prediction_masks))
-assert(iscell(prediction_transforms))
-assert(isvector(prediction_weights))
-N = length(prediction_masks);
-assert(N == length(prediction_transforms))
-assert(N == length(prediction_weights))
+N = length(prediction);
+
+padding = 20;
 
 % apply transformations to the input images
-transformed_masks = cell(1, N);
-x_data = cell(1, N);
-y_data = cell(1, N);
+transformed_masks = nan([image_size + 2*padding, N]);
+
+
+
+x_data = [-padding+1, image_size(2) + padding];
+y_data = [-padding+1, image_size(1) + padding];
+
 
 for ii = 1:N
     
-    this_mask = prediction_masks{ii};
-    row_sums = sum(this_mask, 2);
-    image_end = findfirst(row_sums, 1, 1, 'last');
-    this_mask(image_end+1:end, :) = [];
-    this_mask = this_mask==1;
+    this_mask = prediction(ii).mask;
+    %row_sums = sum(this_mask, 2);
+    %image_end = findfirst(row_sums, 1, 1, 'last');
+    %this_mask(image_end+1:end, :) = [];
+    %this_mask = this_mask==1;
     
     % translating masks
     %prediction_transforms{ii}'
     
-    if any(isnan(prediction_transforms{ii}(:))) 
-        %|| ...
-        %abs(abs(det(prediction_transforms{ii}))-1) > 0.0001
-        disp(['Seems like the transform is not very nice'])
-        keyboard
-    end
+    check_isgood_transform(prediction(ii).transform);
     
-    if cond(prediction_transforms{ii}') > 1e7
-        disp(['Seems like conditioning is bad'])
-        keyboard
-    end
     
-    T = maketform('projective', prediction_transforms{ii}');
-    [transformed_masks{ii}, x_data{ii}, y_data{ii}] = imtransform(this_mask, T, 'bilinear', 'XYScale',1);
+    T = maketform('projective', prediction(ii).transform');
+    [transformed(ii).masks, transformed(ii).x_data, transformed(ii).y_data] = ...
+        imtransform(this_mask, T, 'bilinear', 'XYScale',1, 'XData', x_data, 'YData', y_data);
     
-    if ii == 19
-        %keyboard
-    end
+    transformed_masks(:, :, ii) = transformed(ii).masks;
     
+    transformed(ii).padding = padding;
     %subplot(4, 4, ii);
     %imagesc(transformed_masks{ii});
 end
 
+%{
+transformed.x_data = x_data;
+transformed.y_data = y_data;
+transformed.x_range = x_data(1):x_data(2);
+transformed.y_range = y_data(1);y_data(2);
+%}
+
+if adding
+    output_image = sum(transformed_masks, 3);
+else
+    output_image = noisy_or(transformed_masks, 3, [prediction.weight]);
+end
+
+
+output_image_cropped = output_image(padding:end-padding, padding:end-padding);
+
+
+
+
+function check_isgood_transform( trans )
+
+if any(isnan(trans(:))) 
+    %|| ...
+    %abs(abs(det(prediction_transforms{ii}))-1) > 0.0001
+    disp('Seems like the transform is not very nice')
+    keyboard
+end
+
+if cond(trans') > 1e7
+    disp('Seems like conditioning is bad')
+    keyboard
+end
+
+%{
 % now stacking up all the transformed masks
 x_min = min(cellfun(@min, x_data));
 x_max = max(cellfun(@max, x_data));
@@ -62,6 +93,7 @@ else % soft or
     output_image = ones(ceil(y_max)-floor(y_min)+2, ceil(x_max)-floor(x_min)+2);
 end
 
+%individual_images = cell(1, N);
 
 for ii = 1:N
     % checking the size of the image lines up with the x and y data
@@ -85,8 +117,13 @@ for ii = 1:N
     if adding
         output_image(y_range, x_range) = output_image(y_range, x_range) + to_add;
     else % soft or
-        output_image(y_range, x_range) = output_image(y_range, x_range) .* (1-to_add*0.3/prediction_weights(ii)); 
+        %output_image(y_range, x_range) = output_image(y_range, x_range) .* (1-to_add*0.3/prediction_weights(ii)); 
+        output_image(y_range, x_range) = output_image(y_range, x_range) .* (1-to_add*prediction_weights(ii)); 
     end
+    
+    this_image_to_add = zeros(size(output_image));
+    this_image_to_add(y_range, x_range) = transformed_masks{ii};
+    individual_images.imgs{ii} = this_image_to_add;
         
 end
 
@@ -97,7 +134,10 @@ end
 x_data = floor(x_min):(ceil(x_max)+1);
 y_data = floor(y_min):(ceil(y_max)+1);
 
+individual_images.x_range = x_data;%[x_min, x_max];
+individual_images.y_range = y_data;%[y_min, y_max];
+%}
 
-assert(length(x_data)==size(output_image, 2))
-assert(length(y_data)==size(output_image, 1))
+%assert(length(x_data)==size(output_image, 2))
+%assert(length(y_data)==size(output_image, 1))
 
