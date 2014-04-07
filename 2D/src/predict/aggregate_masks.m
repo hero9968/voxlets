@@ -5,7 +5,7 @@ width = length(depth);
 padding = 20;
 N = length(transforms);
 adding = false;
-transform_type = 'pca';
+transform_type = 'icp';
 weights = ones(1, N) / 40;
 
 % apply transformations to the input images
@@ -27,7 +27,11 @@ for ii = 1:N
     [transformed(ii).masks, transformed(ii).x_data, transformed(ii).y_data] = ...
         imtransform(this_mask, T, 'bilinear', 'XYScale',1, 'XData', x_data, 'YData', y_data);
     
+    assert(range(transformed(ii).x_data)==range(x_data));
+    assert(range(transformed(ii).y_data)==range(y_data));
+    
     transformed_masks(:, :, ii) = transformed(ii).masks;
+    transformed(ii).cropped_mask = transformed(ii).masks(padding+1:end-padding, padding+1:end-padding);
     transformed(ii).padding = padding;
     
 end
@@ -40,7 +44,9 @@ else
 end
 
 % cropping output image
-stacked_img_cropped = stacked_img(padding:end-padding, padding:end-padding);
+stacked_img_cropped = stacked_img(padding+1:end-padding, padding+1:end-padding);
+assert(size(stacked_img_cropped, 1) == height);
+assert(size(stacked_img_cropped, 2) == width);
 
 % applying the known mask for the known free pixels
 known_mask = fill_grid_from_depth(depth, height, 0.5);

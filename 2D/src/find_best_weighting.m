@@ -17,41 +17,54 @@ load(paths.structured_predict_si_model_path, 'model');
 
 %% 
 clf
-num = 122;
+num = 332;
 depth = test_data.depths{num};
 transforms = propose_transforms(model, depth, params);
 [out_img, out_img_cropped, transformed] = aggregate_masks(transforms, params.im_height, depth);
+plot_transforms(transformed, out_img_cropped, test_data.images{num});
 
-subplot(4, 5, 1); 
-imagesc(test_data.images{num})
+%% Here will try to optimise for the weights
+% want to find the weights that minimise the sum of squared errors over the
+% hidden part of the image
+gt_img = single(test_data.images{num});
+mask_stack = single(cell2mat(reshape({transformed.cropped_mask}, 1, 1, [])));
+
+[weights, other] = find_optimal_weights(depth, mask_stack, gt_img);
+%
+clf; 
+subplot(121)
+imagesc(gt_img(1:other.height, :))
 axis image
 
-for ii = 1:18; 
-    subplot(4, 5, ii+1); 
-    imagesc(transformed(ii).masks); 
-    axis image
-end
-
-subplot(4, 5, 20); 
-%clf
-imagesc(out_img)
+subplot(122)
+imagesc(other.final_image)
 axis image
-%T = sum(cell2mat(reshape(transformed.imgs, 1, 1, [])), 3);
-%clf
+set(gca, 'clim', [0, 1])
+colormap(gray)
+
+
+
+
+
+
+
 %%
 clf
 [X, Y] = find(edge(test_data.images{num}));
-x_loc = transformed(1).padding; %find(transformed.x_range==1);
-y_loc = transformed(1).padding; %find(transformed.y_range==1);
+x_loc = 0;%transformed(1).padding;
+y_loc = 0;%transformed(1).padding;
 xy = apply_transformation_2d([X'; Y'], [1, 0, y_loc; 0, 1, x_loc; 0 0 1]);
 
-imagesc(out_img);
+imagesc(out_img_cropped);
 hold on
 plot(xy(2, :), xy(1, :), 'r+')
 hold off
 colormap(flipgray)
 %set(gca, 'clim', [0, 1])
 axis image
+
+
+
 
 
 %%

@@ -11,5 +11,5 @@ end
 [TPR, FPR, thresh, AUC] = perfcurve2(GT(:)', pred(:)', 1);
 
 if nargout == 0
-    plot_roc_curve(tpr, fpr, colour, thresh);
+    plot_roc_curve(TPR, FPR, colour, thresh);
 end
