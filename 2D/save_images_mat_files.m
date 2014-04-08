@@ -47,6 +47,7 @@ for ii = 1:N
     temp = load([this_depth_path '.mat']);
     test_data.depths{ii} = double(temp.this_raytraced_depth);
     test_data.images{ii} = imread([this_image_path '.gif']);
+    test_data.heights(ii) = size(test_data.images{ii}, 1);
     test_data.filename{ii} = this_filename;        
 
     ii

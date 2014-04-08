@@ -7,6 +7,10 @@ define_params
 load(paths.subset_files, 'filelist')
 addpath src
 
+if ~exist(paths.rotated, 'dir')
+    mkdir(paths.rotated)
+end
+
 %%
 for ii = 1:length(filelist)
     

@@ -42,7 +42,7 @@ save(paths.structured_predict_si_model_path, 'model');
 
 %num = 140;
 params.aggregating = 1;
-num = 144
+num = 502
 %num = num+1;
 for ii = 1:3
     subplot(1, 4,ii); 
@@ -52,7 +52,7 @@ for ii = 1:3
     set(gca, 'ylim',round([-width/2, 2.5*width]));
 end
 
-stacked_image = test_fitting_model(model, test_data.depths{num}, params);
+stacked_image = test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
 subplot(1, 4, 4);
 imagesc(stacked_image); axis image
 
@@ -65,26 +65,12 @@ subplot(3, 4, 1);
 combine_mask_and_depth(test_data.images{num}(1:100, :), test_data.depths{num})
 
 load(paths.structured_predict_si_model_path, 'model');
-test_fitting_model(model, test_data.depths{num}, params);
+test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
 load(paths.structured_predict_model_path, 'model');
-test_fitting_model(model, test_data.depths{num}, params);
+test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
 
 
-%% fixing the rotating bug - DONE
-clf
-num = num+1;
-depth = test_data.depths{num};
-Y = (double(depth));
-X = 1:length(Y);
-[~, ~, this_transform_to_origin] = transformation_to_origin_2d(X, Y);
-coordinate_frame = [0, 0, 10; 10, 0, 0];
-coordinate_frame_trans = apply_transformation_2d(coordinate_frame, this_transform_to_origin);
-plot(X, Y, 'o');
-hold on
-plot(coordinate_frame(1, :), coordinate_frame(2, :), 'r')
-plot(coordinate_frame_trans(1, :), coordinate_frame_trans(2, :), 'r')
-hold off
-axis image
+
 
 
 

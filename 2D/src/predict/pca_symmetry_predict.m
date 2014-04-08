@@ -1,14 +1,15 @@
-function mask_out = pca_symmetry_predict( depth_in, params )
+function mask_out = pca_symmetry_predict( depth_in, im_height)
 % a function to predict the occupancy mask given the depth image in
 % this function will use a very simple symmetry predictor
 
 width = length(depth_in);
-height = params.im_height;
+height = im_height;
 
 % representing edge of object as set of points in 2D
 X = 1:width;
 Y = depth_in;
 XY_original = double([X', Y']);
+XY_original(any(isnan(XY_original), 2), :) = [];
 
 [A, B] = eig(cov(XY_original));
 
@@ -85,6 +86,8 @@ object_edge = fill_grid_from_depth(Y, height, 0);
 % constructing final grid
 mask_out = (grid1-grid2) == 1;
 mask_out(object_edge==1) = 1;
+mask_out = single(mask_out);
+
 
 if 0
     figure

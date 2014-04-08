@@ -2,12 +2,15 @@
 % file
 %
 clear
-run define_params
+define_params
 load(paths.subset_files, 'filelist')
 addpath src
 addpath src/utils
 addpath src/external/findfirst
 
+if ~exist(paths.raytraced, 'dir')
+    mkdir(paths.raytraced)
+end
 
 %%
 plotting = false;
@@ -38,7 +41,7 @@ for ii = 1:length(filelist)
             subplot(122)
             bar(this_raytraced_depth)
             set(gca,'YDir','reverse');
-            set(gca, 'xlim', [0, params.im_width])
+            %set(gca, 'xlim', [0, params.im_width])
             axis equal tight
             set(gca, 'ylim', [0, params.im_height])
             

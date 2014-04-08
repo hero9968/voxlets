@@ -25,13 +25,17 @@ end
 unique_classes(1) = [];
 
 %% now for each unique class, copy the first 3 examples to the new foler
+if ~exist(paths.subset)
+    mkdir(paths.subset)
+end
+
 old_path = [paths.mpeg, '%s-%d.gif'];
 %system(['rm  ' paths.subset '/*'])
 filelist = [];
 
 for ii = 1:length(unique_classes)
     inliers = cellfun(@(x)(strcmp(x, unique_classes{ii})), class_name);
-    this_class_idx = find(inliers, 3, 'first');
+    this_class_idx = find(inliers, params.number_subclasses, 'first');
     
     for jj = 1:params.number_subclasses
         
@@ -47,6 +51,8 @@ for ii = 1:length(unique_classes)
         filelist = [filelist, this_struct];
         
     end   
+    
+    done(ii, length(unique_classes))
 
 end
 

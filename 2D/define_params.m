@@ -18,6 +18,7 @@ paths.test_data = [paths.data_2d, 'test_data.mat'];
 paths.train_data = [paths.data_2d, 'train_data.mat'];
 
 paths.predictions = [paths.data_2d, 'predict/'];
+paths.models_path = [paths.data_2d, 'models/'];
 paths.structured_predict_model_path = [paths.data_2d, 'models/structured_predict.mat'];
 paths.structured_predict_si_model_path = [paths.data_2d, 'models/structured_predict_si.mat'];
 paths.gaussian_predict_model_path = [paths.data_2d, 'models/gaussian_predict.mat'];
@@ -25,18 +26,21 @@ paths.gaussian_predict_model_path = [paths.data_2d, 'models/gaussian_predict.mat
 
 
 % params for setting up file lists
-params.number_subclasses = 1; % how many subclasses from each shape to use
+params.number_subclasses = 3; % how many subclasses from each shape to use
+
+params.aggregating = true;
 
 % angles to rotate masks
-params.n_angles = 16;
+params.n_angles = 32;
 temp_angles = linspace(0, 360, params.n_angles+1);
 params.angles = temp_angles(1:end-1);
 clear temp_angles
 
 % size of output image
-params.im_height = 250;
-%params.im_width = 50;
-params.scale = 0.2;
+%params.im_height = 250;
+params.im_width = 150;
+params.im_min_height = 250;
+%params.scale = 0.5;
 
 % some hand-defined prediction models
 params.gauss_model.mu = 0;

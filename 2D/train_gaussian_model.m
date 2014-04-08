@@ -17,18 +17,23 @@ subplot(211); plot(model.means)
 subplot(212); plot(model.stds)
 
 %% save the model
+if ~exist(paths.models_path, 'dir')
+    mkdir(paths.models_path)
+end
 save(paths.gaussian_predict_model_path, 'model');
 
 %% do a preidction
-num = 261;
-pred = gaussian_model_predict(model, test_data.depths{num}, params);
+num = 361;
+pred = gaussian_model_predict(model, test_data.depths{num}, test_data.heights(num));
 clf
 subplot(121)
-imagesc(pred); 
+imagesc2(test_data.images{num}); 
 axis image
 subplot(122)
-imagesc(test_data.images{num}); 
+imagesc2(pred); 
 axis image
+colormap(flipgray)
+
 
 
 

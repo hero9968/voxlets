@@ -6,7 +6,7 @@ padding = 20;
 N = length(transforms);
 adding = false;
 transform_type = 'icp';
-weights = ones(1, N) / 40;
+weights = ones(1, N) / 5;
 
 % apply transformations to the input images
 transformed_masks = nan(height + 2*padding, width + 2*padding, N);

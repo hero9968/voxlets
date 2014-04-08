@@ -1,10 +1,10 @@
-function [stacked_image, transforms] = test_fitting_model(data, depth, params)
+function [stacked_image, transforms] = test_fitting_model(data, depth, im_height, params)
 % image = test_fitting_model(model, depth, params)
 %
 % applys the learned model to predict the image that might be present which
 % gave the depth. The parameters in params might eventually be moved to
 % model.
-plotting = 1;
+plotting = 0;
 plotting_matches = 0;
 
 % input checks
@@ -21,7 +21,7 @@ if plotting
 end
 
 if params.aggregating
-    [~, stacked_image] = aggregate_masks(transforms, params.im_height, depth);
+    [~, stacked_image] = aggregate_masks(transforms, im_height, depth);
 else
     stacked_image = [];
 end
