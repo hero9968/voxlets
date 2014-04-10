@@ -45,11 +45,8 @@ new_x_transformed = min_pos - (x_transformed-min_pos);
 %long_y = -width:(2*width);
 %new_x_extrap = interp1(new_x_transformed(1, :), new_x_transformed(2, :), long_y, 'cubic', 'extrap');
 
-
 % rotating new shape back into the original axes
 transformed_shape = ([new_x_transformed; y_transformed]' * inv(A))';
-
-
 
 if 0
     subplot(231); plot(X, Y); axis image
@@ -72,7 +69,7 @@ end
 %Y_transformed(Y_transformed==0) = 1;
 %Y_transformed = round(Y_transformed);
 x_round = round(transformed_shape(1, :));
-to_remove = x_round <=0 | x_round > width;
+to_remove = x_round <=0 | x_round > width ;%| isnan(x_round);
 x_round(to_remove) = [];
 transformed_shape(:, to_remove) = [];
 Y_transformed = round(accumarray(x_round(:), transformed_shape(2, :), [width, 1], @max));

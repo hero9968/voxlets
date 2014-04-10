@@ -15,9 +15,10 @@ if nargin == 3
     assert(N == length(weights));
     
     if dim == 1
-        for ii = 1:N
-            M(ii, :, :) = M(ii, :, :) * weights(ii); 
-        end
+        M = bsxfun(@times, M, weights(:));
+        %for ii = 1:N
+        %    M(ii, :, :) = M(ii, :, :) * weights(ii); 
+        %end
     elseif dim == 2
         for ii = 1:N
             M(:, ii, :) = M(:, ii, :) * weights(ii); 

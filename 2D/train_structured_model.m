@@ -42,32 +42,38 @@ save(paths.structured_predict_si_model_path, 'model');
 
 %num = 140;
 params.aggregating = 1;
-num = 502
+num = 415
 %num = num+1;
 for ii = 1:3
     subplot(1, 4,ii); 
     combine_mask_and_depth(test_data.images{num}, test_data.depths{num})
     width = length(test_data.depths{num})
-    set(gca, 'xlim', round([-width/2, 2.5*width]));
-    set(gca, 'ylim',round([-width/2, 2.5*width]));
+    set(gca, 'xlim', round([-width/4, 1.25*width]));
+    %set(gca, 'ylim',round([-width/4, 1.25*width]));
 end
 
 stacked_image = test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
 subplot(1, 4, 4);
 imagesc(stacked_image); axis image
 
+%%
+clf
+stacked_image = test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
 
 %% showing the closest matching features to the input image
 clf
-num = num-1;
-params.aggregating = 0;
+%num = num-1;
+params.aggregating = 1;
 subplot(3, 4, 1);
-combine_mask_and_depth(test_data.images{num}(1:100, :), test_data.depths{num})
+combine_mask_and_depth(test_data.images{num}, test_data.depths{num})
 
 load(paths.structured_predict_si_model_path, 'model');
-test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
-load(paths.structured_predict_model_path, 'model');
-test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
+S = test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
+subplot(3, 4, 2);
+imagesc(S)
+axis image
+%load(paths.structured_predict_model_path, 'model');
+%test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
 
 
 

@@ -10,7 +10,7 @@ transforms = propose_transforms(model, depth, params);
 % hidden part of the image
 gt_img = single(test_data_images{num});
 mask_stack = single(cell2mat(reshape({transformed.cropped_mask}, 1, 1, [])));
-[~, other] = find_optimal_weights(depth, mask_stack, gt_img);
+[~, other] = find_optimal_weights(depth, mask_stack, gt_img, params.optimisation_scale_factor);
 
 % forming final output image
 output = other.final_image;

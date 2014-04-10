@@ -6,6 +6,8 @@ function model = gaussian_model_train(images, depths, params)
 
 num_bins = params.gauss_model.number_bins;
 
+max_depth_to_use = 5; % max depth to take into account relative to the width of the image
+
 % input checks
 assert(iscell(images))
 assert(iscell(depths))
@@ -15,6 +17,7 @@ N = length(images);
 % now want to accumulate the distances to the back of each image for each
 % input image
 per_bin_depths = cell(num_bins, N);
+
 for ii = 1:N
 
     width = length(depths{ii});
@@ -25,6 +28,12 @@ for ii = 1:N
        
     % scale to fixed width
     overall_depth_scaled = (overall_depth / width);
+    
+    overall_depth_scaled(overall_depth_scaled > max_depth_to_use) = nan;
+    
+    %if max(overall_depth_scaled) > 10
+    %    keyboard 
+    %end
     
     bin_idxs = ceil(((1:width)/width)*num_bins);
         

@@ -23,7 +23,7 @@ end
 save(paths.gaussian_predict_model_path, 'model');
 
 %% do a preidction
-num = 361;
+num = 461;
 pred = gaussian_model_predict(model, test_data.depths{num}, test_data.heights(num));
 clf
 subplot(121)

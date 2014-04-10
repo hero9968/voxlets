@@ -38,12 +38,12 @@ if plotting_matches
         subplot(3, 4, 4+ii + 4 * data.scale_invariant)
         
         % extracting the data edge image
-        this_idx = transforms(ii).data_idx;
+        this_idx = transforms(ii).data_idx
         this_image = data.images{this_idx};
         this_depth = data.depths{this_idx};
         
         % plot the model depth image
-        combine_mask_and_depth(this_image(1:100, :), this_depth);
+        combine_mask_and_depth(this_image, this_depth);
 
     end
 end

@@ -1,7 +1,7 @@
 function transforms = propose_transforms(data, depth, params)
 
 outlier_distance = 10;%params.icp.outlier_distance;
-number_matches_to_use = 10;
+number_matches_to_use = params.num_proposals;
 
 
 % compute shape distribution for the depth
