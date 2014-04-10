@@ -3,7 +3,7 @@ function output = weights_predict_with_gt(model, depth, height, params, test_dat
 % weights
 
 transforms = propose_transforms(model, depth, params);
-[~, ~, transformed] = aggregate_masks(transforms, height, depth);
+[~, ~, transformed] = aggregate_masks(transforms, height, depth, params);
 
 % Here will try to optimise for the weights
 % want to find the weights that minimise the sum of squared errors over the

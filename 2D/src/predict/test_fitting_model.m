@@ -21,7 +21,7 @@ if plotting
 end
 
 if params.aggregating
-    [~, stacked_image] = aggregate_masks(transforms, im_height, depth);
+    [~, stacked_image] = aggregate_masks(transforms, im_height, depth, params);
 else
     stacked_image = [];
 end

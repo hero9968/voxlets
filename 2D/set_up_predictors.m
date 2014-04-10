@@ -48,6 +48,17 @@ predictor(5).nicename = 'Weighted aggregation of SI, using GT img - scaled';
 predictor(5).handle = @(x, h, y)(weights_predict_with_gt(model, x, h, params, test_data.images, y));
 predictor(5).outpath = fullfile(paths.predictions, 'gt_weighted_scaled/');
 
+load(paths.structured_predict_si_model_path, 'model');
+load(paths.test_data, 'test_data')
+params.scale_invariant = true;
+params.num_proposals = 10;
+params.transform_type = 'pca';
+params.optimisation_scale_factor = 0.1; % in the gt optimisation, the 
+predictor(6).name = 'gt_weighted_scaled_pca';
+predictor(6).nicename = 'Weighted aggregation of SI, using GT img - scaled';
+predictor(6).handle = @(x, h, y)(weights_predict_with_gt(model, x, h, params, test_data.images, y));
+predictor(6).outpath = fullfile(paths.predictions, 'gt_weighted_scaled_pca/');
+
 
 for ii = 1:length(predictor)
     if ~exist(predictor(ii).outpath, 'dir')

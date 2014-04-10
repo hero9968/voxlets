@@ -1,11 +1,11 @@
-function [stacked_img, stacked_img_cropped, transformed] = aggregate_masks(transforms, height, depth)
+function [stacked_img, stacked_img_cropped, transformed] = aggregate_masks(transforms, height, depth, params)
 
 % settuping up variables
 width = length(depth);
 padding = 20;
 N = length(transforms);
 adding = false;
-transform_type = 'icp';
+transform_type = params.transform_type; %'icp';
 weights = ones(1, N) / 5;
 
 % apply transformations to the input images

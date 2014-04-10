@@ -57,7 +57,7 @@ params.angle_edges = linspace(-1, 1, 10);
 params.icp.outlier_distance = 10;
 
 params.normal_radius = 10;
-
+params.transform_type = 'icp';
 
 
 
