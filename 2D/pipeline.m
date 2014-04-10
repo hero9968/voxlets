@@ -24,4 +24,5 @@ train_structured_model
 run_prediction_algorithm
 
 %% evaluate the accuracy of the predictions made
-evaluate_predictions
+evaluate_predictions        % save evaluations to disk
+view_prediction_outputs     % load evaluations and plot
