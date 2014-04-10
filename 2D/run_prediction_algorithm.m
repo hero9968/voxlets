@@ -15,9 +15,8 @@ addpath src/external/findfirst
 
 %%
 close all
-%profile on
-for ii = 2%:length(predictor)
-    for jj = 1%:length(split.test_data)
+for ii = 5 %:length(predictor)
+    for jj = 1:length(split.test_data)
 
         % loading in the depth for this image
         this_filename = split.test_data{jj};
