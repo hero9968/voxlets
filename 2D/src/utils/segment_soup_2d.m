@@ -11,12 +11,12 @@ thresholds = params.segment_soup.thresholds;
 nms_width = params.segment_soup.nms_width;
 
 % form matrix to be filled
-idxs = nan(length(thresholds), length(this_raytraced_depth));
+idxs = nan(length(thresholds), length(depth));
 
 % segment for each different distance threshold
 for ii = 1:length(thresholds)
     this_threshold = thresholds(ii);
-    idxs(ii, :) = segment_2d(this_raytraced_depth, this_threshold, nms_width);
+    idxs(ii, :) = segment_2d(depth, this_threshold, nms_width);
 end
 
 % only return the unique segmentations
