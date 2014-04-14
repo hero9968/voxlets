@@ -14,9 +14,7 @@ row_sums = sum(mask_out, 2)';
 mask_out(1:(end_idx-1), :) = [];
 
 % resizeing to the correct width
-scale = params.im_width / size(mask_out, 2);
-%scale = params.scale;
-mask_out = imresize(mask_out, scale);
+mask_out = imresize(mask_out, [nan, params.im_width]);
 
 % padding to the correct height
 if size(mask_out, 1) < params.im_min_height
