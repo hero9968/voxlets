@@ -1,4 +1,4 @@
- function norms = normals_radius_2d( XY, radius )
+ function [norms, curve] = normals_radius_2d( XY, radius )
 % compute normals for set of 2D points
 
 N = size(XY, 2);
@@ -7,6 +7,7 @@ assert(size(XY, 1) == 2);
 norms = nan(2, N);
 dists = squareform(pdist(XY'));
 
+curve = nan(1, N);
 
 for ii = 1:N
     
@@ -22,6 +23,7 @@ for ii = 1:N
         [rot, dummy] = eig(cov(t_XY'));
         idx = diag(dummy)==min(diag(dummy));
         normal = rot(:, idx(1));
+        curve(ii) = min(diag(dummy));
     else
         normal = [0, -1];
     end
