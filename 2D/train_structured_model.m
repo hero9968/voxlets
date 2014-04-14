@@ -42,6 +42,7 @@ save(paths.structured_predict_si_model_path, 'model');
 
 %num = 140;
 params.aggregating = 1;
+params.num_proposals= 10;
 num = 415
 %num = num+1;
 for ii = 1:3
@@ -76,7 +77,15 @@ axis image
 %test_fitting_model(model, test_data.depths{num}, test_data.heights(num), params);
 
 
+%%
 
+for ii = 1:25
+    name = sprintf('../data/2D_shapes/rotated/01_%02d_mask.gif', ii);
+    T = imread(name);
+    subaxis(5, 5, ii)
+    imagesc(T)
+    axis image off
+end
 
 
 

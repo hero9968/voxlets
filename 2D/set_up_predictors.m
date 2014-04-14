@@ -10,12 +10,14 @@ params.scale_invariant = false;
 params.num_proposals = 10;
 predictor(2).name = 'structured_depth';
 predictor(2).nicename = 'Structured depth';
+predictor(2).shortname = 'Structured depth';
 predictor(2).handle = @(x, h, dummy)(test_fitting_model(model, x, h, params));
 predictor(2).outpath = fullfile(paths.predictions, 'structured_depth/');
 
 load(paths.gaussian_predict_model_path, 'model');
 predictor(3).name = 'trained_gaussian';
 predictor(3).nicename = 'Trained Gaussian';
+predictor(3).shortname = 'Trained Gaussian';
 predictor(3).handle = @(x, h, dummy)(gaussian_model_predict(model, x, h));
 predictor(3).outpath = fullfile(paths.predictions, 'trained_gaussian/');
 
@@ -24,6 +26,7 @@ params.scale_invariant = true;
 params.num_proposals = 10;
 predictor(4).name = 'structured_depth_si';
 predictor(4).nicename = 'Structured depth scale invariant';
+predictor(4).shortname = 'Structured predict (SI)';
 predictor(4).handle = @(x, h, dummy)(test_fitting_model(model, x, h, params));
 predictor(4).outpath = fullfile(paths.predictions, 'structured_depth_si/');
 
@@ -34,6 +37,7 @@ params.num_proposals = 10;
 params.optimisation_scale_factor = 1; % in the gt optimisation, the 
 predictor(1).name = 'gt_weighted';
 predictor(1).nicename = 'Weighted aggregation of SI, using GT img';
+predictor(1).shortname = 'Weighted using GT';
 predictor(1).handle = @(x, h, y)(weights_predict_with_gt(model, x, h, params, test_data.images, y));
 predictor(1).outpath = fullfile(paths.predictions, 'gt_weighted/');
 
@@ -45,6 +49,7 @@ params.num_proposals = 10;
 params.optimisation_scale_factor = 0.1; % in the gt optimisation, the 
 predictor(5).name = 'gt_weighted_scaled';
 predictor(5).nicename = 'Weighted aggregation of SI, using GT img - scaled';
+predictor(5).shortname = 'Weighted using GT (ICP)';
 predictor(5).handle = @(x, h, y)(weights_predict_with_gt(model, x, h, params, test_data.images, y));
 predictor(5).outpath = fullfile(paths.predictions, 'gt_weighted_scaled/');
 
@@ -56,6 +61,7 @@ params.transform_type = 'pca';
 params.optimisation_scale_factor = 0.1; % in the gt optimisation, the 
 predictor(6).name = 'gt_weighted_scaled_pca';
 predictor(6).nicename = 'Weighted aggregation of SI, using GT img - scaled';
+predictor(6).shortname = 'Weighted using GT (PCA)';
 predictor(6).handle = @(x, h, y)(weights_predict_with_gt(model, x, h, params, test_data.images, y));
 predictor(6).outpath = fullfile(paths.predictions, 'gt_weighted_scaled_pca/');
 

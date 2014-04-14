@@ -49,31 +49,3 @@ for ii = 6 %:length(predictor)
 end
 
 %profile off viewer
-
-
-%% temp script to read in images and save them to mat files
-close all
-
-% loop over each prediction algorithm
-for ii = 6 %:length(predictor)
-    
-    all_predictions = cell(1, length(split.test_data));
-    
-    % loop over each test image
-    for jj = 1:length(split.test_data)
-        
-        % saving the prediction to cell array
-        out_file = [split.test_data{jj}, '.png'];
-        out_file = [predictor(ii).outpath, out_file];
-        this_prediction = imread(out_file);
-                
-        all_predictions{jj} = this_prediction;
-        done(jj, length(split.test_data))
-        
-    end
-    
-    savepath = [predictor(ii).outpath, 'combined.mat'];
-    save(savepath, 'all_predictions');
-end
-
-%profile off viewer
