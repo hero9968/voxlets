@@ -1,6 +1,7 @@
 % a script to save training and test images and depths to mat files...
 
 clear 
+cd ~/projects/shape_sharing/2D
 define_params
 load(paths.split_path, 'split')
 
@@ -55,7 +56,7 @@ for ii = 1:N
     test_data.depths{ii} = double(temp.this_raytraced_depth);
     
     temp = load([this_segmented_path, 'segmented.mat']);
-    train_data.segments{ii} = double(temp.segmented);
+    test_data.segments{ii} = double(temp.segmented);
     
     test_data.images{ii} = imread([this_image_path '.gif']);
     test_data.heights(ii) = size(test_data.images{ii}, 1);
