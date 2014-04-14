@@ -13,6 +13,9 @@ raytrace_all_masks
 %% creating a train and test split and save to file
 create_train_test_split
 
+%% segemnting the depth images into soup of segments
+segment_depths
+
 %% save images to mat file for quciker access
 save_images_mat_files
 

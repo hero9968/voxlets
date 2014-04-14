@@ -24,7 +24,7 @@ split_points = derv_sup >= threshold;
 split_points = circshift(split_points, [0, 1]);
 
 % generating final labelling
-idxs = cumsum(split_points);
+idxs = cumsum(split_points) + 1;
 
 % generating the heirachical linkage between the clusters
 %{

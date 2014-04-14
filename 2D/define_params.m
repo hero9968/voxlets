@@ -12,6 +12,9 @@ paths.rotated_savename = [paths.rotated, paths.rotated_filename];
 paths.raytraced = [paths.data_2d, 'raytraced/'];
 paths.raytraced_savename = [paths.raytraced, '%02d_%02d_mask.mat'];
 
+paths.segmented = [paths.data_2d, 'segmented/'];
+paths.segmented_savename = [paths.segmented, '%02d_%02d_segmented.mat'];
+
 % train/test split
 paths.split_path = [paths.data_2d, 'split.mat'];
 paths.test_data = [paths.data_2d, 'test_data.mat'];
