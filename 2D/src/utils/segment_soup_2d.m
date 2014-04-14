@@ -9,15 +9,27 @@ assert(isvector(depth));
 
 thresholds = params.segment_soup.thresholds;
 nms_width = params.segment_soup.nms_width;
+max_segments = params.segment_soup.max_segments;
 
 % form matrix to be filled
 idxs = nan(length(thresholds), length(depth));
+total_segments = 0;
 
 % segment for each different distance threshold
 for ii = 1:length(thresholds)
+    
     this_threshold = thresholds(ii);
-    idxs(ii, :) = segment_2d(depth, this_threshold, nms_width);
+    this_segmentation = segment_2d(depth, this_threshold, nms_width);
+    
+    % checking havent created too many segments
+    total_segments = total_segments + length(unique(this_segmentation));
+    if total_segments > max_segments
+        break
+    end
+    
+    idxs(ii, :) = this_segmentation;
 end
 
 % only return the unique segmentations
+idxs(any(isnan(idxs), 2), :) = [];
 idxs = unique(idxs, 'rows');

@@ -58,6 +58,14 @@ num_segments = max(all_segments, [], 2)+1;
 
 clf
 bar(accumarray(num_segments, 1))
+xlabel('Total number of segments')
+ylabel('Frequency')
+
+%% plot graph of total number of segments for each depth image
+total_segments = @(X)sum(max(X, [], 2)+1);
+T = cellfun(total_segments, segmentation);
+clf
+bar(accumarray(T', 1))
 xlabel('Number of items in soup')
 ylabel('Frequency')
 

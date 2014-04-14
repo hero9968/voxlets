@@ -42,8 +42,9 @@ params.im_width = 150;
 params.im_min_height = 250;
 %params.scale = 0.5;
 
-params.segment_soup.thresholds = [5:5:40, 200];
+params.segment_soup.thresholds = [200, 40:-5:5];
 params.segment_soup.nms_width = 3;
+params.segment_soup.max_segments = 20;
 
 % some hand-defined prediction models
 params.gauss_model.mu = 0;
