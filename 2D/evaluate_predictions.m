@@ -30,12 +30,12 @@ for ii = 1:length_test_data
 end
 
 
-%% generating results for the indivudal predictions and saving to disk
+%% saving to disk results for aach fo thw algorithms
 % Need to run this for each set of results after they have been generated,
 % before we can plot them etc.
 %
 %profile on
-for ii = 1:length(predictor)
+for ii = [5, 8]%1:length(predictor)
     
     predicted_path = predictor(ii).outpath;
     all_pred = cell(length_test_data, 1);

@@ -20,15 +20,20 @@ for ii = 1:length(predictor)
 end
 
 %% plotting ROC curves
-cols = {'r-', 'b-', 'g-', 'k-', 'c-', 'r:'};
+cols = {'r-', 'b-', 'g-', 'k-', 'c-', 'r:', 'k:', 'g:'};
 for ii = 1:length(predictor)
     plot_roc_curve(pred(ii).tpr, pred(ii).fpr, cols{ii}, pred(ii).thresh); 
     hold on
 end
-legend({predictor.nicename}, 'Location', 'SouthEast')
+legend({predictor.shortname}, 'Location', 'SouthEast')
 hold off
 set(findall(gcf,'type','text'),'fontSize',18)
 
+%% bar graph plot
+[~, idx] = sort([pred.auc])
+barh([pred(idx).auc])
+set(gca, 'yticklabel', {predictor(idx).shortname})
+set(gca, 'xlim', [0, 1])
 
 %% finding best and worst matches
 plotting = 0;

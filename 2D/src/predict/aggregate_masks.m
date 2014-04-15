@@ -20,6 +20,7 @@ for ii = 1:N
     
     this_mask = transforms(ii).image;
     this_transform = transforms(ii).(transform_type);
+    this_depth = transforms(ii).depth;
 
     check_isgood_transform(this_transform);
     
@@ -33,6 +34,11 @@ for ii = 1:N
     transformed_masks(:, :, ii) = transformed(ii).masks;
     transformed(ii).cropped_mask = transformed(ii).masks(padding+1:end-padding, padding+1:end-padding);
     transformed(ii).padding = padding;
+    
+    transformed(ii).depth = this_depth;
+    XY = [1:length(this_depth); this_depth];
+    temp_transform = [1, 0, padding; 0, 1, padding;, 0, 0, 1] * this_transform;
+    transformed(ii).transformed_depth = apply_transformation_2d(XY, temp_transform);
     
 end
 
@@ -49,9 +55,11 @@ assert(size(stacked_img_cropped, 1) == height);
 assert(size(stacked_img_cropped, 2) == width);
 
 % applying the known mask for the known free pixels
-known_mask = fill_grid_from_depth(depth, height, 0.5);
-stacked_img_cropped(known_mask==0) = 0;
-stacked_img_cropped(known_mask==1) = 1;
+if params.apply_known_mask
+    known_mask = fill_grid_from_depth(depth, height, 0.5);
+    stacked_img_cropped(known_mask==0) = 0;
+    stacked_img_cropped(known_mask==1) = 1;
+end
 
 
 
@@ -63,7 +71,7 @@ if any(isnan(trans(:)))
     keyboard
 end
 
-if cond(trans') > 1e7
+if cond(trans') > 1e8
     disp('Seems like conditioning is bad')
     keyboard
 end

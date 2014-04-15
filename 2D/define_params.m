@@ -66,7 +66,7 @@ params.icp.outlier_distance = 10;
 params.normal_radius = 10;
 params.transform_type = 'icp';
 
-
+params.apply_known_mask = 1; % in aggragation, do we exploit known free space?
 
 % loading data for the predictors
 

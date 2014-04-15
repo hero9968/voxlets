@@ -17,7 +17,7 @@ addpath src/external/findfirst
 close all
 
 % loop over each prediction algorithm
-for ii = 6 %:length(predictor)
+for ii = [5,8]%6:7 %:length(predictor)
     
     all_predictions = cell(1, length(split.test_data));
     
@@ -28,10 +28,11 @@ for ii = 6 %:length(predictor)
         this_filename = split.test_data{jj};
         this_depth_path = fullfile(paths.raytraced, this_filename);
         height = test_data.heights(jj);
+        segments = test_data.segments{jj};
         load([this_depth_path '.mat'], 'this_raytraced_depth');
          
         % making the prediction
-        this_prediction = predictor(ii).handle(this_raytraced_depth, height, jj);
+        this_prediction = predictor(ii).handle(this_raytraced_depth, height, segments, jj);
         
         % saving the prediction to disk
         out_file = [split.test_data{jj}, '.png'];

@@ -65,7 +65,7 @@ for ii = 1:number_matches_to_use
         
         transforms(count).pca = model_transform_from_origin * scale_m * flip_m{jj} * inv(data.transf{this_idx});
 
-        if cond(transforms(count).pca) > 1e7
+        if cond(transforms(count).pca) > 1e8
             disp(['Test - Seems like conditioning is bad'])
             keyboard
         end
