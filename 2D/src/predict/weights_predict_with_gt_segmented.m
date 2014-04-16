@@ -13,7 +13,7 @@ transforms = propose_segmented_transforms(model, depth, segments, params);
 % want to find the weights that minimise the sum of squared errors over the
 % hidden part of the image
 gt_img = single(test_data_images{num});
-mask_stack = single(cell2mat(reshape({transformed.cropped_mask}, 1, 1, [])));
+mask_stack = single(cell2mat(reshape({transformed.extended_mask}, 1, 1, [])));
 [~, other] = find_optimal_weights(depth, mask_stack, gt_img, params.optimisation_scale_factor);
 
 % forming final output image

@@ -1,4 +1,5 @@
-function [stacked_img, stacked_img_cropped, transformed] = aggregate_masks(transforms, height, depth, params)
+function [stacked_img, stacked_img_cropped, transformed] = ...
+    aggregate_masks(transforms, height, depth, params)
 
 % settuping up variables
 width = length(depth);
@@ -7,6 +8,7 @@ N = length(transforms);
 adding = false;
 transform_type = params.transform_type; %'icp';
 weights = ones(1, N) / 5;
+known_mask = fill_grid_from_depth(depth, height, 0.5);
 
 % apply transformations to the input images
 transformed_masks = nan(height + 2*padding, width + 2*padding, N);
@@ -27,7 +29,7 @@ for ii = 1:N
     T = maketform('projective', this_transform');
     [transformed(ii).masks, transformed(ii).x_data, transformed(ii).y_data] = ...
         imtransform(this_mask, T, 'bilinear', 'XYScale',1, 'XData', x_data, 'YData', y_data);
-    
+       
     assert(range(transformed(ii).x_data)==range(x_data));
     assert(range(transformed(ii).y_data)==range(y_data));
     
@@ -35,9 +37,16 @@ for ii = 1:N
     transformed(ii).cropped_mask = transformed(ii).masks(padding+1:end-padding, padding+1:end-padding);
     transformed(ii).padding = padding;
     
+    temp_traced = raytrace_2d(transformed(ii).cropped_mask);
+    filled = fill_grid_from_depth(temp_traced, height, 0.5);
+    filled(:, isnan(temp_traced)) = 1;
+    final = (transformed(ii).cropped_mask | filled == 0) & known_mask~=0;
+    transformed(ii).extended_mask = final;
+  
+    
     transformed(ii).depth = this_depth;
     XY = [1:length(this_depth); this_depth];
-    temp_transform = [1, 0, padding; 0, 1, padding;, 0, 0, 1] * this_transform;
+    temp_transform = [1, 0, padding; 0, 1, padding; 0, 0, 1] * this_transform;
     transformed(ii).transformed_depth = apply_transformation_2d(XY, temp_transform);
     
 end
@@ -56,7 +65,6 @@ assert(size(stacked_img_cropped, 2) == width);
 
 % applying the known mask for the known free pixels
 if params.apply_known_mask
-    known_mask = fill_grid_from_depth(depth, height, 0.5);
     stacked_img_cropped(known_mask==0) = 0;
     stacked_img_cropped(known_mask==1) = 1;
 end
