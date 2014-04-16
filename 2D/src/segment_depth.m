@@ -11,14 +11,14 @@ addpath utils
 addpath segment
 
 %%
-plotting = 0;
+plotting = 1;
 threshold = 10;
 curve_threshold = 5;
 number_items_in_soup = nan(1, length(split.test_data));
 segmentation = cell(1, length(split.test_data));
 clf
 % loop over each test image
-for ii = 1:length(split.test_data)
+for ii = 11%:length(split.test_data)
 
     % loading in the depth for this image
     this_filename = split.test_data{ii};
@@ -29,7 +29,6 @@ for ii = 1:length(split.test_data)
     segmentation{ii} = segment_soup_2d(this_raytraced_depth, params.segment_soup);
     
     if plotting
-
         % plotting segmentations nicely in different subplots
         plot_segment_soup( segmentation{ii}, this_raytraced_depth )
     end    
