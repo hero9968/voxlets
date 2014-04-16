@@ -7,9 +7,9 @@
 clear
 define_params
 load(paths.subset_files)
-test_fraction = 0.1;
-max_test_images = 500;
-max_training_images = 2000;
+test_fraction = params.test_split.test_fraction;
+max_test_images = params.test_split.max_test_images;
+max_training_images = params.test_split.max_training_images;
 
 %% setting some parameters
 number_shapes = length(filelist);

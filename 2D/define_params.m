@@ -33,6 +33,11 @@ params.number_subclasses = 3; % how many subclasses from each shape to use
 
 params.aggregating = true;
 
+params.test_split.test_fraction = 0.1;
+params.test_split.max_test_images = 500;
+params.test_split.max_training_images = 2000;
+
+
 % angles to rotate masks
 params.n_angles = 32;
 temp_angles = linspace(0, 360, params.n_angles+1);
