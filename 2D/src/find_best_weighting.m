@@ -17,7 +17,7 @@ load(paths.structured_predict_si_model_path, 'model');
 
 %% 
 clf
-num = 35;
+num = 27;
 params.num_proposals = 12;
 params.apply_known_mask = 0;
 
@@ -26,18 +26,19 @@ segments = test_data.segments{num};
 gt_image = test_data.images{num};
 
 transforms = propose_transforms(model, depth, params);
-% [out_img, out_img_cropped, transformed] = ...
-% aggregate_masks(transforms, params.im_min_height, depth, params);
 
-% plot_transforms(transformed, out_img_cropped, gt_image);
+[out_img, out_img_cropped, transformed] = ...
+ aggregate_masks(transforms, params.im_min_height, depth, params);
+
+ plot_transforms(transformed, out_img_cropped, gt_image);
 
 %% now am going to try to get proposals from each of the segments
 
 clf
-num = 34;
+num = 6;
 params.num_proposals = 10;
 params.apply_known_mask = 0;
-params.transform_type = 'pca';
+params.transform_type = 'icp';
 
 depth = test_data.depths{num};
 segments = test_data.segments{num};
