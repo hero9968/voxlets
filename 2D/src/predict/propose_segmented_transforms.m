@@ -1,4 +1,4 @@
-function transforms = propose_segmented_transforms(model, depth, segments, params)
+function transforms = propose_segmented_transforms(model, depth, binary_segments, params)
 % wrapper for propose transforms which uses the segmented image to propose
 % transforms for each segment in turn.
 
@@ -9,7 +9,7 @@ function transforms = propose_segmented_transforms(model, depth, segments, param
 min_segment_size = 5; % number of points required to bother trying to fit
 
 % convert the segmentation to binary format, so each row is a segment
-binary_segments = segments_to_binary(segments);
+%binary_segments = segments_to_binary(segments);
 
 transforms = cell(1, size(binary_segments, 1));
 

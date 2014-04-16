@@ -25,18 +25,3 @@ split_points = circshift(split_points, [0, 1]);
 
 % generating final labelling
 idxs = cumsum(split_points) + 1;
-
-% generating the heirachical linkage between the clusters
-%{
-unique_clusters = unique(idxs);
-n_clusters = length(unique_clusters);
-distances = nan(n_clusters);
-
-for ii = 1:n_clusters
-    for jj = 1:n_clusters
-        distances(ii, jj)
-        
-    end
-end
-%}
-    

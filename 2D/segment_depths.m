@@ -8,7 +8,8 @@ clear
 define_params
 load(paths.subset_files)
 addpath src/utils
-addpath src/external/
+addpath src/segment
+addpath src/external
 
 if ~exist(paths.segmented, 'dir')
     mkdir(paths.segmented)
@@ -26,7 +27,7 @@ for ii = 1:number_shapes
         load(this_filename, 'this_raytraced_depth');
         
         % doing the segmentation
-        segmented = segment_soup_2d(this_raytraced_depth, params);
+        segmented = segment_soup_2d(this_raytraced_depth, params.segment_soup);
         
         % saving the segmentation
         savename = sprintf(paths.segmented_savename, ii, jj);
