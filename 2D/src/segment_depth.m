@@ -8,16 +8,17 @@ load(paths.split_path, 'split')
 load(paths.test_data)
 addpath external
 addpath utils
+addpath segment
 
 %%
-plotting = 0;
+plotting = 1;
 threshold = 10;
 curve_threshold = 5;
 number_items_in_soup = nan(1, length(split.test_data));
 segmentation = cell(1, length(split.test_data));
 
 % loop over each test image
-for ii = 1:length(split.test_data)
+for ii = 11%:length(split.test_data)
 
 
     % loading in the depth for this image
@@ -26,14 +27,21 @@ for ii = 1:length(split.test_data)
     load([this_depth_path '.mat'], 'this_raytraced_depth');
     
     % doing the segmentation
-    segmentation{ii} = segment_soup_2d(this_raytraced_depth, params);
-    segmentation{ii} = segmentation{ii}(:, 1:params.im_width);
+    segmentation{ii} = segment_soup_2d(this_raytraced_depth, params.segment_soup);
+    %segmentation{ii} = segmentation{ii}(:, 1:params.im_width);
+    
+    %bin = filter_segments(segmentation{ii});
     
     if plotting
         subplot(211)
         plot(1:length(this_raytraced_depth), this_raytraced_depth, 'o');
+      %  axis image
+        %subplot(312)
+        %plot(segmentation{ii}');
+        
         subplot(212)
-        plot(segmentation{ii}');
+        %bin= segments_to_binary(segmentation{ii});
+        imagesc(segmentation{ii})
 
         drawnow
         %pause(0.5);
