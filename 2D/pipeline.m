@@ -1,5 +1,7 @@
 % this is the pipeline for creating the files to be used by the main
 % program.
+% At the start of each script, 'clear' is run ? therefor no variables
+% persist in the workspace between scripts run from this pipeline script.
 
 %% only want to use a subset of all the shapes
 create_subset

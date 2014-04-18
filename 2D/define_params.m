@@ -1,17 +1,27 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Setting up paths
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 paths.data = '~/projects/shape_sharing/data/';
 paths.data_2d = [paths.data, '2D_shapes/'];
-paths.mpeg = [paths.data_2d, 'MPEG7_CE-Shape-1_Part_B/'];
-paths.subset = [paths.data_2d, 'MPEG7_subset/'];
 
+% where the raw data files exist
+paths.mpeg = [paths.data_2d, 'MPEG7_CE-Shape-1_Part_B/'];
+
+% where the subset I'm using lives
+paths.subset = [paths.data_2d, 'MPEG7_subset/'];
 paths.subset_files = [paths.subset, 'filelist.mat'];
 
+% where to save the rotated
 paths.rotated = [paths.data_2d, 'rotated/'];
 paths.rotated_filename = '%02d_%02d_mask.gif';
 paths.rotated_savename = [paths.rotated, paths.rotated_filename];
 
+% where to save the raytraced files
 paths.raytraced = [paths.data_2d, 'raytraced/'];
 paths.raytraced_savename = [paths.raytraced, '%02d_%02d_mask.mat'];
 
+% where to save the segmented files
 paths.segmented = [paths.data_2d, 'segmented/'];
 paths.segmented_savename = [paths.segmented, '%02d_%02d_segmented.mat'];
 
@@ -20,6 +30,7 @@ paths.split_path = [paths.data_2d, 'split.mat'];
 paths.test_data = [paths.data_2d, 'test_data.mat'];
 paths.train_data = [paths.data_2d, 'train_data.mat'];
 
+% where to save the models and the predictions
 paths.predictions = [paths.data_2d, 'predict/'];
 paths.models_path = [paths.data_2d, 'models/'];
 paths.structured_predict_model_path = [paths.data_2d, 'models/structured_predict.mat'];
@@ -27,16 +38,17 @@ paths.structured_predict_si_model_path = [paths.data_2d, 'models/structured_pred
 paths.gaussian_predict_model_path = [paths.data_2d, 'models/gaussian_predict.mat'];
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Defining parameters
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % params for setting up file lists
 params.number_subclasses = 3; % how many subclasses from each shape to use
 
-params.aggregating = true;
-
+% doing train/test split
 params.test_split.test_fraction = 0.1;
 params.test_split.max_test_images = 500;
 params.test_split.max_training_images = 2000;
-
 
 % angles to rotate masks
 params.n_angles = 32;
@@ -45,21 +57,20 @@ params.angles = temp_angles(1:end-1);
 clear temp_angles
 
 % size of output image
-%params.im_height = 250;
 params.im_width = 150;
 params.im_min_height = 250;
-%params.scale = 0.5;
 
+% normal computation
+params.normal_radius = 10;
+
+% segmentation parameters
 params.segment_soup.thresholds = [200, 40:-5:5];
 params.segment_soup.nms_width = 3;
 params.segment_soup.max_segments = 20;
 params.segment_soup.overlap_threshold = 0.9;
 params.segment_soup.min_size = 10;
 
-% some hand-defined prediction models
-params.gauss_model.mu = 0;
-params.gauss_model.sigma = 10;
-
+% parameters of the gaussian model
 params.gauss_model.number_bins = 25;
 
 % feature computation params
@@ -68,12 +79,8 @@ params.shape_dist.bin_edges = [0:5:150, inf];
 params.shape_dist.si_bin_edges = linspace(0, 1, 20);
 params.angle_edges = linspace(-1, 1, 10);
 
+% parameters for transformations
 params.icp.outlier_distance = 10;
-
-params.normal_radius = 10;
 params.transform_type = 'icp';
-
 params.apply_known_mask = 1; % in aggragation, do we exploit known free space?
-
-% loading data for the predictors
-
+params.aggregating = true;
