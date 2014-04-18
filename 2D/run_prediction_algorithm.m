@@ -17,10 +17,10 @@ addpath src/external/findfirst
 close all
 
 % loop over each prediction algorithm
-for ii = [5,8]%6:7 %:length(predictor)
+for ii = [8]%,8]%6:7 %:length(predictor)
     
     all_predictions = cell(1, length(split.test_data));
-    
+     
     % loop over each test image
     for jj = 1:length(split.test_data)
 

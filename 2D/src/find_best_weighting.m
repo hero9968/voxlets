@@ -17,14 +17,14 @@ load(paths.structured_predict_si_model_path, 'model');
 
 %% 
 clf
-num = 27;
+num = 12;
 params.num_proposals = 12;
 params.apply_known_mask = 0;
 
 depth = test_data.depths{num};
 segments = test_data.segments{num};
 gt_image = test_data.images{num};
-
+params.transform_type = 'pca'
 transforms = propose_transforms(model, depth, params);
 
 [out_img, out_img_cropped, transformed] = ...

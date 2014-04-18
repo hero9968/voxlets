@@ -35,7 +35,7 @@ end
 % before we can plot them etc.
 %
 %profile on
-for ii = [5, 8]%1:length(predictor)
+for ii = [7, 8]%1:length(predictor)
     
     predicted_path = predictor(ii).outpath;
     all_pred = cell(length_test_data, 1);

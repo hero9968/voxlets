@@ -33,7 +33,7 @@ for ii = 1:length(filelist)
         
         
         if plotting
-            % plot this image
+            % plot this image with the raytraced image
             subplot(121)
             imagesc(this_rotated_image)
             axis image 
@@ -56,3 +56,8 @@ for ii = 1:length(filelist)
     end
     ii
 end
+
+%% TODO - here should be saving a new 'filelist' of all the files which 
+% have now been raytraced
+
+

@@ -69,7 +69,7 @@ predictor(6).outpath = fullfile(paths.predictions, 'gt_weighted_scaled_pca/');
 load(paths.structured_predict_si_model_path, 'model');
 load(paths.test_data, 'test_data')
 params.scale_invariant = true;
-params.num_proposals = 30;
+params.num_proposals = 50;
 params.transform_type = 'pca';
 params.optimisation_scale_factor = 0.1; % in the gt optimisation, the 
 predictor(7).name = 'gt_weighted_scaled_pca_seg';
