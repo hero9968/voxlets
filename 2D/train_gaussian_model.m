@@ -34,6 +34,13 @@ imagesc2(pred);
 axis image
 colormap(flipgray)
 
+%% plotting some other stuff
+all_depths = reshape(cell2mat(model.per_bin_depths(10, :)), 1, []);
+clf
+hist(all_depths, 100)
+xlabel('Depth (as a fraction of image width)')
+ylabel('Frequency')
+
 
 
 
