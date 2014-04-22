@@ -20,7 +20,7 @@ y_data = [-padding+1, height + padding];
 % creating the stack of transformed masks
 for ii = 1:N
     
-    this_mask = transforms(ii).image;
+    this_mask = +(transforms(ii).image > 0);
     this_transform = transforms(ii).(transform_type);
     this_depth = transforms(ii).depth;
 
@@ -28,7 +28,8 @@ for ii = 1:N
     
     T = maketform('projective', this_transform');
     [transformed(ii).masks, transformed(ii).x_data, transformed(ii).y_data] = ...
-        imtransform(this_mask, T, 'bilinear', 'XYScale',1, 'XData', x_data, 'YData', y_data);
+        imtransform(this_mask, T, 'nearest', 'XYScale',1, 'XData', x_data, 'YData', y_data);
+    transformed(ii).masks = +(transformed(ii).masks > 0);
        
     assert(range(transformed(ii).x_data)==range(x_data));
     assert(range(transformed(ii).y_data)==range(y_data));

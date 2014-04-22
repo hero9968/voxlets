@@ -6,17 +6,16 @@
 \usepackage{graphicx}
 \author{Michael Firman}
 \begin{document}
-
-\begin{eqnarray}
-Pr(occupied) &=& 1 - Pr(vacant)\\ 
-&&\\
-Pr(vacant) &=& \prod_{i} Pr(vacant | B_i )\\
-&&\\
-Pr(vacant) &=& \prod_{i} ( 1 - Pr(occupied | B_i ) ) \\
-&&\\
-Pr(occupied) &=& 1 - \prod_{i} ( 1 - Pr(occupied | B_i ) ) \\
-&&\\
-Pr(occupied) &=& 1 - \prod_{i} ( 1 - w_iB_i ) 
-\end{eqnarray}
+%Pr(occupied) &= 1 - Pr(vacant)\\ 
+%&\\
+\begin{align}
+Pr(vacant) &= \prod_{i} Pr(vacant | B_i )\\
+&\\
+ &= \prod_{i} ( 1 - Pr(occupied | B_i ) ) \\
+&\\
+&= \prod_{i} ( 1 - w_iB_i )  \\
+&\\
+Pr(occupied) &= 1 - \prod_{i} ( 1 - w_iB_i ) \\
+\end{align}
 
 \end{document}

@@ -6,7 +6,7 @@
 
 clear
 define_params
-load(paths.subset_files)
+load(paths.filelist)
 test_fraction = params.test_split.test_fraction;
 max_test_images = params.test_split.max_test_images;
 max_training_images = params.test_split.max_training_images;
@@ -17,7 +17,7 @@ unique_classes = unique({filelist.class});
 unique_class_idxs = unique([filelist.class_idx]);
 
 number_classes = length(unique_classes);
-number_test_classes = round(test_fraction * number_shapes);
+number_test_classes = round(test_fraction * number_classes);
 
 %% randomly assigning classes to train and test
 perm_idx = randperm(number_classes);
@@ -29,12 +29,16 @@ split.test_idx = find(ismember([filelist.class_idx], split.test_class_idx));
 split.train_idx = find(ismember([filelist.class_idx], split.train_class_idx));
 
 %% converting this split to file names
-split.test_data = {};
-for ii = split.test_idx
-    for jj = 1:params.n_angles
-        this_filename = sprintf(paths.rotated_filename, ii, jj);
-        split.test_data = [split.test_data, this_filename(1:end-4)];
-    end
+
+%% creating testing data
+split.test_data = [];
+for ii = 1:length(split.test_idx)
+    this_image_idx = split.test_idx(ii);
+    this_filename = sprintf(paths.raytraced_savename, ii);
+    split.test_data(ii).file = this_filename;
+    split.test_data(ii).image_idx = this_image_idx;
+    split.test_data(ii).filelist = filelist(ii);
+    
 end
 
 if length(split.test_data) > max_test_images
@@ -42,13 +46,14 @@ if length(split.test_data) > max_test_images
     split.test_data = split.test_data(idx_to_use);
 end
 
-
-split.train_data = {};
-for ii = split.train_idx
-    for jj = 1:params.n_angles
-        this_filename = sprintf(paths.rotated_filename, ii, jj);
-        split.train_data = [split.train_data, this_filename(1:end-4)];
-    end
+%% creating training data
+split.train_data = [];
+for ii = 1:length(split.train_idx)
+    this_image_idx = split.train_idx(ii);
+    this_filename = sprintf(paths.raytraced_savename, ii);
+    split.train_data(ii).file = this_filename;
+    split.train_data(ii).image_idx = this_image_idx;
+    split.train_data(ii).filelist = filelist(ii);
 end
 
 if length(split.train_data) > max_training_images

@@ -38,7 +38,7 @@ params.optimisation_scale_factor = 1; % in the gt optimisation, the
 predictor(1).name = 'gt_weighted';
 predictor(1).nicename = 'Weighted aggregation of SI, using GT img';
 predictor(1).shortname = 'Weighted using GT';
-predictor(1).handle = @(x, h, dummy, y)(weights_predict_with_gt(model, x, h, params, test_data.images, y));
+predictor(1).handle = @(x, h, dummy, y)(weights_predict_with_gt(model, x, h, params, {test_data.image}, y));
 predictor(1).outpath = fullfile(paths.predictions, 'gt_weighted/');
 
 
@@ -50,7 +50,7 @@ params.optimisation_scale_factor = 0.1; % in the gt optimisation, the
 predictor(5).name = 'gt_weighted_scaled';
 predictor(5).nicename = 'Weighted aggregation of SI, using GT img - scaled';
 predictor(5).shortname = 'Weighted using GT (ICP)';
-predictor(5).handle = @(x, h, dummy, y)(weights_predict_with_gt(model, x, h, params, test_data.images, y));
+predictor(5).handle = @(x, h, dummy, y)(weights_predict_with_gt(model, x, h, params, {test_data.image}, y));
 predictor(5).outpath = fullfile(paths.predictions, 'gt_weighted_scaled/');
 
 load(paths.structured_predict_si_model_path, 'model');
@@ -62,32 +62,32 @@ params.optimisation_scale_factor = 0.1; % in the gt optimisation, the
 predictor(6).name = 'gt_weighted_scaled_pca';
 predictor(6).nicename = 'Weighted aggregation of SI, using GT img - scaled';
 predictor(6).shortname = 'Weighted using GT (PCA)';
-predictor(6).handle = @(x, h, dummy, y)(weights_predict_with_gt(model, x, h, params, test_data.images, y));
+predictor(6).handle = @(x, h, dummy, y)(weights_predict_with_gt(model, x, h, params, {test_data.image}, y));
 predictor(6).outpath = fullfile(paths.predictions, 'gt_weighted_scaled_pca/');
 
 
 load(paths.structured_predict_si_model_path, 'model');
 load(paths.test_data, 'test_data')
 params.scale_invariant = true;
-params.num_proposals = 50;
+params.num_proposals = 150;
 params.transform_type = 'pca';
 params.optimisation_scale_factor = 0.1; % in the gt optimisation, the 
 predictor(7).name = 'gt_weighted_scaled_pca_seg';
 predictor(7).nicename = 'Weighted aggregation of SI, using PCA, and segmented';
 predictor(7).shortname = 'Weighted, PCA, segmented';
-predictor(7).handle = @(x, h, s, y)(weights_predict_with_gt_segmented(model, x, s, h, params, test_data.images, y));
+predictor(7).handle = @(x, h, s, y)(weights_predict_with_gt_segmented(model, x, s, h, params, {test_data.image}, y));
 predictor(7).outpath = fullfile(paths.predictions, 'gt_weighted_scaled_pca_segmented/');
 
 load(paths.structured_predict_si_model_path, 'model');
 load(paths.test_data, 'test_data')
 params.scale_invariant = true;
-params.num_proposals = 50;
+params.num_proposals = 150;
 params.transform_type = 'icp';
 params.optimisation_scale_factor = 0.1; % in the gt optimisation, the 
 predictor(8).name = 'gt_weighted_scaled_icp_seg';
 predictor(8).nicename = 'Weighted aggregation of SI, using ICP, and segmented';
 predictor(8).shortname = 'Weighted, ICP, segmented';
-predictor(8).handle = @(x, h, s, y)(weights_predict_with_gt_segmented(model, x, s, h, params, test_data.images, y));
+predictor(8).handle = @(x, h, s, y)(weights_predict_with_gt_segmented(model, x, s, h, params, {test_data.image}, y));
 predictor(8).outpath = fullfile(paths.predictions, 'gt_weighted_scaled_icp_segmented/');
 
 

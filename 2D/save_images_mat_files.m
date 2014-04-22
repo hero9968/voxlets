@@ -4,65 +4,101 @@ clear
 cd ~/projects/shape_sharing/2D
 define_params
 load(paths.split_path, 'split')
+load(paths.filelist, 'filelist')
 
-%%
-clear train_data
+%% loading in all rotated structures and concatenating
 
+for ii = 1:length(filelist)
+    
+    this_filename = sprintf(paths.raytraced_savename, ii);
+    load(this_filename, 'rotated');
+    
+    % creating an array of all the structures
+    all_rotated(ii) = rotated;
+    
+    done(ii, length(filelist), 100)
+    
+end
+
+%% creating all the images togethrer
+all_images = {all_rotated.image};
+save(paths.all_images, 'all_images')
+
+%% forming training data
 N = length(split.train_data);
+clear train_data new_train_data
+train_data(N * params.n_angles) = ...
+    struct('idx', [], 'angle', [], 'raytraced', [], ...
+            'segmented', [], 'normals', [], 'image', []);
 
-train_data.depths = cell(1, N);
-train_data.images = cell(1, N);
-train_data.segments = cell(1, N);
-
+count = 1;
 for ii = 1:N
-
-    % loading in the depth for this image
-    this_filename = split.train_data{ii};
-    this_depth_path = fullfile(paths.raytraced, this_filename);
-    this_image_path = fullfile(paths.rotated, this_filename);
-    this_segmented_path = fullfile(paths.segmented, [this_filename(1:end-4)]);
     
-    temp = load([this_depth_path '.mat']);
-    train_data.depths{ii} = double(temp.this_raytraced_depth);
+    this_idx = split.train_idx(ii);
     
-    temp = load([this_segmented_path, 'segmented.mat']);
-    train_data.segments{ii} = double(temp.segmented);
+    this_rotated = all_rotated(this_idx);
     
-    train_data.images{ii} = imread([this_image_path '.gif']);
-    train_data.filename{ii} = this_filename;
+    M = length(this_rotated.angles);
     
-    done(ii, N)
+    for jj = 1:M
+        
+        % extracting each depth image from the structure
+        new_train_data.idx = this_idx;
+        new_train_data.angle = this_rotated.angles(jj);
+        new_train_data.raytraced = this_rotated.raytraced{jj};
+        new_train_data.segmented = this_rotated.segmented{jj};
+        new_train_data.normals = this_rotated.normals{jj};
+        
+        temp_image = all_images{this_idx};
+        new_train_data.image = ...
+            rotate_mask(temp_image, new_train_data.angle, params) > 0;
+        
+        % adding to the training data structure
+        train_data(count) = new_train_data;
+        count = count + 1;
+    end
+    
+    done(ii, N, 10)
 end
 
 save(paths.train_data, 'train_data');
 
-%%
-clear test_data
 
+%% forming training data
 N = length(split.test_data);
-
-test_data.depths = cell(1, N);
-test_data.images = cell(1, N);
-
+clear test_data new_test_data train_data new_train_data
+test_data(N * params.n_angles) = ...
+    struct('idx', [], 'angle', [], 'raytraced', [], ...
+            'segmented', [], 'normals', [], 'image', []);
+        
+count = 1;
 for ii = 1:N
-
-    % loading in the depth for this image
-    this_filename = split.test_data{ii};
-    this_depth_path = fullfile(paths.raytraced, this_filename);
-    this_image_path = fullfile(paths.rotated, this_filename);
-    this_segmented_path = fullfile(paths.segmented, [this_filename(1:end-4)]);
     
-    temp = load([this_depth_path '.mat']);
-    test_data.depths{ii} = double(temp.this_raytraced_depth);
+    this_idx = split.test_idx(ii);
     
-    temp = load([this_segmented_path, 'segmented.mat']);
-    test_data.segments{ii} = double(temp.segmented);
+    this_rotated = all_rotated(this_idx);
     
-    test_data.images{ii} = imread([this_image_path '.gif']);
-    test_data.heights(ii) = size(test_data.images{ii}, 1);
-    test_data.filename{ii} = this_filename;        
-
-    done(ii, N)
+    M = length(this_rotated.angles);
+    
+    for jj = 1:M
+        
+        % extracting each depth image from the structure
+        new_test_data.idx = this_idx;
+        new_test_data.angle = this_rotated.angles(jj);
+        new_test_data.raytraced = this_rotated.raytraced{jj};
+        new_test_data.segmented = this_rotated.segmented{jj};
+        new_test_data.normals = this_rotated.normals{jj};
+        
+        temp_image = all_images{this_idx};
+        new_test_data.image = ...
+            rotate_mask(temp_image, new_test_data.angle, params) > 0;
+        
+        % adding to the training data structure
+        test_data(count) = new_test_data;
+        count = count + 1;
+    end
+    
+    done(ii, N, 10)
 end
 
 save(paths.test_data, 'test_data');

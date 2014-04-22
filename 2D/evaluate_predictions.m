@@ -8,45 +8,31 @@ cd ~/projects/shape_sharing/2D
 define_params
 set_up_predictors
 load(paths.split_path, 'split')
-length_test_data = length(split.test_data);
+length_test_data = length(test_data);
 
 %% loading in the ground truth files
-ground_truth_path = paths.rotated;
-
-% get list of GT files
-ground_truth_files = dir(ground_truth_path);
-to_remove = ismember({ground_truth_files.name}, {'.', '..', '.DS_Store'});
-ground_truth_files(to_remove) = [];
-
-% loading in all the GT data
-all_GT = cell(length_test_data, 1);
-for ii = 1:length_test_data
-    
-    this_GT_path = fullfile(ground_truth_path, [split.test_data{ii}, '.gif']);
-    this_GT_image = imread(this_GT_path);
-    all_GT{ii} = this_GT_image(:);
-    
-    done(ii, length_test_data, 50);
-end
-
+all_GT = {test_data.image};
 
 %% saving to disk results for aach fo thw algorithms
 % Need to run this for each set of results after they have been generated,
 % before we can plot them etc.
 %
 %profile on
-for ii = [7, 8]%1:length(predictor)
+for ii = [1]%1:length(predictor)
     
     predicted_path = predictor(ii).outpath;
     all_pred = cell(length_test_data, 1);
+    
+    savepath = [predictor(ii).outpath, 'combined.mat'];
+    load(savepath, 'all_predictions');
 
-    for jj = 1:length_test_data%length(split.test_data)
+    for jj = 1:length_test_data %length(split.test_data)
 
         % loading in the preixted image
-        this_predicted_path = fullfile(predicted_path, [split.test_data{jj}, '.png']);
-        this_predicted_image = single(imread(this_predicted_path));
-        this_predicted_image = this_predicted_image / max(this_predicted_image(:));
-
+        this_predicted_image = single(all_predictions{jj});
+        this_predicted_image(this_predicted_image<0) = 0;
+        this_predicted_image(this_predicted_image>1) = 1;
+        
         % now do the comparison - perhaps try to ignore the pixels that we
         % definately know about?
         %to_use_mask = all_GT{jj}

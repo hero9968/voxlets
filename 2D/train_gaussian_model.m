@@ -8,11 +8,16 @@ addpath src/external/
 addpath src/external/findfirst
 
 %% loading in all depths and shapes from disk...
+load(paths.all_images, 'all_images')
 load(paths.train_data, 'train_data')
 load(paths.test_data, 'test_data')
 
 %% now compute the model
-model = gaussian_model_train(train_data.images, train_data.depths, params);
+training_images = {train_data.image};
+all_depths = {train_data.raytraced};
+model = gaussian_model_train(training_images, all_depths, params);
+
+%% plotting the model distributions
 subplot(211); plot(model.means)
 subplot(212); plot(model.stds)
 
@@ -24,10 +29,10 @@ save(paths.gaussian_predict_model_path, 'model');
 
 %% do a preidction
 num = 461;
-pred = gaussian_model_predict(model, test_data.depths{num}, test_data.heights(num));
+pred = gaussian_model_predict(model, test_data(num).raytraced, size(test_data(num).image, 1));
 clf
 subplot(121)
-imagesc2(test_data.images{num}); 
+imagesc2(test_data(num).image); 
 axis image
 subplot(122)
 imagesc2(pred); 

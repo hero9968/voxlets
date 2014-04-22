@@ -4,10 +4,17 @@ function [weights_out, other] = find_optimal_weights(depth, mask_stack, gt_img, 
 % removing the pixels which are def. empty and which no-one cares about
 gt_filled = fill_grid_from_depth(depth, size(mask_stack, 1), 0.5);
 
+% finding a suitable scale factor ? cannot make it too small!
+num_pixels = size(mask_stack, 1) * size(mask_stack, 2);
+min_pixels = size(mask_stack, 3);
+min_area_scale_factor = min_pixels / num_pixels;
+min_linear_scale_factor = sqrt(min_area_scale_factor) + 0.01;
+scale_factor = max(scale_factor, min_linear_scale_factor);
+
 % resizeing all images
-gt_img = imresize(gt_img, scale_factor, 'nearest');
-mask_stack_resized = imresize(mask_stack, scale_factor, 'nearest');
-gt_filled_resized = imresize(gt_filled, scale_factor, 'nearest');
+gt_img = imresize(gt_img, scale_factor, 'bilinear');
+mask_stack_resized = imresize(mask_stack, scale_factor, 'bilinear');
+gt_filled_resized = imresize(gt_filled, scale_factor, 'bilinear');
 
 % reshaping the inputs to be nice
 mask_stack_trans = permute(mask_stack_resized, [3, 1, 2]);
@@ -26,8 +33,11 @@ err_fun = @(x)((abs(gt_img_flat - noisy_or(mask_stack_trans, 1, x))));
 weights = ones(1, size(mask_stack_resized, 3))/2;
 
 options = optimoptions('lsqnonlin', 'TolFun', 1e-5, 'TolX', 1e-5);
-[weights_out,Resnorm,Fval,flag, out] = lsqnonlin(err_fun, weights, ...
-    zeros(size(weights)), ones(size(weights)), options);
+
+min_weights = zeros(size(weights));
+max_weights = ones(size(weights));
+[weights_out, Resnorm, Fval, flag, out] = ...
+    lsqnonlin(err_fun, weights, [], [], options);
 
 % forming the output
 other.EXITFLAG = flag;

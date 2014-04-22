@@ -4,8 +4,8 @@ function [stacked_image, transforms] = test_fitting_model(data, depth, im_height
 % applys the learned model to predict the image that might be present which
 % gave the depth. The parameters in params might eventually be moved to
 % model.
-plotting = 0;
-plotting_matches = 0;
+plotting_transforms = params.plotting.plot_transforms;
+plotting_matches = params.plotting.plot_matches;
 
 % input checks
 assert(isvector(depth));
@@ -14,7 +14,7 @@ assert(isvector(depth));
 % and their transformation into the scene
 transforms = propose_transforms(data, depth, params);
 
-if plotting
+if plotting_transforms
     num_to_plot = 18;
     model_XY = [1:length(depth); double(depth)];
     plot_transforms(transforms, data, model_XY, num_to_plot);
@@ -28,17 +28,17 @@ end
 
 if plotting_matches
 
-    %subplot(4, 4, 1);
-    %plot(model_XY(1, :), model_XY(2, :), 'r');
-    
     %axis image
     title('Model data');
+    [n, m] = best_subplot_dims(params.plotting.num_matches);
     
-    for ii = 1:4%length(transforms)
-        subplot(3, 4, 4+ii + 4 * data.scale_invariant)
+    for ii = 1:params.plotting.num_matches
+        
+        
+        subplot(n, m, ii)
         
         % extracting the data edge image
-        this_idx = transforms(ii).data_idx
+        this_idx = transforms(ii).data_idx;
         this_image = data.images{this_idx};
         this_depth = data.depths{this_idx};
         
