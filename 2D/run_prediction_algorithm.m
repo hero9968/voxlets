@@ -3,7 +3,6 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-set_up_predictors
 load(paths.split_path, 'split')
 load(paths.test_data, 'test_data')
 addpath src/predict
@@ -12,12 +11,16 @@ addpath src/external
 addpath src/external/hist2
 addpath src/external/libicp/matlab/
 addpath src/external/findfirst
+num_predictors = 8;
 
 %%
 close all
 
 % loop over each prediction algorithm
-for ii = 1:length(predictor)
+for ii = 1:num_predictors
+    
+    % loading this predictor, including the handle to run the prediction
+    predictor = get_predictor(ii, 1, params, paths);
     
     all_predictions = cell(1, length(test_data));
      
@@ -31,14 +34,14 @@ for ii = 1:length(predictor)
         height = size(test_data(jj).image, 1);
          
         % making the prediction
-        this_prediction = predictor(ii).handle(depth, height, segments, jj);
+        this_prediction = predictor.handle(depth, height, segments, jj);
         all_predictions{jj} = this_prediction;
         
         done(jj, length(split.test_data))
         
     end
     
-    savepath = [predictor(ii).outpath, 'combined.mat'];
+    savepath = [predictor.outpath, 'combined.mat'];
     save(savepath, 'all_predictions');
 end
 

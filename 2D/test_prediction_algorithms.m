@@ -3,7 +3,6 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-set_up_predictors
 load(paths.split_path, 'split')
 load(paths.test_data, 'test_data')
 addpath src/predict
@@ -12,6 +11,9 @@ addpath src/external
 addpath src/external/hist2
 addpath src/external/libicp/matlab/
 addpath src/external/findfirst
+
+%% load predictors
+predictor = get_predictor(1:8, 1, params, paths);
 
 %%
 close all
@@ -25,7 +27,7 @@ segments = test_data(test_idx).segmented;
 ground_truth = test_data(test_idx).image;
 
 %% loop over each prediction algorithm
-for ii = 7:length(predictor)
+for ii = 1:6%length(predictor)
 
     % making the prediction
     predictions{ii} = predictor(ii).handle(depth, height, segments, test_idx);

@@ -6,8 +6,9 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-set_up_predictors
+predictor = get_predictor(1:8, 0, params, paths);
 load(paths.split_path, 'split')
+load(paths.test_data, 'test_data')
 length_test_data = length(test_data);
 
 %% loading in the ground truth files
@@ -54,11 +55,11 @@ for ii = [1]%1:length(predictor)
 
     [this_pred.auc, this_pred.tpr, this_pred.fpr, this_pred.thresh] = plot_roc(all_GT2, all_pred2);
     %hold on
-    ii
-    
-    
+        
     savepath = [predictor(ii).outpath, 'evaluation_results.mat'];
     save(savepath, 'this_pred');
+    
+    done(ii, length(predictor))
     
 end
 
