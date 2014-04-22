@@ -1,4 +1,4 @@
-% script to run a prediction algorithm
+% script to test the prediction algorithms, doing one prediction from each
 
 clear
 cd ~/projects/shape_sharing/2D
@@ -17,7 +17,7 @@ predictor = get_predictor(1:8, 1, params, paths);
 
 %%
 close all
-test_idx = 2000; % which test image to use
+test_idx = 3000; % which test image to use
 predictions = cell(1, length(predictor));
 
 % loading in the test image data
@@ -27,11 +27,13 @@ segments = test_data(test_idx).segmented;
 ground_truth = test_data(test_idx).image;
 
 %% loop over each prediction algorithm
-for ii = 1:6%length(predictor)
+for ii = 8%1:length(predictor)
 
     % making the prediction
+    tic
     predictions{ii} = predictor(ii).handle(depth, height, segments, test_idx);
-   
+    timings(ii) = toc;
+    
     done(ii, length(predictor))
 
 end
@@ -50,7 +52,7 @@ for ii = 1:length(predictor)
     subplot(n, m, ii+1);
     imagesc(predictions{ii});
     axis image
-    title(predictor(ii).shortname)
+    title([predictor(ii).shortname, ' - ' num2str(timings(ii))])
     set(gca, 'clim', [0, 1])   
     done(ii, length(predictor))
 

@@ -27,11 +27,18 @@ to_remove = gt_filled_flat == 0 | (gt_img_flat==0 & all(mask_stack_trans==0, 1))
 gt_img_flat(to_remove) = [];
 mask_stack_trans(:, to_remove) = [];
 
+% initialising the weights
+weights = ones(1, size(mask_stack_resized, 3))/2;
+assert(size(mask_stack_trans, 1)==length(weights));
+for ii = 1:size(mask_stack_trans, 1)
+    size_prediction = sum(mask_stack_trans(ii, :));
+    size_true_positive = sum(mask_stack_trans(ii, gt_img_flat>0.5));
+    weights(ii) = size_true_positive / size_prediction;
+    assert(weights(ii) >= 0 && weights(ii) <= 1);
+end
+
 % finally doing the optimisation
 err_fun = @(x)((abs(gt_img_flat - noisy_or(mask_stack_trans, 1, x))));
-
-weights = ones(1, size(mask_stack_resized, 3))/2;
-
 options = optimoptions('lsqnonlin', 'TolFun', 1e-5, 'TolX', 1e-5);
 
 min_weights = zeros(size(weights));
