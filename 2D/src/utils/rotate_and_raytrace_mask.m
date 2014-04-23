@@ -22,41 +22,47 @@ imwidth = size(rotated.image, 2);
 % get the diagonal size of the image
 diag_size = sqrt(imheight^2 + imwidth^2);
 
-rotated.angles = angles;
+% initialise the rendered structure array
+rendered(length(angles)) = ...
+    struct('angle', [], 'transform', [], 'depth', []);
 
 % loop over each possible rotation and 
-for jj = 1:length(rotated.angles)
+for jj = 1:length(angles)
 
     % develop the transformation matrix
     T_translate_1 = translation_matrix(-imwidth/2, -imheight/2);
-    T_rotate = rotation_matrix(rotated.angles(jj));
+    T_rotate = rotation_matrix(angles(jj));
     T_translate_2 = translation_matrix(2 + diag_size/2, 2 + diag_size/2);
     % ^^ adding 2 to diag size to allow for rounding errors etc.
 
     % combining and converting to MATLAB format
     T_final = T_translate_2 * T_rotate * T_translate_1;
-    rotated.transform(jj) = maketform('affine', T_final');
+    rendered(jj).transform = maketform('affine', T_final');
 
     % applying transformation
     this_rotated_image = ...
-        imtransform(rotated.image, rotated.transform(jj), ...
+        imtransform(rotated.image, rendered(jj).transform, ...
         'bilinear', ...
         'xdata', [1, diag_size + 2], ...
         'ydata', [1, diag_size + 2]);
 
     % raytracing this rotated image
-    rotated.raytraced{jj} = raytrace_2d(this_rotated_image > 128);                
-
+    rendered(jj).depth = raytrace_2d(this_rotated_image > 128);                
+    rendered(jj).angle = angles(jj);
+    
     % plot this image
     if plotting
-        [n, m] = best_subplot_dims(length(rotated.angles));
+        [n, m] = best_subplot_dims(length(angles));
         subplot(n, m, jj)
         imagesc(this_rotated_image)
         axis image
         colormap(flipgray)
         hold on
-        plot(1:length(rotated.raytraced{jj}), rotated.raytraced{jj}, 'linewidth', 3);
+        plot(1:length(rendered(jj).depth), rendered(jj).depth, 'linewidth', 3);
         hold off
     end
 
 end
+
+rotated.rendered = rendered;
+

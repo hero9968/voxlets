@@ -3,13 +3,15 @@
 %
 
 clear
+cd ~/projects/shape_sharing/2D/
 define_params
 addpath src/utils/
+addpath src/external/findfirst/
 
 load(paths.filelist, 'filelist')
 
-plotting = 1;
-saving = 0;
+plotting = 0;
+saving = 1;
 
 %%
 if ~exist(paths.raytraced, 'dir')
@@ -17,13 +19,8 @@ if ~exist(paths.raytraced, 'dir')
 end
 
 %%
-profile on
-
-
-for ii = 1%:length(filelist)
-    
-    clear rotated
-    
+for ii = 1:length(filelist)
+       
     % load in this image, and ensure if uint8 in [0, 255]
     this_path = [paths.mpeg,  filelist(ii).filename];
     img_in = uint8(imread(this_path));
@@ -42,5 +39,3 @@ for ii = 1%:length(filelist)
     
     done(ii, length(filelist))
 end
-profile off viewer
-
