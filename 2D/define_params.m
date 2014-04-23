@@ -1,6 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setting up paths
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+clear paths
 
 paths.data = '~/projects/shape_sharing/data/';
 paths.data_2d = [paths.data, '2D_shapes/'];
@@ -8,15 +9,6 @@ paths.data_2d = [paths.data, '2D_shapes/'];
 % where the raw data files exist
 paths.mpeg = [paths.data_2d, 'MPEG7_CE-Shape-1_Part_B/'];
 paths.filelist = [paths.data_2d, 'filelist.mat'];
-
-% where the subset I'm using lives
-%paths.subset = [paths.data_2d, 'MPEG7_subset/'];
-%paths.subset_files = [paths.subset, 'filelist.mat'];
-
-% where to save the rotated
-%paths.rotated = [paths.data_2d, 'rotated/'];
-%paths.rotated_filename = '%02d_%02d_mask.gif';
-%paths.rotated_savename = [paths.rotated, paths.rotated_filename];
 
 % where to save the raytraced files
 paths.raytraced = [paths.data_2d, 'raytraced/'];
@@ -45,9 +37,6 @@ paths.gaussian_predict_model_path = [paths.data_2d, 'models/gaussian_predict.mat
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear params
 
-% params for setting up file lists
-params.number_subclasses = 20; % how many subclasses from each shape to use
-
 % doing train/test split
 params.test_split.test_fraction = 0.25;
 params.test_split.max_test_images = 50; %500
@@ -60,7 +49,6 @@ params.angles = temp_angles(1:end-1);
 clear temp_angles
 
 % size of output image
-%params.im_width = 150;
 params.scale = 0.5;
 params.im_min_height = 250;
 
