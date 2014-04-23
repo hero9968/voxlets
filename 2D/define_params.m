@@ -50,8 +50,8 @@ params.number_subclasses = 20; % how many subclasses from each shape to use
 
 % doing train/test split
 params.test_split.test_fraction = 0.25;
-params.test_split.max_test_images = 500;
-params.test_split.max_training_images = 20000;
+params.test_split.max_test_images = 50; %500
+params.test_split.max_training_images = 200; %20000
 
 % angles to rotate masks
 params.n_angles = 32;
@@ -93,3 +93,4 @@ params.aggregating = true;
 params.plotting.plot_matches = 0;
 params.plotting.num_matches = nan; % number of matches to plot in subplots
 params.plotting.plot_transforms = 0;
+params.plotting.plot_rotated_masks = 0; 

@@ -13,10 +13,6 @@ generate_filelist
 %% rotate these shapes to multiple angles
 rotate_and_raytrace
 
-%% raytrace these shapes to create depth images
-% raytracing now occurs in the rotation!
-%raytrace_all_masks
-
 %% segemnting the depth images into soup of segments
 segment_and_normals
 
