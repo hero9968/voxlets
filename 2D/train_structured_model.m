@@ -5,6 +5,7 @@ clear
 define_params
 addpath src/predict
 addpath src/utils
+addpath src/transformations/
 addpath src/external/
 addpath src/external/hist2
 addpath src/external/findfirst
@@ -69,6 +70,7 @@ for ii = 1:4
     set(gca, 'ylim',round([-width/4, 1.25*width]));
 end
 %profile off viewer
+
 %% showing the closest matching features to the input image
 clf
 load(paths.structured_predict_si_model_path, 'model');

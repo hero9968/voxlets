@@ -6,6 +6,7 @@ clear
 cd ~/projects/shape_sharing/2D/
 define_params
 addpath src/utils/
+addpath src/transformations/
 addpath src/external/findfirst/
 
 load(paths.filelist, 'filelist')

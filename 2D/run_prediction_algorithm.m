@@ -8,6 +8,7 @@ load(paths.test_data, 'test_data')
 addpath src/predict
 addpath src/utils
 addpath src/external
+addpath src/transformations/
 addpath src/external/hist2
 addpath src/external/libicp/matlab/
 addpath src/external/findfirst

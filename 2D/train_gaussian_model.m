@@ -6,6 +6,7 @@ define_params
 addpath src/predict
 addpath src/external/
 addpath src/external/findfirst
+addpath src/transformations/
 
 %% loading in all depths and shapes from disk...
 load(paths.all_images, 'all_images')
