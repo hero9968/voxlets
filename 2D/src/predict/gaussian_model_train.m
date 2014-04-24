@@ -1,4 +1,4 @@
-function model = gaussian_model_train(images, depths, params)
+function model = gaussian_model_train(images, train_data, params)
 % train the parameters of a gaussian model
 % split the shape into equally width bins. Model each bin individually.
 % model final point in each bin with a gaussian. at test time use the
@@ -10,9 +10,7 @@ max_depth_to_use = 5; % max depth to take into account relative to the width of 
 
 % input checks
 assert(iscell(images))
-assert(iscell(depths))
-assert(length(images)==length(depths));
-N = length(images);
+N = length(train_data);
 
 % now want to accumulate the distances to the back of each image for each
 % input image
@@ -20,27 +18,40 @@ per_bin_depths = cell(num_bins, N);
 
 for ii = 1:N
 
-    width = length(depths{ii});
+    % width of the raytraced image
+    this_depth = single(train_data(ii).depth);
+    depth_width = length(this_depth);
     
-    min_depth = (double(depths{ii}));
-    max_depth = findfirst(images{ii}, 1, 1, 'last');
+    % find points outside bounds of the raytraced image
+    to_remove = outside_nans(this_depth);
+    
+    % getting the ground truth image
+    this_image = images{train_data(ii).image_idx};
+    this_transform = train_data(ii).transform;
+    im_transformed = ...
+        imtransform(this_image, this_transform, ...
+                    'xdata', [1, depth_width], 'ydata', [1, depth_width]);
+    
+    % finding the minimum and maxium depths    
+    min_depth = this_depth;
+    max_depth = findfirst(im_transformed, 1, 1, 'last');
     overall_depth = max_depth - min_depth;
+    
+    % removing the nan points on the outside of the image
+    overall_depth(to_remove) = [];
+    width = length(overall_depth);
        
     % scale to fixed width
     overall_depth_scaled = (overall_depth / width);
     
     overall_depth_scaled(overall_depth_scaled > max_depth_to_use) = nan;
     
-    %if max(overall_depth_scaled) > 10
-    %    keyboard 
-    %end
-    
     bin_idxs = ceil(((1:width)/width)*num_bins);
         
     % now accumulate the depths into bins
     per_bin_depths(:, ii) = accumarray(bin_idxs', overall_depth_scaled', [num_bins, 1], @(x)({x}));
        
-
+    done(ii, N, 100);
 end
 
 model.per_bin_depths = per_bin_depths;
@@ -48,8 +59,12 @@ model.per_bin_depths = per_bin_depths;
 % now combine all the depths for each bin
 for ii = 1:num_bins
     
+    these_cells = per_bin_depths(ii, :);
+    empty_cells = cellfun(@isempty, these_cells);
+    these_cells(empty_cells) = [];
+    
     % get all the depths for this bin
-    all_depths = cell2mat([per_bin_depths(ii, :)']);
+    all_depths = cell2mat(these_cells');
     all_depths(isnan(all_depths)) = [];
     
     % model depths with a gaussian
