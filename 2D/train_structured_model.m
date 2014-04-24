@@ -18,7 +18,7 @@ load(paths.test_data, 'test_data')
 
 %% now compute the model
 params.scale_invariant = true;
-params.sd_angles = 0;
+params.sd_angles = 2;
 train_data_subset = train_data(randperm(length(train_data), 2000));
 model = train_fitting_model(all_images, train_data, params);
 
@@ -33,7 +33,7 @@ save(paths.structured_predict_si_model_path, 'model');
 %profile on
 
 clf
-num = 2200;
+num = 10200;
 params.aggregating = 1;
 params.num_proposals= 16;
 params.plotting.plot_transforms = 1;

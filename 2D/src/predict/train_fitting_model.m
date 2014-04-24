@@ -26,12 +26,19 @@ for ii = 1:N
     XY_scaled = training_data(ii).scale * XY;
     
     % computing the shape distributions
-    if params.sd_angles
+    if params.sd_angles == 1
         norms = training_data(ii).normals;
         training_data(ii).shape_dist = ...
-            shape_distribution_2d_angles(XY_scaled, norms, num_samples, xy_bin_edges, params.angle_edges);
-    else
+            shape_distribution_2d_angles(XY_scaled, norms, num_samples, xy_bin_edges, params.angle_edges, 1);
+        
+    elseif params.sd_angles == 0
         training_data(ii).shape_dist = shape_distribution_2d(XY_scaled, num_samples, xy_bin_edges);
+        
+    elseif params.sd_angles == 2
+        norms = training_data(ii).normals;
+        training_data(ii).shape_dist = ...
+            shape_distribution_2d_angles(XY_scaled, norms, num_samples, xy_bin_edges, params.angle_edges, 0);
+        
     end
     
     % find the translation and rotation using PCA...

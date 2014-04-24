@@ -18,11 +18,15 @@ end
 % computing the feature vector for the depth image
 model_XY_scaled = scale * model_XY;
 
-if model.sd_angles
+if model.sd_angles == 1
     norms = normals_radius_2d(model_XY, params.normal_radius);
     shape_dist = ...
-        shape_distribution_2d_angles(model_XY_scaled, norms, num_samples, model.xy_bin_edges, model.angle_edges);
-else
+        shape_distribution_2d_angles(model_XY_scaled, norms, num_samples, model.xy_bin_edges, model.angle_edges, 1);
+elseif model.sd_angles == 2
+    norms = normals_radius_2d(model_XY, params.normal_radius);
+    shape_dist = ...
+        shape_distribution_2d_angles(model_XY_scaled, norms, num_samples, model.xy_bin_edges, model.angle_edges, 0);
+elseif model.sd_angles == 0
     shape_dist = shape_distribution_2d(model_XY_scaled, num_samples, model.xy_bin_edges);
 end
 

@@ -1,4 +1,4 @@
-function fv = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges)
+function fv = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges, hist_2d)
 % compute shape distribution for 2d points
 
 % input checks and setup
@@ -24,10 +24,32 @@ angles = dot(norms(:, inds1), norms(:, inds2), 1);% range is [-1, 1];
 
 % removing distances out of range
 to_remove = dists < min(xy_bin_edges) | dists > max(xy_bin_edges) | dists == 0;
-dists( to_remove ) = [];
-angles( to_remove ) = [];
 
-% forming the 2d histogram
-histogram = hist2(dists, angles, xy_bin_edges, angles_bin_edges);
-histogram = histogram(:);
+% choosing what type of histogram to make
+if hist_2d
+    
+    % remove outliers from both dists and angles
+    dists( to_remove ) = [];
+    angles( to_remove ) = [];
+
+    % forming the 2d histogram
+    histogram = hist2(dists, angles, xy_bin_edges, angles_bin_edges);
+    histogram = histogram(:);
+    
+else
+    
+    % only remove outliers from the dists (as treating each independently)
+    dists( to_remove ) = [];
+
+    % making two 1-d histograms
+    [histogram_1, ~] = histc(dists, xy_bin_edges);
+    [histogram_2, ~] = histc(angles, angles_bin_edges);
+
+    % concatenating 
+    histogram = [histogram_1, histogram_2];
+    
+end
+
+% normalising histogram
 fv = histogram / sum(histogram);
+fv = fv(:)';
