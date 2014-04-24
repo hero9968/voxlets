@@ -27,7 +27,7 @@ for ii = 1:number_shapes
     load(readname, 'rotated');
     
     for jj = 1:length(rotated.rendered)
-        
+
         this_depth = rotated.rendered(jj).depth;
         
         % segmenting the depth into a soup
@@ -42,6 +42,8 @@ for ii = 1:number_shapes
         
         % converting depth to single for space reasons
         rotated.rendered(jj).depth = single(rotated.rendered(jj).depth);
+
+        rotated.rendered(jj).image_idx = ii;
         
     end
     
