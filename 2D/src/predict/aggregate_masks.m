@@ -1,13 +1,15 @@
 function [stacked_img, stacked_img_cropped, transformed] = ...
     aggregate_masks(transforms, height, depth, params)
 
-% settuping up variables
-width = length(depth);
-padding = 20;
-N = length(transforms);
+
 adding = false;
-transform_type = params.transform_type; %'icp';
-weights = ones(1, N) / 5;
+padding = 20;
+
+% setting up variables
+width = length(depth);
+N = length(transforms);
+transform_type = params.transform_type;
+
 known_mask = fill_grid_from_depth(depth, height, 0.5);
 
 % apply transformations to the input images
@@ -19,9 +21,9 @@ y_data = [-padding+1, height + padding];
 
 % creating the stack of transformed masks
 for ii = 1:N
-    
-    this_mask = +(transforms(ii).image > 0);
-    this_transform = transforms(ii).(transform_type);
+        
+    this_mask = +(transforms(ii).base_image > 0);
+    this_transform = double(transforms(ii).(transform_type) * transforms(ii).img_transform.tdata.T');
     this_depth = transforms(ii).depth;
 
     check_isgood_transform(this_transform);
@@ -56,6 +58,7 @@ end
 if adding
     stacked_img = sum(transformed_masks, 3);
 else
+    weights = ones(1, N) / 5;
     stacked_img = noisy_or(transformed_masks, 3, weights);
 end
 

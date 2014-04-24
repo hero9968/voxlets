@@ -1,12 +1,10 @@
-function model = train_fitting_model(training_images, depth, params)
+function model = train_fitting_model(training_images, training_data, params)
 % given a cell array of training images and a cell array of depths rendered
 % from the images, this function trains a model
 
 % input checks
 assert(iscell(training_images))
-assert(iscell(depth))
-assert(length(training_images)==length(depth));
-N = length(training_images);
+N = length(training_data);
 
 % set up params etc.
 num_samples = params.shape_dist.num_samples;
@@ -20,7 +18,7 @@ scale = nan(1, N);
 
 for ii = 1:N
 
-    Y = (double(depth{ii}));
+    Y = training_data(ii).depth;
     X = 1:length(Y);
     
     % computing the shape distributions
@@ -37,7 +35,8 @@ for ii = 1:N
     
     if params.sd_angles
         %fv = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges)
-        norms = normals_radius_2d([tX'; tY'], scale(ii) * params.normal_radius);
+        %norms = normals_radius_2d([tX'; tY'], scale(ii) * params.normal_radius);
+        norms = training_data(ii).normals;
         xy_bin_edges = bin_edges;
         angles_bin_edges = params.angle_edges;
         shape_dists{ii} = shape_distribution_2d_angles([tX'; tY'], norms, num_samples, xy_bin_edges, angles_bin_edges);
@@ -59,6 +58,13 @@ model.bin_edges = bin_edges;
 model.angle_edges = params.angle_edges;
 model.scales = scale;
 model.sd_angles = params.sd_angles;
+
+model.images = training_images;
+%model.depths = {training_data.depth};
+model.training_data = training_data;
+%model.image_idxs = {training_data.image_idx};
+%model.image_transforms = {training_data.transform};
+
 
 
 

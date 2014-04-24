@@ -11,13 +11,13 @@ data(:, any(isnan(data), 1)) = [];
 
 % performing ICP to refine alignment
 try
-    t_data_XY = apply_transformation_2d(data, T_init);
-    temp_icp = icpMex(model, t_data_XY, eye(3), outlier_dist, 'point_to_point');
+    t_data_XY = double(apply_transformation_2d(data, T_init));
+    temp_icp = icpMex(model, t_data_XY, eye(3), outlier_dist, 'point_to_plane');
     T_out = temp_icp * T_init;
 catch err
     %keyboard
     disp(err)
-    warning('ICP failed - not doing ICP step');
+    error('ICP failed - not doing ICP step');
     T_out = T_init;
 end
 %T_out = T_init;

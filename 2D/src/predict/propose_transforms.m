@@ -1,4 +1,4 @@
-function transforms = propose_transforms(data, depth, params)
+function transforms = propose_transforms(model, depth, params)
 
 outlier_distance = 10;%params.icp.outlier_distance;
 number_matches_to_use = params.num_proposals;
@@ -8,11 +8,11 @@ number_matches_to_use = params.num_proposals;
 model_XY = [1:length(depth); double(depth)];
 model_XY(:, any(isnan(model_XY), 1)) = [];
 
-if data.scale_invariant
-    bin_edges = data.bin_edges;
+if model.scale_invariant
+    bin_edges = model.bin_edges;
     scale = normalise_scale(model_XY);
 else
-    bin_edges = data.bin_edges;
+    bin_edges = model.bin_edges;
     scale = 1;
 end
 
@@ -21,8 +21,8 @@ num_samples = params.shape_dist.num_samples;
 tX = scale * model_XY(1, :)';
 tY = scale * model_XY(2, :)';
 
-if data.sd_angles
-    angle_edges = data.angle_edges;
+if model.sd_angles
+    angle_edges = model.angle_edges;
     norms = normals_radius_2d(model_XY, params.normal_radius);
     shape_dist = shape_distribution_2d_angles([tX'; tY'], norms, num_samples, bin_edges, angle_edges);
 else
@@ -30,8 +30,7 @@ else
 end
 
 % find top matching shape distribution(s) by chi-squared distance
-all_dists = cell2mat(data.shape_dists)';
-%dists = pdist2(shape_dist', all_dists, 'chisq');
+all_dists = cell2mat(model.shape_dists)';
 dists = pdist2(shape_dist', all_dists, 'chisq');
 [~, idx] = sort(dists, 'ascend');
 
@@ -51,7 +50,7 @@ for ii = 1:number_matches_to_use
     
     this_idx = idx(ii);
     %this_scale = scale / data.scales(this_idx);
-    this_scale = data.scales(this_idx) / scale;
+    this_scale = model.scales(this_idx) / scale;
     scale_m = [this_scale, 0, 0; ...
               0, this_scale, 0; ...
               0 0 1];
@@ -63,7 +62,7 @@ for ii = 1:number_matches_to_use
     % loop over not flipped/flipped
     for jj = 1:length(flip_m)
         
-        transforms(count).pca = model_transform_from_origin * scale_m * flip_m{jj} * inv(data.transf{this_idx});
+        transforms(count).pca = model_transform_from_origin * scale_m * flip_m{jj} * inv(model.transf{this_idx});
 
         if cond(transforms(count).pca) > 1e8
             disp(['Test - Seems like conditioning is bad'])
@@ -71,7 +70,7 @@ for ii = 1:number_matches_to_use
         end
         
         % rotate the data depth to initial guess
-        data_depth = data.depths{this_idx};
+        data_depth = model.training_data(this_idx).depth;
         data_XY = [1:length(data_depth);  double(data_depth)];
         
         % calling icp routine. Some more params are set inside the wrapper function        
@@ -79,9 +78,12 @@ for ii = 1:number_matches_to_use
 
         transforms(count).flipped = jj==1;
         transforms(count).data_idx = this_idx;
-        transforms(count).image = data.images{this_idx};
+        transforms(count).image_idx = model.training_data(this_idx).image_idx;
+        transforms(count).base_image = model.images{transforms(count).image_idx};
+        transforms(count).img_transform = model.training_data(this_idx).transform; 
+        %transforms(count).image = transform_image(transforms(count).base_image, this_img_transform);
         transforms(count).ii = ii;
-        transforms(count).depth = data.depths{this_idx};
+        transforms(count).depth = data_depth;
 
         count = count + 1;
     end
