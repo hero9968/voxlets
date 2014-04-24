@@ -1,4 +1,4 @@
-function [trans, rot, M] = transformation_to_origin_2d(XY)
+function [trans, rot, combined_T] = transformation_to_origin_2d(XY)
 % compute the mean and eigenvalues of points XY.
 
 assert(size(XY, 1) == 2);
@@ -26,4 +26,4 @@ end
 
 
 % now combining into a 3x3 matrix
-M = [rot, trans'; 0 0 1];
+combined_T = [rot, trans'; 0 0 1];

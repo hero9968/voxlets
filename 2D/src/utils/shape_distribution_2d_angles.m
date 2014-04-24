@@ -9,14 +9,13 @@ assert(size(norms, 1)==2 && size(XY, 1) == 2);
 normal_lengths = sqrt(norms(1, :).^2+norms(2, :).^2);
 assert(all(abs(normal_lengths - 1) < 0.001), 'normals apparently not normalised');
 
-X = XY(1, :);   
-Y = XY(2, :);
-
 % choosing indices of random points
 inds1 = randi(num_points, 1, num_samples);
 inds2 = randi(num_points, 1, num_samples);
 
 % computing the distances between the random pairs of points
+X = XY(1, :);   
+Y = XY(2, :);
 dists = (X(inds1) - X(inds2)).^2 + (Y(inds1) - Y(inds2)).^2;
 dists = sqrt(dists);
 
