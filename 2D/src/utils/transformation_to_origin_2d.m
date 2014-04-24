@@ -1,7 +1,9 @@
-function [trans, rot, M] = transformation_to_origin_2d(X, Y)
+function [trans, rot, M] = transformation_to_origin_2d(XY)
 % compute the mean and eigenvalues of points XY.
 
-XY = [X(:), Y(:)];
+assert(size(XY, 1) == 2);
+XY = XY';
+%XY = [X(:), Y(:)];
 
 to_remove = any(isnan(XY), 2);
 XY(to_remove, :) = [];

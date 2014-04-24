@@ -1,32 +1,29 @@
 function transforms = propose_transforms(model, depth, params)
 
-outlier_distance = 10;%params.icp.outlier_distance;
+outlier_distance = params.icp.outlier_distance;
 number_matches_to_use = params.num_proposals;
-
+num_samples = params.shape_dist.num_samples;
 
 % compute shape distribution for the depth
 model_XY = [1:length(depth); double(depth)];
 model_XY(:, any(isnan(model_XY), 1)) = [];
 
+% choosing a scale for the XY points
 if model.scale_invariant
-    bin_edges = model.bin_edges;
     scale = normalise_scale(model_XY);
 else
-    bin_edges = model.bin_edges;
     scale = 1;
 end
 
-num_samples = params.shape_dist.num_samples;
-
-tX = scale * model_XY(1, :)';
-tY = scale * model_XY(2, :)';
+% computing the feature vector for the depth image
+model_XY_resized = scale * model_XY;
 
 if model.sd_angles
     angle_edges = model.angle_edges;
     norms = normals_radius_2d(model_XY, params.normal_radius);
-    shape_dist = shape_distribution_2d_angles([tX'; tY'], norms, num_samples, bin_edges, angle_edges);
+    shape_dist = shape_distribution_2d_angles(model_XY_resized, norms, num_samples, model.bin_edges, angle_edges);
 else
-    shape_dist = shape_distribution_2d(tX, tY, num_samples, bin_edges);
+    shape_dist = shape_distribution_2d(model_XY_resized, num_samples, model.bin_edges);
 end
 
 % find top matching shape distribution(s) by chi-squared distance
@@ -35,9 +32,9 @@ dists = pdist2(shape_dist', all_dists, 'chisq');
 [~, idx] = sort(dists, 'ascend');
 
 % now align in the match using PCA
-[~, ~, model_transform_from_origin] = transformation_to_origin_2d(model_XY(1, :), model_XY(2, :));
+[~, ~, model_transform_from_origin] = transformation_to_origin_2d(model_XY);
 
-% 
+% initialising empty transforms vector
 transforms = [];
 % .data_idx  scalar
 % .pca_transform (3x3)
@@ -49,11 +46,9 @@ count = 1;
 for ii = 1:number_matches_to_use
     
     this_idx = idx(ii);
-    %this_scale = scale / data.scales(this_idx);
-    this_scale = model.scales(this_idx) / scale;
-    scale_m = [this_scale, 0, 0; ...
-              0, this_scale, 0; ...
-              0 0 1];
+    
+    % getting a matrix to scale the matched depth image
+    scale_m = scale_matrix(model.scales(this_idx) / scale);
     
     % find transformaiton from top match to this object...
     flip_m{1} = [1, 0, 0; 0 -1 0; 0 0 1];
@@ -62,12 +57,9 @@ for ii = 1:number_matches_to_use
     % loop over not flipped/flipped
     for jj = 1:length(flip_m)
         
+        % stack all transforms together
         transforms(count).pca = model_transform_from_origin * scale_m * flip_m{jj} * inv(model.transf{this_idx});
-
-        if cond(transforms(count).pca) > 1e8
-            disp(['Test - Seems like conditioning is bad'])
-            keyboard
-        end
+        check_isgood_transform( transforms(count).pca )
         
         % rotate the data depth to initial guess
         data_depth = model.training_data(this_idx).depth;

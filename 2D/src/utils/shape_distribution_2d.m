@@ -1,7 +1,12 @@
-function fv = shape_distribution_2d(X, Y, num_samples, bin_edges)
+function fv = shape_distribution_2d(XY, num_samples, bin_edges)
 % compute shape distribution for 2d points
 
-num_points = length(X);
+assert(size(XY, 1) == 2);
+
+% extracting data from inputs
+num_points = size(XY, 2);
+X = XY(1, :);
+Y = XY(2, :);
 
 % choosing indices of random points
 inds1 = randi(num_points, 1, num_samples);

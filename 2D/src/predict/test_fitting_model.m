@@ -12,11 +12,14 @@ assert(isvector(depth));
 % and their transformation into the scene
 transforms = propose_transforms(model, depth, params);
 
+% aggregating the possible transforms into an output image
 if params.aggregating
     [~, stacked_image] = aggregate_masks(transforms, im_height, depth, params);
 else
     stacked_image = [];
 end
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

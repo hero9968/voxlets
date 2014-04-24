@@ -19,7 +19,7 @@ load(paths.test_data, 'test_data')
 params.scale_invariant = true;
 params.sd_angles = 0;
 train_data_subset = train_data(randperm(length(train_data), 20000));
-model = train_fitting_model(all_images, train_data_subset, params);
+model = train_fitting_model(all_images, train_data, params);
 
 %% showing all the shape distributions as an image
 all_dists = cell2mat(model.shape_dists);
@@ -29,15 +29,14 @@ imagesc(all_dists)
 save(paths.structured_predict_si_model_path, 'model');
 
 %% making a single prediction and visualising
-profile on
 clf
-num = 5500;
+num = 1500;
 params.aggregating = 1;
 params.num_proposals= 4;
 params.plotting.plot_transforms = 1;
 params.plotting.plot_matches = 0;
 %num = num+500;
-params.icp.outlier_distance = 10; 
+params.icp.outlier_distance = 14; 
 
 for ii = 1:3
     
@@ -67,7 +66,6 @@ for ii = 1:3
     set(gca, 'xlim', round([-width/4, 1.25*width]));
     set(gca, 'ylim',round([-width/4, 1.25*width]));
 end
-profile off viewer
 
 %% showing the closest matching features to the input image
 clf

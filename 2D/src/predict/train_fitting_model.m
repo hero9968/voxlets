@@ -19,19 +19,18 @@ scale = nan(1, N);
 for ii = 1:N
 
     Y = training_data(ii).depth;
-    X = 1:length(Y);
+    XY = [1:length(Y); Y];
     
     % computing the shape distributions
     if params.scale_invariant
         bin_edges = params.shape_dist.si_bin_edges;
-        scale(ii) = normalise_scale([X;Y]);
+        scale(ii) = normalise_scale(XY);
     else
         bin_edges = params.shape_dist.bin_edges;
         scale(ii) = 1;
     end
     
-    tX = scale(ii) * X(:);
-    tY = scale(ii) * Y(:);
+    XYs = scale(ii) * XY;
     
     if params.sd_angles
         %fv = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges)
@@ -39,13 +38,13 @@ for ii = 1:N
         norms = training_data(ii).normals;
         xy_bin_edges = bin_edges;
         angles_bin_edges = params.angle_edges;
-        shape_dists{ii} = shape_distribution_2d_angles([tX'; tY'], norms, num_samples, xy_bin_edges, angles_bin_edges);
+        shape_dists{ii} = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges);
     else
-        shape_dists{ii} = shape_distribution_2d(tX, tY, num_samples, bin_edges);
+        shape_dists{ii} = shape_distribution_2d(XY, num_samples, bin_edges);
     end
     
     % find the translation and rotation using PCA...
-    [translations{ii}, rotations{ii}, M{ii}] = transformation_to_origin_2d(X, Y);
+    [translations{ii}, rotations{ii}, M{ii}] = transformation_to_origin_2d(XY);
     
 end
 
