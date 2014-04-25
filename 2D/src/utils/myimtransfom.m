@@ -1,17 +1,33 @@
-function im_out = myimtransfom(im_in, T, width_out, height_out)
+function [im_out, corners_transformed] = myimtransfom(im_in, T_in, width_out, height_out, aabb_speedup)
 % my attempt at a simplified and faster imtransform.
 
 width_in = size(im_in, 1);
 height_in = size(im_in, 2);
 
+T = T_in;
+
+% transforming the bounding box into the new image
+corners = [0, 0; height_in, 0; height_in, width_in; 0, width_in]';
+corners_transformed = apply_transformation_2d(corners, T);
+
+% forming an axis-aligned bounding box from this transformed bounding box
+AABB = form_aabb(corners_transformed);
+
+% truncating AABB to the dimensions of the output image
+AABB = truncate_aabb(AABB, width_out, height_out);
+
+% position of top left of transformed image in the output space
+T(1, 3) = T(1, 3) - AABB.left;
+T(2, 3) = T(2, 3) - AABB.top;
+
 % setting up output image as a vector
-im_out = zeros(height_out*width_out, 1);
+im_out = zeros(AABB.height*AABB.width, 1);
 
 % getting the poisitions of each of the pixels in the output image
-[X, Y] = meshgrid(1:width_out, 1:height_out);
+[X, Y] = meshgrid(1:AABB.width, 1:AABB.height);
 
 % applying the transformation to these values
-transformed_coords = apply_transformation_2d([X(:)'; Y(:)'], T');
+transformed_coords = apply_transformation_2d([X(:)'; Y(:)'], inv(T));
 
 % discovering their values in the original image
 transformed_coords = round(transformed_coords);
@@ -30,10 +46,33 @@ original_pixels = im_in(idx);
 im_out(in_range) = original_pixels;
 
 % reshaping output image
-im_out = uint8(reshape(im_out, height_out, width_out));
+im_out = uint8(reshape(im_out, AABB.height, AABB.width));
+
+% padding the removed pixels
+im_out = padarray(im_out, [AABB.top, AABB.left], 0, 'pre');
+im_out = padarray(im_out, [height_out - AABB.height - AABB.top, width_out - AABB.width - AABB.left], 0, 'post');
 
 
+function AABB = form_aabb(corners_transformed)
+% forming an axis-aligned bounding box from the rotated corners
+
+AABB.top = min(corners_transformed(2, :));
+AABB.bottom = max(corners_transformed(2, :));
+AABB.left = min(corners_transformed(1, :));
+AABB.right = max(corners_transformed(1, :));
 
 
+function AABB = truncate_aabb(AABB, width_out, height_out)
+% truncating the axis-aligned bounding box according to the output dimensions
 
+AABB.left = max(1, AABB.left);
+AABB.top = max(1, AABB.top);
 
+AABB.right = min(width_out, AABB.right);
+AABB.bottom = min(height_out, AABB.bottom);
+
+AABB.width = ceil(AABB.right - AABB.left);
+AABB.height = ceil(AABB.bottom - AABB.top);
+
+AABB.left = round(AABB.left);
+AABB.top = round(AABB.top);
