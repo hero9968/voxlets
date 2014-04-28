@@ -11,7 +11,7 @@ data(:, any(isnan(data), 1)) = [];
 
 % performing ICP to refine alignment
 try
-    t_data_XY = double(apply_transformation_2d(data, T_init));
+    t_data_XY = double(apply_transformation_2d(data, T_init, 'affine'));
     temp_icp = icpMex(model, t_data_XY, eye(3), outlier_dist, 'point_to_plane');
     T_out = temp_icp * T_init;
 catch err

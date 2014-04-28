@@ -4,6 +4,10 @@ function [im_out, corners_transformed] = myimtransform(im_in, T_in, width_out, h
 width_in = size(im_in, 1);
 height_in = size(im_in, 2);
 
+width_out = round(width_out);
+height_out = round(height_out);
+
+
 T = T_in;
 
 % transforming the bounding box into the new image
@@ -74,7 +78,9 @@ AABB.top = round(max(1, AABB.top));
 
 AABB.right = round(min(width_out, AABB.right));
 AABB.bottom = round(min(height_out, AABB.bottom));
+AABB.bottom = max(AABB.bottom, 1); % just in case its negative
+AABB.right = max(AABB.right, 1); % just in case its negative
 
-AABB.width = AABB.right - AABB.left;
-AABB.height = AABB.bottom - AABB.top;
+AABB.width = max(AABB.right - AABB.left, 0);
+AABB.height = max(AABB.bottom - AABB.top, 0);
 

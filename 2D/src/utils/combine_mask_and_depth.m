@@ -13,7 +13,7 @@ if size(depth_image, 1) > size(mask, 1)
     depth_image = depth_image(1:size(mask, 1), :);
 end
 
-combined = double(mask) + 3 * depth_image;
+combined = double(mask)/255 + 3 * depth_image;
 
 % plotting if no output arguments
 if nargout == 0

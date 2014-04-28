@@ -46,12 +46,19 @@ if plotting_matches
         subplot(n, m, ii)
         
         % extracting the data edge image
-        this_idx = transforms(ii).data_idx;
-        this_image = model.images{this_idx};
-        this_depth = model.depths{this_idx};
+        %this_idx = transforms(ii).data_idx;
+        %this_image_idx = transforms(ii).image_idx;
+        
+        this_transform = double(transforms(ii).icp);
+        this_width = size(transforms(ii).base_image, 2) * sqrt(abs(det(this_transform))) ;
+        this_height = this_width * 1.5;
+        
+        this_image = myimtransform( transforms(ii).base_image, this_transform, this_width, this_height);
+        this_depth = transforms(ii).depth;
         
         % plot the model depth image
-        combine_mask_and_depth(this_image, this_depth);
+        %imagesc(this_image);
+        combine_mask_and_depth(this_image, raytrace_2d(this_image));
 
     end
 end
@@ -99,14 +106,14 @@ for ii = 1:min(num_to_plot, length(transforms))
     if transforms(ii).flipped; marker = 'o'; else marker = '^'; end
 
     % plot the pca transform
-    XYf_rot = apply_transformation_2d([Xf'; Yf'], transforms(ii).pca);
+    XYf_rot = apply_transformation_2d([Xf'; Yf'], transforms(ii).pca, 'affine');
     subplot(1, 4, 2);        hold on
     colour_string = [cols{transforms(ii).ii}];
     plot(XYf_rot(1, :), XYf_rot(2, :), marker, 'markersize', 2+1*(+transforms(ii).flipped), 'markerfacecolor', colour_string, 'markeredgecolor', 'none');
     hold off; axis image
 
     % plot the icp transform
-    XYf_rot = apply_transformation_2d([Xf'; Yf'], transforms(ii).icp);
+    XYf_rot = apply_transformation_2d([Xf'; Yf'], transforms(ii).icp, 'affine');
     subplot(1, 4, 3);        hold on
     colour_string = [cols{transforms(ii).ii}];
     plot(XYf_rot(1, :), XYf_rot(2, :), marker, 'markersize', 2+1*(+transforms(ii).flipped), 'markerfacecolor', colour_string, 'markeredgecolor', 'none');
