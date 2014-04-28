@@ -8,7 +8,7 @@ T = T_in;
 
 % transforming the bounding box into the new image
 corners = [0, 0; height_in, 0; height_in, width_in; 0, width_in]';
-corners_transformed = apply_transformation_2d(corners, T);
+corners_transformed = apply_transformation_2d(corners, T, 'affine');
 
 % forming an axis-aligned bounding box from this transformed bounding box
 AABB = form_aabb(corners_transformed);
@@ -27,7 +27,7 @@ im_out = zeros(AABB.height*AABB.width, 1);
 [X, Y] = meshgrid(1:AABB.width, 1:AABB.height);
 
 % applying the transformation to these values
-transformed_coords = apply_transformation_2d([X(:)'; Y(:)'], inv(T));
+transformed_coords = apply_transformation_2d([X(:)'; Y(:)'], inv(T), 'affine');
 
 % discovering their values in the original image
 transformed_coords = round(transformed_coords);
@@ -50,7 +50,11 @@ im_out = uint8(reshape(im_out, AABB.height, AABB.width));
 
 % padding the removed pixels
 im_out = padarray(im_out, [AABB.top, AABB.left], 0, 'pre');
-im_out = padarray(im_out, [height_out - AABB.height - AABB.top, width_out - AABB.width - AABB.left], 0, 'post');
+
+top_padsize = max(0, height_out - AABB.height - AABB.top);
+right_padsize =  max(0, width_out - AABB.width - AABB.left);
+
+im_out = padarray(im_out, [top_padsize, right_padsize], 0, 'post');
 
 
 function AABB = form_aabb(corners_transformed)
@@ -65,14 +69,12 @@ AABB.right = max(corners_transformed(1, :));
 function AABB = truncate_aabb(AABB, width_out, height_out)
 % truncating the axis-aligned bounding box according to the output dimensions
 
-AABB.left = max(1, AABB.left);
-AABB.top = max(1, AABB.top);
+AABB.left = round(max(1, AABB.left));
+AABB.top = round(max(1, AABB.top));
 
-AABB.right = min(width_out, AABB.right);
-AABB.bottom = min(height_out, AABB.bottom);
+AABB.right = round(min(width_out, AABB.right));
+AABB.bottom = round(min(height_out, AABB.bottom));
 
-AABB.width = ceil(AABB.right - AABB.left);
-AABB.height = ceil(AABB.bottom - AABB.top);
+AABB.width = AABB.right - AABB.left;
+AABB.height = AABB.bottom - AABB.top;
 
-AABB.left = round(AABB.left);
-AABB.top = round(AABB.top);

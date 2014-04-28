@@ -10,7 +10,7 @@ count = 10;
 im_in = imresize(rgb2gray(imread('peppers.png')), 0.4);
 
 % defining a rotation matrix and output parameters
-T = translation_matrix(100, 30) * rotation_matrix(30);
+T = translation_matrix(1060, 530) * rotation_matrix(200);
 width_out = 1050;
 height_out = 500;
 
@@ -36,14 +36,14 @@ ratio = matlab_time/my_time
 
 % plotting the results
 
-subplot(141);
+subplot(221);
 imagesc(im_in); 
 axis image; 
 set(gca, 'clim',[0. 255])
-
+title('Original image');
 
 for ii = 1:2
-    subplot(1,4,ii+1); 
+    subplot(2,2,ii+1); 
     imagesc(im_out{ii});
     colormap(gray)
     set(gca, 'clim',[0. 255])
@@ -52,10 +52,15 @@ for ii = 1:2
     plot(corns(1, :), corns(2, :), '+')
     hold off
 end
+
+subplot(222); title('My transform')
+subplot(223); title('Their transform')
+
 %
-subplot(144); 
+subplot(224); 
 imagesc(abs(im_out{1} - im_out{2})>2)
 axis image
+title('Difference image')
 
 ratio = matlab_time/my_time
 
