@@ -27,11 +27,9 @@ for ii = 1:N
     
     % getting the ground truth image
     this_image = images{train_data(ii).image_idx};
-    this_transform = train_data(ii).transform;
-    im_transformed = ...
-        imtransform(this_image, this_transform, ...
-                    'xdata', [1, depth_width], 'ydata', [1, depth_width]);
-    
+    this_transform = train_data(ii).transform.tdata.T';
+    im_transformed = myimtransform(this_image, this_transform, depth_width, depth_width);
+
     % finding the minimum and maxium depths    
     min_depth = this_depth;
     max_depth = findfirst(im_transformed, 1, 1, 'last');

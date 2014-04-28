@@ -1,4 +1,4 @@
-function [im_out, corners_transformed] = myimtransfom(im_in, T_in, width_out, height_out, aabb_speedup)
+function [im_out, corners_transformed] = myimtransform(im_in, T_in, width_out, height_out)
 % my attempt at a simplified and faster imtransform.
 
 width_in = size(im_in, 1);

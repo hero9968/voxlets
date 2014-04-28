@@ -1,12 +1,12 @@
 % a script to train a model from the training data...
-
 cd ~/projects/shape_sharing/2D
 clear
 define_params
-addpath src/predict
+addpath src/predict/
 addpath src/external/
-addpath src/external/findfirst
+addpath src/external/findfirst/
 addpath src/transformations/
+addpath src/utils/
 
 %% loading in all depths and shapes from disk...
 load(paths.all_images, 'all_images')
@@ -32,14 +32,13 @@ num = 2461;
 test_depth = test_data(num).depth;
 pred = gaussian_model_predict(model, test_depth, length(test_depth));
 clf
-subplot(121)
 test_image_idx = test_data(num).image_idx;
-test_transform = test_data(num).transform;
+test_transform = test_data(num).transform.tdata.T';
 depth_width = length(test_depth);
-gt_image = imtransform(all_images{test_image_idx}, test_transform, ...
-    'XYScale',1,'xdata', [1, depth_width], 'ydata', [1, depth_width]);
+gt_image = myimtransform(all_images{test_image_idx}, test_transform, depth_width, depth_width);
 
 % plotting gt
+subplot(121)
 imagesc2(gt_image); 
 hold on
 plot(1:length(test_depth), test_depth);

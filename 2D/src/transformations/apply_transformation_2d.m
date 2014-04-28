@@ -4,6 +4,7 @@ function XY_out = apply_transformation_2d(XY, transformation, transform_type)
 
 % input check
 assert(size(XY, 1)==2);
+assert(size(transformation, 1) == 3 && size(transformation, 2) == 3);
 
 if strcmp(transform_type, 'affine')
     

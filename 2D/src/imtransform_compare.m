@@ -18,7 +18,7 @@ height_out = 500;
 tic
 %profile on
 for ii = 1:count
-    [im_out{1}, corns] = myimtransfom(im_in, T, width_out, height_out);
+    [im_out{1}, corns] = myimtransform(im_in, T, width_out, height_out);
 end
 %profile off viewer
 my_time = toc;
