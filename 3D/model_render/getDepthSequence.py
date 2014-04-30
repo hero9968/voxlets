@@ -9,6 +9,18 @@ import scipy.io
 import sys
 
 
+args = sys.argv
+
+if len(args) < 4:
+    print "Not enough args"
+    sys.exit()
+
+scene = args[1]
+radius = float(args[2])
+startIdx = int(args[3])
+endIdx = int(args[4])
+
+
 def loadOBJ(filename):
 	numVerts = 0
 	verts = []
@@ -55,18 +67,24 @@ def distPlane(n,p,q):
 def loadXform():
     global idx, transMatrix
     
-    filename = "/Users/Michael/Data/Others_data/google_warehouse/rotations/rotations_162/mat_" + str(idx) + ".csv"    
-    
+    filename = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_" + str(idx) + ".csv"    
    # xform = scipy.io.loadmat(`"/Users/Michael/Data/Others_data/google_warehouse/rotations/mat_" + str(idx) + ".mat")['H']
+   
+    # loading the transform from disk
     xform = np.genfromtxt(filename, delimiter=',')
     print "Xform is " + str(xform)
+    
+    # adjusting the radius according to user supplied arguments
+    xform[0:3,3] = radius * xform[0:3,3]
+    print "Xform after is " + str(xform)
+	
+	# taking the inverse
     transMatrix = np.linalg.pinv(xform.T)
-
-    print transMatrix
+    
     print "Xform " + str(idx) + " loaded."
 
 zNear = 0.1
-zFar = 10.0
+zFar = radius * 2
 
 # Some api in the chain is translating the keystrokes to this octal string
 # so instead of saying: ESCAPE = 27, we use the following.
@@ -81,25 +99,17 @@ Width, Height = 640, 480
 # Number of the glut window.
 window = 0
 
-#mainPath = "/Users/Michael/Data/Others_data/google_warehouse/obj_beds/"
-mainPath = "/Users/Michael/Data/Derived/dino_chef_pc/models/"
+modelsPath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/centred/"
+savePath =   "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/"
+#mainPath = "/Users/Michael/Data/Derived/dino_chef_pc/models/"
 
-args = sys.argv
-
-if len(args) < 4:
-    print "Not enough args"
-    sys.exit()
-
-scene = args[1]
-startIdx = int(args[2])
-endIdx = int(args[3])
 
 idx = startIdx
 
 transMatrix = np.zeros((4,4))
 
-triangles, verts = loadOBJ(mainPath + "/" + scene + ".obj")
-#triangles, verts = loadOBJ("/Users/Michael/Dropbox/PhD/Projects/RoomExplain/python/cube.obj")
+triangles, verts = loadOBJ(modelsPath + "/" + scene + ".obj")
+#triangles, verts = loadOBJ("/Users/Michael/projects/shape_sharing/3D/model_render/data/cube.obj")
 
 print("Loaded " + str(len(triangles)) + " triangles and " + str(len(verts)) + " verts")
 
@@ -115,7 +125,7 @@ def InitGL(Width, Height):				# We call this right after our OpenGL window is cr
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
   
-   
+    
     # Calculate The Aspect Ratio Of The Window
     gluPerspective(43.0, float(Width)/float(Height), zNear, zFar)
 
@@ -169,7 +179,7 @@ def printDepth():
     
     dico = dict(depth=depth, dists=dists)
     
-    scipy.io.savemat(mainPath + scene + "/depths_162/depth_" + str(idx) + ".mat", dico)
+    scipy.io.savemat(savePath + scene + "/depth_" + str(idx) + ".mat", dico)
     print "mat written"
     
     # seeing how many depth aren't at the maximum...

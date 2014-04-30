@@ -80,7 +80,7 @@ Width, Height = 640, 480
 # Number of the glut window.
 window = 0
 
-#mainPath = "/Users/Michael/Data/Others_data/google_warehouse/obj_beds/"
+mainPath = "/Users/Michael/Data/Others_data/google_warehouse/obj_beds/"
 
 args = sys.argv
 
@@ -96,8 +96,8 @@ outpath = args[3]
 
 transMatrix = np.zeros((4,4))
 
-#triangles, verts = loadOBJ(mainPath + "/" + scene + ".obj")
-triangles, verts = loadOBJ("/Users/Michael/projects/shape_sharing/3D/model_render/cube.obj")
+triangles, verts = loadOBJ(mainPath + "/" + scene + ".obj")
+#triangles, verts = loadOBJ("/Users/Michael/Dropbox/PhD/Projects/RoomExplain/python/cube.obj")
 
 print("Loaded " + str(len(triangles)) + " triangles and " + str(len(verts)) + " verts")
 

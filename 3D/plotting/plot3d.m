@@ -60,7 +60,7 @@ if isa(colour, 'char') || numel(colour) == 3
     Y = XYZ(2, idx);
     Z = XYZ(3, idx);
     %disp('plotting...');
-    plot3(X, Y, Z, '.', 'MarkerSize', 3, 'MarkerFaceColor', colour, 'MarkerEdgeColor', colour);
+    plot3(X, Y, Z, '.', 'MarkerSize', 10, 'MarkerFaceColor', colour, 'MarkerEdgeColor', colour);
     
 % else if colour is a class label
 elseif numel(colour) == numel(XYZ)/3
