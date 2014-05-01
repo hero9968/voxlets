@@ -21,35 +21,87 @@ g++ voxel.cpp -lcvmlcpp
 #include <cvmlcpp/volume/Geometry>
 #include <cvmlcpp/volume/VolumeIO>
 #include <cvmlcpp/volume/Voxelizer>
+#include <vector>
 
 //using namespace cvmlcpp;
+using std::endl;
+using std::cout;
+
+/*
+template <typename T>
+bool readOBJ(Geometry<T> &geometry, const std::string fileName)
+{
+	
+
+}
+*/
 
 int main(int argc, char **argv)
 {
-	bool voxelise_return = 0;
-	bool read_stl_return = 0;
+	std::string filename = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/centred/49bb44051ac701a38e6dba661026d53a.obj";
 
 	cvmlcpp::Matrix<int, 3u> voxels;
 	cvmlcpp::Geometry<float> geometry;
+	
+	// am now doing some kind of loading in from an .obj file... with some kind of custom loader?
+    std::ifstream file;
+    file.open(filename);
+    if (!file.good())
+    {
+		cout << "Could not read obj file" << endl;
+		return(1);
+	}
+	
+    std::string line;
+	
+	size_t f1, f2, f3;
+	size_t temp_idx;
+	std::vector<size_t> point_keys;
+
+    while(!file.eof()) //while we are still in the file
+    {
+    	getline(file, line);
+    	std::istringstream iss( line );
+    	
+    	char nextidx;
+		iss >> nextidx;
+		
+    	switch (nextidx)
+    	{
+    		case 'v':
+	    		float v1, v2, v3;
+    			iss >> v1 >> v2 >> v3;
+    			temp_idx = geometry.addPoint(v1, v2, v3);
+    			point_keys.push_back(temp_idx);
+    			break;
+    		case 'f':
+	    		iss >> f1 >> f2 >> f3;
+	    		geometry.addFacet(point_keys.at(f1-1), point_keys.at(f2-1), point_keys.at(f3-1));
+    			break;
+    		default:
+    			cout << "Skipping\n";
+    	}
+    	
+    }
 
 	if (!cvmlcpp::readSTL(geometry, "cube.stl"))
 	{
-		std::cout << "Could not read file" << std::endl;
+		cout << "Could not read file" << endl;
 		return(1);
 	}
 
 	if (!cvmlcpp::voxelize(geometry, voxels, 0.05))
 	{
-		std::cout << "Could not voxelise" << std::endl;
+		cout << "Could not voxelise" << endl;
 		return(1);
 	}
 	
 	// printing voxels to disk
 	for ( cvmlcpp::Matrix<int, 3u>::iterator it = voxels.begin(); it != voxels.end(); ++it )
 	{
-		std::cout << *it << ", ";
+		//cout << *it << ", ";
 	}
-	std::cout << std::endl;
+	cout << endl;
 
 	
 
