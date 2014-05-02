@@ -1,20 +1,4 @@
-/*
-Ok I'm going to try to voxelise a mesh
-
-http://tech.unige.ch/cvmlcpp/source/doc/Voxelizer.html
-
-	template <typename Tg, typename voxel_type>
-	  bool voxelize(const Geometry<Tg> &geometry,
-			matrix_type<voxel_type, 3> &voxels,
-			const value_type voxelSize = 1.0,
-			const std::size_t	 pad = 0u,
-			const voxel_type inside = 1,
-			const voxel_type outside = 0);
-
-
-g++ voxel.cpp -lcvmlcpp
-
-*/
+#include "mex.h"
 
 #include <iostream>
 #include <cvmlcpp/base/Matrix>
@@ -27,6 +11,9 @@ g++ voxel.cpp -lcvmlcpp
 using std::endl;
 using std::cout;
 
+
+
+//mex mymex.cpp /usr/lib/libcvmlcpp.dylib -I/usr/include  -I/Library/Developer/CommandLineTools/usr/lib/c++/v1/
 
 template <typename T>
 bool readOBJ(cvmlcpp::Geometry<T> &geometry, const std::string filename)
@@ -87,25 +74,45 @@ bool readOBJ(cvmlcpp::Geometry<T> &geometry, const std::string filename)
 }
 
 
-int main(int argc, char **argv)
+void
+mexFunction (int nlhs, mxArray *plhs[],
+             int nrhs, const mxArray *prhs[])
 {
-//	std::string filename = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/centred/f7281caf8ed6d597b50d0c6a0c254040.obj";
-	std::string filename = "/Users/Michael/Desktop/temp_chair.obj";
+	// input checks
+	if(nrhs != 2)
+		mexErrMsgTxt("Need two input arguments, filename and scalar voxelsize");
+		
+	// getting the filename
+    size_t buflen = mxGetN(prhs[0])*sizeof(mxChar)+1;
+    char *buf;
+    buf = (char*)mxMalloc(buflen);
+    
+    // Copy the string data into buf.  (returns 1 on failure)
+    if (mxGetString(prhs[0], buf, (mwSize)buflen))
+    {
+    	mexErrMsgTxt("Cannot understand string argument. First argument should be a filename.");
+    }
+	std::string filename(buf);
+
+	// get the size of the voxels
+	float voxelsize;
+	if(!mxIsDouble(prhs[1]))
+		mexErrMsgTxt("Voxelsize must be a real double scalar.");
+	else
+		voxelsize = mxGetScalar(prhs[1]);
+
 
 	cvmlcpp::Matrix<int, 3u> voxels;
 	cvmlcpp::Geometry<float> geometry;
 	
-
 	if (!readOBJ(geometry, filename))
 	{
-		cout << "Could not read file" << endl;
-		return(1);
+		mexErrMsgTxt("Could not read file");
 	}
 
-	if (!cvmlcpp::voxelize(geometry, voxels, 0.01))
+	if (!cvmlcpp::voxelize(geometry, voxels, voxelsize))
 	{
-		cout << "Could not voxelise" << endl;
-		return(1);
+		mexErrMsgTxt("Could not voxelize");
 	}
 
 	// finding size of the matrix
@@ -113,16 +120,28 @@ int main(int argc, char **argv)
 	size_t X =  extents[2];
 	size_t Y =  extents[1];
 	size_t Z =  extents[0];
+	
+	int extents_array[3] = {(int)X, (int)Y, (int)Z};
+	
+	plhs[0] = mxCreateNumericArray(3, extents_array, mxDOUBLE_CLASS, mxREAL);
+	double *V;
+	V = mxGetPr(plhs[0]);
+	int counter = 0;
+	
+	for ( cvmlcpp::Matrix<int, 3u>::iterator it = voxels.begin(); it != voxels.end(); ++it, ++counter)
+	{
+		V[counter] = *it;
+	}
 
+/*
 	// outputting the matrix to disk somehow...
 	cout << extents[0] << " " << extents[1] << " " << extents[2] << endl;
 		// printing voxels to disk
-	for ( cvmlcpp::Matrix<int, 3u>::iterator it = voxels.begin(); it != voxels.end(); ++it )
-	{
-		cout << *it << ", ";
-	}
+
 	cout << endl;
+*/
+
+	//return 0;
 
 
-	return 0;
 }
