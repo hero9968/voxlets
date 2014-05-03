@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear paths
 
-paths.data = '~/projects/shape_sharing/data/';
+paths.data = '/Users/Michael/projects/shape_sharing/data/';
 paths.data_3d = [paths.data, '3D/'];
 
 % where the database models live
@@ -36,7 +36,7 @@ fid = fopen(paths.basis_models.filelist);
 [filelist] = textscan(fid, '%s');
 fclose(fid);
 params.model_filelist = filelist{1};
-clear filelist
+clear filelist fid ans
 
 % params for the rendering of the model
 params.model_render.hemisphere = 0;
