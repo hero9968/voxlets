@@ -1,6 +1,6 @@
 %% script to generate halo and probably save files to disk...
 clear
-run ../define_params_3d.m
+run define_params_3d.m
 close all
 plotting = 1;
 hemisphere = 0;

@@ -1,9 +1,9 @@
 % a script to render the models from different angles, using the python
 % script.
 %
-cd ~/projects/shape_sharing/3D/model_render/
+cd ~/projects/shape_sharing/3D/
 clear
-run ../define_params_3d.m
+run define_params_3d.m
 
 %% generating a reduced filelist which only consists of files which are small enough
 % (This has now been incorporated into the main model list)
@@ -51,7 +51,7 @@ for ii = 1:length(params.model_filelist)
     disp(['Doing number ' num2str(ii)]);
     
     % calling python script to render the sequence
-    system_call = ['python src/getDepthSequence.py ' model ' ' num2str(1.5*distance) ' 1 42'];
+    system_call = ['python src/getDepthSequence.py ' model ' ' num2str(distance) ' 1 42'];
     %system_call
     [A, B] = system(system_call);
     pause(1)
