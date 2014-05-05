@@ -15,6 +15,7 @@ paths.basis_models.rendered =  [paths.basis_models.root, 'renders/%s/depth_%d.ma
 paths.basis_models.voxelised = [paths.basis_models.root, 'voxelised/'];
 paths.basis_models.halo_path = [paths.basis_models.root, 'halo/'];
 paths.basis_models.halo_file = [paths.basis_models.halo_path, 'mat_%d.csv'];
+paths.basis_models.halo_file_mat = [paths.basis_models.halo_path, 'mat_%d.mat'];
 % TODO - normals, feature vectors
 
 % list of all the basis model files
@@ -49,3 +50,10 @@ params.test_split.test_fraction = 0.25;
 params.test_split.max_test_images = 50;
 params.test_split.max_training_images = 200;
 
+params.half_intrinsics = [285.15, 0, 160; ...
+                          0, 285.15, 120; ...
+                          0, 0, 1] ;
+
+params.full_intrinsics = [570.3, 0, 320; ...
+                          0, 570.3, 240; ...
+                          0, 0, 1] 
