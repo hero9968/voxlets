@@ -3,28 +3,31 @@
 
 # <codecell>
 
-
-
-import cv, cv2
+#import cv, cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import scipy.io
 
+# <codecell>
+
+plt.ion()
+
+modelpath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/%s/depth_%d.mat"
+modelname = "128ecbc10df5b05d96eaf1340564a4de";
+halopath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.mat"
+
+imheight = 240
+imwidth = 320
+nbFrames = 42
+res = 100  # resolution of the voxel grid
 
 # <codecell>
 
-name = "sponza_bunny2"
-path = "../../data/reflections/" + name + "/"
-imsize = 1024
-nbFrames = 30
-res = 128
-
-# <codecell>
-
-origin = np.array([[-0.475, 3.062, -0.582, 1]]).T
-#origin = np.array([[0, 0, 0, 1]]).T
+#origin = np.array([[-0.475, 3.062, -0.582, 1]]).T
+origin = np.array([[0, 0, 0, 1]]).T
 volume = np.zeros((res,res,res), dtype=np.uint8)
-size = 1.5
+size = 0.5
 
 
 coords = np.ones((4,res,res,res))
@@ -34,32 +37,40 @@ X = coords.reshape((4, res**3))
 
 for i in range(nbFrames):
 
-    img_raw = cv2.imread(path + "images/" + "image_" + str(i+1).zfill(3) + ".png", -1)
-    img_raw = cv2.resize(img_raw, (imsize, imsize), interpolation = cv.CV_INTER_CUBIC)
-    mask = np.uint8(img_raw[:,:,3] > 128)
+    print "Printing frame %d" % i
+
+    depth_mats = scipy.io.loadmat(modelpath % (modelname, i+1))
+    img_raw = depth_mats["depth"]
+    mask = np.uint8(img_raw < 3 )
     fmask = mask.flatten()
-        
-    mats = scipy.io.loadmat(path + "mats/mat_" + str(i+1) + ".mat")
+    plt.imshow(mask)
+    plt.draw()
+
+	# loading extrinsic (R) and intrinsic (K) parameters
+    mat_path = halopath % (i+1)
+    mats = scipy.io.loadmat(mat_path)
     K = mats["K"]
-    R = mats["R"]
-    
+    R = mats["R"].newbyteorder('=')
+        
+    # some fudge for some reason...?
     K[0,0] *= -1
-    
+
+	# combining parameters into one
     R1 = np.linalg.pinv(R).T
     R1 = R1[0:3,0:4]
     P = np.dot(K,R1)
     
-    
+    # projecting the voxel coordinates through the matrices into image coordinates
     p = np.dot(P, X)
     lmbd = p[2,:]
     p = p[0:2,:] / lmbd + np.array([[0.5, 0.5]]).T
-    
     ip = np.int32(np.round(p))
     
-    valid = np.logical_and(ip[0,:] >= 0, np.logical_and(ip[0,:] < imsize, np.logical_and(ip[1,:] >= 0, ip[1,:] < imsize)))
-    valid_volume_coords = np.where(valid)[0]
+    # finding the voxels which actually land in the image
+    valid = np.logical_and(ip[0,:] >= 0, np.logical_and(ip[0,:] < imwidth, np.logical_and(ip[1,:] >= 0, ip[1,:] < imheight)))
+    
+    valid_volume_coords = np.where(valid)[0]  # like matlab's find
     valid_img_coords = ip[:,valid_volume_coords]
-       
     
     vals = mask[valid_img_coords[1,:], valid_img_coords[0,:]]
     
@@ -68,21 +79,19 @@ for i in range(nbFrames):
     tempv = np.reshape(tempv, (res, res, res))
     
     volume = volume + tempv
-    print "image " + str(i) + " done."
     
-print "done."
-
-# <codecell>
-
-mlab.pipeline.volume(mlab.pipeline.scalar_field(volume), vmin=29)
-mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(volume), plane_orientation='y_axes', slice_index=1,)
-mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(volume),plane_orientation='z_axes',slice_index=32,)
-mlab.outline()
-mlab.show()
-
-# <codecell>
+print "Done all frames."
 
 d = dict(vol=volume, coords=coords, res=res, origin=origin, size=size)
-scipy.io.savemat(path + "vol.mat", d)
+savepath = "/Users/Michael/projects/shape_sharing/3D/model_render/clement_carving/temp.mat"
+scipy.io.savemat(savepath, d)
+
+# <codecell>
+
+#mlab.pipeline.volume(mlab.pipeline.scalar_field(volume), vmin=29)
+#mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(volume), plane_orientation='y_axes', slice_index=1,)
+#mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(volume),plane_orientation='z_axes',slice_index=32,)
+#mlab.outline()
+#mlab.show()
 
 
