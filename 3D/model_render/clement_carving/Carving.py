@@ -14,7 +14,7 @@ import scipy.io
 plt.ion()
 
 modelpath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/%s/depth_%d.mat"
-modelname = "128ecbc10df5b05d96eaf1340564a4de";
+modelname = "1383dcbd17cbc474e43f40ae23b6b0db";
 halopath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.mat"
 
 imheight = 240
@@ -41,6 +41,8 @@ for i in range(nbFrames):
 
     depth_mats = scipy.io.loadmat(modelpath % (modelname, i+1))
     img_raw = depth_mats["depth"]
+    print img_raw.min()
+    print img_raw.max()
     mask = np.uint8(img_raw < 3 )
     fmask = mask.flatten()
     plt.imshow(mask)
@@ -57,32 +59,49 @@ for i in range(nbFrames):
 
 	# combining parameters into one
     R1 = np.linalg.pinv(R).T
+    #print R1
     R1 = R1[0:3,0:4]
     P = np.dot(K,R1)
     
     # projecting the voxel coordinates through the matrices into image coordinates
     p = np.dot(P, X)
-    lmbd = p[2,:]
+    #print p[0:3, 0:10]
+    lmbd = p[2,:]  # this is the depth?
     p = p[0:2,:] / lmbd + np.array([[0.5, 0.5]]).T
     ip = np.int32(np.round(p))
     
     # finding the voxels which actually land in the image
     valid = np.logical_and(ip[0,:] >= 0, np.logical_and(ip[0,:] < imwidth, np.logical_and(ip[1,:] >= 0, ip[1,:] < imheight)))
     
-    valid_volume_coords = np.where(valid)[0]  # like matlab's find
-    valid_img_coords = ip[:,valid_volume_coords]
+    # list of indices of voxels which project into image
+    valid_volume_coords = np.where(valid)[0]  
+
+    # which pixels in the image these voxels project to
+    valid_img_coords = ip[:,valid_volume_coords] 
     
-    vals = mask[valid_img_coords[1,:], valid_img_coords[0,:]]
+    # boolean array – do these voxels fall inside the object mask or not? 
+    vals = mask[valid_img_coords[1,:], valid_img_coords[0,:]] 
+
+    # ...and what are their depths in the input image?
+    image_depths = img_raw[valid_img_coords[1,:], valid_img_coords[0,:]] 
+    voxel_depths = -lmbd[valid] 
+
+    # negating items in the boolean array which are at the wrong depth
+    print voxel_depths.min()
+    print voxel_depths.max()
+    vals[voxel_depths < image_depths] = 0
     
+    # creating voxel matrix for this image, populate with boolean array values (in mask or not?)
     tempv = np.zeros(res**3, dtype=np.uint8)
     tempv[valid_volume_coords] = vals
+
+    # reshaping and adding to the overall voxel array
     tempv = np.reshape(tempv, (res, res, res))
-    
     volume = volume + tempv
     
 print "Done all frames."
 
-d = dict(vol=volume, coords=coords, res=res, origin=origin, size=size)
+d = dict(vol=volume, coords=coords, res=res, origin=origin, size=size, depth=lmbd)
 savepath = "/Users/Michael/projects/shape_sharing/3D/model_render/clement_carving/temp.mat"
 scipy.io.savemat(savepath, d)
 

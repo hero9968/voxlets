@@ -1,7 +1,8 @@
+cd ~/projects/shape_sharing/3D/model_render/clement_carving/
 addpath ../../plotting/
 
 %%
-[AA, BB] = system('python Carving.py');
+%[AA, BB] = system('python Carving.py');
 
 %%
 vox = load('temp.mat')
@@ -13,7 +14,8 @@ unique(vox.vol(:))
 
 %% plotting the volume
 clf
-vol3d('CData', vox.vol == max(vox.vol(:)))
+threshold = 25;%max(vox.vol(:)) - 4;
+vol3d('CData', vox.vol >= threshold)
 axis image
 
 %% trying a contour plot
