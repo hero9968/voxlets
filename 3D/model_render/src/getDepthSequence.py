@@ -48,13 +48,13 @@ def loadOBJ(filename):
 				numVerts += 1
 	return vertsOut, verts
     
-
     
 def drawMesh():
     glBegin(GL_TRIANGLES)
     for i in range(len(triangles)):
         glVertex3fv(triangles[i])
     glEnd()
+
     
 def getPlane(mat):
     n = mat[0:3, 2]
@@ -67,10 +67,8 @@ def distPlane(n,p,q):
 def loadXform():
     global idx, transMatrix
     
-    filename = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_" + str(idx) + ".csv"    
-   # xform = scipy.io.loadmat(`"/Users/Michael/Data/Others_data/google_warehouse/rotations/mat_" + str(idx) + ".mat")['H']
-   
     # loading the transform from disk
+    filename = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_" + str(idx) + ".csv"    
     xform = np.genfromtxt(filename, delimiter=',')
     print "Xform is " + str(xform)
     
@@ -91,18 +89,13 @@ zFar = radius * 2
 ESCAPE = '\033'
 SPACE = '\040'
 
-#global xform, transMatrix, startIdx, endIdx, idx, plane
-
-#Width, Height = 1024, 1024
-Width, Height = 640, 480
+Width, Height = 320, 240
 
 # Number of the glut window.
 window = 0
 
 modelsPath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/centred/"
 savePath =   "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/"
-#mainPath = "/Users/Michael/Data/Derived/dino_chef_pc/models/"
-
 
 idx = startIdx
 
@@ -135,8 +128,6 @@ def InitGL(Width, Height):				# We call this right after our OpenGL window is cr
 
 # The function called when our window is resized (which shouldn't happen if you enable fullscreen, below)
 def ReSizeGLScene(Width, Height):
-    if Height == 0:						# Prevent A Divide By Zero If The Window Is Too Small
-	    Height = 1
 
     glViewport(0, 0, Width, Height)		# Reset The Current Viewport And Perspective Transformation
     glMatrixMode(GL_PROJECTION)
@@ -153,8 +144,7 @@ def DrawGLScene():
     
 	glLoadMatrixf(transMatrix)
 	#gluLookAt()
-    
-    
+
 	drawMesh()
     
 	#  since this is double buffered, swap the buffers to display what just got drawn.
@@ -196,7 +186,7 @@ def keyPressed(*args):
         printDepth()
    
 def timerf(time):
-    global idx
+    global idx, meshmodel
     
     print "timerfunc"
     

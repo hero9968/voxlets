@@ -8,5 +8,4 @@
 - [ ] Choose a depth image to use
 - [ ] Segmentation of depth image
 - [ ] Clean up folders and files
-
-
+- [x] depth2xyz -> make use specified intrinsics
