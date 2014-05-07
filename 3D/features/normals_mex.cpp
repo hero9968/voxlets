@@ -69,13 +69,17 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
 	// return the normals...
   plhs[0] = mxCreateDoubleMatrix( (mwSize)rows, (mwSize)cols, mxREAL);
-  double *out_ptr = mxGetPr(plhs[0]);
+  double *normals_out_ptr = mxGetPr(plhs[0]);
+
+  plhs[1] = mxCreateDoubleMatrix( (mwSize)rows, 1, mxREAL);
+  double *curve_out_ptr = mxGetPr(plhs[1]);  
   
   for (int i = 0; i < rows; ++i)
  	{
-  	out_ptr[i] = cloud_normals->at(i).normal_x;
-  	out_ptr[i + rows] =  cloud_normals->at(i).normal_y;
-  	out_ptr[i + 2 * rows] =  cloud_normals->at(i).normal_z;
+  	normals_out_ptr[i] = cloud_normals->at(i).normal_x;
+  	normals_out_ptr[i + rows] =  cloud_normals->at(i).normal_y;
+  	normals_out_ptr[i + 2 * rows] = cloud_normals->at(i).normal_z;
+    curve_out_ptr[i] = cloud_normals->at(i).curvature;
 	}
   //cloud->clear();
   //cloud_normals->clear();

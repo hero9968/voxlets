@@ -12,7 +12,9 @@ binary_cell = cell(N, 1);
 
 for ii = 1:N
     
-    unique_idxs = unique(segments(ii, :));
+    unique_idxs = nanunique(segments(ii, :));
+    unique_idxs(isnan(unique_idxs)) = [];
+    
     this_binary = zeros(length(unique_idxs), M);
     
     % extract each segment from this set of segments
