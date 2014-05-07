@@ -32,7 +32,7 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
   if (cols != 3)
     mexErrMsgTxt("Wrong number of columns - expected 3.");
   
-  mexPrintf("Creating cloud");
+  mexPrintf("Computing normals...\t");
   double *data = mxGetPr(prhs[0]);
   for (int i = 0; i < rows; ++i)
  	{
@@ -81,6 +81,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
   	normals_out_ptr[i + 2 * rows] = cloud_normals->at(i).normal_z;
     curve_out_ptr[i] = cloud_normals->at(i).curvature;
 	}
+
+  mexPrintf("Done\n");
   //cloud->clear();
   //cloud_normals->clear();
   

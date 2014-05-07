@@ -43,8 +43,6 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
   double *normals_data = mxGetPr(prhs[1]);
   double *curve_data = mxGetPr(prhs[2]);
-  mexPrintf("There are %d rows and %d cols\n", rows, cols);
-  mexPrintf("1\n");
   for (int i = 0; i < rows; ++i)
   {
     pcl::Normal normal( (float)normals_data[i], (float)normals_data[i + rows], (float)normals_data[i + 2 * rows] );
@@ -62,9 +60,9 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
   double *smoothness_threshold = mxGetPr(prhs[6]);
   double *curvature_threshold = mxGetPr(prhs[7]);
 
-  mexPrintf("Minx size %d and max size %d\n", *minsize, *maxsize);
-  mexPrintf("Neighbours %d\n", *num_neighbours);
-  mexPrintf("Smooth %f and curve %f\n", *smoothness_threshold, *curvature_threshold);
+//  mexPrintf("Minx size %d and max size %d\n", *minsize, *maxsize);
+//  mexPrintf("Neighbours %d\n", *num_neighbours);
+//  mexPrintf("Smooth %f and curve %f\n", *smoothness_threshold, *curvature_threshold);
 
   // doing segmentation
   pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
