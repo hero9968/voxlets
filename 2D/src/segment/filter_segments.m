@@ -13,7 +13,7 @@ segments(:, nan_points) = [];
 min_size = opts.min_size;
 overlap_threshold = opts.overlap_threshold;
 
-binary_segments = segments_to_binary(segments);
+binary_segments = segments_to_binary(segments, -1);
 
 % remove segments which are too small
 segment_sizes = sum(binary_segments, 2);

@@ -1,5 +1,9 @@
-function [idx_out, temp_idx_out] = segment_wrapper( xyz, normals, curve, opts )
+function [idx_out, temp_idx_out] = segment_wrapper( cloud, opts )
 % matlab wrapper for fpfh mex function
+
+xyz = cloud.xyz;
+normals = cloud.normals;
+curve = cloud.curvature;
 
 % remove nan
 n = size(xyz, 1);
