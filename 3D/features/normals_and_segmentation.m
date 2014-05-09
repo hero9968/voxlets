@@ -17,8 +17,8 @@ load(depth_name, 'depth');
 depth(abs(depth-3) < 0.001) = nan;
 %}
 %% Loading in real depth image!
-depth_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_28_depth.png';
-rgb_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_28.png';
+depth_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_1_depth.png';
+rgb_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_1.png';
 depth = double(imread(depth_path))/1000;
 depth(depth==0) = nan;
 %imagesc(depth)

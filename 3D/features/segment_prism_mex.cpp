@@ -9,6 +9,8 @@ Use like this:
 #include "mex.h"
 #include <iostream>
 #include <string.h>
+#include <time.h>
+//#include <mach/mach.h>
 
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
@@ -32,6 +34,8 @@ Use like this:
 
 #define SEGMENTS_OUT plhs[0]
 
+
+
 struct plane
 {
   pcl::PointIndices::Ptr inliers;
@@ -42,6 +46,15 @@ struct plane
 void
 mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])  
 {
+
+  clock_t time1, time2;
+  double t_diff;
+  //clock_serv_t cclock;
+  //mach_timespec_t time1, time2;
+  //host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+  //timespec  time1, time2;
+  //time1 = clock();
+  time1 = clock();
 
   /************************************/
   /* Reading MEX input data           */
@@ -98,10 +111,16 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 //  mexPrintf("Neighbours %d\n", *num_neighbours);
 //  mexPrintf("Smooth %f and curve %f\n", *smoothness_threshold, *curvature_threshold);
 
+  t_diff = (double)(clock() - time1)/CLOCKS_PER_SEC;
+  mexPrintf("...Mex input done: %f\n", t_diff);
+  time1 = clock();
+  t_diff = (double)(clock() - time1)/CLOCKS_PER_SEC;
+  mexPrintf("...Joke test: %f\n", t_diff);
+  time1 = clock();
   /*****************************************/
   /* Detecting and removing large planes   */
   /*****************************************/
-
+  
   // Create the segmentation object for the planar model and set all the parameters
   pcl::SACSegmentation<pcl::PointXYZL> seg;
   pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
@@ -166,6 +185,10 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     counter++;
   }
 
+  t_diff = (double)(clock() - time1)/CLOCKS_PER_SEC;
+  mexPrintf("...Plane detection done: %f\n", t_diff);
+  time1 = clock();
+
   /*****************************************/
   /* Choosing most upright plane  */
   /*****************************************/
@@ -195,6 +218,10 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     }
   }
   mexPrintf("The best plane is %d with a score of %f\n", best_plane, best_score);
+
+  t_diff = (double)(clock() - time1)/CLOCKS_PER_SEC;
+  mexPrintf("...Choosing best plane done: %f\n", t_diff);
+  time1 = clock();
 
   /*******************************************/
   // extracting points from convex hull of best plane
@@ -252,6 +279,10 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     remaining_normals->push_back(cloud_normals->at(this_idx));
   }
 
+  t_diff = (double)(clock() - time1)/CLOCKS_PER_SEC;
+  mexPrintf("...Chull done: %f\n", t_diff);
+  time1 = clock();
+
   /*******************************************/
   // segmenting the remaining points
   /*******************************************/
@@ -271,6 +302,10 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
   mexPrintf("Found %d clusters\n", clusters.size());
   
+  t_diff = (double)(clock() - time1)/CLOCKS_PER_SEC;
+  mexPrintf("...Segmenting done: %f\n", t_diff);
+  time1 = clock();
+
   /*******************************************/
   // returning found segments to MEX
   /*******************************************/
@@ -293,5 +328,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
       out_ptr[this_point_idx] = clust_idx;
     }
   }
+
+  t_diff = (double)(clock() - time1)/CLOCKS_PER_SEC;
+  mexPrintf("...Returning done: %f\n", t_diff);
 
 }
