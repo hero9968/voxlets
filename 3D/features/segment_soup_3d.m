@@ -4,8 +4,8 @@ function [output_matrix, final_idx] = segment_soup_3d( cloud, opts )
 % opts is a structure with options
 
 % setting parameters for segmentation and combination
-smoothness_thresholds = ((1:5:20) / 180 ) * pi;
-curvature_thresholds = 1;
+smoothness_thresholds = ((5:5:25) / 180 ) * pi;
+curvature_thresholds = [0.1, 1];
 
 filter_opts.min_size = opts.min_cluster_size;
 filter_opts.overlap_threshold = opts.overlap_threshold;
@@ -26,9 +26,11 @@ for ii = 1:length(smoothness_thresholds)
         opts.curvature_threshold = curvature_thresholds(jj);
         
         [all_idx{count}] = segment_wrapper(cloud_filtered, opts);
-        count = count + 1;
         
         disp(['Done ' num2str(count) ' of ' num2str(N)])
+        
+        count = count + 1;
+        
     end
 end
 
