@@ -200,37 +200,37 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
             << cloud_projected->points.size () << " data points." << std::endl;
 
   // copying projected cloud to new cloud
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_projected2 (new pcl::PointCloud<pcl::PointXYZ>);  
+  pcl::PointCloud<pcl::PointXYZL>::Ptr cloud_projected2 (new pcl::PointCloud<pcl::PointXYZL>);  
   pcl::copyPointCloud(*cloud_projected, *cloud_projected2);     
 //<pcl::PointXYZL, pcl::PointXYZ>
   // Computing the convex hull of the projected points
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull (new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::ConvexHull<pcl::PointXYZ> chull;
+  pcl::PointCloud<pcl::PointXYZL>::Ptr cloud_hull (new pcl::PointCloud<pcl::PointXYZL>);
+  pcl::ConvexHull<pcl::PointXYZL> chull;
+  chull.setDimension (2);
   chull.setInputCloud (cloud_projected2);
-  
-  for (size_t i = 0; i < 100; ++i) //cloud_projected2->points.size(); ++i)
-  {
-    mexPrintf("P = [%f %f %f]\n", cloud_projected2->points.at(i).x, cloud_projected2->points.at(i).y, cloud_projected2->points.at(i).z);
-  }
   chull.reconstruct (*cloud_hull);
 
-
-
-/*
   // now extracting the prism of points relating to the best plane
-  pcl::ExtractPolygonalPrismData<pcl::PointXYZL> ex;
-  ex.setInputCloud (remaining_points);
-  ex.setInputPlanarHull (cloud_hull);
-  //PointIndices::Ptr output (new PointIndices);
-  //ex.segment (*output);
-  //Starting from the segment
-*/
+  pcl::ExtractPolygonalPrismData<pcl::PointXYZL> prism;
+  prism.setInputCloud (remaining_points);
+  prism.setInputPlanarHull (cloud_hull);
+  prism.setHeightLimits( -0.01, +0.5 );
+  pcl::PointIndices::Ptr output (new pcl::PointIndices);
+  prism.segment (*output);
+
+  // Starting from the segment
+  pcl::PointCloud<pcl::PointXYZL>::Ptr tabletop_points (new pcl::PointCloud<pcl::PointXYZL>);
+  extract.setInputCloud (remaining_points);  
+  extract.setIndices (output);
+  extract.setNegative (false);
+  extract.filter (*tabletop_points);
+
 
   // extracting the equivalent normals
   pcl::PointCloud<pcl::Normal>::Ptr remaining_normals (new pcl::PointCloud<pcl::Normal>);
-  for (size_t i = 0; i < remaining_points->points.size(); ++i)
+  for (size_t i = 0; i < tabletop_points->points.size(); ++i)
   {
-    size_t this_idx = remaining_points->at(i).label;
+    size_t this_idx = tabletop_points->at(i).label;
     remaining_normals->push_back(cloud_normals->at(this_idx));
   }
 
@@ -240,7 +240,7 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
   reg.setMaxClusterSize (*maxsize);
   reg.setSearchMethod (tree);
   reg.setNumberOfNeighbours (*num_neighbours);
-  reg.setInputCloud (remaining_points);
+  reg.setInputCloud (tabletop_points);
   reg.setInputNormals (remaining_normals);
   reg.setSmoothnessThreshold (*smoothness_threshold);
   reg.setCurvatureThreshold (*curvature_threshold);
@@ -260,11 +260,11 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
   {
     for (size_t i = 0; i < clusters[clust_idx].indices.size(); ++i)
     {
-      // get the index of the point in the *filtered* cloud, i.e. remaining_points
-      size_t this_point_idx_in_remaining_points = clusters[clust_idx].indices[i];
+      // get the index of the point in the *filtered* cloud, i.e. tabletop_points
+      size_t this_point_idx_in_tabletop_points = clusters[clust_idx].indices[i];
 
       // convert the index to the index in the full cloud
-      size_t this_point_idx = remaining_points->at(this_point_idx_in_remaining_points).label;
+      size_t this_point_idx = tabletop_points->at(this_point_idx_in_tabletop_points).label;
 //      mexPrintf("This point is %d\n", this_point_idx);
 
       out_ptr[this_point_idx] = clust_idx;

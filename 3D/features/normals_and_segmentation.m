@@ -2,6 +2,7 @@
 clear
 cd ~/projects/shape_sharing/3D/features/
 addpath ../plotting/
+addpath ../../common/
 addpath ../transformations/
 addpath ../../2D/src/segment/
 run ../define_params_3d.m
@@ -39,13 +40,13 @@ opts.smoothness_threshold = (7.0 / 180.0) * pi;
 opts.curvature_threshold = 1.0;
 opts.overlap_threshold = 0.7;
 
-                %% single segmentation
+%% single segmentation
 [idx] = segment_wrapper(cloud, opts);
 nansum(idx)
 imagesc(reshape(idx, 480, 640))
 
 %% running segment soup algorithm
-%[idxs, idxs_without_nans] = segment_soup_3d(cloud, opts);
+[idxs, idxs_without_nans] = segment_soup_3d(cloud, opts);
 
 %% plotting
 clf
