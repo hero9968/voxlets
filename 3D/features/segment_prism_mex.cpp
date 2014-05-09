@@ -21,6 +21,17 @@ Use like this:
 #include <pcl/segmentation/extract_polygonal_prism_data.h>
 #include <pcl/surface/convex_hull.h>
 
+#define CLOUD_IN prhs[0]
+#define NORMALS_IN prhs[1]
+#define CURVE_IN prhs[2]
+#define MINSIZE_IN prhs[3]
+#define MAXSIZE_IN prhs[4]
+#define NUM_NEIGHBOURS_IN prhs[5]
+#define SMOOTHNESS_THRESHOLD_IN prhs[6]
+#define CURVATURE_THRESHOLD_IN prhs[7]
+
+#define SEGMENTS_OUT plhs[0]
+
 struct plane
 {
   pcl::PointIndices::Ptr inliers;
@@ -32,6 +43,10 @@ void
 mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])  
 {
 
+  /************************************/
+  /* Reading MEX input data           */
+  /************************************/
+
   // input checks
   if (nrhs != 8)
     mexErrMsgTxt("Expected 7 input arguments");
@@ -41,15 +56,15 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
   pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
   
   // get cloud and normals from mex input arguments...
-  int rows = mxGetM(prhs[0]);
-  int cols = mxGetN(prhs[0]);
+  int rows = mxGetM(CLOUD_IN);
+  int cols = mxGetN(CLOUD_IN);
   if (cols != 3)
     mexErrMsgTxt("Wrong number of columns - expected 3.");
 
-  if (rows != mxGetM(prhs[1]))
+  if (rows != mxGetM(NORMALS_IN))
     mexErrMsgTxt("XYZ and normals must have same number of rows.");
 
-  double *data = mxGetPr(prhs[0]);
+  double *data = mxGetPr(CLOUD_IN);
   for (int i = 0; i < rows; ++i)
   {
     pcl::PointXYZL point;
@@ -60,8 +75,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     cloud->push_back( point );
   }
 
-  double *normals_data = mxGetPr(prhs[1]);
-  double *curve_data = mxGetPr(prhs[2]);
+  double *normals_data = mxGetPr(NORMALS_IN);
+  double *curve_data = mxGetPr(CURVE_IN);
   for (int i = 0; i < rows; ++i)
   {
     pcl::Normal normal( (float)normals_data[i], (float)normals_data[i + rows], (float)normals_data[i + 2 * rows] );
@@ -69,19 +84,23 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     cloud_normals->push_back( normal );
   }
 
+  // extracting parameters
+  int *minsize = (int *)mxGetData(MINSIZE_IN);
+  int *maxsize = (int *)mxGetData(MAXSIZE_IN);
+  int *num_neighbours = (int *)mxGetData(NUM_NEIGHBOURS_IN);
+  double *smoothness_threshold = mxGetPr(SMOOTHNESS_THRESHOLD_IN);
+  double *curvature_threshold = mxGetPr(CURVATURE_THRESHOLD_IN);
+
   // creating kdtree
   pcl::search::Search<pcl::PointXYZL>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZL> > (new pcl::search::KdTree<pcl::PointXYZL>);
-
-  // extracting parameters
-  int *minsize = (int *)mxGetData(prhs[3]);
-  int *maxsize = (int *)mxGetData(prhs[4]);
-  int *num_neighbours = (int *)mxGetData(prhs[5]);
-  double *smoothness_threshold = mxGetPr(prhs[6]);
-  double *curvature_threshold = mxGetPr(prhs[7]);
 
 //  mexPrintf("Minx size %d and max size %d\n", *minsize, *maxsize);
 //  mexPrintf("Neighbours %d\n", *num_neighbours);
 //  mexPrintf("Smooth %f and curve %f\n", *smoothness_threshold, *curvature_threshold);
+
+  /*****************************************/
+  /* Detecting and removing large planes   */
+  /*****************************************/
 
   // Create the segmentation object for the planar model and set all the parameters
   pcl::SACSegmentation<pcl::PointXYZL> seg;
@@ -112,9 +131,6 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
       mexPrintf("Could not estimate a planar model for the given dataset.\n");
       break;
     }
-
-    // remaining points represent the points which were not segmented from the cloud.
-
 
     // Extract the planar inliers from the input cloud
     pcl::ExtractIndices<pcl::PointXYZL> extract;
@@ -150,12 +166,15 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     counter++;
   }
 
+  /*****************************************/
+  /* Choosing most upright plane  */
+  /*****************************************/
+
   // here should choose the plane which really looks like an upright plane, and do the prism extraction on it...
   float best_score = 0;
   size_t best_plane = 0;
   for (size_t i = 0; i < plane_vect.size(); ++i)
   {
-
     // the score is simply a dot product between the 'best_vector' and the up direction of the plane
     float best_vector[3] = {0, -0.848, -0.530};
     plane_vect.at(i).score = 0;
@@ -176,9 +195,10 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     }
   }
   mexPrintf("The best plane is %d with a score of %f\n", best_plane, best_score);
-  /***********************/
-  // extract a convex hull 
-  /***********************/
+
+  /*******************************************/
+  // extracting points from convex hull of best plane
+  /*******************************************/
 
   // get the xyz points associated with the best plane  
   pcl::PointCloud<pcl::PointXYZL>::Ptr plane_inliers (new pcl::PointCloud<pcl::PointXYZL>);
@@ -218,13 +238,11 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
   pcl::PointIndices::Ptr output (new pcl::PointIndices);
   prism.segment (*output);
 
-  // Starting from the segment
   pcl::PointCloud<pcl::PointXYZL>::Ptr tabletop_points (new pcl::PointCloud<pcl::PointXYZL>);
   extract.setInputCloud (remaining_points);  
   extract.setIndices (output);
   extract.setNegative (false);
   extract.filter (*tabletop_points);
-
 
   // extracting the equivalent normals
   pcl::PointCloud<pcl::Normal>::Ptr remaining_normals (new pcl::PointCloud<pcl::Normal>);
@@ -234,7 +252,10 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     remaining_normals->push_back(cloud_normals->at(this_idx));
   }
 
-  // doing segmentation
+  /*******************************************/
+  // segmenting the remaining points
+  /*******************************************/
+
   pcl::RegionGrowing<pcl::PointXYZL, pcl::Normal> reg;
   reg.setMinClusterSize (*minsize);
   reg.setMaxClusterSize (*maxsize);
@@ -250,9 +271,13 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
   mexPrintf("Found %d clusters\n", clusters.size());
   
+  /*******************************************/
+  // returning found segments to MEX
+  /*******************************************/
+
   // create output vector and initialise with -1
-  plhs[0] = mxCreateNumericMatrix( (mwSize)rows, 1, mxINT16_CLASS, mxREAL);
-  uint16_t *out_ptr = (uint16_t *)mxGetData(plhs[0]);
+  SEGMENTS_OUT = mxCreateNumericMatrix( (mwSize)rows, 1, mxINT16_CLASS, mxREAL);
+  uint16_t *out_ptr = (uint16_t *)mxGetData(SEGMENTS_OUT);
   for (size_t i = 0; i < rows; ++i) { out_ptr[i] = -1; }
 
   // return the indices of the segments found
@@ -265,8 +290,6 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
       // convert the index to the index in the full cloud
       size_t this_point_idx = tabletop_points->at(this_point_idx_in_tabletop_points).label;
-//      mexPrintf("This point is %d\n", this_point_idx);
-
       out_ptr[this_point_idx] = clust_idx;
     }
   }
