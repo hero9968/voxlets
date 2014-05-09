@@ -20,6 +20,11 @@ segment_sizes = sum(binary_segments, 2);
 segments_to_remove = segment_sizes < min_size;
 binary_segments(segments_to_remove, :) = [];
 
+% take unique binary segments
+size(binary_segments)
+binary_segments = unique(binary_segments, 'rows');
+size(binary_segments)
+
 % merge/remove overlapping segments
 distances = pdist(binary_segments, @overlap_function);
 distances = triu(squareform(distances));
