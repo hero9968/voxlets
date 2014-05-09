@@ -14,7 +14,7 @@ unique(vox.vol(:))
 
 %% plotting the volume
 clf
-threshold = 25;%max(vox.vol(:)) - 4;
+threshold = max(vox.vol(:));
 vol3d('CData', vox.vol >= threshold)
 axis image
 

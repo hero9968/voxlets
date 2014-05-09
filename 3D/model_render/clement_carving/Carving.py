@@ -14,13 +14,13 @@ import scipy.io
 plt.ion()
 
 modelpath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/%s/depth_%d.mat"
-modelname = "1383dcbd17cbc474e43f40ae23b6b0db";
+modelname = "1f8275f1c106144ff11c3739edd52fa3";
 halopath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.mat"
 
 imheight = 240
 imwidth = 320
 nbFrames = 42
-res = 100  # resolution of the voxel grid
+res = 200  # resolution of the voxel grid
 
 # <codecell>
 
@@ -35,7 +35,7 @@ coords[0:3,:,:,:] = np.mgrid[origin[0]-size:origin[0]+size:res*1j, origin[1]-siz
 
 X = coords.reshape((4, res**3))
 
-for i in range(nbFrames):
+for i in (3, 10, 15, 20): #range(5):
 
     print "Printing frame %d" % i
 
@@ -45,8 +45,8 @@ for i in range(nbFrames):
     print img_raw.max()
     mask = np.uint8(img_raw < 3 )
     fmask = mask.flatten()
-    plt.imshow(mask)
-    plt.draw()
+    #plt.imshow(mask)
+    #plt.draw()
 
 	# loading extrinsic (R) and intrinsic (K) parameters
     mat_path = halopath % (i+1)
@@ -67,8 +67,8 @@ for i in range(nbFrames):
     p = np.dot(P, X)
     #print p[0:3, 0:10]
     lmbd = p[2,:]  # this is the depth?
-    p = p[0:2,:] / lmbd + np.array([[0.5, 0.5]]).T
-    ip = np.int32(np.round(p))
+    p = p[0:2,:] / lmbd# + np.array([[0.5, 0.5]]).T
+    ip = np.int32(np.floor(p))
     
     # finding the voxels which actually land in the image
     valid = np.logical_and(ip[0,:] >= 0, np.logical_and(ip[0,:] < imwidth, np.logical_and(ip[1,:] >= 0, ip[1,:] < imheight)))
@@ -87,8 +87,8 @@ for i in range(nbFrames):
     voxel_depths = -lmbd[valid] 
 
     # negating items in the boolean array which are at the wrong depth
-    print voxel_depths.min()
-    print voxel_depths.max()
+    #print voxel_depths.min()
+    #print voxel_depths.max()
     vals[voxel_depths < image_depths] = 0
     
     # creating voxel matrix for this image, populate with boolean array values (in mask or not?)

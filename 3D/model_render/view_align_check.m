@@ -8,7 +8,7 @@ addpath ../transformations/
 run ../define_params_3d.m
 
 %% setting up the paths
-num = 10;
+num = 100;
 model = params.model_filelist{num};
 
 %% loading in the views and plotting
