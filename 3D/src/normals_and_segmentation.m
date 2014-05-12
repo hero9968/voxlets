@@ -1,9 +1,10 @@
 % a script to load in a depth image, convert to xyz, compute normals and segment
 clear
-cd ~/projects/shape_sharing/3D/features/
-addpath ../plotting/
+cd ~/projects/shape_sharing/3D/src/
+addpath plotting/
+addpath features/
 addpath ../../common/
-addpath ../transformations/
+addpath transformations/
 addpath ../../2D/src/segment/
 run ../define_params_3d.m
 
@@ -17,8 +18,8 @@ load(depth_name, 'depth');
 depth(abs(depth-3) < 0.001) = nan;
 %}
 %% Loading in real depth image!
-depth_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_1_depth.png';
-rgb_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_1.png';
+depth_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_50_depth.png';
+rgb_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_50.png';
 depth = double(imread(depth_path))/1000;
 depth(depth==0) = nan;
 %imagesc(depth)
@@ -57,3 +58,9 @@ for ii = 1:size(idxs, 2)
     subplot(n, m, ii)
     plot_depth_segmentation(cloud.depth, temp_image);
 end
+
+%% attempt to read a pcd file
+addpath ./file_io/matpcl/
+filepath = '/Users/Michael/data/others_data/ECCV_dataset/pcd_files/frame_20111220T111153.549117.pcd';
+P = loadpcd(filepath);
+image(P(:, :, 4:6)); axis image
