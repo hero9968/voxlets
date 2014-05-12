@@ -58,6 +58,11 @@ params.segment_soup.smoothness_threshold = (7.0 / 180.0) * pi;
 params.segment_soup.curvature_threshold = 1.0;
 params.segment_soup.overlap_threshold = 0.9;
 
+% parameters for the shape distribution
+params.shape_dist.bin_edges = linspace(0, 5, 50);
+params.shape_dist.num_samples = 5000;
+params.shape_dist.rescaling = true;
+
 % kinect parameters
 params.focal_length = 240/(tand(43/2));
 % note that old focal length was 570.3 - make sure to use a suitable one
@@ -68,8 +73,7 @@ params.half_intrinsics = [params.focal_length/2, 0, 160; ...
 params.full_intrinsics = [params.focal_length, 0, 320; ...
                           0, params.focal_length, 240; ...
                           0, 0, 1];
-                      
-
+                       
 params.rgbddataset_intrinsics = [570.3, 0, 320; ...
                           0, 570.3, 240; ...
                           0, 0, 1];

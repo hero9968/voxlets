@@ -66,4 +66,3 @@ imagesc(reshape(idx, 480, 640))
 %% plotting
 plot_segment_soup_3d(cloud.depth, idxs);
 
-%% attempt to read a pcd file
