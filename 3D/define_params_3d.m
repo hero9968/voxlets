@@ -50,6 +50,15 @@ params.test_split.test_fraction = 0.25;
 params.test_split.max_test_images = 50;
 params.test_split.max_training_images = 200;
 
+% segmentation parameters
+params.segment_soup.min_cluster_size = 500;
+params.segment_soup.max_cluster_size = 1e6;
+params.segment_soup.num_neighbours = 50;
+params.segment_soup.smoothness_threshold = (7.0 / 180.0) * pi;
+params.segment_soup.curvature_threshold = 1.0;
+params.segment_soup.overlap_threshold = 0.9;
+
+% kinect parameters
 params.focal_length = 240/(tand(43/2));
 % note that old focal length was 570.3 - make sure to use a suitable one
 params.half_intrinsics = [params.focal_length/2, 0, 160; ...

@@ -4,8 +4,8 @@ function [output_matrix, final_idx] = segment_soup_3d( cloud, opts )
 % opts is a structure with options
 
 % setting parameters for segmentation and combination
-smoothness_thresholds = ((5:5:25) / 180 ) * pi;
-curvature_thresholds = [0.1, 1];
+smoothness_thresholds = (([5:10:25]) / 180 ) * pi;
+curvature_thresholds = [0.1, 1, 20];
 
 filter_opts.min_size = opts.min_cluster_size;
 filter_opts.overlap_threshold = opts.overlap_threshold;
