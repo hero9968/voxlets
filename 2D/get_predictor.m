@@ -101,7 +101,7 @@ switch index
         if get_handle
             load(paths.structured_predict_si_model_path, 'model');
             load(paths.test_data, 'test_data');
-            predictor.handle = @(x, h, dummy, y)(weights_predict_with_gt(model, x, h, params, {test_data.image}, y)); 
+            predictor.handle = @(x, h, dummy, gt_image)(weights_predict_with_gt(model, x, h, params, gt_image)); 
         end
         
     case 6

@@ -18,7 +18,7 @@ if strcmp(transform_type, 'affine')
     % apply transformation
     XY_out = [XY_rot(1, :) + T_trans(1); XY_rot(2, :) + T_trans(2)];
     
-elseif strcmp(transformation_type, 'projective')
+elseif strcmp(transform_type, 'projective')
 
     % convert to homogeneous coordinates
     XY_hom = cart2hom(XY);

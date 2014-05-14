@@ -6,13 +6,16 @@ clear
 run ../define_params
 addpath predict
 addpath utils
+addpath transformations/
 addpath external/
 addpath external/hist2
 addpath external/findfirst
 addpath external/libicp/matlab
+addpath ../../common/
 
 %% loading in model and test data
 load(paths.test_data, 'test_data')
+load(paths.all_images, 'all_images')
 load(paths.structured_predict_si_model_path, 'model');
 
 %% 
@@ -21,19 +24,22 @@ num = 12;
 params.num_proposals = 12;
 params.apply_known_mask = 0;
 
-depth = test_data.depths{num};
-segments = test_data.segments{num};
-gt_image = test_data.images{num};
-params.transform_type = 'pca'
+% get the test data and the gt image
+depth = test_data(num).depth;
+segments = test_data(num).segmented;
+raw_image = all_images{test_data(num).image_idx};
+[~, gt_imgs] = rotate_and_raytrace_mask(raw_image, test_data(num).angle, 1);
+gt_image = gt_imgs{1};
+params.transform_type = 'pca';
+
+%% propose transforms and aggregate
 transforms = propose_transforms(model, depth, params);
-
 [out_img, out_img_cropped, transformed] = ...
- aggregate_masks(transforms, params.im_min_height, depth, params);
-
- plot_transforms(transformed, out_img_cropped, gt_image);
+        aggregate_masks(transforms, params.im_min_height, depth, params);
+%%
+plot_transforms(transformed, out_img_cropped, gt_image);
 
 %% now am going to try to get proposals from each of the segments
-
 clf
 num = 6;
 params.num_proposals = 10;

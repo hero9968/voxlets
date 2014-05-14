@@ -1,5 +1,7 @@
 function [weights_out, other] = find_optimal_weights(depth, mask_stack, gt_img, scale_factor)
 
+assert(all(gt_img(:)<=1));
+assert(all(gt_img(:)>=0));
 
 % removing the pixels which are def. empty and which no-one cares about
 gt_filled = fill_grid_from_depth(depth, size(mask_stack, 1), 0.5);
@@ -33,7 +35,11 @@ assert(size(mask_stack_trans, 1)==length(weights));
 for ii = 1:size(mask_stack_trans, 1)
     size_prediction = sum(mask_stack_trans(ii, :));
     size_true_positive = sum(mask_stack_trans(ii, gt_img_flat>0.5));
-    weights(ii) = size_true_positive / size_prediction;
+    if size_true_positive == 0
+        weights(ii) = 0;
+    else
+        weights(ii) = size_true_positive / size_prediction;
+    end
     assert(weights(ii) >= 0 && weights(ii) <= 1);
 end
 
@@ -44,7 +50,7 @@ options = optimoptions('lsqnonlin', 'TolFun', 1e-5, 'TolX', 1e-5);
 min_weights = zeros(size(weights));
 max_weights = ones(size(weights));
 [weights_out, Resnorm, Fval, flag, out] = ...
-    lsqnonlin(err_fun, weights, [], [], options);
+    lsqnonlin(err_fun, weights, min_weights, max_weights, options);
 
 % forming the output
 other.EXITFLAG = flag;

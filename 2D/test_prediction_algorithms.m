@@ -3,8 +3,6 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-load(paths.split_path, 'split')
-load(paths.test_data, 'test_data')
 addpath src/predict
 addpath src/utils
 addpath src/transformations/
@@ -13,26 +11,40 @@ addpath src/external/hist2
 addpath src/external/libicp/matlab/
 addpath src/external/findfirst
 
+%% loading test data
+load(paths.split_path, 'split')
+load(paths.test_data, 'test_data')
+load(paths.all_images, 'all_images')
+
 %% load predictors
-predictor = get_predictor(1:8, 1, params, paths);
 
 %%
 close all
 test_idx = 3000; % which test image to use
-predictions = cell(1, length(predictor));
+
 
 % loading in the test image data
-depth = test_data(test_idx).raytraced;
-height = size(test_data(test_idx).image, 1);
+depth = test_data(test_idx).depth;
 segments = test_data(test_idx).segmented;
-ground_truth = test_data(test_idx).image;
+raw_image = all_images{test_data(test_idx).image_idx};
+[~, gt_imgs] = rotate_and_raytrace_mask(raw_image, test_data(test_idx).angle, 1);
+ground_truth = gt_imgs{1};
+%transform_image(raw_image, test_data(test_idx).transform.tdata.T);
+
+height = size(ground_truth, 1);
+%predictions = cell(1, length(predictor));
+predictions = cell(1, 8);
 
 %% loop over each prediction algorithm
-for ii = 8%1:length(predictor)
+for ii = 5%1:length(predictor)
 
-    % making the prediction
+    predictor = get_predictor(ii, 1, params, paths);
+    
+    %% making the prediction
     tic
-    predictions{ii} = predictor(ii).handle(depth, height, segments, test_idx);
+  
+    
+    predictions{ii} = predictor.handle(depth, height, segments, ground_truth);
     timings(ii) = toc;
     
     done(ii, length(predictor))

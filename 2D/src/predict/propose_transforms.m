@@ -81,6 +81,7 @@ for ii = 1:number_matches_to_use
         transforms(count).ii = ii;
         transforms(count).chi_squared = dists(this_idx);
         transforms(count).depth = data_depth;
+        transforms(count).scale = model.training_data(this_idx).scale;
         
         % add this transform into the main vector
         count = count + 1;

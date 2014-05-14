@@ -15,9 +15,11 @@ depth_in = round(depth_in);
 grid_out = zeros(image_height, width);
 
 for ii = 1:width
-    if depth_in(ii) > 0
+    if depth_in(ii) > 0 && depth_in(ii) < image_height
         grid_out(depth_in(ii), ii) = 1;
         grid_out(depth_in(ii)+1:end, ii) = fillvalue;
+    elseif depth_in(ii) <= 0
+        grid_out(1:end, ii) = fillvalue;
     end
 end
 

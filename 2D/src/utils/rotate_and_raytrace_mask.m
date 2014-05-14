@@ -1,4 +1,4 @@
-function [rotated] = rotate_and_raytrace_mask(mask, angles, scale)
+function [rotated, rotated_images] = rotate_and_raytrace_mask(mask, angles, scale)
 % takes a binary mask and a set of angles in degrees
 % returns a structure containing:
 % - the original iamge
@@ -26,6 +26,10 @@ diag_size = sqrt(imheight^2 + imwidth^2);
 rendered(length(angles)) = ...
     struct('angle', [], 'transform', [], 'depth', []);
 
+if nargout == 2
+    rotated_images = cell(1, length(angles));
+end
+
 % loop over each possible rotation and 
 for jj = 1:length(angles)
 
@@ -46,6 +50,10 @@ for jj = 1:length(angles)
         'xdata', [1, diag_size + 2], ...
         'ydata', [1, diag_size + 2]);
 
+    if nargout == 2
+        rotated_images{jj} = this_rotated_image;
+    end
+    
     % raytracing this rotated image
     rendered(jj).depth = raytrace_2d(this_rotated_image > 128);                
     rendered(jj).angle = angles(jj);

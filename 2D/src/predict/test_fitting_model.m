@@ -30,13 +30,17 @@ plotting_transforms = params.plotting.plot_transforms;
 plotting_matches = params.plotting.plot_matches;
 
 if plotting_transforms
-    num_to_plot = 18;
+    num_to_plot = params.plotting.num_matches;
     model_XY = [1:length(depth); double(depth)];
     plot_transforms(transforms, model, model_XY, num_to_plot);
 end
 
+this_width = im_height;
+
 if plotting_matches
 
+    if plotting_transforms; figure; end
+    
     %axis image
     title('Model data');
     [n, m] = best_subplot_dims(params.plotting.num_matches);
@@ -44,21 +48,18 @@ if plotting_matches
     for ii = 1:params.plotting.num_matches
                 
         subplot(n, m, ii)
-        
-        % extracting the data edge image
-        %this_idx = transforms(ii).data_idx;
-        %this_image_idx = transforms(ii).image_idx;
-        
-        this_transform = double(transforms(ii).icp);
-        this_width = size(transforms(ii).base_image, 2) * sqrt(abs(det(this_transform))) ;
+
+        this_transform = double(transforms(ii).pca * transforms(ii).img_transform.tdata.T');
+        %this_width = size(transforms(ii).base_image, 2) * sqrt(abs(det(this_transform))) ;
         this_height = this_width * 1.5;
         
         this_image = myimtransform( transforms(ii).base_image, this_transform, this_width, this_height);
         this_depth = transforms(ii).depth;
         
         % plot the model depth image
-        %imagesc(this_image);
         combine_mask_and_depth(this_image, raytrace_2d(this_image));
+        
+        title(num2str(transforms(ii).scale))
 
     end
 end
@@ -101,6 +102,7 @@ for ii = 1:min(num_to_plot, length(transforms))
     % plot the model depth image
     subplot(1, 4, 1);        hold on
     plot(X, Y, cols{ii}, 'linewidth', 3);
+    set(gca,'YDir','reverse');
 
     hold off; axis image
     if transforms(ii).flipped; marker = 'o'; else marker = '^'; end
@@ -111,6 +113,7 @@ for ii = 1:min(num_to_plot, length(transforms))
     colour_string = [cols{transforms(ii).ii}];
     plot(XYf_rot(1, :), XYf_rot(2, :), marker, 'markersize', 2+1*(+transforms(ii).flipped), 'markerfacecolor', colour_string, 'markeredgecolor', 'none');
     hold off; axis image
+    set(gca,'YDir','reverse');
 
     % plot the icp transform
     XYf_rot = apply_transformation_2d([Xf'; Yf'], transforms(ii).icp, 'affine');
@@ -118,6 +121,7 @@ for ii = 1:min(num_to_plot, length(transforms))
     colour_string = [cols{transforms(ii).ii}];
     plot(XYf_rot(1, :), XYf_rot(2, :), marker, 'markersize', 2+1*(+transforms(ii).flipped), 'markerfacecolor', colour_string, 'markeredgecolor', 'none');
     hold off; axis image
+    set(gca,'YDir','reverse');
 end
 
 end

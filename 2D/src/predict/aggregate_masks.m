@@ -10,6 +10,8 @@ width = length(depth);
 N = length(transforms);
 transform_type = params.transform_type;
 
+% removing nans from outside of depth image
+%stripped_depth = depth(~outside_nans(depth));
 known_mask = fill_grid_from_depth(depth, height, 0.5);
 
 % apply transformations to the input images
@@ -55,8 +57,9 @@ for ii = 1:N
     
     transformed(ii).depth = this_depth;
     XY = [1:length(this_depth); this_depth];
-    temp_transform = [1, 0, padding; 0, 1, padding; 0, 0, 1] * this_transform;
-    transformed(ii).transformed_depth = apply_transformation_2d(XY, temp_transform, 'affine');
+    depth_transform = translation_matrix(padding, padding) * double(transforms(ii).(transform_type));
+    %temp_transform = [1, 0, padding; 0, 1, padding; 0, 0, 1] * this_transform;
+    transformed(ii).transformed_depth = apply_transformation_2d(XY, depth_transform, 'affine');
     
 end
 

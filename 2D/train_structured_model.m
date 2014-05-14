@@ -10,6 +10,7 @@ addpath src/external/
 addpath src/external/hist2
 addpath src/external/findfirst
 addpath src/external/libicp/matlab
+addpath ../common/
 
 %% loading in all depths and shapes from disk...
 load(paths.all_images, 'all_images')
@@ -25,7 +26,7 @@ model = train_fitting_model(all_images, train_data, params);
 %% showing all the shape distributions as an image
 all_dists = cell2mat({model.training_data.shape_dist}');
 imagesc(all_dists)
-
+model.xy_bin_edges
 %% save the model
 save(paths.structured_predict_si_model_path, 'model');
 %% making a single prediction and visualising
@@ -71,13 +72,13 @@ end
 %profile off viewer
 
 %% showing the closest matching features to the input image
-clf
+close all
 %load(paths.structured_predict_si_model_path, 'model');
 
 params.aggregating = 1;
 params.plotting.plot_matches = 1;
-params.plotting.num_matches = 25;
-params.plotting.plot_transforms = 0;
+params.plotting.num_matches = 15;
+params.plotting.plot_transforms = 1;
 
 % finding the nearest neighbours
 this_image_idx = test_data(num).image_idx;
