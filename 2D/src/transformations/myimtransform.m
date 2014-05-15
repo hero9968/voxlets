@@ -20,6 +20,12 @@ AABB = form_aabb(corners_transformed);
 % truncating AABB to the dimensions of the output image
 AABB = truncate_aabb(AABB, width_out, height_out);
 
+% if AABB is in any way zero-dimensions, then no point doing the rest
+if AABB.width == 0 || AABB.height == 0
+    im_out = zeros(height_out, width_out);
+    return;
+end
+
 % position of top left of transformed image in the output space
 T(1, 3) = T(1, 3) - AABB.left;
 T(2, 3) = T(2, 3) - AABB.top;
@@ -59,6 +65,9 @@ top_padsize = max(0, height_out - AABB.height - AABB.top);
 right_padsize =  max(0, width_out - AABB.width - AABB.left);
 
 im_out = padarray(im_out, [top_padsize, right_padsize], 0, 'post');
+
+assert(size(im_out, 1) == height_out)
+assert(size(im_out, 2) == width_out)
 
 
 function AABB = form_aabb(corners_transformed)
