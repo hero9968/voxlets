@@ -1,8 +1,8 @@
-function out = noisy_or(M, dim, weights)
+function [out, M] = noisy_or(M, dim, weights)
 % similar functionality to e.g. matlab's SUM or MEAN, but does noisy OR
 
-assert(all(M(:)>=0))
-assert(all(M(:)<=1))
+%assert(all(M(:)>=0))
+%assert(all(M(:)<=1))
 
 N = size(M, dim);
 
@@ -34,3 +34,5 @@ end
 
 % forming final result
 out = 1 - prod(1-M, dim);
+
+

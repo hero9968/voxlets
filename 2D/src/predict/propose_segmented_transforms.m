@@ -35,9 +35,15 @@ for ii = 1:size(binary_segments, 1)
         transforms{ii} = propose_transforms(model, this_depth, these_params);
     end
     
+    % add on the segmented information
+    for jj = 1:length(transforms{ii})
+        transforms{ii}(jj).segment_idx = this_segment_idx;
+    end
+    
     %plot_transforms(transformed, out_img_cropped, gt_image);
     
 end
 
+% combine all proposals together
 transforms(cellfun(@isempty, transforms)) = [];
 transforms = cell2mat(transforms);
