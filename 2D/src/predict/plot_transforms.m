@@ -30,6 +30,7 @@ for jj = 1:length(to_use)
     subplot(plot_n, plot_m, jj+1); 
     imagesc(transformed(ii).cropped_mask(1:max_height, :)); 
     colormap(flipgray)
+    set(gca, 'clim', [0, 1])        
     axis image off
     
     % plotting the rendered depth from the basis shape
