@@ -5,9 +5,21 @@ plotting = 0;
 assert(exist('icpMex', 'file')==3, 'Cannot find icpMex on path')
 assert(size(data, 1) == 2);
 assert(size(model, 1) == 2);
-
+if size(model, 2) < 6
+    warning('Not enough points in Model to do ICP')
+    T_out = T_init;
+    return
+end
+if size(data, 2) < 6
+    warning('Not enough points in data to do ICP')
+    T_out = T_init;
+    return
+end
 
 data(:, any(isnan(data), 1)) = [];
+
+% check that there are enough points
+
 
 % performing ICP to refine alignment
 try
