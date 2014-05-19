@@ -1,4 +1,4 @@
-function output = weights_predict_with_gt_segmented(model, depth, segments, height, params, test_data_images, num)
+function output = weights_predict_with_gt_segmented(model, depth, segments, height, params, gt_img)
 % aim is to predict the output image using the GT to guide the selection of
 % weights
 
@@ -12,11 +12,12 @@ transforms = propose_segmented_transforms(model, depth, segments, params);
 % Here will try to optimise for the weights
 % want to find the weights that minimise the sum of squared errors over the
 % hidden part of the image
-gt_img = single(test_data_images{num});
+%gt_img = single(test_data_images{num});
 mask_stack = single(cell2mat(reshape({transformed.extended_mask}, 1, 1, [])));
-[~, other] = find_optimal_weights(depth, mask_stack, gt_img, params.optimisation_scale_factor);
+%[~, other] = find_optimal_weights(depth, mask_stack, gt_img, params.optimisation_scale_factor);
+[W, other] = find_best_weights_simple(depth, mask_stack, gt_img, params.weights_threshold);
 
 % forming final output image
-output = other.final_image;
+output = other.simple_image;
 padding = height - size(output, 1);
 output = [output; zeros(padding, size(output, 2))];

@@ -14,7 +14,9 @@ min_segment_size = 5; % number of points required to bother trying to fit
 transforms = cell(1, size(binary_segments, 1));
 
 % choose how many proposals to make for each of the segments
-num_pixels_per_segment = sum(binary_segments, 2);
+nan_locations = isnan(depth);
+
+num_pixels_per_segment = sum(binary_segments(:, ~nan_locations), 2);
 to_remove = num_pixels_per_segment < min_segment_size;
 num_pixels_per_segment(to_remove) = 0;
 pixel_distribution = num_pixels_per_segment / sum(num_pixels_per_segment);

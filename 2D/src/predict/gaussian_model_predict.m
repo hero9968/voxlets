@@ -5,7 +5,8 @@ assert(isvector(depth));
 %depth(isnan(depth)) = 1;
 
 % strip nans from outside of depth
-[to_remove] = outside_nans(depth);
+%[to_remove] = outside_nans(depth);
+[to_remove] = isnan(depth);
 cropped_width = sum(~to_remove);
 original_width = length(depth);
 

@@ -39,7 +39,8 @@ other.simple_classification = round(weights) == 1;
 
 % simple method of combining the basis shapes (creating union)
 other.simple_image = any(mask_stack(:, :, other.simple_classification), 3);
-
+other.size_prediction = size_prediction;
+other.size_true_positive = size_true_positive;
 % complex method, allowing for continuous weight values
 %[other.simple_image,  T]= noisy_or(mask_stack, 3, other.simple_classification);
 %other.simple_weights = sum(T, 3);

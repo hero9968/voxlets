@@ -3,8 +3,6 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-load(paths.split_path, 'split')
-load(paths.test_data, 'test_data')
 addpath src/predict
 addpath src/utils
 addpath src/external
@@ -12,16 +10,29 @@ addpath src/transformations/
 addpath src/external/hist2
 addpath src/external/libicp/matlab/
 addpath src/external/findfirst
-num_predictors = 8;
+num_predictors = 3;
+
+%% getting model etc
+load(paths.test_data_subset, 'test_data')
+%{
+load(paths.test_data, 'test_data')
+test_subset = randperm(length(test_data), 25);
+test_data = test_data(test_subset);
+save(paths.test_data_subset, 'test_data')
+%}
+
+load(paths.all_images, 'all_images')
+load(paths.structured_predict_si_model_path, 'model');
+params.weights_threshold = 0.99;
 
 %%
 close all
 
 % loop over each prediction algorithm
-for ii = 1:num_predictors
+for ii = 2:3%:num_predictors
     
     % loading this predictor, including the handle to run the prediction
-    predictor = get_predictor(ii, 1, params, paths);
+    predictor = get_predictor(ii, 1, params, paths, model);
     
     all_predictions = cell(1, length(test_data));
      
@@ -29,16 +40,21 @@ for ii = 1:num_predictors
     for jj = 1:length(test_data)
 
         % loading in the depth for this image
-        depth = test_data(jj).raytraced;
+        depth = test_data(jj).depth;
         segments = test_data(jj).segmented;
-        ground_truth = test_data(jj).image;
-        height = size(test_data(jj).image, 1);
+
+        raw_image = all_images{test_data(jj).image_idx};
+        [~, gt_imgs] = rotate_and_raytrace_mask(raw_image, test_data(jj).angle, 1);
+        ground_truth = im2double(gt_imgs{1});
+        clear gt_imgs;
+        
+        height = size(ground_truth, 1);
          
         % making the prediction
-        this_prediction = predictor.handle(depth, height, segments, jj);
+        this_prediction = predictor.handle(depth, height, segments, ground_truth);
         all_predictions{jj} = this_prediction;
         
-        done(jj, length(split.test_data))
+        done(jj, length(test_data))
         
     end
     

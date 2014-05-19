@@ -5,6 +5,10 @@ plotting = 0;
 assert(exist('icpMex', 'file')==3, 'Cannot find icpMex on path')
 assert(size(data, 1) == 2);
 assert(size(model, 1) == 2);
+
+data(:, any(isnan(data), 1)) = [];
+
+% check that there are enough points
 if size(model, 2) < 6
     warning('Not enough points in Model to do ICP')
     T_out = T_init;
@@ -16,11 +20,6 @@ if size(data, 2) < 6
     return
 end
 
-data(:, any(isnan(data), 1)) = [];
-
-% check that there are enough points
-
-
 % performing ICP to refine alignment
 try
     t_data_XY = double(apply_transformation_2d(data, T_init, 'affine'));
@@ -29,7 +28,7 @@ try
 catch err
     %keyboard
     disp(err)
-    error('ICP failed - not doing ICP step');
+    warning('ICP failed - not doing ICP step');
     T_out = T_init;
 end
 %T_out = T_init;

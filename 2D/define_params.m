@@ -21,6 +21,7 @@ paths.segmented_savename = [paths.segmented, '%02d_%02d_segmented.mat'];
 % train/test split
 paths.split_path = [paths.data_2d, 'split.mat'];
 paths.test_data = [paths.data_2d, 'test_data.mat'];
+paths.test_data_subset = [paths.data_2d, 'test_data_subset.mat'];
 paths.train_data = [paths.data_2d, 'train_data.mat'];
 paths.all_images = [paths.data_2d, 'all_images.mat'];
 
@@ -82,3 +83,5 @@ params.plotting.plot_matches = 0;
 params.plotting.num_matches = nan; % number of matches to plot in subplots
 params.plotting.plot_transforms = 0;
 params.plotting.plot_rotated_masks = 0; 
+
+params.weights_threshold = 0.99;

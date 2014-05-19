@@ -27,7 +27,8 @@ end
 % want to find the weights that minimise the sum of squared errors over the
 % hidden part of the image
 mask_stack = single(cell2mat(reshape({transformed.cropped_mask}, 1, 1, [])));
-[W, other] = find_optimal_weights(depth, mask_stack, gt_image, params.optimisation_scale_factor);
+%[W, other] = find_optimal_weights(depth, mask_stack, gt_image, params.optimisation_scale_factor);
+[W, other] = find_best_weights_simple(depth, mask_stack, gt_image, params.weights_threshold);
 
 %%
 
@@ -44,7 +45,7 @@ if 0
 end
 
 %% forming final output image
-output = other.final_image;
+output = other.simple_image;
 padding = height - size(output, 1);
 output = [output; zeros(padding, size(output, 2))];
 
