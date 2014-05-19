@@ -61,7 +61,9 @@ for ii = 1:N
     %temp_transform = [1, 0, padding; 0, 1, padding; 0, 0, 1] * this_transform;
     transformed(ii).transformed_depth = apply_transformation_2d(XY, depth_transform, 'affine');
     
-    transformed(ii).segment_idx = transforms(ii).segment_idx;
+    if isfield(transforms(ii), 'segment_idx')
+        transformed(ii).segment_idx = transforms(ii).segment_idx;
+    end
 end
 
 % combine output images

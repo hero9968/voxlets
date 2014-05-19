@@ -7,10 +7,7 @@ run ../define_params
 addpath predict
 addpath utils
 addpath transformations/
-addpath external/
-addpath external/hist2
-addpath external/findfirst
-addpath external/libicp/matlab
+addpath(genpath('external'))
 addpath ../../common/
 
 %% loading in model and test data
@@ -32,55 +29,96 @@ raw_image = all_images{test_data(num).image_idx};
 gt_image = gt_imgs{1};
 params.transform_type = 'pca';
 
-%% propose transforms and aggregate
+% propose transforms and aggregate
 transforms = propose_transforms(model, depth, params);
 [out_img, out_img_cropped, transformed] = ...
         aggregate_masks(transforms, params.im_min_height, depth, params);
-%%
+
 plot_transforms(transformed, out_img_cropped, gt_image);
 
 %% now am going to try to get proposals from each of the segments
-clf
-num = 6;
-params.num_proposals = 10;
+num = 200;
+params.num_proposals = 200;
 params.apply_known_mask = 0;
 params.transform_type = 'icp';
+params.icp.outlier_distance = 50;
 
-depth = test_data.depths{num};
-segments = test_data.segments{num};
-gt_image = test_data.images{num};
+depth = test_data(num).depth;
+segments = test_data(num).segmented;
+raw_image = all_images{test_data(num).image_idx};
+[~, gt_imgs] = rotate_and_raytrace_mask(raw_image, test_data(num).angle, 1);
+gt_image = gt_imgs{1};
 
 transforms = propose_segmented_transforms(model, depth, segments, params);
 
-[out_img, out_img_cropped, transformed] = ...
-    aggregate_masks(transforms, params.im_min_height, depth, params);
+transforms2 = transforms(randperm(length(transforms)));
 
-clf
+[out_img, out_img_cropped, transformed] = ...
+    aggregate_masks(transforms2, size(gt_image, 1), depth, params);
+
+%%
 plot_transforms(transformed, out_img_cropped, gt_image);
 
 %% Here will try to optimise for the weights
 % want to find the weights that minimise the sum of squared errors over the
 % hidden part of the image
-gt_img = single(test_data.images{num});
-mask_stack = single(cell2mat(reshape({transformed.cropped_mask}, 1, 1, [])));
-[weights, other] = find_optimal_weights(depth, mask_stack, gt_img);
+tic
+mask_stack = single(cell2mat(reshape({transformed.extended_mask}, 1, 1, [])));
+opts.least_squares = 0;
+%profile on
+[weights, other] = find_optimal_weights(depth, mask_stack, im2double(gt_image), 0.1);
+%profile off viewer
+toc
 
 %%
-
-subplot(121)
-imagesc(gt_img(1:other.height, :))
+subplot(231)
+imagesc(gt_image)
 axis image
 
-subplot(122)
+subplot(232)
 imagesc(other.final_image)
 axis image
-set(gca, 'clim', [0, 1])
+%set(gca, 'clim', [0, 1])
+colormap(gray)
+
+
+subplot(233)
+imagesc(other.final_image_added)
+axis image
+%set(gca, 'clim', [0, 1])
+colormap(gray)
+
+subplot(235)
+imagesc(other.simple_image)
+axis image
+%set(gca, 'clim', [0, 1])
+colormap(gray)
+
+subplot(236)
+imagesc(other.simple_image_added)
+axis image
+%set(gca, 'clim', [0, 1])
 colormap(gray)
 
 
 %%
-% full image = 2.27
-% part image = 0.706
+profile on
+[weights, other] = find_best_weights_simple(depth, mask_stack, im2double(gt_image), 0.99);
+profile off viewer
+
+subplot(231)
+imagesc(gt_image)
+axis image
+
+subplot(232)
+imagesc(other.simple_image)
+axis image
+colormap(gray)
+
+subplot(233)
+imagesc(other.simple_image2)
+axis image
+colormap(gray)
 
 
 
