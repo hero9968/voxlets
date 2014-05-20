@@ -16,9 +16,6 @@ if nargin == 4
     
     if dim == 1
         M = bsxfun(@times, M, weights(:));
-        %for ii = 1:N
-        %    M(ii, :, :) = M(ii, :, :) * weights(ii); 
-        %end
     elseif dim == 2
         for ii = 1:N
             M(:, ii, :) = M(:, ii, :) * weights(ii); 
@@ -33,13 +30,25 @@ if nargin == 4
 end
 
 % forming final result
-exp_b = exp(alpha * M);
+alpha_M = alpha * M;
 
-numerator = sum(M .* exp_b, 3);
+to_remove = alpha * max(M, [], dim);
+if dim == 1
+    alpha_M = alpha_M - repmat(to_remove, [size(M, 1), 1]);
+elseif dim == 2
+    alpha_M = alpha_M - repmat(to_remove, [1, size(M, 2)]);
+elseif dim == 3
+    alpha_M = alpha_M - repmat(to_remove, [1, 1, size(M, 3)]);
+end
 
-denominator = sum(exp_b, 3);
+exp_b = exp(alpha_M);
+
+numerator = sum(M .* exp_b, dim);
+denominator = sum(exp_b, dim);
+
+if any(isinf(numerator(:))) || any(isinf(denominator(:)))
+    error('Infinity occured')
+end
 
 final_image = numerator ./ denominator;
-final_image(isnan(final_image)) = 0;
-
 
