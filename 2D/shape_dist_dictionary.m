@@ -79,3 +79,32 @@ hold off
 colormap(gray)
 axis image
 title('Distances and angles')
+
+%% now run the dictionary on some test images
+clf
+count = 1;
+for ii = 1007%:1100
+
+    this_depth = train_data(ii).depth;
+    to_remove = outside_nans(this_depth);
+    this_depth(to_remove) = [];
+    XY = xy_from_depth(this_depth);
+    
+    % rescaling the XY points
+    xy_bin_edges = params.shape_dist.si_bin_edges;
+    train_data(ii).scale = normalise_scale(XY);
+    
+    XY_scaled = train_data(ii).scale * XY;
+    
+    % computing the distances and angles ? don't need FV at this stage
+    norms = train_data(ii).normals;
+    norms(:, to_remove) = [];
+tic
+    histogram = ...
+        shape_dist_2d_dict(XY_scaled, norms, 100000, dist_angle_dict);
+toc
+    subplot(10, 10, count);
+    count = count + 1;
+    bar(histogram)
+    set(gca, 'xlim', [0, 50])
+end

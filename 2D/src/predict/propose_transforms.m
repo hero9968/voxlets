@@ -17,23 +17,13 @@ end
 
 % computing the feature vector for the depth image
 model_XY_scaled = scale * model_XY;
-
-if model.sd_angles == 1
-    norms = normals_radius_2d(model_XY, params.normal_radius);
-    shape_dist = ...
-        shape_distribution_2d_angles(model_XY_scaled, norms, num_samples, model.xy_bin_edges, model.angle_edges, 1);
-elseif model.sd_angles == 2
-    norms = normals_radius_2d(model_XY, params.normal_radius);
-    shape_dist = ...
-        shape_distribution_2d_angles(model_XY_scaled, norms, num_samples, model.xy_bin_edges, model.angle_edges, 0);
-elseif model.sd_angles == 0
-    shape_dist = shape_distribution_2d(model_XY_scaled, num_samples, model.xy_bin_edges);
-end
+shape_dist = ...
+        shape_dist_dictionary(model_XY_scaled, norms, num_samples, model.shape_dist_dict);
 
 % find top matching shape distribution(s) by chi-squared distance
 all_dists = cell2mat({model.training_data.shape_dist}');
-%dists = pdist2(shape_dist', all_dists, 'chisq');
-dists = pdist2(shape_dist, all_dists, 'euclidean');
+dists = pdist2a(shape_dist', all_dists, 'chisq');
+%dists = pdist2(shape_dist, all_dists, 'euclidean');
 assert(size(dists, 2)==size(all_dists, 1));
 assert(size(dists, 1)==1);
 

@@ -1,4 +1,4 @@
-function fv = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges, hist_2d)
+function [fv, dists_original, angles_original] = shape_distribution_2d_angles(XY, norms, num_samples, xy_bin_edges, angles_bin_edges, hist_2d)
 % compute shape distribution for 2d points
 
 % input checks and setup
@@ -23,6 +23,8 @@ dists = sqrt(dists);
 angles = dot(norms(:, inds1), norms(:, inds2), 1);% range is [-1, 1];
 
 % removing distances out of range
+dists_original = dists;
+angles_original = angles;
 to_remove = dists < min(xy_bin_edges) | dists > max(xy_bin_edges) | dists == 0;
 
 % choosing what type of histogram to make
