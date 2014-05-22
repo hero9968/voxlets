@@ -26,6 +26,7 @@ paths.train_data = [paths.data_2d, 'train_data.mat'];
 paths.all_images = [paths.data_2d, 'all_images.mat'];
 
 % where to save the models and the predictions
+paths.dist_angle_dict = [paths.data_2d, 'dist_angle_dict.mat'];
 paths.predictions = [paths.data_2d, 'predict/'];
 paths.models_path = [paths.data_2d, 'models/'];
 paths.structured_predict_model_path = [paths.data_2d, 'models/structured_predict_large.mat'];
@@ -71,6 +72,10 @@ params.shape_dist.num_samples = 5000;
 params.shape_dist.bin_edges = [0:5:150, inf];
 params.shape_dist.si_bin_edges = linspace(0, 1, 20);
 params.angle_edges = linspace(-1, 1, 10);
+
+load(paths.dist_angle_dict, 'dist_angle_dict');
+params.dist_angle_dict = dist_angle_dict;
+clear dist_angle_dict
 
 % parameters for transformations
 params.icp.outlier_distance = 10;
