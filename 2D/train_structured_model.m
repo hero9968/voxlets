@@ -3,13 +3,7 @@
 cd ~/projects/shape_sharing/2D
 clear
 define_params
-addpath src/predict
-addpath src/utils
-addpath src/transformations/
-addpath src/external/
-addpath src/external/hist2
-addpath src/external/findfirst
-addpath src/external/libicp/matlab
+addpath(genpath('.'));
 addpath ../common/
 
 %% loading in all depths and shapes from disk...
@@ -20,13 +14,14 @@ load(paths.test_data, 'test_data')
 %% now compute the model
 params.scale_invariant = true;
 params.sd_angles = 2;
-train_data_subset = train_data(randperm(length(train_data), 200));
+%train_data_subset = train_data(randperm(length(train_data), 200));
 model = train_fitting_model(all_images, train_data, params);
 
 %% showing all the shape distributions as an image
 all_dists = cell2mat({model.training_data.shape_dist}');
 imagesc(all_dists)
 model.xy_bin_edges
+
 %% save the model
 save(paths.structured_predict_si_model_path, 'model');
 %% making a single prediction and visualising

@@ -3,9 +3,9 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-set_up_predictors
 load(paths.split_path, 'split')
 addpath src/external/SubAxis
+predictor = get_predictor(1:3, 0, params, paths);
 %length_test_data = length(split.test_data);
 
 %% loading in all the results from disk

@@ -29,7 +29,7 @@ params.weights_threshold = 0.99;
 close all
 
 % loop over each prediction algorithm
-for ii = 2:3%:num_predictors
+for ii = 1%:num_predictors
     
     % loading this predictor, including the handle to run the prediction
     predictor = get_predictor(ii, 1, params, paths, model);

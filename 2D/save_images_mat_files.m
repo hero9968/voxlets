@@ -2,6 +2,7 @@
 
 clear 
 cd ~/projects/shape_sharing/2D
+addpath ../common/
 define_params
 load(paths.split_path, 'split')
 load(paths.filelist, 'filelist')

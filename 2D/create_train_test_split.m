@@ -8,8 +8,11 @@ clear
 define_params
 load(paths.filelist)
 test_fraction = params.test_split.test_fraction;
-max_test_images = params.test_split.max_test_images;
-max_training_images = params.test_split.max_training_images;
+max_test_images = 50; %params.test_split.max_test_images;
+max_training_images = inf; %params.test_split.max_training_images;
+
+class_split = false;
+instance_split = false;
 
 %% setting some parameters
 number_shapes = length(filelist);
@@ -21,12 +24,27 @@ number_test_classes = round(test_fraction * number_classes);
 
 %% randomly assigning classes to train and test
 perm_idx = randperm(number_classes);
-split.test_class_idx = unique_class_idxs(perm_idx(1:number_test_classes));
-split.train_class_idx = unique_class_idxs(perm_idx(number_test_classes+1:end));
+if class_split
+    split.test_class_idx = unique_class_idxs(perm_idx(1:number_test_classes));
+    split.train_class_idx = unique_class_idxs(perm_idx(number_test_classes+1:end));
+else
+    split.test_class_idx = unique_class_idxs;
+    split.train_class_idx = unique_class_idxs;
+end
 
 %% converting the classes to the individual shapes
-split.test_idx = find(ismember([filelist.class_idx], split.test_class_idx));
-split.train_idx = find(ismember([filelist.class_idx], split.train_class_idx));
+if class_split
+    split.test_idx = find(ismember([filelist.class_idx], split.test_class_idx));
+    split.train_idx = find(ismember([filelist.class_idx], split.train_class_idx));
+elseif instance_split
+    number_test_instances = round(test_fraction * number_shapes);
+    split.test_idx = randperm(number_shapes, number_test_instances);
+    split.train_idx = randperm(number_shapes, number_shapes - number_test_instances);
+else
+    % no splitting at all - test data == training data
+    split.test_idx = 1:length(filelist);
+    split.train_idx = 1:length(filelist);
+end
 
 %% converting this split to file names
 

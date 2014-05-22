@@ -6,24 +6,31 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-predictor = get_predictor(1:8, 0, params, paths);
+predictor = get_predictor(1:3, 0, params, paths);
 load(paths.split_path, 'split')
-load(paths.test_data, 'test_data')
+load(paths.test_data_subset, 'test_data')
+load(paths.all_images, 'all_images')
 length_test_data = length(test_data);
 
 %% loading in the ground truth files
-all_GT = {test_data.image};
+all_GT = cell(length(test_data), 1);
+for ii = 1:length(test_data)
+    raw_image = all_images{test_data(ii).image_idx};
+    [~, gt_imgs] = rotate_and_raytrace_mask(raw_image, test_data(ii).angle, 1);
+    all_GT{ii} = im2double(gt_imgs{1}(:));
+end
+clear gt_imgs;
 
 %% saving to disk results for aach fo thw algorithms
 % Need to run this for each set of results after they have been generated,
 % before we can plot them etc.
 %
 %profile on
-for ii = [1]%1:length(predictor)
+for ii = [1:3]%1:length(predictor)
     
     predicted_path = predictor(ii).outpath;
     all_pred = cell(length_test_data, 1);
-    
+
     savepath = [predictor(ii).outpath, 'combined.mat'];
     load(savepath, 'all_predictions');
 
@@ -40,12 +47,11 @@ for ii = [1]%1:length(predictor)
         diffs = single(all_GT{jj}) - single(this_predicted_image(:));
         this_pred.ssd(jj) = sqrt(sum(diffs.^2)) / length(diffs);
         this_pred.sd(jj) = sum(abs(diffs)) / length(diffs);
-        
-        this_pred.image_auc(jj) = plot_roc(all_GT{jj}, this_predicted_image(:));
+        %this_pred.image_auc(jj) = plot_roc(all_GT{jj}(:), this_predicted_image(:));
 
         % saving the images    
         all_pred{jj} = this_predicted_image(:);
-        
+  
         done(jj, length_test_data, 50);
     end
 
@@ -55,7 +61,7 @@ for ii = [1]%1:length(predictor)
 
     [this_pred.auc, this_pred.tpr, this_pred.fpr, this_pred.thresh] = plot_roc(all_GT2, all_pred2);
     %hold on
-        
+       
     savepath = [predictor(ii).outpath, 'evaluation_results.mat'];
     save(savepath, 'this_pred');
     
