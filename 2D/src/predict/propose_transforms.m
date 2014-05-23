@@ -1,4 +1,4 @@
-function transforms = propose_transforms(model, depth, params)
+function transforms = propose_transforms(model, depth, norms, params)
 
 outlier_distance = params.icp.outlier_distance;
 number_matches_to_use = params.num_proposals;
@@ -6,7 +6,9 @@ num_samples = params.shape_dist.num_samples;
 
 % compute shape distribution for the depth
 model_XY = [1:length(depth); double(depth)];
-model_XY(:, any(isnan(model_XY), 1)) = [];
+to_remove = any(isnan(model_XY), 1);
+model_XY(:, to_remove) = [];
+norms(:, to_remove) = [];
 
 % choosing a scale for the XY points
 if model.scale_invariant
@@ -18,11 +20,11 @@ end
 % computing the feature vector for the depth image
 model_XY_scaled = scale * model_XY;
 shape_dist = ...
-        shape_dist_dictionary(model_XY_scaled, norms, num_samples, model.shape_dist_dict);
+        shape_dist_2d_dict(model_XY_scaled, norms, num_samples, model.dist_angle_dict);
 
 % find top matching shape distribution(s) by chi-squared distance
 all_dists = cell2mat({model.training_data.shape_dist}');
-dists = pdist2a(shape_dist', all_dists, 'chisq');
+dists = pdist2a(shape_dist, all_dists, 'chisq');
 %dists = pdist2(shape_dist, all_dists, 'euclidean');
 assert(size(dists, 2)==size(all_dists, 1));
 assert(size(dists, 1)==1);

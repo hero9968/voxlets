@@ -11,17 +11,16 @@ load(paths.all_images, 'all_images')
 load(paths.train_data, 'train_data')
 
 %% now compute the model
-params.scale_invariant = true;
-params.sd_angles = 2;
-
 N = length(train_data);
-
 % set up params etc.
 num_samples = params.shape_dist.num_samples;
 
 %% loop over each training instance
 clear dists angles
-for ii = 1:1000
+train_instances = randperm(N, 1000);
+for jj = 1:length(train_instances)
+
+    ii = train_instances(jj);
 
     this_depth = train_data(ii).depth;
     to_remove = outside_nans(this_depth);
@@ -37,7 +36,7 @@ for ii = 1:1000
     % computing the distances and angles ? don't need FV at this stage
     norms = train_data(ii).normals;
     norms(:, to_remove) = [];
-    [~, dists{ii}, angles{ii}] = ...
+    [~, dists{jj}, angles{jj}] = ...
         shape_distribution_2d_angles(XY_scaled, norms, num_samples, xy_bin_edges, params.angle_edges, 1);
 end
 
@@ -74,16 +73,22 @@ angles_edges = -1:0.05:1;
 H = hist2d([all_dists', all_angles'], dists_edges, angles_edges);
 imagesc(angles_edges, dists_edges, H)
 hold on
-plot(dists_angle_dict(:, 2), dists_angle_dict(:, 1), 'r.', 'markersize', 30)
+plot(dist_angle_dict(:, 2), dist_angle_dict(:, 1), 'r.', 'markersize', 30)
 hold off
 colormap(gray)
 axis image
 title('Distances and angles')
 
+%%
+[~, idx] = pdist2(dist_angle_dict, [all_dists', all_angles'], 'Euclidean', 'Smallest', 1);
+T = accumarray(idx(:), 1);
+bar(T)
+
+
 %% now run the dictionary on some test images
 clf
 count = 1;
-for ii = 1007%:1100
+for ii = 1001:1100
 
     this_depth = train_data(ii).depth;
     to_remove = outside_nans(this_depth);
@@ -99,10 +104,10 @@ for ii = 1007%:1100
     % computing the distances and angles ? don't need FV at this stage
     norms = train_data(ii).normals;
     norms(:, to_remove) = [];
-tic
+
     histogram = ...
-        shape_dist_2d_dict(XY_scaled, norms, 100000, dist_angle_dict);
-toc
+        shape_dist_2d_dict(XY_scaled, norms, 10000, dist_angle_dict);
+
     subplot(10, 10, count);
     count = count + 1;
     bar(histogram)

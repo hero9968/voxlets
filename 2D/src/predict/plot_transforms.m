@@ -3,15 +3,15 @@ function plot_transforms(transformed, output_img, gt_img)
 %max_height = 200;
 
 % settiping up subplot dimensions
-plot_n = 10;
-plot_m = 10;
+plot_n = 7;
+plot_m = 12;
 
 % rendering the depth of the gt image
 gt_depth = raytrace_2d(gt_img);
 gt_y = 1:length(gt_depth);
 
 % plotting the ground truth mask and the rendered depth
-subplot(plot_n, plot_m, 1); 
+subaxis(plot_n, plot_m, 1, 'SpacingVert',0, 'SpacingHorizontal', 0); 
 imagesc(gt_img)
 hold on
 plot(gt_y, gt_depth, 'c', 'LineWidth', 1.5)
@@ -27,7 +27,7 @@ for jj = 1:length(to_use)
     ii = to_use(jj);
     
     % plotting the basis shape
-    subplot(plot_n, plot_m, jj+1); 
+    subaxis(plot_n, plot_m, jj+1); 
     imagesc(transformed(ii).cropped_mask); 
     colormap(flipgray)
     set(gca, 'clim', [0, 1])        
@@ -47,7 +47,7 @@ for jj = 1:length(to_use)
 end
 
 % plotting the aggregated basis shapes
-subplot(plot_n, plot_m, plot_n*plot_m); 
+subaxis(plot_n, plot_m, plot_n*plot_m); 
 imagesc(output_img)
 axis image off
 title('Combination of basis shapes')

@@ -2,7 +2,7 @@ function [stacked_img, stacked_img_cropped, transformed] = ...
     aggregate_masks(transforms, height, depth, params)
 
 
-adding = false;
+adding = true;
 padding = 20;
 
 % setting up variables

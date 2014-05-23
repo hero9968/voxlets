@@ -15,6 +15,8 @@ rotate_and_raytrace
 
 %% segemnting the depth images into soup of segments
 segment_and_normals
+shape_dist_dictionary
+shape_dist_compute
 
 %% creating a train and test split and save to file
 create_train_test_split

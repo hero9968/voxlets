@@ -3,7 +3,18 @@ function combined = combine_mask_and_depth(mask, depth)
 % will plot the combined image unless an output argument is taken
 
 assert(isvector(depth))
-assert(length(depth) == size(mask, 2));
+%assert(length(depth) == size(mask, 2));
+difference = abs(length(depth)-size(mask, 2));
+if difference > 0 && difference < 4
+    warning('Depth image and rotated image not the same size - but close');
+    if length(depth) < size(mask, 2)
+        mask = mask(:, 1:length(depth));
+    else
+       mask = [mask, zeros(size(mask, 1), difference)];
+    end
+elseif difference > 4
+    error('Big difference between depth and rotated image');
+end
 
 image_height = size(mask, 1);
 

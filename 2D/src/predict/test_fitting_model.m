@@ -1,4 +1,4 @@
-function [stacked_image, transforms] = test_fitting_model(model, depth, im_height, params)
+function [stacked_image, transforms] = test_fitting_model(model, depth, norms, im_height, params)
 % image = test_fitting_model(model, depth, params)
 %
 % applys the learned model to predict the image that might be present which
@@ -10,7 +10,7 @@ assert(isvector(depth));
 
 % get vector structure of possible training images which match the depth, 
 % and their transformation into the scene
-transforms = propose_transforms(model, depth, params);
+transforms = propose_transforms(model, depth, norms, params);
 
 % aggregating the possible transforms into an output image
 if params.aggregating
@@ -85,6 +85,7 @@ function plot_transforms(transforms, model, model_XY, num_to_plot)
 
 % plot different trasnforms on top of the current mask
 cols = {'r','g', 'b', 'k', 'c', 'y', 'r','g', 'b', 'k', 'c', 'y', 'r','g', 'b', 'k', 'c', 'y'};
+cols = [cols, cols, cols, cols, cols, cols, cols, cols];
 
 X = model_XY(1, :);
 Y = model_XY(2, :);
@@ -100,7 +101,7 @@ for ii = 1:min(num_to_plot, length(transforms))
     Xf = (1:length(Yf))';
 
     % plot the model depth image
-    subplot(1, 4, 1);        hold on
+    subplot(2, 3, 1);        hold on
     plot(X, Y, cols{ii}, 'linewidth', 3);
     set(gca,'YDir','reverse');
 
@@ -109,7 +110,7 @@ for ii = 1:min(num_to_plot, length(transforms))
 
     % plot the pca transform
     XYf_rot = apply_transformation_2d([Xf'; Yf'], transforms(ii).pca, 'affine');
-    subplot(1, 4, 2);        hold on
+    subplot(2, 3, 2);        hold on
     colour_string = [cols{transforms(ii).ii}];
     plot(XYf_rot(1, :), XYf_rot(2, :), marker, 'markersize', 2+1*(+transforms(ii).flipped), 'markerfacecolor', colour_string, 'markeredgecolor', 'none');
     hold off; axis image
@@ -117,7 +118,7 @@ for ii = 1:min(num_to_plot, length(transforms))
 
     % plot the icp transform
     XYf_rot = apply_transformation_2d([Xf'; Yf'], transforms(ii).icp, 'affine');
-    subplot(1, 4, 3);        hold on
+    subplot(2, 3, 3);        hold on
     colour_string = [cols{transforms(ii).ii}];
     plot(XYf_rot(1, :), XYf_rot(2, :), marker, 'markersize', 2+1*(+transforms(ii).flipped), 'markerfacecolor', colour_string, 'markeredgecolor', 'none');
     hold off; axis image

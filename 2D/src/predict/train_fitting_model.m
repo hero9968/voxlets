@@ -13,34 +13,25 @@ num_samples = params.shape_dist.num_samples;
 for ii = 1:N
 
     XY = xy_from_depth(training_data(ii).depth);
+    norms = training_data(ii).normals;
+
+%{
+    to_remove = isnan(training_data(ii).depth);
+    XY(:, to_remove) = [];
+    norms(:, to_remove) = [];
     
     % rescaling the XY points
     if params.scale_invariant
-        xy_bin_edges = params.shape_dist.si_bin_edges;
         training_data(ii).scale = normalise_scale(XY);
     else
-        xy_bin_edges = params.shape_dist.bin_edges;
         training_data(ii).scale = 1;
     end
-    
-    XY_scaled = training_data(ii).scale * XY;
+    %}
+    %XY_scaled = training_data(ii).scale * XY;
     
     % computing the shape distributions
-    if params.sd_angles == 1
-        norms = training_data(ii).normals;
-        training_data(ii).shape_dist = ...
-            shape_distribution_2d_angles(XY_scaled, norms, num_samples, xy_bin_edges, params.angle_edges, 1);
-        
-    elseif params.sd_angles == 0
-        training_data(ii).shape_dist = shape_distribution_2d(XY_scaled, num_samples, xy_bin_edges);
-        
-    elseif params.sd_angles == 2
-        norms = training_data(ii).normals;
-        training_data(ii).shape_dist = ...
-            shape_distribution_2d_angles(XY_scaled, norms, num_samples, xy_bin_edges, params.angle_edges, 0);
-        
-    end
-    
+    %training_data(ii).shape_dist = shape_dist_2d_dict(XY_scaled, norms, num_samples, params.dist_angle_dict);
+
     % find the translation and rotation using PCA...
     [~, ~, training_data(ii).transform_to_origin] = transformation_to_origin_2d(XY);
     
@@ -52,6 +43,4 @@ model.training_data = training_data;
 
 % adding the parameters etc to the model
 model.scale_invariant = params.scale_invariant;
-model.angle_edges = params.angle_edges;
-model.sd_angles = params.sd_angles;
-model.xy_bin_edges = xy_bin_edges;
+model.dist_angle_dict = params.dist_angle_dict;

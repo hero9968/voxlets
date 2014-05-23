@@ -32,6 +32,8 @@ end
 % forming final result
 alpha_M = alpha * M;
 
+% removing a constant offset to avoid overflow
+% see e.g. http://lingpipe-blog.com/2009/03/17/softmax-without-overflow/
 to_remove = alpha * max(M, [], dim);
 if dim == 1
     alpha_M = alpha_M - repmat(to_remove, [size(M, 1), 1]);
@@ -46,7 +48,7 @@ exp_b = exp(alpha_M);
 numerator = sum(M .* exp_b, dim);
 denominator = sum(exp_b, dim);
 
-if any(isinf(numerator(:))) || any(isinf(denominator(:)))
+if any(~isfinite(numerator(:))) || any(~isfinite(denominator(:)))
     error('Infinity occured')
 end
 

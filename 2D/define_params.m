@@ -68,7 +68,7 @@ params.segment_soup.min_size = 10;
 params.gauss_model.number_bins = 25;
 
 % feature computation params
-params.shape_dist.num_samples = 5000;
+params.shape_dist.num_samples = 50000;
 params.shape_dist.bin_edges = [0:5:150, inf];
 params.shape_dist.si_bin_edges = linspace(0, 1, 20);
 params.angle_edges = linspace(-1, 1, 10);
@@ -78,6 +78,7 @@ params.dist_angle_dict = dist_angle_dict;
 clear dist_angle_dict
 
 % parameters for transformations
+params.scale_invariant = true;
 params.icp.outlier_distance = 10;
 params.transform_type = 'icp';
 params.apply_known_mask = 1; % in aggragation, do we exploit known free space?
