@@ -45,10 +45,10 @@ for i in (3, 10, 15, 20): #range(5):
     print img_raw.max()
     mask = np.uint8(img_raw < 3 )
     fmask = mask.flatten()
-    #plt.imshow(mask)
+#plt.imshow(mask)
     #plt.draw()
 
-	# loading extrinsic (R) and intrinsic (K) parameters
+    # loading extrinsic (R) and intrinsic (K) parameters
     mat_path = halopath % (i+1)
     mats = scipy.io.loadmat(mat_path)
     K = mats["K"]
@@ -57,19 +57,19 @@ for i in (3, 10, 15, 20): #range(5):
     # some fudge for some reason...?
     K[0,0] *= -1
 
-	# combining parameters into one
+    # combining parameters into one
     R1 = np.linalg.pinv(R).T
     #print R1
     R1 = R1[0:3,0:4]
     P = np.dot(K,R1)
-    
+
     # projecting the voxel coordinates through the matrices into image coordinates
     p = np.dot(P, X)
     #print p[0:3, 0:10]
     lmbd = p[2,:]  # this is the depth?
     p = p[0:2,:] / lmbd# + np.array([[0.5, 0.5]]).T
-    ip = np.int32(np.floor(p))
-    
+    ip = np.int32(np.round(p))
+
     # finding the voxels which actually land in the image
     valid = np.logical_and(ip[0,:] >= 0, np.logical_and(ip[0,:] < imwidth, np.logical_and(ip[1,:] >= 0, ip[1,:] < imheight)))
     
