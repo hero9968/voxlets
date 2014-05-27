@@ -1,4 +1,4 @@
-function transforms = propose_segmented_transforms(model, depth, binary_segments, params)
+function transforms = propose_segmented_transforms(model, depth, norms, binary_segments, params)
 % wrapper for propose transforms which uses the segmented image to propose
 % transforms for each segment in turn.
 
@@ -28,13 +28,15 @@ for ii = 1:size(binary_segments, 1)
     % removing depths outside this segment
     this_segment_idx = binary_segments(ii, :);
     this_depth = depth;
+    this_norms = norms;
     this_depth(~this_segment_idx) = nan;
+    this_norms(:, ~this_segment_idx) = nan;
 
     % propose transforms just for this segment
     these_params = params;
     these_params.num_proposals = num_proposals_per_segment(ii);
     if these_params.num_proposals > 0
-        transforms{ii} = propose_transforms(model, this_depth, these_params);
+        transforms{ii} = propose_transforms(model, this_depth, this_norms, these_params);
     end
     
     % add on the segmented information
