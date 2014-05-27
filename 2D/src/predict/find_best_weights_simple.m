@@ -59,5 +59,12 @@ other.size_prediction = size_prediction;
 other.size_true_positive = size_true_positive;
 % complex method, allowing for continuous weight values
 %[other.simple_image,  T]= noisy_or(mask_stack, 3, weights);
-[other.simple_image,  T]= soft_max(mask_stack, 3, 10, weights);
+[other.softmax_image,  T]= soft_max(mask_stack, 3, 10, weights);
+
+% doing the probability
+probs = weights / sum(weights);
+[~,  temp]= noisy_or(mask_stack, 3, probs);
+other.summed_image = sum(temp, 3);
+
+
 other.simple_weights = sum(T, 3);

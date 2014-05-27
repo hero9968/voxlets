@@ -41,6 +41,8 @@ for ii = 1:N
     transformed(ii).masks = myimtransform(this_mask, modified_transform, width + 2*padding, height + 2*padding);
     transformed(ii).masks = +(transformed(ii).masks > 0);
 
+    assert(size(transformed(ii).masks, 1) == height + 2*padding);
+    assert(size(transformed(ii).masks, 2) == width + 2*padding);
     %assert(range(transformed(ii).x_data)==range(x_data));
     %assert(range(transformed(ii).y_data)==range(y_data));
     
