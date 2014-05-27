@@ -34,24 +34,22 @@ gt_img_flat(to_remove) = [];
 mask_stack_trans(:, to_remove) = [];
 size(mask_stack_trans)
 
-%% initialising the weights
-weights = ones(1, size(mask_stack_resized, 3))/2;
-assert(size(mask_stack_trans, 1)==length(weights));
-for ii = 1:size(mask_stack_trans, 1)
-    size_prediction(ii) = sum(mask_stack_trans(ii, :) > 0.5);
-    size_true_positive(ii) = sum(mask_stack_trans(ii, :)>0.5 & gt_img_flat>0.5);
-    if size_true_positive(ii) == 0
-        weights(ii) = 0;
-    else
-        weights(ii) = size_true_positive(ii) / size_prediction(ii);
-    end
-    assert(weights(ii) >= 0 && weights(ii) <= 1);
-end
-%weights = 0 * weights;
+% initialising the weights to ones, as want them to be big if possible
+weights = zeros(1, size(mask_stack_resized, 3)) / 2;
 
-%% finally doing the optimisation
-err_fun = @(x)(function_and_jacobian(x, mask_stack_trans, gt_img_flat));
-options = optimoptions('lsqnonlin', 'TolFun', 1e-5, 'TolX', 1e-5, 'MaxIter', 1000, 'Jacobian', 'on');%, 'DerivativeCheck', 'on');
+% computing the true positives
+size_prediction = sum(mask_stack_trans>0.5, 2);
+N = size(mask_stack_trans, 1);
+gt_img_repmat = repmat(gt_img_flat>0.5, N, 1);
+size_true_positive = sum(mask_stack_trans>0.5 & gt_img_repmat, 2);
+true_positive_fraction = size_true_positive ./ size_prediction;
+true_positive_fraction(isnan(true_positive_fraction)) = 0;
+false_positive_fraction = 1 - true_positive_fraction;
+
+% finally doing the optimisation
+gamma = 0.;
+err_fun = @(x)(function_and_jacobian(x, mask_stack_trans, gt_img_flat, (true_positive_fraction(:))'));
+options = optimoptions('lsqnonlin', 'TolFun', 1e-5, 'TolX', 1e-5, 'MaxIter', 1000, 'MaxFunEvals', 10000, 'Jacobian', 'off');%, 'DerivativeCheck', 'on');
 
 min_weights = zeros(size(weights));
 max_weights = ones(size(weights));
@@ -65,21 +63,26 @@ other.lsqnonlin_out = out;
 other.Resnorm = Resnorm;
 other.Fval = Fval;
 [other.final_image, T] = noisy_or(mask_stack, 3, weights_out);
+[other.softmax, ~] = soft_max(mask_stack, 3, 10, weights_out);
 other.final_image_added = sum(T, 3);
 other.final_image(gt_filled==0) = 0;
 
-other.simple_weights = weights;
-weights(weights <= 0.99) = 0;
-other.simple_classification = weights;
-[other.simple_image,  T]= noisy_or(mask_stack, 3, other.simple_classification);
-other.simple_image_added = sum(T, 3);
+[other.mean_image] = mean(T, 3);
 
 
 
-function [E, J] = function_and_jacobian(x, mask_stack_trans, gt_img_flat)
+function [E, J] = function_and_jacobian(x, mask_stack_trans, gt_img_flat, gamma)
 
-[prediction, M] = noisy_or(mask_stack_trans, 1, x);
-E = prediction - gt_img_flat;
+%[~, M] = noisy_or(mask_stack_trans, 1, x);
+alpha = 10;
+%prediction = mean(M, 1);
+[prediction, M] = soft_max(mask_stack_trans, 1, alpha, x);
+
+% error is formed of per-pixel error, plus an error encouraging weights to be high
+E = (prediction - gt_img_flat) .* (1 - gt_img_flat);
+%E1 = prediction - gt_img_flat;
+%E2 = 0.1*gamma .* (1-x);
+%E = [E1, E2];
 
 if nargout == 2
 
@@ -88,7 +91,10 @@ if nargout == 2
     T = repmat((1 - prediction), size(B, 1), 1);
     numerator = T.*B;
     denominator = 1 - M;
-    J = (numerator ./ (denominator+0.0001))';
+    
+    J1 = (numerator ./ (denominator+0.0001))';
+    J2 = -diag(gamma);
+    J = [J1; J2];
 
 end
 

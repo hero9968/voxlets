@@ -25,22 +25,33 @@ params.apply_known_mask = 0;
 depth = test_data(num).depth;
 segments = test_data(num).segmented;
 raw_image = all_images{test_data(num).image_idx};
-[~, gt_imgs] = rotate_and_raytrace_mask(raw_image, test_data(num).angle, 1);
-gt_image = gt_imgs{1};
-params.transform_type = 'pca';
+gt_image = rotate_image_nicely(raw_image, test_data(num).angle);
+
+%%
+angs = linspace(0, 360, 100);
+for ii = 1:length(angs)
+    gt_image = rotate_image_nicely(raw_image, angs(ii));
+    subplot(10, 10, ii);
+    imagesc(gt_image);
+    axis image
+end
+%%
+params.transform_type = 'icp';
 
 % propose transforms and aggregate
-transforms = propose_transforms(model, depth, params);
+params.im_min_height = size(gt_image, 1);
+%transforms = propose_transforms(model, depth, params);
+transforms = propose_segmented_transforms(model, depth, segments, params);
 [out_img, out_img_cropped, transformed] = ...
         aggregate_masks(transforms, params.im_min_height, depth, params);
 
 plot_transforms(transformed, out_img_cropped, gt_image);
 
 %% now am going to try to get proposals from each of the segments
-num = 200;
+num = 5200;
 params.num_proposals = 200;
 params.apply_known_mask = 0;
-params.transform_type = 'icp';
+params.transform_type = 'pca';
 params.icp.outlier_distance = 50;
 
 depth = test_data(num).depth;
@@ -49,7 +60,10 @@ raw_image = all_images{test_data(num).image_idx};
 [~, gt_imgs] = rotate_and_raytrace_mask(raw_image, test_data(num).angle, 1);
 gt_image = gt_imgs{1};
 
+profile on
 transforms = propose_segmented_transforms(model, depth, segments, params);
+profile off viewer
+
 
 transforms2 = transforms(randperm(length(transforms)));
 
@@ -63,11 +77,12 @@ plot_transforms(transformed, out_img_cropped, gt_image);
 % want to find the weights that minimise the sum of squared errors over the
 % hidden part of the image
 tic
-mask_stack = single(cell2mat(reshape({transformed.extended_mask}, 1, 1, [])));
+mask_stack = single(cell2mat(reshape({transformed.cropped_mask}, 1, 1, [])));
 opts.least_squares = 0;
 %profile on
 [weights, other] = find_optimal_weights(depth, mask_stack, im2double(gt_image), 0.1);
 %profile off viewer
+sum(weights > 0.8)
 toc
 
 %%
@@ -76,11 +91,19 @@ imagesc(gt_image)
 axis image
 
 subplot(232)
-imagesc(other.final_image)
+imagesc(other.softmax)
 axis image
-%set(gca, 'clim', [0, 1])
+set(gca, 'clim', [0, 1])
 colormap(gray)
 
+subplot(233)
+plot(weights)
+ylim([0, 1])
+
+subplot(234)
+hist(weights, 50)
+xlim([0, 1])
+%%
 
 subplot(233)
 imagesc(other.final_image_added)
@@ -102,9 +125,9 @@ colormap(gray)
 
 
 %%
-profile on
-[weights, other] = find_best_weights_simple(depth, mask_stack, im2double(gt_image), 0.99);
-profile off viewer
+%profile on
+[weights, other] = find_best_weights_simple(depth, mask_stack, im2double(gt_image), 0.8);
+%profile off viewer
 
 subplot(231)
 imagesc(gt_image)
@@ -115,6 +138,61 @@ imagesc(other.simple_image)
 axis image
 colormap(gray)
 
+w2 = other.size_true_positive ./ other.size_prediction;
+w2(isnan(w2)) = 0;
+weighted_basis = mask_stack;
+N = size(mask_stack, 3);
+for ii = 1:N
+    weighted_basis(:, :, ii, :) = weighted_basis(:, :, ii, :) * w2(ii); 
+end
+
+
+%%
+clf
+v_w = 0.5;
+t_w = 0.9;
+b = (v_w - t_w^2) / (t_w - t_w^2);
+a = 1 - b;
+t = 0:0.01:1;
+f = @(x)(max(a * x.^2 + b * x, 0));
+%f = @(x)(sin(pi*x/2) + cos(pi*x/2));
+plot(t, f(t))
+axis image
+
+%%
+clf
+a = 1.1;
+f = @(x)(max((x-a)./(1-a), 0));
+%f = @(x)(sin(pi*x/2) + cos(pi*x/2));
+plot(t, f(t))
+axis image
+
+
+
+%%
+gt = im2double(gt_image);
+dtrans = bwdist(edge(gt));
+dtrans(gt==1) = 0;
+subplot(233);
+imagesc(dtrans)
+axis image
+colorbar
+%%
+alpha = 1000;
+
+final_image = soft_max(mask_stack, 3, alpha, w2);
+
+subplot(233);
+imagesc2(final_image);
+axis image
+set(gca, 'clim', [0, 1])
+
+subplot(234);
+imagesc2(max(weighted_basis, [], 3));
+set(gca, 'clim', [0, 1])
+
+
+%%
 subplot(233)
 imagesc(other.simple_image2)
 axis image
@@ -155,3 +233,9 @@ end
 stacked_image = test_fitting_model(model, test_data.depths{num}, params);
 subplot(1, 4, 4);
 imagesc(stacked_image); axis image
+
+%%
+A = [0.1, 0.2, 0.3, 0.1]';
+A = [A, A]
+[T] = soft_max(A, 1, 10)
+
