@@ -44,9 +44,14 @@ for jj = 1:length(angles)
     rendered(jj).transform = maketform('affine', T_final');
 
     % applying transformation
+        %
     this_rotated_image = ...
-        myimtransform(rotatated.image, rendered(jj).transform, diag_size + 1, diag_size + 1);
-
+        myimtransform(rotated.image, rendered(jj).transform.tdata.T', diag_size + 1, diag_size + 1);
+        %imtransform(rotated.image, rendered(jj).transform, ...
+        %'bilinear', 'XYScale', 1, ...
+        %'xdata', [1, diag_size + 2], ...
+        %'ydata', [1, diag_size + 2]);
+    
     if nargout == 2
         rotated_images{jj} = this_rotated_image;
     end

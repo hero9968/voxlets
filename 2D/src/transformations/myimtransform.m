@@ -1,6 +1,11 @@
 function [im_out, corners_transformed] = myimtransform(im_in, T_in, width_out, height_out)
 % my attempt at a simplified and faster imtransform.
 
+assert(~isstruct(T_in))
+if abs(T_in(3, 1)) > 0.00001 || abs(T_in(3, 2)) > 0.00001
+    warning('Possibly the matrix is flippped?')
+end
+
 width_in = size(im_in, 1);
 height_in = size(im_in, 2);
 
