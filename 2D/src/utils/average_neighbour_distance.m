@@ -12,7 +12,7 @@ to_remove = any(isnan(XY_model), 1);
 XY_model(:, to_remove) = [];
 
 % doing some kind of distance matrix
-T = pdist2(XY_model', XY_data');
+T = pdist2(double(XY_model)', double(XY_data)');
 dists = min(T, [], 2);
 
 % make robust

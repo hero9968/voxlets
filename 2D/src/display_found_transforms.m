@@ -21,13 +21,15 @@ this_img.raw_image = all_images{this_img.image_idx};
 this_img.gt_image = rotate_image_nicely(this_img.raw_image, this_img.angle);
 
 %% diplaying the raw img rotated to different angles
-close all
-angs = linspace(0, 360, 100);
-for ii = 1:length(angs)
-    temp_rotated_img = rotate_image_nicely(this_img.raw_image, angs(ii));
-    subplot(10, 10, ii);
-    imagesc(temp_rotated_img);
-    axis image
+if 0
+    close all
+    angs = linspace(0, 360, 100);
+    for ii = 1:length(angs)
+        temp_rotated_img = rotate_image_nicely(this_img.raw_image, angs(ii));
+        subplot(10, 10, ii);
+        imagesc(temp_rotated_img);
+        axis image
+    end
 end
 
 %% setting parameters for the transformation proposals
@@ -48,6 +50,8 @@ transforms = ...
     aggregate_masks(transforms, size(this_img.gt_image, 1), this_img.depth, params);
 
 %%
+gt_depth = raytrace_2d(this_img.gt_image);
+
 for ii = 1:length(transformed)
     
     % this prediction position
@@ -71,7 +75,7 @@ plot_transforms(transformed2, out_img_cropped, this_img.gt_image);
 %% reweighting the final image using the found weightings
 probs =  exp(-[transformed2.dist_to_gt]);
 probs = probs / sum(probs);
-to_use = probs > 0.05;
+to_use = probs > 0.1;
 mask_stack = cell2mat(reshape({transformed2(to_use).cropped_mask}, 1, 1, []));
 [~, weighted_stack] = noisy_or(mask_stack, 3, probs(to_use));
 summed_stack = sum(weighted_stack, 3);

@@ -29,7 +29,7 @@ dists = pdist2a(shape_dist, all_dists, 'chisq');
 assert(size(dists, 2)==size(all_dists, 1));
 assert(size(dists, 1)==1);
 
-[~, idx] = sort(dists, 'ascend');
+[dists_sorted, idx] = sort(dists, 'ascend');
 
 % now align in the match using PCA
 [~, ~, model_T_from_origin] = transformation_to_origin_2d(model_XY);
@@ -71,7 +71,7 @@ for ii = 1:number_matches_to_use
         transforms(count).base_image = model.images{transforms(count).image_idx};
         transforms(count).img_transform = model.training_data(this_idx).transform; 
         transforms(count).ii = ii;
-        transforms(count).chi_squared = dists(this_idx);
+        transforms(count).chi_squared = dists_sorted(this_idx);
         transforms(count).depth = data_depth;
         transforms(count).scale = model.training_data(this_idx).scale;
         
