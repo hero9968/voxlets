@@ -1,4 +1,4 @@
-function plot_segment_soup( binary_segmentation, depth )
+function plot_segment_soup( binary_segmentation, depth, titles )
 % plots a subplot for each item in the segment soup
 
 [n, m] = best_subplot_dims(size(binary_segmentation, 1));
@@ -30,6 +30,10 @@ for jj = 1:size(binary_segmentation, 1)
     
     set(gca,'YDir','reverse');
     axis image
+    
+    if nargin == 3
+        title(titles{jj})
+    end
     
     
 end

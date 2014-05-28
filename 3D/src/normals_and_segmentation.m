@@ -53,7 +53,7 @@ opts.max_cluster_size = 1e6;
 opts.num_neighbours = 50;
 opts.smoothness_threshold = (7.0 / 180.0) * pi;
 opts.curvature_threshold = 1.0;
-opts.overlap_threshold = 0.9;
+opts.overlap_threshold = 0.2; % higher value = fewer clusters
 
 %% single segmentation
 [idx] = segment_wrapper(cloud, opts);
@@ -61,8 +61,10 @@ nansum(idx)
 imagesc(reshape(idx, 480, 640))
 
 %% running segment soup algorithm
-[idxs, idxs_without_nans] = segment_soup_3d(cloud, opts);
+[idxs, idxs_without_nans, probabilities] = segment_soup_3d(cloud, opts);
+probabilities
 
 %% plotting
+close all
 plot_segment_soup_3d(cloud.depth, idxs);
 

@@ -9,9 +9,9 @@ assert(size(segmentation, 1) == h*w);
 % plotting each segmentation on separate subplot
 for ii = 1:size(segmentation, 2)
     
-    temp_image = reshape(segmentation(:, ii), h, w);
+    temp_image = reshape(segmentation(:, ii), h, w) > 0.5;
     
     subplot(n, m, ii)
     plot_depth_segmentation(base_image, temp_image);
-    
+    title(num2str(ii))
 end
