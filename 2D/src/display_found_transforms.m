@@ -31,7 +31,7 @@ for ii = 1:length(angs)
 end
 
 %% setting parameters for the transformation proposals
-params.num_proposals = 2000;
+params.num_proposals = 100;
 params.apply_known_mask = 0;
 params.transform_type = 'icp';
 params.icp.outlier_distance = 50;
@@ -47,26 +47,6 @@ transforms = ...
 [out_img, out_img_cropped, transformed] = ...
     aggregate_masks(transforms, size(this_img.gt_image, 1), this_img.depth, params);
 
-%% now finding some metrics to assess the goodness of fit
-imheight = 500;
-gt_depth = raytrace_2d(this_img.gt_image);
-%filled_from_depth = fill_grid_from_depth(gt_depth, imheight, 1);
-filled_trans = nan(imheight, length(gt_depth));
-for jj = 1:length(gt_depth)
-    this_depth = gt_depth(jj);
-    filled_trans(:, jj) = normpdf(1:500, this_depth, 10);
-end
-imagesc(filled_trans)
-axis image
-colorbar
-
-% getting the ground truth points
-gtX = 1:length(gt_depth);
-gtY = gt_depth;
-to_remove = isnan(gt_depth);
-gtX = gtX(~to_remove);
-gtY = gtY(~to_remove);
-
 %%
 for ii = 1:length(transformed)
     
@@ -74,41 +54,11 @@ for ii = 1:length(transformed)
     X = transformed(ii).transformed_depth(1, :) - transformed(ii).padding;
     Y = transformed(ii).transformed_depth(2, :) - transformed(ii).padding;
     
-    % getting the predicted points
-    to_remove = isnan(X) | isnan(Y) | X < 1 | X > size(filled_trans, 2) | Y < 1 | Y > size(filled_trans, 1);
-    rX = (X(~to_remove));
-    rY = (Y(~to_remove));
+    % doing the average neighbour distance
+    XY_model = xy_from_depth(gt_depth);
+    XY_data = [X; Y];
+    transformed(ii).dist_to_gt = average_neighbour_distance(XY_model, XY_data);
     
-    % doing some kind of distance matrix
-    T = pdist2([gtX(:), gtY(:)], [rX(:), rY(:)]);
-    dists = min(T, [], 2);
-    % make robust
-    %dists(dists>10) = 10;
-    transformed(ii).dist_to_gt = sum(dists.^2) / length(dists);
-    
-    if isempty(transformed(ii).dist_to_gt)
-        transformed(ii).dist_to_gt = inf;
-    end
-    
-    
-    rInd = sub2ind(size(filled_trans), round(rY), round(rX));
-    T2 = filled_trans(rInd);
-    transformed(ii).inlier_sum = nansum(T2) / length(rX);
-    if nansum(T2) == 0
-        transformed(ii).inlier_sum = 0;
-    end
-        
-    
-    % plotting
-    if 0
-        clf
-        imagesc(filled_trans)
-        hold on
-        plot(X, Y);
-        plot(gtX, gtY, 'r')
-        hold off
-        axis image
-    end
 end
 
 %%
@@ -121,10 +71,14 @@ plot_transforms(transformed2, out_img_cropped, this_img.gt_image);
 %% reweighting the final image using the found weightings
 probs =  exp(-[transformed2.dist_to_gt]);
 probs = probs / sum(probs);
-mask_stack = cell2mat(reshape({transformed2.cropped_mask}, 1, 1, []));
-[~, weighted_stack] = noisy_or(mask_stack, 3, probs);
+to_use = probs > 0.05;
+mask_stack = cell2mat(reshape({transformed2(to_use).cropped_mask}, 1, 1, []));
+[~, weighted_stack] = noisy_or(mask_stack, 3, probs(to_use));
 summed_stack = sum(weighted_stack, 3);
 imagesc2(summed_stack)
+
+% todo - can speed up by only selecting the shapes which are above a
+% minimum probabiltiy
 
 
 
