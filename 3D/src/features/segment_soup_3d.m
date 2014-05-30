@@ -1,4 +1,4 @@
-function [output_matrix, final_idx, probs] = segment_soup_3d( cloud, opts )
+function [output_matrix, final_idx, probs, all_idx] = segment_soup_3d( cloud, opts )
 % forms a segmentation of 3D data into multiple different segmentations
 % cloud is a structure with xyz, normals, curvature as fields
 % opts is a structure with options

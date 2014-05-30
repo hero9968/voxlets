@@ -24,8 +24,6 @@ fclose(fid);
 %%
 for ii = 1:length(params.model_filelist)
     
-    
-    
     model = params.model_filelist{ii};
     
     % loading meta file
@@ -51,7 +49,7 @@ for ii = 1:length(params.model_filelist)
     disp(['Doing number ' num2str(ii)]);
     
     % calling python script to render the sequence
-    system_call = ['python src/getDepthSequence.py ' model ' ' num2str(distance) ' 1 42'];
+    system_call = ['python src/model_render/getDepthSequence.py ' model ' ' num2str(distance) ' 1 42'];
     %system_call
     [A, B] = system(system_call);
     pause(1)

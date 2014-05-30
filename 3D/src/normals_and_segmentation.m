@@ -19,14 +19,12 @@ load(depth_name, 'depth');
 depth(abs(depth-3) < 0.001) = nan;
 %}
 %% Loading in real depth image!
-%{
 depth_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_50_depth.png';
 rgb_path = '/Users/Michael/data/others_data/rgbd-scenes/desk/desk_1/desk_1_50.png';
 depth = double(imread(depth_path))/1000;
 depth(depth==0) = nan;
 %imagesc(depth)
 cloud.rgb = imread(rgb_path);
-%}
 
 %% project depth and compute normals
 cloud.depth = depth;
@@ -51,20 +49,30 @@ cloud.depth = reshape(P(:, :, 3), [480, 640]);
 opts.min_cluster_size = 500;
 opts.max_cluster_size = 1e6;
 opts.num_neighbours = 50;
-opts.smoothness_threshold = (7.0 / 180.0) * pi;
+opts.smoothness_threshold = (10.0 / 180.0) * pi;
 opts.curvature_threshold = 1.0;
 opts.overlap_threshold = 0.2; % higher value = fewer clusters
 
 %% single segmentation
 [idx] = segment_wrapper(cloud, opts);
 nansum(idx)
+subplot(121)
+imagesc(cloud.rgb)
+axis image
+subplot(122)
 imagesc(reshape(idx, 480, 640))
+axis image
 
 %% running segment soup algorithm
-[idxs, idxs_without_nans, probabilities] = segment_soup_3d(cloud, opts);
+[idxs, idxs_without_nans, probabilities, all_idx] = segment_soup_3d(cloud, opts);
 probabilities
 
 %% plotting
 close all
-plot_segment_soup_3d(cloud.depth, idxs);
+plot_segment_soup_3d(cloud.rgb.^0.2, idxs);
+for ii = 1:length(probabilities)
+    subplot(2, 4, ii)
+    title(num2str(probabilities(ii)))
+end
+set(findall(gcf,'type','text'),'fontSize',18,'fontWeight','bold')
 
