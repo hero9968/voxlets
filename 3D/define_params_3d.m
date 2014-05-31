@@ -28,6 +28,8 @@ paths.raytraced = [paths.data_3d, 'raytraced/'];
 paths.segmented = [paths.data_3d, 'segmented/'];
 paths.segmented_savename = [paths.segmented, '%02d_%02d_segmented.mat'];
 
+paths.shape_dist_dict = [paths.basis_models.root, 'shape_dist_dict.mat'];
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Defining parameters
@@ -59,9 +61,10 @@ params.segment_soup.curvature_threshold = 1.0;
 params.segment_soup.overlap_threshold = 0.9;
 
 % parameters for the shape distribution
-params.shape_dist.bin_edges = linspace(0, 5, 50);
-params.shape_dist.num_samples = 5000;
-params.shape_dist.rescaling = true;
+params.shape_dist.num_samples = 20000;
+load(paths.shape_dist_dict, 'dict')
+params.shape_dist.dict = dict;
+clear dict
 
 % kinect parameters
 params.focal_length = 240/(tand(43/2));
