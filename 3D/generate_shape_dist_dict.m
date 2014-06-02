@@ -8,8 +8,8 @@ run define_params_3d.m
 
 render_path = '/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/';
 fv_path = '/Users/Michael/projects/shape_sharing/data/3D/basis_models/fv/';
-models_to_use = randperm(length(params.model_filelist), 10);
-renders_to_use = randperm(42, 15);
+models_to_use = randperm(length(params.model_filelist), 100);
+renders_to_use = randperm(42, 10);
 
 %%
 pairwise_dists = cell(1, length(renders_to_use));
@@ -29,18 +29,17 @@ for ii = 1:length(models_to_use)
         this_name = sprintf(depth_names,this_idx);
         load(this_name, 'depth');
         this_xyz = reproject_depth(depth, params.half_intrinsics, 3);
-        this_xyz = this_xyz / normalise_scale(this_xyz);        
+        this_xyz = this_xyz * normalise_scale(this_xyz);        
 
         % compute the pairwise distances
         params.shape_dist.rescaling = 0;
         [~, pairwise_dists{ii, jj}] = shape_distribution_3d(this_xyz, params.shape_dist);
-        jj
     end
     
     disp(['Done ' num2str(ii)]);
 end
 
-%%
+%% Seeing how many samples seemed sensible to take to normalise scale
 %profile on
 num_samples = round(10.^[linspace(1, 6, 50)]);
 clear t
@@ -57,7 +56,7 @@ plot(num_samples, times)
 
 %% forming the dictionary
 all_dists = cell2mat(pairwise_dists(:));
-all_dists_subset = all_dists(randperm(length(all_dists), 10000));
+all_dists_subset = all_dists(randperm(length(all_dists), 20000));
 [~, dict] = kmeans(all_dists_subset, 50, 'replicates', 20);
 dict = sort(dict);
 

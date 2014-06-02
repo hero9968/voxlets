@@ -58,7 +58,7 @@ params.segment_soup.max_cluster_size = 1e6;
 params.segment_soup.num_neighbours = 50;
 params.segment_soup.smoothness_threshold = (7.0 / 180.0) * pi;
 params.segment_soup.curvature_threshold = 1.0;
-params.segment_soup.overlap_threshold = 0.9;
+params.segment_soup.overlap_threshold = 0.2; % higher number = fewer clusters
 
 % parameters for the shape distribution
 params.shape_dist.num_samples = 20000;

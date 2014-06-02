@@ -29,6 +29,7 @@ for ii = 1:length(params.model_filelist)
     
     shape_dist = nan(number_renders, size(params.shape_dist.dict, 1));
     scale = nan(1, number_renders);
+    transform_to_origin = cell(1, number_renders);
 
     try 
 
@@ -43,16 +44,19 @@ for ii = 1:length(params.model_filelist)
 
             if size(this_xyz, 1) > 10
                 scale(jj) = normalise_scale(this_xyz);
-                this_xyz = this_xyz / scale(jj);
+                this_xyz = this_xyz * scale(jj);
 
                 % compute the shape dist
                 params.shape_dist.rescaling = 0;
                 params.shape_dist.num_samples = 20000;
                 shape_dist(jj, :) = shape_distribution_3d(this_xyz, params.shape_dist);
+                
+                [~, ~, temp] = transformation_to_origin_3d(this_xyz);
+                transform_to_origin{jj} = inv(temp);
             end
         end
 
-        save(outfile, 'shape_dist', 'scale');
+        save(outfile, 'shape_dist', 'scale', 'transform_to_origin');
     end
 
     disp(['Done ' num2str(ii) ' in ' num2str(toc) 's']);
