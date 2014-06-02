@@ -15,7 +15,7 @@ load(paths.all_images, 'all_images')
 load(paths.structured_predict_si_model_path, 'model');
 
 %% loading in the data
-num = 4000;
+num = 1300;
 this_img = test_data(num);
 this_img.raw_image = all_images{this_img.image_idx};
 this_img.gt_image = rotate_image_nicely(this_img.raw_image, this_img.angle);
@@ -73,9 +73,10 @@ transformed2 = transformed(idx);
 plot_transforms(transformed2, out_img_cropped, this_img.gt_image);
 
 %% reweighting the final image using the found weightings
-probs =  exp(-[transformed2.dist_to_gt]);
+temp_dist = [transformed2.dist_to_gt] - min([transformed2.dist_to_gt]);
+probs =  exp(-temp_dist/50);
 probs = probs / sum(probs);
-to_use = probs > 0.1;
+to_use = probs > 0.01;
 mask_stack = cell2mat(reshape({transformed2(to_use).cropped_mask}, 1, 1, []));
 [~, weighted_stack] = noisy_or(mask_stack, 3, probs(to_use));
 summed_stack = sum(weighted_stack, 3);

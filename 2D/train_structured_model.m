@@ -9,7 +9,6 @@ addpath ../common/
 %% loading in all depths and shapes from disk...
 load(paths.all_images, 'all_images')
 load(paths.train_data, 'train_data')
-%load(paths.test_data, 'test_data')
 
 %% now compute the model
 %train_data_subset = train_data;
@@ -23,6 +22,9 @@ imagesc(all_dists)
 
 %% save the model
 save(paths.structured_predict_si_model_path, 'model');
+
+%%
+load(paths.test_data, 'test_data')
 
 %% making a single prediction and visualising
 %profile on

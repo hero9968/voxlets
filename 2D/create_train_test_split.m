@@ -11,8 +11,8 @@ test_fraction = params.test_split.test_fraction;
 max_test_images = 50; %params.test_split.max_test_images;
 max_training_images = inf; %params.test_split.max_training_images;
 
-class_split = false;
-instance_split = false;
+class_split = true;
+instance_split = true;
 
 %% setting some parameters
 number_shapes = length(filelist);
@@ -39,7 +39,7 @@ if class_split
 elseif instance_split
     number_test_instances = round(test_fraction * number_shapes);
     split.test_idx = randperm(number_shapes, number_test_instances);
-    split.train_idx = randperm(number_shapes, number_shapes - number_test_instances);
+    split.train_idx = find(~ismember(1:number_shapes, split.test_idx));
 else
     % no splitting at all - test data == training data
     split.test_idx = 1:length(filelist);

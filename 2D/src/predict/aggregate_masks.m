@@ -66,6 +66,10 @@ for ii = 1:N
     if isfield(transforms(ii), 'segment_idx')
         transformed(ii).segment_idx = transforms(ii).segment_idx;
     end
+
+    if isfield(transforms(ii), 'image_idx')
+        transformed(ii).image_idx = transforms(ii).image_idx;
+    end
 end
 
 % combine output images
