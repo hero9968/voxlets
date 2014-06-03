@@ -7,10 +7,12 @@ cd ~/projects/shape_sharing/3D/src/
 addpath plotting/
 addpath features/
 addpath ./file_io/matpcl/
-addpath ../../common/
+addpath(genpath('../../common/'))
 addpath transformations/
+addpath utils/
 addpath ../../2D/src/segment/
 run ../define_params_3d.m
+load(paths.structured_model_file, 'model')
 
 %% loading in some of the ECCV dataset
 clear cloud
@@ -35,7 +37,40 @@ end
 set(findall(gcf,'type','text'),'fontSize',18,'fontWeight','bold')
 
 %% Choosing a segment and computing the feature vector
-segment.seg_index = 5;
+segment.seg_index = 4;
 segment.idx = idxs(:, segment.seg_index);
 segment.xyz = cloud.xyz(segment.idx>0.5, :);
 segment.scaled_xyz = segment.xyz * normalise_scale(segment.xyz);
+segment.shape_dist = shape_distribution_3d(segment.scaled_xyz, params.shape_dist);
+
+%% Find closest match and load image etc...
+dists = chi_square_statistics(segment.shape_dist, model.all_shape_dists);
+%dists = kullback_leibler_divergence(segment.shape_dist, model.all_shape_dists);
+[~, idx] = sort(dists, 'ascend');
+
+%% plotting the closest matches
+num_to_plot = 20;
+[p, q] = best_subplot_dims(num_to_plot);
+
+for ii = 1:num_to_plot
+    
+    this.model_idx = model.all_model_idx(idx(ii));
+    this.model = params.model_filelist{this.model_idx};
+    this.view = model.all_view_idx(idx(ii));
+    this.path = sprintf(paths.basis_models.rendered, this.model, this.view);
+    load(this.path, 'depth')
+    depth(abs(depth-3)<0.01) = nan;
+    
+    subplot(p, q, ii)
+    imagesc(depth)
+    title([num2str(this.model_idx) ' - ' num2str(this.view)])
+    axis image off
+    colormap(flipud(gray))
+    
+    
+end
+
+
+
+
+

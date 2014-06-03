@@ -6,7 +6,6 @@ clear
 addpath(genpath('.'))
 run define_params_3d.m
 
-render_path = '/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/';
 fv_path = '/Users/Michael/projects/shape_sharing/data/3D/basis_models/fv/';
 number_renders = 42;
 
@@ -16,17 +15,13 @@ for ii = 1:length(params.model_filelist)
     tic
     
     % output place
-    outfile = fullfile(fv_path, [params.model_filelist{ii}, '.mat']);
+    outfile = sprintf(paths.basis_models.fv_file, params.model_filelist{ii});
     if exist(outfile, 'file')
         disp(['Skipping ' num2str(ii)])
         continue
     end
     
-    % getting the path to the renders
-    model = params.model_filelist{ii};
-    render_dir = fullfile(render_path, model);
-    depth_names = fullfile(render_dir, 'depth_%d.mat');
-    
+    % setting up the variables to be filled
     shape_dist = nan(number_renders, size(params.shape_dist.dict, 1));
     scale = nan(1, number_renders);
     transform_to_origin = cell(1, number_renders);
@@ -36,7 +31,7 @@ for ii = 1:length(params.model_filelist)
         % loop over each image and combine all the results together
         for jj = 1:number_renders
 
-            this_name = sprintf(depth_names,jj);
+            this_name = sprintf(paths.basis_models.rendered, model, jj);
             load(this_name, 'depth');
 
             % project depth to 3D

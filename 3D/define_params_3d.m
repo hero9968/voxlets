@@ -14,6 +14,8 @@ paths.basis_models.raytraced = [paths.basis_models.root, 'raytraced/'];
 paths.basis_models.rendered =  [paths.basis_models.root, 'renders/%s/depth_%d.mat'];
 paths.basis_models.voxelised = [paths.basis_models.root, 'voxelised/'];
 paths.basis_models.halo_path = [paths.basis_models.root, 'halo/'];
+paths.basis_models.fv_path = [paths.basis_models.root, 'fv/'];
+paths.basis_models.fv_file = [paths.basis_models.fv_path, '%s.mat'];
 paths.basis_models.halo_file = [paths.basis_models.halo_path, 'mat_%d.csv'];
 paths.basis_models.halo_file_mat = [paths.basis_models.halo_path, 'mat_%d.mat'];
 % TODO - normals, feature vectors
@@ -30,6 +32,7 @@ paths.segmented_savename = [paths.segmented, '%02d_%02d_segmented.mat'];
 
 paths.shape_dist_dict = [paths.basis_models.root, 'shape_dist_dict.mat'];
 
+paths.structured_model_file = [paths.data_3d, 'structured_model.mat'];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Defining parameters
