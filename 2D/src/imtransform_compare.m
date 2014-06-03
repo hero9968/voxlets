@@ -4,10 +4,10 @@ cd ~/projects/shape_sharing/2D/src/
 addpath transformations/
 addpath utils/
 
-count = 10;
+count = 1;
 
 % loading image and plotting
-im_in = imresize(rgb2gray(imread('peppers.png')), 0.4);
+im_in = imresize(rgb2gray(imread('peppers.png')), 10.1);
 
 % defining a rotation matrix and output parameters
 T = translation_matrix(1060, 530) * rotation_matrix(200);
@@ -18,10 +18,10 @@ height_out = 500;
 tic
 %profile on
 for ii = 1:count
-    [im_out{1}, corns] = myimtransform(im_in, T, width_out, height_out);
+    [im_out{1}, corns] = myimtransform((im_in), T, width_out, height_out);
 end
-%profile off viewer
-my_time = toc;
+%mprofile off viewer
+my_time = toc
 
 %now doing the matlab way
 tic
@@ -31,8 +31,9 @@ for ii = 1:count
     [im_out{2}, xd, yd] = imtransform(im_in, Tmat, 'nearest','XYScale',1, 'xdata', [1, width_out], 'ydata', [1, height_out]);
 end
 %profile off viewer
-matlab_time = toc;
-ratio = matlab_time/my_time
+matlab_time = toc
+ratio = matlab_time/my_time;
+disp(['Matlab built in ran in ' num2str(ratio) ' times slower than mine'])
 
 % plotting the results
 
@@ -62,7 +63,6 @@ imagesc(abs(im_out{1} - im_out{2})>2)
 axis image
 title('Difference image')
 
-ratio = matlab_time/my_time
 
 
 %% testing my own code

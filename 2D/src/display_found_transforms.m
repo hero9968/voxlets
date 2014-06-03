@@ -7,7 +7,7 @@ addpath predict
 addpath utils
 addpath transformations/
 addpath(genpath('external'))
-addpath ../../common/
+addpath(genpath('../../common/'))
 
 %% loading in model and test data
 load(paths.test_data, 'test_data')
@@ -39,17 +39,18 @@ params.transform_type = 'icp';
 params.icp.outlier_distance = 50;
 
 %% propose transforms and aggregate
-%profile on
+profile on
+tic
 %transforms = propose_transforms(model, depth, params);
 transforms = ...
     propose_segmented_transforms(model, this_img.depth, this_img.normals, this_img.segmented, params);
-%profile off viewer
+
 %%
 %transforms2 = transforms(randperm(length(transforms)));
 [out_img, out_img_cropped, transformed] = ...
     aggregate_masks(transforms, size(this_img.gt_image, 1), this_img.depth, params);
-
 %%
+%
 gt_depth = raytrace_2d(this_img.gt_image);
 
 for ii = 1:length(transformed)
@@ -64,7 +65,8 @@ for ii = 1:length(transformed)
     transformed(ii).dist_to_gt = average_neighbour_distance(XY_model, XY_data);
     
 end
-
+toc
+profile off viewer
 %%
 [~, idx] = sort([transformed.dist_to_gt], 'ascend');
 transformed2 = transformed(idx);

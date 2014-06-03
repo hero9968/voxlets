@@ -35,33 +35,14 @@ end
 T(1, 3) = T(1, 3) - AABB.left;
 T(2, 3) = T(2, 3) - AABB.top;
 
-% setting up output image as a vector
-im_out = zeros(AABB.height*AABB.width, 1);
-
-% getting the poisitions of each of the pixels in the output image
-[X, Y] = meshgrid(1:AABB.width, 1:AABB.height);
-
-% applying the transformation to these values
-transformed_coords = apply_transformation_2d([X(:)'; Y(:)'], inv(T), 'affine');
-
-% discovering their values in the original image
-transformed_coords = round(transformed_coords);
-in_range = transformed_coords(1, :) > 0 & ...
-           transformed_coords(1, :) <= height_in & ...
-           transformed_coords(2, :) > 0 & ...
-           transformed_coords(2, :) <= width_in;
-
-in_range_transformed_coords = transformed_coords(:, in_range);
-
-% look up the colours in the original image
-idx = sub2ind([width_in, height_in], in_range_transformed_coords(2, :), in_range_transformed_coords(1, :));
-original_pixels = im_in(idx);
-
-% now refilling the original pixels
-im_out(in_range) = original_pixels;
-
-% reshaping output image
-im_out = uint8(reshape(im_out, AABB.height, AABB.width));
+% FROM HERE - doing the transformation of the image
+tic
+im_out = my_simple_imtransform(im_in, inv(T), AABB.width, AABB.height));
+disp(['Simple transform time: ' num2str(toc)])
+tic
+%im_out = uint8(simple_imtransform_mex(double(im_in), inv(T), AABB.width, AABB.height));
+disp(['Mex transform time: ' num2str(toc)])
+% TO HERE - doing the transformation of the image
 
 % padding the removed pixels
 im_out = padarray(im_out, [AABB.top, AABB.left], 0, 'pre');
@@ -98,3 +79,36 @@ AABB.right = max(AABB.right, 1); % just in case its negative
 AABB.width = max(AABB.right - AABB.left, 0);
 AABB.height = max(AABB.bottom - AABB.top, 0);
 
+
+function im_out = my_simple_imtransform(im_in, T, width, height)
+
+width_in = size(im_in, 1);
+height_in = size(im_in, 2);
+
+% setting up output image as a vector
+im_out = zeros(height*width, 1);
+
+% getting the poisitions of each of the pixels in the output image
+[X, Y] = meshgrid(1:width, 1:height);
+
+% applying the transformation to these values
+transformed_coords = apply_transformation_2d([X(:)'; Y(:)'], T, 'affine');
+
+% discovering their values in the original image
+transformed_coords = round(transformed_coords);
+in_range = transformed_coords(1, :) > 0 & ...
+           transformed_coords(1, :) <= height_in & ...
+           transformed_coords(2, :) > 0 & ...
+           transformed_coords(2, :) <= width_in;
+
+in_range_transformed_coords = transformed_coords(:, in_range);
+
+% look up the colours in the original image
+idx = sub2ind([width_in, height_in], in_range_transformed_coords(2, :), in_range_transformed_coords(1, :));
+original_pixels = im_in(idx);
+
+% now refilling the original pixels
+im_out(in_range) = original_pixels;
+
+% reshaping output image
+im_out = uint8(reshape(im_out, height, width));

@@ -24,7 +24,8 @@ shape_dist = ...
 
 % find top matching shape distribution(s) by chi-squared distance
 all_dists = cell2mat({model.training_data.shape_dist}');
-dists = pdist2a(shape_dist, all_dists, 'chisq');
+%dists = pdist2(shape_dist, all_dists, @chi_square_statistics_fast);
+dists = chi_square_statistics_fast(shape_dist, all_dists)';
 %dists = pdist2(shape_dist, all_dists, 'euclidean');
 assert(size(dists, 2)==size(all_dists, 1));
 assert(size(dists, 1)==1);
