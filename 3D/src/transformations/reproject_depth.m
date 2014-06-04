@@ -1,4 +1,4 @@
-function xyz = reproject_depth(depth, K, max_depth)
+function [xyz, input_mask] = reproject_depth(depth, K, max_depth)
 % function to project depth image into real world coordinates!
 
 im_height = size(depth, 1);
@@ -15,4 +15,5 @@ xyz = (K \ full_stack')';
 if nargin > 2
     to_remove = abs(depth-max_depth) < 0.001;
     xyz(to_remove, :) = [];
+    input_mask = reshape(~to_remove, [im_height, im_width]);
 end

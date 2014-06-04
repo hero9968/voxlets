@@ -1,4 +1,4 @@
-function [fv, dists_original] = shape_distribution_2d(XY, num_samples, bin_edges)
+function [fv, dists_original] = shape_distribution_2d(XY, num_samples, bin_edges, dont_bin)
 % compute shape distribution for 2d points
 
 assert(size(XY, 1) == 2);
@@ -17,8 +17,15 @@ dists = (X(inds1) - X(inds2)).^2 + (Y(inds1) - Y(inds2)).^2;
 dists = sqrt(dists);
 dists_original = dists;
 
-to_remove = dists < min(bin_edges) | dists > max(bin_edges) | dists == 0;
-dists( to_remove ) = [];
+if nargin == 4 && dont_bin
+    [~, idx] = pdist2(dict, [dists', angles'], 'Euclidean', 'Smallest', 1);
 
-[fv, ~] = histc(dists, bin_edges);
-fv = fv/sum(fv);
+    % computing the output array
+    fv = accumarray(idx(:), 1, [size(dict, 1), 1]);
+    sum(idx==1)/length(idx);
+    %plot(fv)
+    %hold on
+    fv = fv(:)' / sum(fv);
+else
+    fv = [];
+end

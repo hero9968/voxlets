@@ -11,6 +11,7 @@ paths.basis_models.root = [paths.data_3d, 'basis_models/'];
 paths.basis_models.originals = [paths.basis_models.root, 'databaseFull/models'];
 paths.basis_models.centred = [paths.basis_models.root, 'centred'];
 paths.basis_models.raytraced = [paths.basis_models.root, 'raytraced/'];
+paths.basis_models.normals = [paths.basis_models.root, 'normals/%s/norms_%d.mat'];
 paths.basis_models.rendered =  [paths.basis_models.root, 'renders/%s/depth_%d.mat'];
 paths.basis_models.voxelised = [paths.basis_models.root, 'voxelised/'];
 paths.basis_models.halo_path = [paths.basis_models.root, 'halo/'];
@@ -65,9 +66,10 @@ params.segment_soup.overlap_threshold = 0.2; % higher number = fewer clusters
 
 % parameters for the shape distribution
 params.shape_dist.num_samples = 20000;
-load(paths.shape_dist_dict, 'dict')
+load(paths.shape_dist_dict, 'dict', 'edge_dict')
 params.shape_dist.dict = dict;
-clear dict
+params.shape_dist.edge_dict = edge_dict;
+clear dict edge_dict
 
 % kinect parameters
 params.focal_length = 240/(tand(43/2));
