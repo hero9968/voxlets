@@ -18,9 +18,12 @@ ply_to_centered_obj
 %% rendering the objects from each point in the sphere. Each render is a separate mat file
 render_training_views
 
+%% Combine the views into new files
+combine_and_crop
+
 %% Computing normals from the basis shapes
 % won't bother with this for now ? will do it without the normals!
-%compute_training_normals
+compute_training_normals
 
 %% Creating feature vector dictionary
 generate_shape_dist_dict

@@ -17,6 +17,9 @@ paths.basis_models.voxelised = [paths.basis_models.root, 'voxelised/'];
 paths.basis_models.halo_path = [paths.basis_models.root, 'halo/'];
 paths.basis_models.fv_path = [paths.basis_models.root, 'fv/'];
 paths.basis_models.fv_file = [paths.basis_models.fv_path, '%s.mat'];
+
+paths.basis_models.combined_file = [paths.basis_models.root, 'combined_renders/%s.mat'];
+
 paths.basis_models.halo_file = [paths.basis_models.halo_path, 'mat_%d.csv'];
 paths.basis_models.halo_file_mat = [paths.basis_models.halo_path, 'mat_%d.mat'];
 % TODO - normals, feature vectors
