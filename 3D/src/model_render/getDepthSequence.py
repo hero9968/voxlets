@@ -82,7 +82,7 @@ def loadXform():
     print "Xform " + str(idx) + " loaded."
 
 zNear = 0.1
-zFar = radius * 2
+zFar = 10.0 # I had this set to 2 * radius for a bit...
 
 # Some api in the chain is translating the keystrokes to this octal string
 # so instead of saying: ESCAPE = 27, we use the following.

@@ -13,7 +13,11 @@ xyz = (K \ full_stack')';
 
 % removing points at max depth
 if nargin > 2
-    to_remove = abs(depth-max_depth) < 0.001;
+    if isnan(max_depth)
+        to_remove = any(isnan(xyz), 2);
+    else
+        to_remove = abs(depth-max_depth) < 0.001;
+    end
     xyz(to_remove, :) = [];
     input_mask = reshape(~to_remove, [im_height, im_width]);
 end

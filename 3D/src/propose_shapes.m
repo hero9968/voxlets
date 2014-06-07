@@ -39,12 +39,16 @@ set(findall(gcf,'type','text'),'fontSize',18,'fontWeight','bold')
 %% Choosing a segment and computing the feature vector
 segment.seg_index = 4;
 segment.idx = idxs(:, segment.seg_index);
+segment.mask = reshape(segment.idx, [480, 640]);
 segment.xyz = cloud.xyz(segment.idx>0.5, :);
+segment.norms = cloud.normals(segment.idx>0.5, :);
 segment.scaled_xyz = segment.xyz * normalise_scale(segment.xyz);
-segment.shape_dist = shape_distribution_3d(segment.scaled_xyz, params.shape_dist);
+segment.shape_dist = shape_distribution_norms_3d(segment.scaled_xyz, segment.norms, params.shape_dist);
+segment.edge_shape_dist = edge_shape_dists(segment.mask, params.shape_dist.edge_dict);
 
 %% Find closest match and load image etc...
 dists = chi_square_statistics(segment.shape_dist, model.all_shape_dists);
+dists = chi_square_statistics(segment.edge_shape_dist, model.all_edge_shape_dists);
 %dists = kullback_leibler_divergence(segment.shape_dist, model.all_shape_dists);
 [~, idx] = sort(dists, 'ascend');
 
@@ -59,7 +63,8 @@ for ii = 1:num_to_plot
     this.view = model.all_view_idx(idx(ii));
     this.path = sprintf(paths.basis_models.rendered, this.model, this.view);
     load(this.path, 'depth')
-    depth(abs(depth-3)<0.01) = nan;
+    max_depth = max(depth(:));
+    depth(abs(depth-max_depth)<0.01) = nan;
     
     subplot(p, q, ii)
     imagesc(depth)

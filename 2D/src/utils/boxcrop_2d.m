@@ -1,4 +1,4 @@
-function im_out = boxcrop_2d(im_in)
+function [im_out, topleft] = boxcrop_2d(im_in)
 % crops zero-valued rows and columns from outside of an image
 
 % getting sums of columns and rows
@@ -14,3 +14,5 @@ row_sums = any(im_in, 2);
 
 % cropping image
 im_out = im_in(top_row:end_row, top_col:end_col);
+
+topleft = [top_row, top_col];
