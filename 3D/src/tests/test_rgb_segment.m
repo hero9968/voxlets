@@ -23,7 +23,10 @@ cloud.depth = reshape(P(:, :, 3), [480, 640]);
 [idxs, idxs_without_nans, probabilities, all_idx] = segment_soup_3d(cloud, params.segment_soup);
 
 %% now extractin the region
-segment_to_use = 4;
+use_hsv = 1;
+gmm = 0;
+
+segment_to_use = 8;
 region.idx = reshape(idxs(:, segment_to_use), [480, 640]) > 0.5;
 imagesc(region.idx)
 
@@ -35,18 +38,37 @@ region.outer_mask = logical(region.dilated1 - region.dilated2);
 imagesc(region.outer_mask)
 
 %% extracting the pixels for inner and outer
-cloud.rgb_reshape = reshape(permute(cloud.rgb, [3, 1, 2]), 3, [])';
-region.inner_pixels = cloud.rgb_reshape(region.eroded(:), :);
-region.outer_pixels = cloud.rgb_reshape(region.outer_mask(:), :);
+if ~use_hsv
+    cloud.col_reshape = reshape(permute(cloud.rgb, [3, 1, 2]), 3, [])';
+else
+    cloud.col_reshape = reshape(permute(rgb2hsv(double(cloud.rgb)), [3, 1, 2]), 3, [])';
+    cloud.col_reshape = cloud.col_reshape(:, 1:3);
+end
+region.inner_pixels = cloud.col_reshape(region.eroded(:), :);
+region.outer_pixels = cloud.col_reshape(region.outer_mask(:), :);
+
+subplot(211); hist(region.inner_pixels, 100)
+subplot(212); hist(region.outer_pixels, 100)
 
 %% fitting colour models
-region.inner_model = gmdistribution.fit(region.inner_pixels,4, 'Replicates', 3, 'SharedCov', false, 'CovType', 'diagonal');
-region.outer_model = gmdistribution.fit(region.outer_pixels,4, 'Replicates', 3, 'SharedCov', false, 'CovType', 'diagonal');
+if gmm
+    region.inner_model = gmdistribution.fit(region.inner_pixels,4, 'Replicates', 3, 'SharedCov', false, 'CovType', 'diagonal');
+    region.outer_model = gmdistribution.fit(region.outer_pixels,4, 'Replicates', 3, 'SharedCov', false, 'CovType', 'diagonal');
+end   
 
 %% now classifying all the pixels in the image, for visulaisaoitn purposes
-region.inner_likelihood = pdf(region.inner_model, cloud.rgb_reshape);
-region.outer_likelihood = pdf(region.outer_model, cloud.rgb_reshape);
-region.inner_posterior = (region.inner_likelihood * 0.5) ./ ( region.inner_likelihood * 0.5 + region.outer_likelihood * 0.5);
+if gmm
+    region.inner_likelihood = pdf(region.inner_model, cloud.col_reshape);
+    region.outer_likelihood = pdf(region.outer_model, cloud.col_reshape);
+    region.inner_posterior = (region.inner_likelihood * 0.5) ./ ( region.inner_likelihood * 0.5 + region.outer_likelihood * 0.5);
+else
+    all_pixels = [region.inner_pixels; region.outer_pixels];
+    pixel_labels = [0*region.inner_pixels(:, 1); 0*region.outer_pixels(:, 1)+1];
+    [~, neighbours] = pdist2(all_pixels, cloud.col_reshape, 'euclidean', 'smallest', 20);
+    labelling = pixel_labels(neighbours);
+    region.inner_posterior = sum(labelling, 1) / 20;
+    %region.outer_likelihood = pdf(region.outer_model, cloud.col_reshape);
+end
 region.outer_posterior = 1 - region.inner_posterior;
 subplot(121)
 imagesc(reshape(region.inner_posterior, [480, 640]))
@@ -111,5 +133,17 @@ hold off
 axis image
 
 
-
-
+%% alternate route
+[edges, rgb_edges] = depth_edges(cloud.rgb, cloud.depth);
+t_rgb = cloud.rgb;
+t_rgb(:, :, 3) = (cloud.depth/max(cloud.depth(:))).^0.5;
+t_rgb(:, :, 2) = (cloud.depth/max(cloud.depth(:))).^0.5;
+subplot(131)
+imagesc(t_rgb);
+axis image
+subplot(121)
+imagesc(edges)
+axis image
+subplot(122)
+imagesc(rgb_edges);
+axis image
