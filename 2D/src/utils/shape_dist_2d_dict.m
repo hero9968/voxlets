@@ -20,21 +20,28 @@ dists = (X(inds1) - X(inds2)).^2 + (Y(inds1) - Y(inds2)).^2;
 dists = sqrt(dists);
 
 % computing angles between the same random pairs
-angles = dot(norms(:, inds1), norms(:, inds2), 1);% range is [-1, 1];
+dot_prod = dot(norms(:, inds1), norms(:, inds2), 1);
+dot_prod = min(max(dot_prod, -1), 1);
+angles = acos(dot_prod); % range is [0, pi];
 
 % removing nans
 to_remove = isnan(dists) | isnan(angles);
 dists(to_remove) = [];
 angles(to_remove) = [];
 
-% finding nearest neighbours in the dictioanry
-%idx = knnsearch(dict, [dists', angles']);
-%scatter(dists, angles, 30, idx, 'filled')
-[~, idx] = pdist2(dict, [dists', angles'], 'Euclidean', 'Smallest', 1);
+if ~isempty(dict)
 
-% computing the output array
-fv = accumarray(idx(:), 1, [size(dict, 1), 1]);
-sum(idx==1)/length(idx);
-%plot(fv)
-%hold on
-fv = fv(:)' / sum(fv);
+    % finding nearest neighbours in the dictioanry
+    %idx = knnsearch(dict, [dists', angles']);
+    %scatter(dists, angles, 30, idx, 'filled')
+    [~, idx] = pdist2(dict, [dists', angles'], 'Euclidean', 'Smallest', 1);
+
+    % computing the output array
+    fv = accumarray(idx(:), 1, [size(dict, 1), 1]);
+    sum(idx==1)/length(idx);
+    %plot(fv)
+    %hold on
+    fv = fv(:)' / sum(fv);
+else
+    fv = [];
+end

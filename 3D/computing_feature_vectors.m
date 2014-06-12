@@ -11,14 +11,14 @@ params.shape_dist.rescaling = 0;
 params.shape_dist.num_samples = 20000;
 
 %%
-for ii = 2%:length(params.model_filelist)
+for ii = 1:length(params.model_filelist)
 
     tic
     
     % output place
     model = params.model_filelist{ii};
     outfile = sprintf(paths.basis_models.fv_file, model);
-    
+
     if exist(outfile, 'file')
         disp(['Skipping ' num2str(ii)])
         continue
@@ -42,11 +42,11 @@ for ii = 2%:length(params.model_filelist)
             norms = renders(jj).normals;
             
             % hack to deal with bad data
-            max_depth = max(depth(:));
-            if abs(max_depth-2)<0.01
-                normals_to_use = depth~=max_depth;
-                norms = norms(normals_to_use(:), :);
-            end
+            %max_depth = max(depth(:));
+            %if abs(max_depth-2)<0.01
+            %    normals_to_use = depth~=max_depth;
+            %    norms = norms(normals_to_use(:), :);
+            %end
 
             % project depth to 3D
             [this_xyz, mask] = reproject_depth(depth, params.half_intrinsics, nan);
@@ -56,7 +56,8 @@ for ii = 2%:length(params.model_filelist)
                 this_xyz = this_xyz * scale(jj);
 
                 shape_dist(jj, :) = shape_distribution_norms_3d(this_xyz, norms, params.shape_dist);
-                edge_shape_dist(jj, :) = edge_shape_dists(mask, params.shape_dist.edge_dict);
+                %edge_shape_dist(jj, :) = edge_shape_dists(mask, params.shape_dist.edge_dict);
+                edge_shape_dist(jj, :) = edge_shape_dists_norms(mask, params.shape_dist.edge_dict);
                 
                 % transform to origin
                 [~, ~, temp] = transformation_to_origin_3d(this_xyz);

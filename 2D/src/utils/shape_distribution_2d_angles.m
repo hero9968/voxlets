@@ -20,7 +20,9 @@ dists = (X(inds1) - X(inds2)).^2 + (Y(inds1) - Y(inds2)).^2;
 dists = sqrt(dists);
 
 % computing angles between the same random pairs
-angles = dot(norms(:, inds1), norms(:, inds2), 1);% range is [-1, 1];
+dot_prod = dot(norms(:, inds1), norms(:, inds2), 1);
+dot_prod = min(max(dot_prod, -1), 1);
+angles = acos(dot_prod); % range is [0, pi];
 
 % removing distances out of range
 dists_original = dists;

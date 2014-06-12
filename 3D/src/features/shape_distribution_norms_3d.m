@@ -23,7 +23,9 @@ dists = sqrt(dists);
 original_dists = dists;
 
 % computing the angles
-angles = dot(norms(inds1, :), norms(inds2, :), 2);  % range is in theory [-1, 1];
+dot_prod = dot(norms(inds1, :), norms(inds2, :), 2);
+dot_prod = min(max(dot_prod, -1), 1);
+angles = acos(dot_prod); % range is [0, pi];
 original_angles = angles;
 
 % removing nans

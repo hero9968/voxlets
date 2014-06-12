@@ -7,25 +7,23 @@ addpath(genpath('.'))
 
 %% 
 
-for ii = 1:length(params.model_filelist)
+for ii = 1%:length(params.model_filelist)
 
     model = params.model_filelist{ii};
-    outdir = ['/Users/Michael/projects/shape_sharing/data/3D/basis_models/normals/' model];
-    depthdir = ['/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/' model];
+    outdir = sprintf(paths.basis_models.normals_dir, model);
     
     if ~exist(outdir, 'dir')
         disp(['Making directory']);
         mkdir(outdir)
     end
     
-
     disp(['Doing number ' num2str(ii)]);
     
     tic
     
     for jj = 1:42
-        outfile = sprintf([outdir, '/norms_%d.mat'], jj);
-        depthfile = sprintf([depthdir, '/depth_%d.mat'], jj);
+        outfile = sprintf(paths.basis_models.normals, model, jj);
+        depthfile = sprintf(paths.basis_models.rendered, model, jj);
        
         % deciding if to continue
         if exist(outfile, 'file')

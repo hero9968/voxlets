@@ -1,4 +1,4 @@
-function scale = normalise_scale(XY)
+function scale = normalise_scale_2d(XY)
 % finds a scale factor for points XY which will map them into some kind of
 % consistant scale space
 % let's do this so the distance between the furthest pair of points is 1
