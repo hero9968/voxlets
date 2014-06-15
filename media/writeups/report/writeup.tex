@@ -1,0 +1,171 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[latin1]{inputenc}
+%\usepackage{url}
+%\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+
+\usepackage{xspace}
+\newcommand*{\eg}{e.g.\@\xspace}
+\newcommand*{\ie}{i.e.\@\xspace}
+\newcommand*{\ea}{et al.\@\xspace}
+\renewcommand{\arraystretch}{1.5}
+
+\newcommand{\prob}{Pr}
+\newcommand{\rgbdimage}{\mathbf{I}}
+\newcommand{\imregion}{\mathcal{R}}
+\newcommand{\occ}{o}
+\newcommand{\basisshape}{B}
+\newcommand{\pcloud}{\mathcal{P}}
+\newcommand{\point}{\mathbf{p}}
+\newcommand{\normal}{\mathbf{n}}
+
+\title{Predicting Voxel Occupancy in Unobserved Regions of RGBD Images}
+
+\author{Michael Firman}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+Given a single RGBD image, the aim of this system is to predict whether each voxel in the scene is occupied or not - in effect, we want to predict the output of KinectFusion, but having been given only a single view of the scene instead of multiple views.
+
+The aim is to achieve this by matching regions from the input image to renders of objects in a training database. The voxel occupancy of these objects can then be combined together to give a prediction for each of the voxels in the scene. Because we care about voxel occupancy, and not semantic understnading, we are free to use training objects which differ in scale and semantic labelling from the objects being modelled in the scene.
+
+
+This has applications in:
+
+\begin{description}
+
+\item[Path planning] --- Helping a robot to plan a path around objects given only a single view of a scene, e.g. from a doorway.
+
+\item[Scene relighting] --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
+
+\item[Object repositioning] --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to.
+
+\end{description}
+
+In addition, our output can act as a prior for algorithms such as registration.
+
+\subsubsection{Motivation for using a voxelised world}
+
+Voxels are expensive compared to point clouds and meshes. 
+However they are a very natural representation of our world, and have been shown to work well for reconstruction \eg KinFu, other voxel carving paper. 
+In addition, our world remains at the same resolution, while computers are becoming larger and more powerful. 
+People have make work-arounds for efficintly using voxels in very large ares, \eg Kintinuous.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Related work}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\paragraph{Mesh completion}
+In the graphics community, there is a lot of work looking at the completion of missing and occluded parts of 3D meshes. 
+For example, \cite{podolak-esgp-2005} fill holes in a mesh by enforcing watertightness across an octree structure, while \cite{schnabel-eurographics-2009} complete meshes by using primitives extracted from the areas of the scan without missing detail. 
+A good overview of such mesh completion algorithms are given in \cite{ju-cst-2009}.
+
+
+
+Atomic volumes for mesh completion:
+[http://gfx.cs.princeton.edu/pubs/Podolak_2005_AVF/atomicvol.pdf](http://gfx.cs.princeton.edu/pubs/Podolak_2005_AVF/atomicvol.pdf)
+
+![](Lit%20review.resources/67fd3ffa4d06c1acf88b84b1a14a3875.png)
+
+Next best view approaches, e.g.:
+A Surface-Based Next-Best-View Approach for Automated 3D Model
+[http://elib-v3.dlr.de/73427/1/kriegel11_icra_final_110207.pdf](http://elib-v3.dlr.de/73427/1/kriegel11_icra_final_110207.pdf)
+
+Completion of Unknown Objects
+
+[schnabel-eurographics-2009]: Repearing scans using some primitives. Also do e.g. extending of planes to close corners. The primitives are larded from the input point cloud, sort of line in the traditional image completion algorithms. This is unlike e.g. scene completion from millions of images, which is more our sort of boat.
+
+![](Lit%20review.resources/9aa5f0c8a01e439d18e6a010557ae8aa.png)
+
+A good survey is given in [tao-2009]
+From there:
+![](Lit%20review.resources/a93652667bac1b6c175669fd0ecefc09.png)
+
+Law and Aliaga [law-cviu-2010] use symmetry to complete partial views. They are limited to only completing partial views; they rely on all objects being symmetrical; and they need user input.
+![](Lit%20review.resources/de4d58af32803fe990420954a7802ab6.png)
+
+In a similar sort of way, Pereira and Leme ([http://w3.impa.br/~paesleme/Symmetry/Symmetry.html](http://w3.impa.br/~paesleme/Symmetry/Symmetry.html)) write about using symmetry to complete missing regions: Not much more has been done than this image though.
+
+
+One key motivation is Shape Sharing [Kim..], where silhouettes of objects are used to segment other objects from different classes .
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Methodology}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{A soup of segments}
+
+Our motivation for using a soup of segments together with class matching across class boundaries is like this. 
+Imagine we had a chair in our test set. If in our training set we had a similar chair then we would like to use this, as it would hopefully be a good match. However, if we didn't have a chair in our training set then it is very unlikely that we would be able to find a suitable match. In this case, we would like to break up the chair into segments, each of which could have a similarly shaped object matched to it.
+
+\subsection{Finding matches for each region}
+
+\subsubsection{Features}
+
+Simple pairwise features very popular in RGBD image understanding, e.g. Drost, Shotton, Microsoft 7-scenes, FPFH, KinFu... We use variants on the shape distribution \cite{osada-csma-2001} to form our FV. 
+Given a point cloud $\pcloud = \{\point_1, \hdots, \point_N\}$ with associated normals $\{\normal_1, \hdots, \normal_N\}$ we select random pairs of 
+$$
+\mathbf{f}_{i,j} = \left(|\point_i, \point_j|_2, \angle(\normal_i, \normal_j)\right),
+$$
+where $\angle(\normal_i,\normal_j)$ denotes the angle in radians between the normal vectors $\normal_i$ and $\normal_j$.
+We use the bag-of-words approach to aggregate the features for an entire region, into a feature vector. We use a dictionary with 75 words, formed using k-means.
+
+We don't necessarily have an exact match for each region or object in the database. We therefore allow for there to be 
+
+\paragraph{Scale invarience}
+We want to allow for scale invariance. To allow for this we rescale the points in each region and basis shape render by $s$, where $s$ is the 95th percentile of the pairwise distances in the region.
+
+\subsection{Finding matches for each region}
+
+
+\subsection{Combining matches together}
+
+
+
+\subsection{For single object, single segmentation.}
+
+Image is $\rgbdimage$, event of occupancy is $o$. Basis shape is $\basisshape$.
+$$
+\prob(\occ | \rgbdimage) = \sum_i \prob(\occ | \basisshape) \prob(\basisshape | \rgbdimage)
+$$ 
+We know that $\prob(\occ|\basisshape)$ is just 1 within the shape, and 0 outside. $\prob(\basisshape|\rgbdimage)$ is harder but could be based on some kind of heuristic based on number of inliers and how well the shape matches in etc.
+
+In particular:
+$$ 
+\sum_i \prob(\basisshape|\rgbdimage) = 1
+$$
+
+\subsection{For multiple segmentations.}
+
+Now we have to introduce the concept of segmentations. The image $\rgbdimage$ will be segmented into a number of different regions $R$, where these regions may (but need not) overlap and the union of the regions need not cover the whole image.
+
+We can then perform the fitting as before, but this time on a per-region basis. The regions are then marginalised out:
+$$
+\prob(\occ | \rgbdimage) = \sum_{i,j} \prob(\occ|\basisshape)\prob(\basisshape|\imregion_j)\prob(\imregion_j|\rgbdimage)
+$$
+
+Similar to before,
+$$
+\sum_i \prob(\basisshape|\imregion) = 1
+$$
+
+However, there is no obligation for $\sum_j \prob(\imregion_j | \rgbdimage) = 1$, as the regions may be non-overlapping.
+
+The only thing left to compute is the probability of a specific region given the image, i.e. $\prob(\imregion_j|\rgbdimage)$. 
+
+$$
+\prob(\imregion_j | \rgbdimage) = \sum_{k} \prob(\imregion_j|S_k)\prob(S_k|\rgbdimage)
+$$
+$\prob(\imregion_j | S_k)$ is just the probability 
+
+
+\end{document}
