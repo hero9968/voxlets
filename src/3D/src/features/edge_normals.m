@@ -1,4 +1,4 @@
-function [XY, norms] = edge_normals(mask, k)
+function [XY, norms, angle_hist] = edge_normals(mask, k)
 % computes ordered set of points on edge of binary mask, plus their normals
 % (ensuring the normals face away from the mask center)
 % k is half window width for normal computation
@@ -36,4 +36,19 @@ end
 
 XY = fliplr(XY);
 norms = fliplr(norms);
+
+if nargout == 3
+    
+    C = centroid(mask);
+    
+    diffs = XY - repmat(C, size(XY, 1), 1);
+    dists = sqrt(diffs(:, 1).^2 + diffs(:, 2).^2);
+    all_angles = mod(atan2(diffs(:, 1), diffs(:, 2)), 2*pi);
+    
+    num_bins = 50;
+    bin_indices = round(all_angles/(2*pi) * num_bins)+1;
+    angle_hist = accumarray(bin_indices, dists, [num_bins+1, 1], @median);
+    angle_hist = angle_hist / sum(angle_hist);
+    
+end
 
