@@ -8,10 +8,7 @@ clear
 cd ~/projects/shape_sharing/2D
 define_params
 load(paths.filelist)
-addpath src/utils
-addpath src/transformations/
-addpath src/segment
-addpath src/external
+addpath(genpath('./src/'))
 
 %%
 if ~exist(paths.segmented, 'dir')

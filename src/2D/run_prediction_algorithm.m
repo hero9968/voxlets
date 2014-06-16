@@ -3,13 +3,7 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-addpath src/predict
-addpath src/utils
-addpath src/external
-addpath src/transformations/
-addpath src/external/hist2
-addpath src/external/libicp/matlab/
-addpath src/external/findfirst
+addpath(genpath('./src'))
 num_predictors = 3;
 
 %% getting model etc

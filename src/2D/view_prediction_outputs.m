@@ -4,7 +4,7 @@ clear
 cd ~/projects/shape_sharing/2D
 define_params
 load(paths.split_path, 'split')
-addpath src/external/SubAxis
+addpath(genpath('../common/subAxis'))
 predictor = get_predictor(1:3, 0, params, paths);
 %length_test_data = length(split.test_data);
 

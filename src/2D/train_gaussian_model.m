@@ -2,11 +2,7 @@
 cd ~/projects/shape_sharing/2D
 clear
 define_params
-addpath src/predict/
-addpath src/external/
-addpath src/external/findfirst/
-addpath src/transformations/
-addpath src/utils/
+addpath(genpath('./src/'))
 
 %% loading in all depths and shapes from disk...
 load(paths.all_images, 'all_images')

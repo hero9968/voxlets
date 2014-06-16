@@ -3,13 +3,7 @@
 clear
 cd ~/projects/shape_sharing/2D
 define_params
-addpath src/predict
-addpath src/utils
-addpath src/transformations/
-addpath src/external
-addpath src/external/hist2
-addpath src/external/libicp/matlab/
-addpath src/external/findfirst
+addpath(genpath('./src/'))
 addpath ../common/
 
 %% loading test data

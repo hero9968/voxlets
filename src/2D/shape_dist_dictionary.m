@@ -3,7 +3,7 @@
 cd ~/projects/shape_sharing/2D
 clear
 define_params
-addpath(genpath('.'));
+addpath(genpath('./src/'))
 addpath(genpath('../common/'))
 
 %% loading in all depths and shapes from disk...
