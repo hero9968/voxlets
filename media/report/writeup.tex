@@ -1,19 +1,28 @@
-\documentclass[10pt,a4paper]{article}
+\documentclass[10pt,a4paper, twocolumn]{article}
 \usepackage[latin1]{inputenc}
+
+% layout
+\setlength{\columnsep}{1cm}
+\usepackage[margin=2.5cm]{geometry}
+%\usepackage{multicol}
+%\usepackage{fullpage}
+
 %\usepackage{url}
 %\usepackage{booktabs}
+
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
 \usepackage{subfigure}
 \usepackage{graphicx}
+\usepackage{nonfloat}
 \graphicspath{{imgs/}}
 
 \usepackage{xspace}
 \newcommand*{\eg}{e.g.\@\xspace}
 \newcommand*{\ie}{i.e.\@\xspace}
 \newcommand*{\ea}{et al.\@\xspace}
-\renewcommand{\arraystretch}{1.5}
+%\renewcommand{\arraystretch}{1.5}
 
 \newcommand{\prob}{Pr}
 \newcommand{\rgbdimage}{\mathbf{I}}
@@ -24,28 +33,64 @@
 \newcommand{\point}{\mathbf{p}}
 \newcommand{\normal}{\mathbf{n}}
 
-\title{Predicting Scene Voxel Occupancy From a Single RGBD Image}
+\title{Predicting Voxel Occupancy From a Single RGBD Image}
 
 \author{Michael Firman}
 
 \begin{document}
 \maketitle
 
-
 \abstract{
-	We present a method to predict, given a single RGBD image, the voxel occupancy of each voxel in the scene. We make these predictions for this ill-posed problem using a database of CAD shapes, which we consider to be generic enough to be used to describe shape.
+	Gaining a representation of the geometry of a scene is an essential task for many applications including robotic navigation, scene re-lighting and object manipulation. 
+	Most existing work to recover the scene geometry relies on combining multiple views of the scene captured from many different directions, or use of \emph{a priori} information about the expected semantic make-up of the scene.
 
+	We present a method to predict whether or not each voxel in a scene is occupied given just a single RGBD image.
+	We argue that objects of dissimilar semantic classes often share similar shapes; this allows for a limited dataset of CAD objects to model the shape of a wide range of objects and hence estimate the hidden geometry of arbitrary scenes.
 }
 
+\begin{figure*}
+	\centering% 
+	\includegraphics[width=0.8\linewidth]{pipeline_hor}% 
+	\figcaption{The pipeline --- a work in progress!}% 
+	\label{fig:input.eps}% 
+\end{figure*}
+
+%\begin{minipage}{\linewidth} 
+%\begin{figure*}[b]
+%       \centering 
+%       \includegraphics[width=0.6\columnwidth]{pipeline_hor}
+%       \caption{The pipeline used --- work in progress!}
+%       \label{fig:pipeline}
+%\end{figure*}
+
+%\begin{multicols}{2}
 
 \section{Introduction}
+Given a single image of a scene, humans can usually get a good overview of the scene and what the geometry is, even in the many areas which are not directly observable. 
+We are able to do this using a manner of different tools at our disposal. 
+We can use symmetry, hypothesising that unobserved regions match the parts we can see under a transform.
+In many occasions we exploit semantic knowledge: by recognising specific objects and relating them to objects in our memory, we form an idea of their shape.
+In many cases, however, we use a more generic, higher level knowledge about shape in order to hypothesise the missing regions.
 
-Single image - get a good overview of the scene and what is going on. However, only see a very small subset of the surfaces in the scene. (Blender image?), and can only directly infer a very small number of occupied voxels. 
-Very useful to know if voxels are occupied, for various reasons.
+However, a single image only sees a small subset of the actual visible surfaces in the scene, and can only directly infer a very small number of occupied voxels.
 
-Reasons for occlusions. Self occlusions. Hidden underneath. Etc.
 
-Given a single RGBD image, the aim of this system is to predict whether each voxel in the scene is occupied or not - in effect, we want to predict the output of KinectFusion, but having been given only a single view of the scene instead of multiple views.
+\paragraph{Motivation}
+Very useful to know if voxels in the scene are occupied, for reasons such as:
+
+\begin{itemize}
+
+\item \textbf{Robotics} --- Helping a robot to plan a path around objects given only a single view of a scene, e.g. from a doorway. Also to help a robot plan grasping position on objects it can only see partial views of.
+
+\item \textbf{Scene relighting} --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
+
+\item \textbf{Object repositioning} --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
+
+\item \textbf{Re-rendering scene from a new viewpoint}
+\end{itemize}
+
+\paragraph{Aim of the system and overview}
+Given a single RGBD image, the aim of our system is to predict whether each voxel in the scene is occupied or not - in effect, we want to predict the voxelised occupancy grid of KinectFusion \cite{izadi-uist-2011}, but having been given only a single view of the scene instead of multiple views.
 
 We [plan to] achieve this by matching regions from the input image to renders of objects in a training database.
 The voxel occupancy of these objects can then be combined together to give a prediction for each of the voxels in the scene. 
@@ -53,22 +98,7 @@ Because we care about voxel occupancy, and not semantic understanding, we are fr
 This is key to our approach --- we are not reasoning about semantics of objects, but instead about object shape.
 In effect we are hypothesising that any two objects that have a similar shape from one angle are likely to share similarities in shape in the unobserved regions of the scene.
 
-Of course the problem is ill-posed, compared to well-posed problems such as reconstruction. 
-We therefore can only hope to make a reasonable guess of the occupancy, and rely on the predictability and repeatability of the world.
-
-
-This has applications in:
-
-\begin{description}
-
-\item[Robotics] --- Helping a robot to plan a path around objects given only a single view of a scene, e.g. from a doorway. Also to help a robot plan grasping position on objects it can only see partial views of.
-
-\item[Scene relighting] --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
-
-\item[Object repositioning] --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
-
-\item[Re-rendering scene from a new viewpoint]
-\end{description}
+Of course the problem is ill-posed; we therefore can only hope to make a reasonable guess of the occupancy and we rely on the predictability and repeatability of the world.
 
 In addition, our output can act as a prior for algorithms such as registration.
 
@@ -94,7 +124,6 @@ In addition, our world remains at the same resolution, while computers are becom
 People have make work-arounds for efficiently using voxels in very large ares, \eg Kintinuous.
 
 
-
 \begin{figure}
 	\centering 
 	\subfigure[Example input image]{%
@@ -105,43 +134,69 @@ People have make work-arounds for efficiently using voxels in very large ares, \
 	\caption{Given a single RGBD image (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
 \end{figure}
 
-\subsection{Problem statement}
+\subsubsection{Contributions}
+
+
+\subsubsection{Problem statement}
 
 Setting out the problem mathematically, introducing some notaion etc.
 
-What exactly do we mean by voxel occupancy? 
+What exactly do we mean by voxel occupancy?
+
+What is the scope of the work? 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Related work}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\paragraph{Axes of variation of related works}
+Using local information (\eg smoothing) $\leftrightarrow$ using global information (\eg patching from other images)
+
+Parametric models (Gaussian smoothing, CRFs) $\leftrightarrow$ non-parametric (patch-based)
+
+Care about semantic matching $\leftrightarrow$ Don't care about semantics
+
+
+\paragraph{Nearest neighbours}
 \cite{shen-tog-2012} use an assembly of parts from a CAD database to complete the unseen parts of a model given an RGBD image. 
 While they demonstrate good results they assume they have semantic-specific models of the objects in the dataset.
 Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantical labelling of voxels from an RGBD image. 
 For training, the use manually labelled top-down views of the scene. 
-Their prediction of occupancy, however, is really just a gaussian model. 
+Their prediction of occupancy, however, is really just a Gaussian model. 
 Final labellings found from graph cuts over the CRF. 
 They make the observation that the observed values from a Kinect sensor can be very bad, and may need cleaning up.
 
-\paragraph{Mesh completion}
+Fouhey \ea \cite{fouhey-iccv-2013} use the NYU dataset of RGBD images to learn how to predict the normal orientations for each pixel of an input RGB image. 
+In our case we are tackling a similar problem at a higher level --- we take RGBD as input, and aim to predict the full geometry of the scene.
+
+\paragraph{Mesh and image completion}
 In the graphics community, there is a lot of work looking at the completion of missing and occluded parts of 3D meshes. 
 For example, \cite{podolak-esgp-2005} fill holes in a mesh by enforcing watertightness across an octree structure, while \cite{schnabel-eurographics-2009} complete meshes by using primitives extracted from the areas of the scan without missing detail. 
 A good overview of such mesh completion algorithms are given in \cite{ju-cst-2009}.
 
-\paragraph{Superresotion}
-Similar to mesh completion is super-resolution. \eg \cite{macaodha-eccv-2012}. 
-Like our problem, super-resolution is ill-posed and relies on the repeatability and predictability of the world in order to find suitable matches.
+Image completion, such as \cite{hays-siggraph-2007}, typically has the aim of getting a good visually plausible output irrespective of the accuracy compared to ground truth. 
+The results can be very impressive. 
+Typically the image is completed by looking up possible completion regions in a large database of similar images.
+RGBD datasets on the order of millions of images do not yet exist, so we need to take a different approach.
+
+
+\paragraph{Super-resolution}
+Similar to mesh completion is super-resolution, \eg \cite{macaodha-eccv-2012}. 
+This, like our problem, is ill-posed and relies on the repeatability and predictability of the world in order to find suitable matches.
+
 
 \paragraph{Symmetry}
 Law and Aliaga \cite{law-cviu-2010} use symmetry to complete partial views. 
 They are limited to only completing partial views; they rely on all objects being symmetrical; and they need user input.
-Similarly, \cite{thrun-iccv-2005} uses symmetry to complete models from a single depth view. 
-Uses a great probablistic interpretation of the model view from a depth scene, but again relies on the objects being symmetric.
+Similarly, \cite{thrun-iccv-2005} and \cite{kroemer-humanoids-2012} use symmetry to complete models from a single depth view. 
+They both demonstrate results on isolated objects, but not on more complex or cluttered scenes. 
+The constraint of requiring axes of symmetry to both be present and accurately detected is a large limiting factor with these approaches.
 
 \paragraph{Indoor room semantic prediction}
 These works in general try to understand the semantic layout of a scene, \ie given an image infer what objects are in the scene and what their poses are.
 \cite{nan-acm-2012, minkim-siggraphasia-2012}
 This could be seen as finding one-to-many correspondences between models in a database and points in the scene.
+In our work, by not restricting ourselves to trying to find semantic correspondences, we are able to model the shape of a far greater range of test scenes without making any assumptions about their semantic makeup.
 
 \paragraph{Indoor room occupied space prediction}
 \cite{hedau-cvpr-2012} seek to recover the free space in 2D images. They label ~500 images with box annotations, and aim to recover the bounding box layout of the scene in order to recover the free space.
@@ -162,6 +217,11 @@ Similarly, \cite{zhang-iccv-2013} infer the clutter and layout and support and s
 They label ~500 images with box annotations, and aim to recover the bounding box layout of the scene in order to recover the free space. 
 A big work in this area is that by \cite{gupta-cvpr-2011}, who estimate voxel occupation before fitting boxes.
 
+Satkin \ea \cite{satkin-bmvc-2012} use 3D models to do scene understanding from a single image, and they demonstrate results on room scenes such as bedrooms and living rooms. 
+A key interest for me is that they first propose hypotheses, before rendering them with OpenGL.
+This then feeds into a hypothesis scorer which says if their ideas are any good. 
+They form their proposals in an expensive way: they moving the cad model along the (x, y) scene axes, and render the model in every location, and in each of 4 rotation configurations!
+
 
 \paragraph{General motivation}
 One key motivation is Shape Sharing \cite{kim-eccv-2012}, where silhouettes of objects are used to segment other objects from different classes.
@@ -169,29 +229,29 @@ One key motivation is Shape Sharing \cite{kim-eccv-2012}, where silhouettes of o
 
 Big issue with ground truth. Most papers don't have proper ground truth and therefore can only really do qualitative results, \eg \cite{all the papers...}.
 
-
+\paragraph{To do:}
 \begin{itemize}
-\item Should also cite Oisin.
-\item Also the guy who spoke at MSR Cambridge.
+\item Box world --- predicting object locations and extents through bounding boxes.
+\item Robotics --- path planning with occupancy grids
 \end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Approach}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Overview of the method --- Figure \ref{fig:pipeline}.
+
+
+General motivation for method. Do not want to rely on having exact matches in training set. 
+Instead, want to find a collection of good matches in the training set which, when combined, will give a sensible prediction of the voxel occupancy.
+We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Methodology}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Overview of the method --- cite \ref{fig:pipeline}.
-
-General motivation for method. Do not want to rely on having exact matches in training set. 
-Instead, want to find a collection of good matches in the training set which, when combined, will give a sensible prediction of the voxel occupancy.
-We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
-
-\begin{figure}
-	\centering 
-	\includegraphics[width=0.6\columnwidth]{pipeline}
-	\caption{The pipeline used --- work in progress!}
-	\label{fig:pipeline}
-\end{figure}
 
 \subsection{Prediction voxel occupancy}
 The ultimate aim is to predict, for each voxel in the scene, the probably of the event $\occ$, \ie the probability that it is occupied or not. We therefore want $\prob(\occ_k | \rgbdimage)$.
@@ -207,6 +267,12 @@ This is the probability that basis shape $\basisshape_i$ is a correct match for 
 \item $\prob(\imregion_j|\rgbdimage)$ ---
 This is the probability that the region of the image $\imregion_j$ is a correct segmentation of image $\rgbdimage$.
 \end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Pre-processing}
+We assume we know the up direction of the scene. 
+We find the largest plane with normals in this direction at the base of the scene, and segment out the areas above this.
+We assume this plane is the tabletop or floor at the base of the image.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -246,43 +312,43 @@ We want to allow for scale invariance. To allow for this we rescale the points i
 
 
 
-\subsection{For single object, single segmentation.}
+% \subsection{For single object, single segmentation.}
 
-Image is $\rgbdimage$, event of occupancy is $o$. Basis shape is $\basisshape$.
-$$
-\prob(\occ | \rgbdimage) = \sum_i \prob(\occ | \basisshape) \prob(\basisshape | \rgbdimage)
-$$ 
-We know that $\prob(\occ|\basisshape)$ is just 1 within the shape, and 0 outside. 
-$\prob(\basisshape|\rgbdimage)$ is harder but could be based on some kind of heuristic based on number of inliers and how well the shape matches in etc.
+% Image is $\rgbdimage$, event of occupancy is $o$. Basis shape is $\basisshape$.
+% $$
+% \prob(\occ | \rgbdimage) = \sum_i \prob(\occ | \basisshape) \prob(\basisshape | \rgbdimage)
+% $$ 
+% We know that $\prob(\occ|\basisshape)$ is just 1 within the shape, and 0 outside. 
+% $\prob(\basisshape|\rgbdimage)$ is harder but could be based on some kind of heuristic based on number of inliers and how well the shape matches in etc.
 
-In particular:
-$$ 
-\sum_i \prob(\basisshape|\rgbdimage) = 1
-$$
+% In particular:
+% $$ 
+% \sum_i \prob(\basisshape|\rgbdimage) = 1
+% $$
 
-\subsection{For multiple segmentations.}
+% \subsection{For multiple segmentations.}
 
-Now we have to introduce the concept of segmentations. 
-The image $\rgbdimage$ will be segmented into a number of different regions $R$, where these regions may (but need not) overlap and the union of the regions need not cover the whole image.
+% Now we have to introduce the concept of segmentations. 
+% The image $\rgbdimage$ will be segmented into a number of different regions $R$, where these regions may (but need not) overlap and the union of the regions need not cover the whole image.
 
-We can then perform the fitting as before, but this time on a per-region basis. The regions are then marginalised out:
-$$
-\prob(\occ | \rgbdimage) = \sum_{i,j} \prob(\occ|\basisshape)\prob(\basisshape|\imregion_j)\prob(\imregion_j|\rgbdimage)
-$$
+% We can then perform the fitting as before, but this time on a per-region basis. The regions are then marginalised out:
+% $$
+% \prob(\occ | \rgbdimage) = \sum_{i,j} \prob(\occ|\basisshape)\prob(\basisshape|\imregion_j)\prob(\imregion_j|\rgbdimage)
+% $$
 
-Similar to before,
-$$
-\sum_i \prob(\basisshape|\imregion) = 1
-$$
+% Similar to before,
+% $$
+% \sum_i \prob(\basisshape|\imregion) = 1
+% $$
 
-However, there is no obligation for $\sum_j \prob(\imregion_j | \rgbdimage) = 1$, as the regions may be non-overlapping.
+% However, there is no obligation for $\sum_j \prob(\imregion_j | \rgbdimage) = 1$, as the regions may be non-overlapping.
 
-The only thing left to compute is the probability of a specific region given the image, i.e. $\prob(\imregion_j|\rgbdimage)$. 
+% The only thing left to compute is the probability of a specific region given the image, i.e. $\prob(\imregion_j|\rgbdimage)$. 
 
-$$
-\prob(\imregion_j | \rgbdimage) = \sum_{k} \prob(\imregion_j|S_k)\prob(S_k|\rgbdimage)
-$$
-$\prob(\imregion_j | S_k)$ is just the probability 
+% $$
+% \prob(\imregion_j | \rgbdimage) = \sum_{k} \prob(\imregion_j|S_k)\prob(S_k|\rgbdimage)
+% $$
+% $\prob(\imregion_j | S_k)$ is just the probability 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -290,7 +356,7 @@ $\prob(\imregion_j | S_k)$ is just the probability
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Database of CAD models}
-Use the database from Fisher \ea \cite{fisher-siggrraphasia-2012}.
+Use the database from Fisher \ea \cite{fisher-siggraphasia-2012}.
 1600 CAD models, each depth-rendered from 42 viewing angles using OpenGL.
 
 
@@ -298,4 +364,5 @@ Use the database from Fisher \ea \cite{fisher-siggrraphasia-2012}.
 \bibliographystyle{apalike}
 \bibliography{bibtex/strings.bib,bibtex/main.bib,bibtex/crossrefs.bib}
 
+%\end{multicols}
 \end{document}
