@@ -40,11 +40,21 @@
 
 \section{Introduction}
 
+Single image - get a good overview of the scene and what is going on. However, only see a very small subset of the surfaces in the scene. (Blender image?), and can only directly infer a very small number of occupied voxels. 
+Very useful to know if voxels are occupied, for various reasons.
+
+Reasons for occlusions. Self occlusions. Hidden underneath. Etc.
+
 Given a single RGBD image, the aim of this system is to predict whether each voxel in the scene is occupied or not - in effect, we want to predict the output of KinectFusion, but having been given only a single view of the scene instead of multiple views.
 
-We [plan to] achieve this by matching regions from the input image to renders of objects in a training database. The voxel occupancy of these objects can then be combined together to give a prediction for each of the voxels in the scene. Because we care about voxel occupancy, and not semantic understanding, we are free to use training objects which differ in scale and semantic labelling from the objects being modelled in the scene. This is key to our approach --- we are not reasoning about semantics of objects, but instead about object shape. In effect we are hypothesising that any two objects that have a similar shape from one angle are likely to share similarities in shape in the unobserved regions of the scene.
+We [plan to] achieve this by matching regions from the input image to renders of objects in a training database.
+The voxel occupancy of these objects can then be combined together to give a prediction for each of the voxels in the scene. 
+Because we care about voxel occupancy, and not semantic understanding, we are free to use training objects which differ in scale and semantic labelling from the objects being modelled in the scene. 
+This is key to our approach --- we are not reasoning about semantics of objects, but instead about object shape.
+In effect we are hypothesising that any two objects that have a similar shape from one angle are likely to share similarities in shape in the unobserved regions of the scene.
 
-Of course the problem is ill-posed, compared to well-posed problems such as reconstruction. We therefore can only hope to make a reasonable guess of the occupancy, and rely on the predictability and repeatability of the world.
+Of course the problem is ill-posed, compared to well-posed problems such as reconstruction. 
+We therefore can only hope to make a reasonable guess of the occupancy, and rely on the predictability and repeatability of the world.
 
 
 This has applications in:
@@ -55,19 +65,35 @@ This has applications in:
 
 \item[Scene relighting] --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
 
-\item[Object repositioning] --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to.
+\item[Object repositioning] --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
 
 \item[Re-rendering scene from a new viewpoint]
 \end{description}
 
 In addition, our output can act as a prior for algorithms such as registration.
 
+
+\subsubsection{What is our hypothesis?}
+
+What is our overall hypotheses --- that the shape we can see from one angle is enough information to make a sensible prediction about the parts of the scene which are occluded?
+
+We aren't making assumptions about class, unlike \eg shotton (people) or room modelling.
+
 \subsubsection{Motivation for using a voxelised world}
 
 Voxels are expensive compared to point clouds and meshes. 
 However they are a very natural representation of our world, and have been shown to work well for reconstruction \eg KinFu, other voxel carving paper. 
+
+\begin{quote}
+Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
+
+\cite{snow-cvpr-2000}
+\end{quote}
+
 In addition, our world remains at the same resolution, while computers are becoming larger and more powerful. 
 People have make work-arounds for efficiently using voxels in very large ares, \eg Kintinuous.
+
+
 
 \begin{figure}
 	\centering 
@@ -83,13 +109,19 @@ People have make work-arounds for efficiently using voxels in very large ares, \
 
 Setting out the problem mathematically, introducing some notaion etc.
 
+What exactly do we mean by voxel occupancy? 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Related work}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\cite{shen-tog-2012} use an assembly of parts from a CAD database to complete the unseen parts of a model given an RGBD image. While they demonstrate good results they assume they have semantic-specific models of the objects in the dataset.
-Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantical labelling of voxels from an RGBD image. For training, the use manually labelled top-down views of the scene. Their prediction of occupancy, however, is really just a gaussian model. Final labellings found from graph cuts over the CRF. They make the observation that the observed values from a Kinect sensor can be very bad, and may need cleaning up.
+\cite{shen-tog-2012} use an assembly of parts from a CAD database to complete the unseen parts of a model given an RGBD image. 
+While they demonstrate good results they assume they have semantic-specific models of the objects in the dataset.
+Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantical labelling of voxels from an RGBD image. 
+For training, the use manually labelled top-down views of the scene. 
+Their prediction of occupancy, however, is really just a gaussian model. 
+Final labellings found from graph cuts over the CRF. 
+They make the observation that the observed values from a Kinect sensor can be very bad, and may need cleaning up.
 
 \paragraph{Mesh completion}
 In the graphics community, there is a lot of work looking at the completion of missing and occluded parts of 3D meshes. 
@@ -97,11 +129,14 @@ For example, \cite{podolak-esgp-2005} fill holes in a mesh by enforcing watertig
 A good overview of such mesh completion algorithms are given in \cite{ju-cst-2009}.
 
 \paragraph{Superresotion}
-Similar to mesh completion is super-resolution. \eg \cite{macaodha-eccv-2012}. Like our problem, super-resolution is ill-posed and relies on the repeatability and predictability of the world in order to find suitable matches.
+Similar to mesh completion is super-resolution. \eg \cite{macaodha-eccv-2012}. 
+Like our problem, super-resolution is ill-posed and relies on the repeatability and predictability of the world in order to find suitable matches.
 
 \paragraph{Symmetry}
-Law and Aliaga \cite{law-cviu-2010} use symmetry to complete partial views. They are limited to only completing partial views; they rely on all objects being symmetrical; and they need user input.
-Similarly, \cite{thrun-iccv-2005} uses symmetry to complete models from a single depth view. Uses a great probablistic interpretation of the model view from a depth scene, but again relies on the objects being symmetric.
+Law and Aliaga \cite{law-cviu-2010} use symmetry to complete partial views. 
+They are limited to only completing partial views; they rely on all objects being symmetrical; and they need user input.
+Similarly, \cite{thrun-iccv-2005} uses symmetry to complete models from a single depth view. 
+Uses a great probablistic interpretation of the model view from a depth scene, but again relies on the objects being symmetric.
 
 \paragraph{Indoor room semantic prediction}
 These works in general try to understand the semantic layout of a scene, \ie given an image infer what objects are in the scene and what their poses are.
@@ -137,6 +172,7 @@ Big issue with ground truth. Most papers don't have proper ground truth and ther
 
 \begin{itemize}
 \item Should also cite Oisin.
+\item Also the guy who spoke at MSR Cambridge.
 \end{itemize}
 
 
@@ -145,6 +181,10 @@ Big issue with ground truth. Most papers don't have proper ground truth and ther
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Overview of the method --- cite \ref{fig:pipeline}.
+
+General motivation for method. Do not want to rely on having exact matches in training set. 
+Instead, want to find a collection of good matches in the training set which, when combined, will give a sensible prediction of the voxel occupancy.
+We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
 
 \begin{figure}
 	\centering 
@@ -246,9 +286,12 @@ $\prob(\imregion_j | S_k)$ is just the probability
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Results}
+\section{Experiments}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\subsection{Database of CAD models}
+Use the database from Fisher \ea \cite{fisher-siggrraphasia-2012}.
+1600 CAD models, each depth-rendered from 42 viewing angles using OpenGL.
 
 
 %\bibliographystyle{plain}
