@@ -17,6 +17,7 @@ cloud.xyz = P(:, :, 1:3);
 cloud.xyz = reshape(permute(cloud.xyz, [3, 1, 2]), 3, [])';
 cloud.rgb = P(:, :, 4:6);
 cloud.depth = reshape(P(:, :, 3), [480, 640]);
+%%
 [cloud.normals, cloud.curvature] = normals_wrapper(cloud.xyz, 'knn', 50);
 
 %% running segment soup algorithm
@@ -78,7 +79,7 @@ imagesc(reshape(region.outer_posterior, [480, 640]))
 axis image
 
 %% now set up the graphcut unary terms
-region.outer_P = max(region.outer_posterior, region.outer_mask(:));
+region.outer_P = max(region.outer_posterior(:), region.outer_mask(:));
 region.outer_P(region.eroded) = 0;
 region.outer_P(~region.dilated2) = 1;
 region.outer_P = reshape(region.outer_P, [480, 640]);
@@ -147,3 +148,58 @@ axis image
 subplot(122)
 imagesc(rgb_edges);
 axis image
+
+%%
+load('~/projects/shape_sharing/data/3D/piotr_dollar/modelNyud.mat');
+addpath(genpath('./utils/toolbox'))
+addpath('./utils/release')
+%%
+cloud.depth(isnan(cloud.depth)) = 0.5;
+%I=cat(3,single(cloud.rgb),cloud.depth);
+I = cloud.depth;
+
+%%
+tic, E=edgesDetect(I,model); toc
+%%
+[mag, dir] = imgradient(E);
+
+%%
+subplot(121); 
+im(cloud.rgb); 
+subplot(122); 
+imagesc(E);
+axis image
+colorbar
+set(gca, 'clim', [0, 1])
+
+%% now getting the edges for one of the indexes
+to_use = 4;
+this.idx = idxs(:, to_use);
+this.mask = reshape(this.idx, size(cloud.depth));
+this.edge = edge(this.mask>0);
+
+%%
+this.eroded = imerode(this.mask, strel('disk',10));
+this.dilated1 = imdilate(this.mask, strel('disk',10));
+this.outer_mask = logical(this.dilated1 - this.eroded);
+imagesc(this.outer_mask + this.edge)
+this.outer.struct_edge = nan(size(this.outer_mask));
+this.outer.struct_edge(this.outer_mask) = E(this.outer_mask);
+imagesc(this.outer.struct_edge)
+[Y, X] = find(~isnan(this.outer.struct_edge));
+T = this.outer.struct_edge(~isnan(this.outer.struct_edge));
+this.outer.dist = T / sum(T);
+this.outer.draw = mnrnd(1000, this.outer.dist)
+close all
+
+plot(X(this.outer.draw>0), Y(this.outer.draw>0), 'o')
+axis image
+
+whos T
+%this.outer.sampled = 
+%%
+close all
+[XY, norms] = edge_normals(this.mask>0, 10);
+plot_edge_normals(XY', norms')
+
+
