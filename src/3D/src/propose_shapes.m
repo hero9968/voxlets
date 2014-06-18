@@ -3,53 +3,44 @@
 
 % a script to load in a depth image, convert to xyz, compute normals and segment
 clear
-cd ~/projects/shape_sharing/3D/src/
-addpath plotting/
-addpath features/
-addpath ./file_io/matpcl/
+cd ~/projects/shape_sharing/src/3D/src/
+addpath(genpath('.'))
 addpath(genpath('../../common/'))
-addpath transformations/
-addpath utils/
-addpath ../../2D/src/segment/
-addpath ../../2D/src/utils
-run ../define_params_3d.m
+addpath(genpath('../../2D/src'))
+define_params_3d
 load(paths.structured_model_file, 'model')
 
 %% loading in some of the ECCV dataset
 clear cloud
-filepath = '/Users/Michael/data/others_data/ECCV_dataset/pcd_files/frame_20111220T111153.549117.pcd';
-P = loadpcd(filepath);
-cloud.xyz = P(:, :, 1:3);
-cloud.xyz = reshape(permute(cloud.xyz, [3, 1, 2]), 3, [])';
-cloud.rgb = P(:, :, 4:6);
-cloud.depth = reshape(P(:, :, 3), [480, 640]);
+%filepath = '/Users/Michael/data/others_data/ECCV_dataset/pcd_files/frame_20111220T111153.549117.pcd';
+%P = loadpcd(filepath);
+%cloud.xyz = P(:, :, 1:3);
+%cloud.xyz = reshape(permute(cloud.xyz, [3, 1, 2]), 3, [])';
+P = loadpcd('~/projects/shape_sharing/data/3D/scenes/ren2_noisy00000.pcd');
+%%
+D = flipdim(permute(reshape(P, [6, 640, 480]), [1, 3, 2]), 2);
+cloud.xyz = D(1:3, :)';
+nan_locations = D(1, :)==0;
+cloud.xyz(nan_locations(:), :) = nan;
+cloud.depth = -squeeze(D(3, :, :));
+cloud.depth(nan_locations) = nan;
 [cloud.normals, cloud.curvature] = normals_wrapper(cloud.xyz, 'knn', 50);
+cloud.rgb = repmat(cloud.depth, [1, 1, 3])/2;
+clear P D
 
 %% running segment soup algorithm
 [idxs, idxs_without_nans, probabilities, all_idx] = segment_soup_3d(cloud, params.segment_soup);
 
 %% plotting segments
-%close all
-plot_segment_soup_3d(cloud.rgb.^0.2, idxs);
-for ii = 1:length(probabilities)
-    subplot(2, 4, ii)
-    title(num2str(probabilities(ii)))
-end
-set(findall(gcf,'type','text'),'fontSize',18,'fontWeight','bold')
+plot_segment_soup_3d(cloud.rgb.^0.2, idxs, probabilities);
 
 %% Choosing a segment and computing the feature vector
-segment.seg_index = 8;
-segment.idx = idxs(:, segment.seg_index);
-segment.mask = reshape(segment.idx, [480, 640]) > 0.1;
-segment.xyz = cloud.xyz(segment.idx>0.5, :);
-segment.norms = cloud.normals(segment.idx>0.5, :);
-segment.scaled_xyz = segment.xyz * normalise_scale(segment.xyz);
-segment.shape_dist = shape_distribution_norms_3d(segment.scaled_xyz, segment.norms, params.shape_dist);
-segment.edge_shape_dist = edge_shape_dists_norms(segment.mask, params.shape_dist.edge_dict);
+seg_index = 2;
+segment = extract_segment(cloud, idxs(:, seg_index), params);
 
 % Find closest match and load image etc...
-%dists = chi_square_statistics_fast(segment.shape_dist, model.all_shape_dists);
-dists = chi_square_statistics_fast(segment.edge_shape_dist, model.all_edge_shape_dists);
+dists = chi_square_statistics_fast(segment.shape_dist, model.all_shape_dists);
+%dists = chi_square_statistics_fast(segment.edge_shape_dist, model.all_edge_shape_dists);
 [~, idx] = sort(dists, 'ascend');
  
 % plotting the closest matches
@@ -74,7 +65,8 @@ for ii = 1:(num_to_plot-1)
     imagesc(depth)
     title([num2str(this.model_idx) ' - ' num2str(this.view)])
     axis image off
-    colormap(flipud(gray))    
+    colormap(flipud(gray))
+    
 end
 
 %% idea now is to rotate each image to the best alignment.
@@ -107,7 +99,10 @@ for ii = 1:(num_to_plot-1)
     
     
     subplot(p, q, ii+1)
-    imagesc(imrotate(depth, -this.angle))
+    t_depth = imrotate(depth, -this.angle);
+    t_depth(t_depth==0) = nan;
+    t_depth = boxcrop_2d(t_depth);
+    imagesc(t_depth)
     title([num2str(this.model_idx) ' - ' num2str(this.view)])
     axis image off
     colormap(flipud(gray))    
@@ -139,7 +134,7 @@ for ii = 1:25
     max_depth = max(depth(:));
     depth(abs(depth-max_depth)<0.01) = 0;
     depth = boxcrop_2d(depth);
-    %depth(depth==0) =nan;
+    depth(depth==0) =nan;
     subaxis(5, 5, ii, 'Margin',0, 'Spacing', 0)
     imagesc(depth)
     axis image off

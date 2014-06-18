@@ -3,6 +3,8 @@ function [XY, norms, angle_hist] = edge_normals(mask, k)
 % (ensuring the normals face away from the mask center)
 % k is half window width for normal computation
 
+mask = imclose(mask, strel('disk', 10));
+
 B = bwboundaries(mask);
 
 % find largest component

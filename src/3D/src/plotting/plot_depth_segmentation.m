@@ -9,7 +9,7 @@ imagesc(depth_image);
 hold on
 
 [X, Y] = find(edge(logical(segmentation_image)));
-plot(Y, X, 'r.','linewidth', 2)
+plot(Y, X, 'r.','markersize', 8)
 hold off
 
 axis image off

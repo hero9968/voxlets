@@ -2,8 +2,7 @@
 cd ~/projects/shape_sharing/3D/
 clear
 run define_params_3d.m
-addpath ../file_io
-addpath ../transformations/
+addpath(genpath('.'))
 OVERWRITE = false;
 %edit write_obj
 

@@ -1,5 +1,7 @@
 function [edges, rgb_edges] = depth_edges(rgb, depth)
 % function to find the depth eges from an image
+% This is a load of bullshit really and I don't think I'd use it. Much
+% better to use e.g. the structured edge prediction from Pietor Dollar.
 
 threshold = 0.05;
 offset_dist = 5;

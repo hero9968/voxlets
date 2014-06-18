@@ -1,4 +1,4 @@
-function plot_segment_soup_3d(base_image, segmentation)
+function plot_segment_soup_3d(base_image, segmentation, extra_titles)
 % function to plot the results of a segment soup algorithm
 
 [h, w, ~] = size(base_image);
@@ -13,5 +13,12 @@ for ii = 1:size(segmentation, 2)
     
     subplot(n, m, ii)
     plot_depth_segmentation(base_image, temp_image);
-    title(num2str(ii))
+    
+    if nargin == 3
+        title([num2str(ii), ' - ', num2str(extra_titles(ii))])
+    else
+        title(num2str(ii))
+    end
 end
+
+set(findall(gcf,'type','text'),'fontSize',18,'fontWeight','bold')

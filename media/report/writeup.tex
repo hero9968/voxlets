@@ -2,10 +2,8 @@
 \usepackage[latin1]{inputenc}
 
 % layout
-\setlength{\columnsep}{1cm}
-\usepackage[margin=2.5cm]{geometry}
-%\usepackage{multicol}
-%\usepackage{fullpage}
+\setlength{\columnsep}{0.75cm}
+\usepackage[margin=2.0cm]{geometry}
 
 %\usepackage{url}
 %\usepackage{booktabs}
@@ -42,16 +40,21 @@
 
 \abstract{
 	Gaining a representation of the geometry of a scene is an essential task for many applications including robotic navigation, scene re-lighting and object manipulation. 
-	Most existing work to recover the scene geometry relies on combining multiple views of the scene captured from many different directions, or use of \emph{a priori} information about the expected semantic make-up of the scene.
+	Most existing works to recover the scene geometry rely on combining multiple views of the scene captured from many different directions or use of \emph{a priori} information about the expected semantic make-up of the scene.
 
 	We present a method to predict whether or not each voxel in a scene is occupied given just a single RGBD image.
 	We argue that objects of dissimilar semantic classes often share similar shapes; this allows for a limited dataset of CAD objects to model the shape of a wide range of objects and hence estimate the hidden geometry of arbitrary scenes.
+
+	Our method comprises of three main stages. 
+	First, we propose CAD models which match regions in our input scene, and estimate a suitable transformation into the scene. 
+	Next we classify each proposal as being `good' or `bad', using a random forest trained on scenes with known geometry.
+	Finally we combine the voxel predictions of all the proposals, taking into account the output of the per-proposal classifier.
 }
 
 \begin{figure*}
 	\centering% 
-	\includegraphics[width=0.8\linewidth]{pipeline_hor}% 
-	\figcaption{The pipeline --- a work in progress!}% 
+	\includegraphics[width=0.9\linewidth]{pipeline_hor}% 
+	\figcaption{The pipeline --- a work in progress! This will ultimately show a much more challenging image, together with the basis shapes that are matched in and a visualisation of the final voxel occupancy.}% 
 	\label{fig:input.eps}% 
 \end{figure*}
 
@@ -72,20 +75,16 @@ We can use symmetry, hypothesising that unobserved regions match the parts we ca
 In many occasions we exploit semantic knowledge: by recognising specific objects and relating them to objects in our memory, we form an idea of their shape.
 In many cases, however, we use a more generic, higher level knowledge about shape in order to hypothesise the missing regions.
 
-However, a single image only sees a small subset of the actual visible surfaces in the scene, and can only directly infer a very small number of occupied voxels.
+%However, a single image only sees a small subset of the actual visible surfaces in the scene, and can only directly infer a very small number of occupied voxels.
 
 
 \paragraph{Motivation}
-Very useful to know if voxels in the scene are occupied, for reasons such as:
+It can be very useful for a computer system to know the geometry of hidden areas of a scene, for reasons such as:
 
 \begin{itemize}
-
 \item \textbf{Robotics} --- Helping a robot to plan a path around objects given only a single view of a scene, e.g. from a doorway. Also to help a robot plan grasping position on objects it can only see partial views of.
-
 \item \textbf{Scene relighting} --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
-
 \item \textbf{Object repositioning} --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
-
 \item \textbf{Re-rendering scene from a new viewpoint}
 \end{itemize}
 
@@ -100,74 +99,81 @@ In effect we are hypothesising that any two objects that have a similar shape fr
 
 Of course the problem is ill-posed; we therefore can only hope to make a reasonable guess of the occupancy and we rely on the predictability and repeatability of the world.
 
-In addition, our output can act as a prior for algorithms such as registration.
+%In addition, our output can act as a prior for algorithms such as registration.
 
 
-\subsubsection{What is our hypothesis?}
+% \subsubsection{What is our hypothesis?}
 
-What is our overall hypotheses --- that the shape we can see from one angle is enough information to make a sensible prediction about the parts of the scene which are occluded?
+% What is our overall hypotheses --- that the shape we can see from one angle is enough information to make a sensible prediction about the parts of the scene which are occluded?
 
-We aren't making assumptions about class, unlike \eg shotton (people) or room modelling.
+% We aren't making assumptions about class, unlike \eg shotton (people) or room modelling.
 
-\subsubsection{Motivation for using a voxelised world}
+% \subsubsection{Motivation for using a voxelised world}
 
-Voxels are expensive compared to point clouds and meshes. 
-However they are a very natural representation of our world, and have been shown to work well for reconstruction \eg KinFu, other voxel carving paper. 
+% Voxels are expensive compared to point clouds and meshes. 
+% However they are a very natural representation of our world, and have been shown to work well for reconstruction \eg KinFu, other voxel carving paper. 
 
-\begin{quote}
-Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
+% \begin{quote}
+% Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
 
-\cite{snow-cvpr-2000}
-\end{quote}
+% \cite{snow-cvpr-2000}
+% \end{quote}
 
-In addition, our world remains at the same resolution, while computers are becoming larger and more powerful. 
-People have make work-arounds for efficiently using voxels in very large ares, \eg Kintinuous.
+% In addition, our world remains at the same resolution, while computers are becoming larger and more powerful. 
+% People have make work-arounds for efficiently using voxels in very large ares, \eg Kintinuous.
 
 
-\begin{figure}
-	\centering 
-	\subfigure[Example input image]{%
-		\includegraphics[width=0.4\columnwidth]{kinfu1.jpg}}
-		\hfill
-	\subfigure[Ground truth output]{%
-		\includegraphics[width=0.4\columnwidth]{kinfu2.jpg}} \\
-	\caption{Given a single RGBD image (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
-\end{figure}
+% \begin{figure}
+% 	\centering 
+% 	\subfigure[Example input image]{%
+% 		\includegraphics[width=0.4\columnwidth]{kinfu1.jpg}}
+% 		\hfill
+% 	\subfigure[Ground truth output]{%
+% 		\includegraphics[width=0.4\columnwidth]{kinfu2.jpg}} \\
+% 	\caption{Given a single RGBD image (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
+% \end{figure}
 
 \subsubsection{Contributions}
-
+\begin{itemize}
+\item A scale-\emph{variant} mechanism for 6DOF hypothesis proposals, which is robust to local changes in geometrical appearance.
+\item A classifier for verifying 6DOF hypotheses, trained on [synthetic/real] scenes
+\item A probablistic method for combining together the per-voxel predictions of multiple hypotheses.
+\end{itemize}
 
 \subsubsection{Problem statement}
 
-Setting out the problem mathematically, introducing some notaion etc.
+Setting out the problem mathematically, introducing some notation etc.
 
-What exactly do we mean by voxel occupancy?
+% What exactly do we mean by voxel occupancy?
 
-What is the scope of the work? 
+% What is the scope of the work? 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Related work}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\paragraph{Axes of variation of related works}
-Using local information (\eg smoothing) $\leftrightarrow$ using global information (\eg patching from other images)
+% \paragraph{Axes of variation of related works}
+% Using local information (\eg smoothing) $\leftrightarrow$ using global information (\eg patching from other images)
 
-Parametric models (Gaussian smoothing, CRFs) $\leftrightarrow$ non-parametric (patch-based)
+% Parametric models (Gaussian smoothing, CRFs) $\leftrightarrow$ non-parametric (patch-based)
 
-Care about semantic matching $\leftrightarrow$ Don't care about semantics
+% Care about semantic matching $\leftrightarrow$ Don't care about semantics
 
 
 \paragraph{Nearest neighbours}
 \cite{shen-tog-2012} use an assembly of parts from a CAD database to complete the unseen parts of a model given an RGBD image. 
 While they demonstrate good results they assume they have semantic-specific models of the objects in the dataset.
 Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantical labelling of voxels from an RGBD image. 
-For training, the use manually labelled top-down views of the scene. 
+For training, they use manually labelled top-down views of the scene. 
 Their prediction of occupancy, however, is really just a Gaussian model. 
 Final labellings found from graph cuts over the CRF. 
 They make the observation that the observed values from a Kinect sensor can be very bad, and may need cleaning up.
 
 Fouhey \ea \cite{fouhey-iccv-2013} use the NYU dataset of RGBD images to learn how to predict the normal orientations for each pixel of an input RGB image. 
 In our case we are tackling a similar problem at a higher level --- we take RGBD as input, and aim to predict the full geometry of the scene.
+
+\cite{guo-iccv-2013} use a single RGBD image to estimate the location and extent of the \emph{support surfaces} (\eg tabletops) in the scene. They do this by processing and analsing the geometry, before finally fitting shapes to the hypothesised support regions. They provide user-annotated 3D reconstructions of the full 3D space of the NYU dataset images, which could become useful for our work.
+
 
 \paragraph{Mesh and image completion}
 In the graphics community, there is a lot of work looking at the completion of missing and occluded parts of 3D meshes. 
@@ -179,11 +185,9 @@ The results can be very impressive.
 Typically the image is completed by looking up possible completion regions in a large database of similar images.
 RGBD datasets on the order of millions of images do not yet exist, so we need to take a different approach.
 
-
 \paragraph{Super-resolution}
 Similar to mesh completion is super-resolution, \eg \cite{macaodha-eccv-2012}. 
 This, like our problem, is ill-posed and relies on the repeatability and predictability of the world in order to find suitable matches.
-
 
 \paragraph{Symmetry}
 Law and Aliaga \cite{law-cviu-2010} use symmetry to complete partial views. 
@@ -222,6 +226,8 @@ A key interest for me is that they first propose hypotheses, before rendering th
 This then feeds into a hypothesis scorer which says if their ideas are any good. 
 They form their proposals in an expensive way: they moving the cad model along the (x, y) scene axes, and render the model in every location, and in each of 4 rotation configurations!
 
+\paragraph{Robotics and path planning}
+Voxels or 2D occupancy grids are often used in robotics for path planning, and for maintaining a map of the environment. These are typically deterministic approaches, \eg \cite{jetchev-icra-2010}. Sometimes a state model is used to model the states of voxels being occupied, unoccupied or unknown --- the voxel states are then updated as more information is gathered from sensors \cite{toussaint-techreport-2007}.
 
 \paragraph{General motivation}
 One key motivation is Shape Sharing \cite{kim-eccv-2012}, where silhouettes of objects are used to segment other objects from different classes.
@@ -229,32 +235,42 @@ One key motivation is Shape Sharing \cite{kim-eccv-2012}, where silhouettes of o
 
 Big issue with ground truth. Most papers don't have proper ground truth and therefore can only really do qualitative results, \eg \cite{all the papers...}.
 
-\paragraph{To do:}
+\paragraph{To add to related work:}
 \begin{itemize}
 \item Box world --- predicting object locations and extents through bounding boxes.
 \item Robotics --- path planning with occupancy grids
 \end{itemize}
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Approach}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Overview of the method --- Figure \ref{fig:pipeline}.
-
-
-General motivation for method. Do not want to rely on having exact matches in training set. 
-Instead, want to find a collection of good matches in the training set which, when combined, will give a sensible prediction of the voxel occupancy.
-We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
+% Overview of the method --- Figure \ref{fig:pipeline}.
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% General motivation for method. Do not want to rely on having exact matches in training set. 
+% Instead, want to find a collection of good matches in the training set which, when combined, will give a sensible prediction of the voxel occupancy.
+% We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
+
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Methodology}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+Requirements of the matching schema:
+\begin{itemize}
+\item Not looking to match the exact shapes --- instead want to match shapes that might only be somewhat similar
+\item For this reason, want to be robust to local differences between the two regions, but capture the overall shape
+\item Want the matching to be scale \emph{variant} --- should be able to match regions of the same shape regardless of their scale 
+\item We therefore ultimately look for a 7DOF transformation
+\end{itemize}
 
-\subsection{Prediction voxel occupancy}
-The ultimate aim is to predict, for each voxel in the scene, the probably of the event $\occ$, \ie the probability that it is occupied or not. We therefore want $\prob(\occ_k | \rgbdimage)$.
+\paragraph{Scale variance}
+We ensure we can match regions of the same shape but of different scales by rescaling each region by a scale factor $s$, where $s$ is the 95th percentile of the pairwise distances in the region. By using the 95th percentile instead of the maximum distance between pairs of points we become robust to outlying points.
+
+\subsection{Predicting voxel occupancy}
+The ultimate aim is to predict, for each voxel $v_k$ in the scene, the probably of the event $\occ_k$, \ie the probability that it is occupied or not. We therefore want $\prob(\occ_k | \rgbdimage)$ for each voxel.
 $$
 \prob(\occ_k | \rgbdimage) = \sum_{i,j} \prob(\occ_k|\basisshape_i)\prob(\basisshape_i|\imregion_j)\prob(\imregion_j|\rgbdimage)
 $$
@@ -283,32 +299,29 @@ Imagine we had a chair in our test set. If in our training set we had a similar 
 However, if we didn't have a chair in our training set then it is very unlikely that we would be able to find a suitable match. 
 In this case, we would like to break up the chair into segments, each of which could have a similarly shaped object matched to it.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Finding matches for each region}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsection{Finding matches for each region}
 
-Find the $n$ nearest neighbours in $\chi^2$ distance space.
+% Find the $n$ nearest neighbours in $\chi^2$ distance space.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{Features}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \subsubsection{Features}
 
-Simple pairwise features very popular in RGBD image understanding, e.g. Drost, Shotton, Microsoft 7-scenes, FPFH, KinFu... 
-We use variants on the shape distribution \cite{osada-csma-2001} to form our FV. 
-Given a point cloud $\pcloud = \{\point_1, \hdots, \point_N\}$ with associated normals $\{\normal_1, \hdots, \normal_N\}$ we select random pairs of 
-$$
-\mathbf{f}_{i,j} = \left(|\point_i, \point_j|_2, \angle(\normal_i, \normal_j)\right),
-$$
-where $\angle(\normal_i,\normal_j)$ denotes the angle in radians between the normal vectors $\normal_i$ and $\normal_j$.
-We use the bag-of-words approach to aggregate the features for an entire region, into a feature vector. We use a dictionary with 75 words, formed using k-means.
+% Simple pairwise features very popular in RGBD image understanding, e.g. Drost, Shotton, Microsoft 7-scenes, FPFH, KinFu... 
+% We use variants on the shape distribution \cite{osada-csma-2001} to form our FV. 
+% Given a point cloud $\pcloud = \{\point_1, \hdots, \point_N\}$ with associated normals $\{\normal_1, \hdots, \normal_N\}$ we select random pairs of 
+% $$
+% \mathbf{f}_{i,j} = \left(|\point_i, \point_j|_2, \angle(\normal_i, \normal_j)\right),
+% $$
+% where $\angle(\normal_i,\normal_j)$ denotes the angle in radians between the normal vectors $\normal_i$ and $\normal_j$.
+% We use the bag-of-words approach to aggregate the features for an entire region, into a feature vector. We use a dictionary with 75 words, formed using k-means.
 
-We don't necessarily have an exact match for each region or object in the database. We therefore allow for there to be 
+% We don't necessarily have an exact match for each region or object in the database. We therefore allow for there to be 
 
-\paragraph{Scale invarience}
-We want to allow for scale invariance. To allow for this we rescale the points in each region and basis shape render by $s$, where $s$ is the 95th percentile of the pairwise distances in the region.
-
-\subsection{Finding matches for each region}
+% \subsection{Finding matches for each region}
 
 
-\subsection{Combining matches together}
+% \subsection{Combining matches together}
 
 
 
@@ -355,9 +368,35 @@ We want to allow for scale invariance. To allow for this we rescale the points i
 \section{Experiments}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+\begin{figure}
+	\centering% 
+	\includegraphics[width=1.0\columnwidth]{guo.png}% 
+	\figcaption{Representation of objects in the NYU dataset, provided from \cite{guo-iccv-2013}. Not a perfect representation but perhaps reasonable to some extents.}% 
+	\label{fig:guo_labels}% 
+\end{figure}
+
+
+
 \subsection{Database of CAD models}
 Use the database from Fisher \ea \cite{fisher-siggraphasia-2012}.
 1600 CAD models, each depth-rendered from 42 viewing angles using OpenGL.
+
+\subsubsection{Potential test datasets}
+\begin{itemize}
+\item Create our own KinFu dataset
+\item Kaparthy \ea --- would probably have to re-render their meshes. Also don't have the TSDF etc. Lots of problems
+\item NYU dataset --- classic dataset. Potential ground truth labels from \cite{guo-iccv-2013} (figure \ref{fig:guo_labels}) or \cite{kim-iccv-2013}.
+\item \cite{fisher-siggraphasia-2012}, use their synthetic scenes (great for a first pass!)
+\end{itemize}
+
+
+\begin{figure}
+	\centering% 
+	\includegraphics[width=1.0\columnwidth]{synth_scene.png}% 
+	\figcaption{One of the user-created synthetic scenes from \cite{fisher-siggraphasia-2012}.}% 
+	\label{fig:fisher_scene}% 
+\end{figure}
 
 
 %\bibliographystyle{plain}
