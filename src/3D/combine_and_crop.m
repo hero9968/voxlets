@@ -2,7 +2,7 @@
 % I'll crop the images, and include a 'top-left' field.
 % Will be interesting to see difference in disk space...
 
-cd ~/projects/shape_sharing/3D/
+cd ~/projects/shape_sharing/src/3D/
 clear
 addpath(genpath('.'))
 run define_params_3d.m
@@ -10,7 +10,7 @@ run define_params_3d.m
 number_renders = 42;
 
 %%
-for ii = 1:length(params.model_filelist)
+for ii = 1%:length(params.model_filelist)
     
     % output place
     model = params.model_filelist{ii};
@@ -37,6 +37,7 @@ for ii = 1:length(params.model_filelist)
         this_depth(mask) = nan;
                        
         normals = load_for_parfor(this_norms_name, 'normals');
+        curvature = load_for_parfor(this_norms_name, 'curvature');
         
         % hack here for normals which were not stripped out correctly...
         if length(normals) == 240*320
@@ -45,10 +46,41 @@ for ii = 1:length(params.model_filelist)
         
         renders(jj).depth = single(this_depth);
         renders(jj).normals = single(normals);
+        renders(jj).curvature = single(curvature);
         
     end
     
-    save(outfile, 'renders')
+    %save(outfile, 'renders')
 
     disp(['Done ' num2str(ii) ' in ' num2str(toc) ' s'])
+end
+
+
+
+%% new code to recreate the renders files...
+
+
+%% 
+tic
+for ii = 1:length(params.model_filelist)
+    
+    % output place
+    model = params.model_filelist{ii};
+    readfile = sprintf(paths.basis_models.combined_file, model);
+    T = load(readfile);
+    
+    outdir = sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/%s', model);
+    if ~exist(outdir, 'dir')
+        mkdir(outdir)
+    end
+    
+    for jj = 1:number_renders
+        savefile = sprintf(paths.basis_models.rendered, model, jj);
+        %disp(savefile)
+        depth = T.renders(jj).depth;
+        save(savefile, 'depth', '-v7')
+    end
+    
+    disp(['Done ' num2str(ii) ' in ' num2str(toc) ' s'])
+    
 end

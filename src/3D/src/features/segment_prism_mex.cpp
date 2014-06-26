@@ -14,6 +14,7 @@ Use like this:
 
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
+//#include <pcl/search/organized.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/project_inliers.h>
 #include <pcl/sample_consensus/method_types.h>
@@ -87,6 +88,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
     point.label = i;
     cloud->push_back( point );
   }
+  cloud->height = 640;
+  cloud->width = 480;
 
   double *normals_data = mxGetPr(NORMALS_IN);
   double *curve_data = mxGetPr(CURVE_IN);
@@ -106,6 +109,7 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
   // creating kdtree
   pcl::search::Search<pcl::PointXYZL>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZL> > (new pcl::search::KdTree<pcl::PointXYZL>);
+  //pcl::search::Search<pcl::PointXYZL>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZL> > (new pcl::search::OrganizedNeighbor<pcl::PointXYZL>);
 
 //  mexPrintf("Minx size %d and max size %d\n", *minsize, *maxsize);
 //  mexPrintf("Neighbours %d\n", *num_neighbours);

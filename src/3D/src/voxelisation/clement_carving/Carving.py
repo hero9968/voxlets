@@ -15,12 +15,13 @@ plt.ion()
 
 modelpath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/%s/depth_%d.mat"
 modelname = "1f8275f1c106144ff11c3739edd52fa3";
+#modelname = "1046b3d5a381a8902e5ae31c6c631a39";
 halopath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.mat"
 
 imheight = 240
 imwidth = 320
 nbFrames = 42
-res = 200  # resolution of the voxel grid
+res = 100  # resolution of the voxel grid
 
 # <codecell>
 
@@ -29,13 +30,12 @@ origin = np.array([[0, 0, 0, 1]]).T
 volume = np.zeros((res,res,res), dtype=np.uint8)
 size = 0.5
 
-
 coords = np.ones((4,res,res,res))
 coords[0:3,:,:,:] = np.mgrid[origin[0]-size:origin[0]+size:res*1j, origin[1]-size:origin[1]+size:res*1j, origin[2]-size:origin[2]+size:res*1j]
 
 X = coords.reshape((4, res**3))
 
-for i in (3, 10, 15, 20): #range(5):
+for i in xrange(42):
 
     print "Printing frame %d" % i
 
@@ -102,7 +102,7 @@ for i in (3, 10, 15, 20): #range(5):
 print "Done all frames."
 
 d = dict(vol=volume, coords=coords, res=res, origin=origin, size=size, depth=lmbd)
-savepath = "/Users/Michael/projects/shape_sharing/3D/model_render/clement_carving/temp.mat"
+savepath = "/Users/Michael/projects/shape_sharing/src/3D/src/voxelisation/clement_carving/temp.mat"
 scipy.io.savemat(savepath, d)
 
 # <codecell>

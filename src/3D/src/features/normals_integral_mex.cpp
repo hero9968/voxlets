@@ -50,8 +50,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
  		 cloud->push_back( point );
     }
 	}
-  cloud->height = 480;
-  cloud->width = 640;
+  cloud->height = 640;
+  cloud->width = 480;
   cloud->is_dense = false;
 
   // Getting string referring to search type

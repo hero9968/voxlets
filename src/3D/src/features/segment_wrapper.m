@@ -18,6 +18,10 @@ temp_idx_out = segment_prism_mex( double(xyz), double(normals), double(curve), .
     int32(opts.num_neighbours), opts.smoothness_threshold, ...
     opts.curvature_threshold );
 
+if all(temp_idx_out == -1)
+    error('All are -1!')
+end
+
 % reforming idx
 idx_out = nan(n, 1);
 idx_out(~to_remove, :) = temp_idx_out;

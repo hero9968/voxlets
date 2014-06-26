@@ -1,11 +1,12 @@
-cd ~/projects/shape_sharing/3D/model_render/clement_carving/
+cd ~/projects/shape_sharing/src/3D/src/voxelisation/clement_carving/
 addpath ../../plotting/
 
 %%
-%[AA, BB] = system('python Carving.py');
+%%[AA, BB] = system('python Carving.py');
 
 %%
-vox = load('temp.mat')
+vox_with = load('temp_with.mat')
+vox_wo = load('temp_wo.mat')
 
 % some stats from the volume
 sum(vox.vol(:))
@@ -13,9 +14,13 @@ sum(~vox.vol(:))
 unique(vox.vol(:))
 
 %% plotting the volume
-clf
-threshold = max(vox.vol(:));
-vol3d('CData', vox.vol >= threshold)
+subplot(121)
+threshold = max(vox_with.vol(:));
+vol3d('CData', vox_with.vol >= threshold - 10)
+axis image
+subplot(122)
+threshold = max(vox_wo.vol(:));
+vol3d('CData', vox_wo.vol >= threshold - 10)
 axis image
 
 %% trying a contour plot
