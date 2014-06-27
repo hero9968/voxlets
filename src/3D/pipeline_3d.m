@@ -31,6 +31,9 @@ generate_shape_dist_dict
 %% Computing feature vectors from the rendered images
 computing_feature_vectors
 
+%%
+compute_edge_features
+
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Full test images
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
