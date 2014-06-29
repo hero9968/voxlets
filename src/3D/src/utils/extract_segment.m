@@ -7,7 +7,8 @@ segment.idx = idxs;
 segment.mask = reshape(segment.idx, [480, 640]) > 0.1;
 segment.xyz = cloud.xyz(segment.idx>0.5, :);
 segment.norms = cloud.normals(segment.idx>0.5, :);
-segment.scaled_xyz = segment.xyz * normalise_scale(segment.xyz);
+segment.scale = 1 / normalise_scale(segment.xyz);
+segment.scaled_xyz = segment.xyz / segment.scale;
 
 % computing features for the segment...
 segment.shape_dist = shape_distribution_norms_3d(segment.scaled_xyz, segment.norms, params.shape_dist);
@@ -21,3 +22,5 @@ for jj = 1:length(segment.angle_hist)
     segment.angle_hists(jj, :) = circshift(segment.angle_hist(:), jj)';
 end
 segment.all_angles = linspace(0, 360, length(segment.angle_hist));
+
+segment.centroid = centroid(segment.mask);

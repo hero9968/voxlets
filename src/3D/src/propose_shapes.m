@@ -21,58 +21,45 @@ cloud = loadpgm_as_cloud('~/projects/shape_sharing/data/3D/scenes/first_few_rend
 plot_segment_soup_3d(cloud.rgb.^0.2, idxs, probabilities);
 
 %% Choosing a segment and computing the feature vector
-seg_index = 5;
+seg_index = 12;
 segment = extract_segment(cloud, idxs(:, seg_index), params);
-matches = propose_matches(segment, model, 20, 'edge_shape_dist', params, paths);
+matches = propose_matches(segment, model, 20, 'shape_dist', params, paths);
 
 %% plotting the closest matches
-num_to_plot = 20;
-[p, q] = best_subplot_dims(num_to_plot);
+plot_matches(matches, 20, segment.mask, params, paths)
 
-subplot(p, q, 1)
-imagesc2(boxcrop_2d(segment.mask))
-set(gcf, 'color', [1,1, 1])
+%% now must align the match into the original image
+imagesc(cloud.depth)
+hold on
+plot(segment.centroid(1), segment.centroid(2), 'r+')
+hold off
 
-for ii = 1:(num_to_plot-1)
+%%
+clf
+T = cloud.depth;
+for ii = 1:10
     
-    this.model = params.model_filelist{matches(ii).model_idx};
-    this.path = sprintf(paths.basis_models.rendered, this.model, matches(ii).view);
+    trans1 = translation_matrix(-matches(ii).centroid(1), -matches(ii).centroid(2));
+    rot = rotation_matrix(matches(ii).angle);
+    trans2 = translation_matrix(segment.centroid(1), segment.centroid(2));
+    scale = scale_matrix(segment.scale / matches(ii).scale);
     
-    % load and rotate the depth image
-    load(this.path, 'depth')
-    depth = format_depth(depth);
-    t_depth = imrotate(depth, -matches(ii).angle);
-    t_depth = boxcrop_2d(t_depth);
+    transf = maketform('affine', (trans2 * rot * trans1)');
+    [H, W] = size(cloud.depth);
     
-    % plot the depth image
-    subplot(p, q, ii+1)
-    plot_depth(t_depth)
-    title([num2str(matches(ii).model_idx) ' - ' num2str(matches(ii).view)])
+    depth = matches(ii).depth;
+    depth(isnan(depth)) = 0;
+    translated_match = imtransform(depth, transf, 'nearest', 'XData', [1 W], 'YData', [1 H], 'size', size(T));
+    T = translated_match + T;
     
 end
 
+imagesc(T)
 
 
 
-%% plotting some random database shapes
-addpath(genpath('../../common/'))
-addpath ../../2D/src/utils
 
-for ii = 1:25
-    
-    this_idx = randi(length(model.all_model_idx));
-    this.model_idx = model.all_model_idx(this_idx);
-    this.model = params.model_filelist{this.model_idx};
-    this.view = model.all_view_idx(this_idx);
-    this.path = sprintf(paths.basis_models.rendered, this.model, this.view);
-    load(this.path, 'depth')
-    max_depth = max(depth(:));
-    depth(abs(depth-max_depth)<0.01) = 0;
-    depth = boxcrop_2d(depth);
-    depth(depth==0) =nan;
-    subaxis(5, 5, ii, 'Margin',0, 'Spacing', 0)
-    imagesc(depth)
-    axis image off
-    colormap(flipud(gray))    
-end
-set(gcf, 'color', [1, 1, 1])
+
+
+
+

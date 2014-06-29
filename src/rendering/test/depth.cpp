@@ -1,10 +1,77 @@
+// From http://stackoverflow.com/questions/24266815/render-the-depth-buffer-in-opengl-without-shaders
+#include <stdlib.h>
 #include <iostream>
 
 #include <GL/glew.h>
 #include <GL/glut.h>
 
 #include <vector>
+
 using namespace std;
+
+GLuint car;
+
+struct myVertex{
+    float x;
+    float y;
+    float z;
+};
+
+void loadObj(char *fname)
+{
+    FILE *fp;
+    int read;
+    GLfloat x, y, z;
+    char ch;
+    car=glGenLists(1);
+    fp=fopen(fname,"r");
+    if (!fp)
+    {
+        printf("can't open file %s\n", fname);
+        exit(1);
+    }
+    glPointSize(2.0);
+
+    glNewList(car, GL_COMPILE);
+    {
+        //glPushMatrix();
+        glBegin(GL_TRIANGLES);
+        vector<myVertex> verts;
+        while(!(feof(fp)))
+        {
+            read=fscanf(fp,"%c %f %f %f",&ch,&x,&y,&z);
+            myVertex vert;
+            if(read==4&&ch=='v')
+            {
+                vert.x = x;
+                vert.y = y;
+                vert.z = z;
+                verts.push_back(vert);
+            }
+            if(read==4&&ch=='f')
+            {
+                int f1 = (int)x;
+                int f2 = (int)y;
+                int f3 = (int)z;
+                //cout << "SIze of verts is " << verts.size() << endl;
+                //cout << f1 << " , " << f2 << " , " << f3 << endl;
+                glColor3f(255, 255, 0);
+                //glVertex3f(0, 0, 1);
+                //glVertex3f(0, 1, 1);
+                //glVertex3f(10, 0, 0);
+                glVertex3f(verts.at(f1-1).x, verts.at(f1-1).y, verts.at(f1-1).z);
+                glVertex3f(verts.at(f2-1).x, verts.at(f2-1).y, verts.at(f2-1).z);
+                glVertex3f(verts.at(f3-1).x, verts.at(f3-1).y, verts.at(f3-1).z);
+            }
+        }
+
+        glEnd();
+    }
+    //glPopMatrix();
+    glEndList();
+    fclose(fp);
+}
+//.obj loader code ends here
 
 void display()
 {
@@ -16,7 +83,9 @@ void display()
     glMatrixMode( GL_PROJECTION );
     glLoadIdentity();
     double ar = w / static_cast< double >( h );
-    gluPerspective( 60, ar, 0.1, 10 );
+    const float zNear = 0.1;
+    const float zFar = 10.0;
+    gluPerspective( 60, ar, zNear, zFar );
 
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity();
@@ -28,11 +97,20 @@ void display()
     glPushMatrix();
     glRotatef( angle, 0.1, 0.5, 0.3 );
     glColor3ub( 255, 0, 0 );
-        
+    glutSolidTeapot( 1 );
+    //loadObj("/Users/Michael/projects/shape_sharing/data/3D/basis_models/databaseFull/models/8508808961d5a0b2b1f2a89349f43b2.obj");
+    //loadObj("./tea.obj");
     glPopMatrix();
 
     vector< GLfloat > depth( w * h, 0 );
     glReadPixels( 0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, &depth[0] ); 
+
+    // linearize depth
+    // http://www.geeks3d.com/20091216/geexlab-how-to-visualize-the-depth-buffer-in-glsl/
+    for( size_t i = 0; i < depth.size(); ++i )
+    {
+        depth[i] = ( 2.0 * zNear ) / ( zFar + zNear - depth[i] * ( zFar - zNear ) );
+    }
 
     static GLuint tex = 0;
     if( tex > 0 )
@@ -68,12 +146,6 @@ void display()
     glDisable( GL_TEXTURE_2D );
 
     glutSwapBuffers();
-
-        float sumof_depth = 0;
-    for (size_t i = 0; i < w*h; ++i)
-        sumof_depth += depth[i];
-    std::cout << "Sum of depths is " << sumof_depth << std::endl;
-
 }
 
 void timer( int value )
@@ -85,8 +157,7 @@ void timer( int value )
 int main( int argc, char **argv )
 {
     glutInit( &argc, argv );
-    //glutInitDisplayMode( GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE );
-    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitDisplayMode( GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE );
     glutInitWindowSize( 600, 600 );
     glutCreateWindow( "GLUT" );
     glewInit();
