@@ -1,14 +1,14 @@
 % a file to load in some of the rendered views and to plot them all
 % together to check that they all align
-cd ~/projects/shape_sharing/3D/model_render/
+cd ~/projects/shape_sharing/src/3D/src
 clear
-addpath ../plotting/
+addpath plotting/
 addpath src
-addpath ../transformations/
+addpath transformations/
 run ../define_params_3d.m
 
 %% setting up the paths
-num = 100;
+num = 1;
 model = params.model_filelist{num};
 
 %% loading in the views and plotting
@@ -33,8 +33,9 @@ colormap(hot)
 %intrinsics = 
 clf
 cols = 'rgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcymrgbkcym';
+all_xyz_trans = cell(1, 42);
 
-for ii = 1:3:42
+for ii = 1:42
     
     % extracting the xyz points
     this_depth = depths{ii};
@@ -49,6 +50,7 @@ for ii = 1:3:42
     
     % applying the suitable transformation to get back into canonical view
     this_xyz_trans = apply_transformation_3d(this_xyz, (T));
+    all_xyz_trans{ii} = this_xyz_trans;
     
     % adding to the plot in a different colour
     plot3d(this_xyz_trans, cols(ii));
@@ -57,6 +59,25 @@ for ii = 1:3:42
 end
 
 hold off
+
+%% now loading in the voxel grid for this modelclf
+clf
+voxel_filename = sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/voxelised/%s.mat', model);
+vox_struct = load(voxel_filename);
+V = vox_struct.vol;
+V(V<30) = 0;
+V = permute(V, [2, 1, 3]);
+R = [-0.5, 0.5];
+vol3d('CData', V, 'XData', R, 'YData', R, 'ZData', R)
+axis image
+
+hold on
+for ii = 1:5:42
+    plot3d(all_xyz_trans{ii}, cols(ii));
+end
+hold off
+
+view(10, -40)
 
 
 
