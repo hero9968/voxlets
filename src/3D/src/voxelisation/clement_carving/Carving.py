@@ -114,6 +114,7 @@ def render_model(modelname):
 number = 1;
 for modelname in os.listdir(renderspath):
     tic = time.time()
+    number += 1
 
     print "Processing " + modelname
 
@@ -124,6 +125,7 @@ for modelname in os.listdir(renderspath):
     savepath = savedir + modelname + '.mat'
     if os.path.isfile(savepath):
         print "Skipping " + modelname
+        continue
 
     render_model(modelname)
     
