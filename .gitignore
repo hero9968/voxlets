@@ -3,6 +3,7 @@ build/
 /media/ppt/
 /media/results/
 /media/notes/
-/2D/src/scratch/
-/3D/model_render/voxelisation/voxel
+/src/2D/src/scratch/
+/src/3D/model_render/voxelisation/voxel
+/src/rendering/test/depth
 todo.md
