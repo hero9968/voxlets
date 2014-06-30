@@ -4,7 +4,7 @@ function segment = extract_segment(cloud, idxs, params)
 % the short run.
 
 segment.idx = idxs;
-segment.mask = reshape(segment.idx, [480, 640]) > 0.1;
+segment.mask = reshape(segment.idx, [480, 640]) > 0.5;
 segment.xyz = cloud.xyz(segment.idx>0.5, :);
 segment.norms = cloud.normals(segment.idx>0.5, :);
 segment.scale = 1 / normalise_scale(segment.xyz);
@@ -24,3 +24,13 @@ end
 segment.all_angles = linspace(0, 360, length(segment.angle_hist));
 
 segment.centroid = centroid(segment.mask);
+
+% extract the 3D centroid
+%idxs = find(segment.mask);
+temp_mask = +segment.mask;
+temp_mask(segment.mask) = 1:length(segment.xyz);
+centroid_linear_index = temp_mask(round(segment.centroid(2)), round(segment.centroid(1)));
+
+segment.centroid_3d.xyz = segment.xyz(centroid_linear_index, :);
+segment.centroid_3d.norm = segment.norms(centroid_linear_index, :);
+
