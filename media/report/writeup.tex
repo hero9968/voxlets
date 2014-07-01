@@ -189,6 +189,8 @@ RGBD datasets on the order of millions of images do not yet exist, so we need to
 Similar to mesh completion is super-resolution, \eg \cite{macaodha-eccv-2012}. 
 This, like our problem, is ill-posed and relies on the repeatability and predictability of the world in order to find suitable matches.
 
+\cite{chang-tor-2007} complete a robot's map of an environment using parts of the already observed world to  `patch in' missing areas of the current map.
+
 \paragraph{Symmetry}
 Law and Aliaga \cite{law-cviu-2010} use symmetry to complete partial views. 
 They are limited to only completing partial views; they rely on all objects being symmetrical; and they need user input.
@@ -211,7 +213,7 @@ They then generate hypotheses of the layout.
 The hypotheses are chosen by evaluating their geometric cost, which is manually defined. 
 They cite a lot of papers which do scene reasoning from a single image, but they argue that the problem is ill-posed (which it is). 
 
-Using a single image, many people fit bounding boxes and try to estimate the layout using high lever info about gravity, typical scene arrangements etc. 
+Using a single image, many people fit bounding boxes and try to estimate the layout using high-level info about gravity, typical scene arrangements etc. 
 For example \cite{choi-cvpr-2013}.
 
 \cite{lee-nips-2010} are another paper using a single image to estimate the layout of a room. 
@@ -226,8 +228,19 @@ A key interest for me is that they first propose hypotheses, before rendering th
 This then feeds into a hypothesis scorer which says if their ideas are any good. 
 They form their proposals in an expensive way: they moving the cad model along the (x, y) scene axes, and render the model in every location, and in each of 4 rotation configurations!
 
+\paragraph{6DOF object pose estimation}
+Our work is closely related to the problem of estimating the 6DOF pose of a known database of objects in cluttered scenes, such as \cite{hinterstoisser-accv-2012, drost-3dimpvt-2012, rusu-iros-2010}. 
+These work in many different ways; \cite{drost-3dimpvt-2012} aggregate pairwise features in a hash table to find the pose estimation --- they assume just one database model, which is assumed to be in the scene. \cite{rusu-iros-2010} first segment the scene, before looking up each segment in their training dataset.
+All the methods nonetheless share the training step of rendering a 3D object from multiple angles.
+
+All these methods so far assume that the item in the scene has the exact same geometry of the training instances.
+\cite{cocias-cgvcv-2013} take an alternative approach, where they have a single primitive object for each class, which they fit to the scene and allow to deform to account for inter-class variation.
+
 \paragraph{Robotics and path planning}
 Voxels or 2D occupancy grids are often used in robotics for path planning, and for maintaining a map of the environment. These are typically deterministic approaches, \eg \cite{jetchev-icra-2010}. Sometimes a state model is used to model the states of voxels being occupied, unoccupied or unknown --- the voxel states are then updated as more information is gathered from sensors \cite{toussaint-techreport-2007}.
+
+\cite{stentz-icra-1994} introduced D*, an algorithm similar to A* but for path planing in partially unknown environments. The world is in boxes, with arrows pointing to the direction which should be taken.
+More recently, \cite{plagemann-iros-2008} used Gaussian processes to fill in missing data in terrain models of environments, effectively treating terrain mapping as a regression problem.
 
 \paragraph{General motivation}
 One key motivation is Shape Sharing \cite{kim-eccv-2012}, where silhouettes of objects are used to segment other objects from different classes.
@@ -238,7 +251,6 @@ Big issue with ground truth. Most papers don't have proper ground truth and ther
 \paragraph{To add to related work:}
 \begin{itemize}
 \item Box world --- predicting object locations and extents through bounding boxes.
-\item Robotics --- path planning with occupancy grids
 \end{itemize}
 
 
@@ -298,6 +310,14 @@ Our motivation for using a soup of segments together with class matching across 
 Imagine we had a chair in our test set. If in our training set we had a similar chair then we would like to use this, as it would hopefully be a good match. 
 However, if we didn't have a chair in our training set then it is very unlikely that we would be able to find a suitable match. 
 In this case, we would like to break up the chair into segments, each of which could have a similarly shaped object matched to it.
+
+
+\begin{figure}
+	\centering% 
+	\includegraphics[width=1.0\linewidth]{voxel_coordinates}% 
+	\figcaption{The interplay between the coordinate systems of the voxel grid, the camera the CAD model and the render for the synthetic rendered objects.}% 
+	\label{fig:voxel_coordinates}% 
+\end{figure}
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % \subsection{Finding matches for each region}
