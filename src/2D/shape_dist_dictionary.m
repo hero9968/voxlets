@@ -29,7 +29,7 @@ for jj = 1:length(train_instances)
     
     % rescaling the XY points
     xy_bin_edges = params.shape_dist.si_bin_edges;
-    train_data(ii).scale = normalise_scale(XY);
+    train_data(ii).scale = normalise_scale_2d(XY);
     
     XY_scaled = train_data(ii).scale * XY;
     
@@ -97,7 +97,7 @@ for ii = 1001:1100
     
     % rescaling the XY points
     xy_bin_edges = params.shape_dist.si_bin_edges;
-    train_data(ii).scale = normalise_scale(XY);
+    train_data(ii).scale = normalise_scale_2d(XY);
     
     XY_scaled = train_data(ii).scale * XY;
     

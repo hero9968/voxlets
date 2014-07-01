@@ -1,4 +1,4 @@
-function scale = normalise_scale(XYZ)
+function scale = estimate_size(XYZ)
 % finds a scale factor for points XY which will map them into some kind of
 % consistant scale space
 % let's do this so the distance between the furthest pair of points is 1
@@ -25,5 +25,5 @@ dists = sqrt(dists);
 
 %overall_scale = max(distances);
 overall_scale = prctile(dists, 95);
-
-scale = 1 / overall_scale; 
+scale = overall_scale;
+%scale = 1 / overall_scale; 

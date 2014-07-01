@@ -22,7 +22,7 @@ for ii = 1:N
     
     % rescaling the XY points
     if params.scale_invariant
-        training_data(ii).scale = normalise_scale(XY);
+        training_data(ii).scale = normalise_scale_2d(XY);
     else
         training_data(ii).scale = 1;
     end

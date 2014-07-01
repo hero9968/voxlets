@@ -45,7 +45,7 @@ for ii = 1:length(models_to_use)
         end
         
         if ~isempty(this_xyz)
-            this_xyz = this_xyz * normalise_scale(this_xyz);
+            this_xyz = this_xyz / estimate_size(this_xyz);
                     
             % compute the pairwise distances
             [~, dists{ii, jj}, angles{ii, jj}] = shape_distribution_norms_3d(this_xyz, normals, opts);           
@@ -63,7 +63,7 @@ num_samples = round(10.^[linspace(1, 6, 50)]);
 clear t
 for ii = 1:length(num_samples)
     tic
-    t(ii) = normalise_scale(this_xyz, num_samples(ii));
+    t(ii) = 1/estimate_size(this_xyz, num_samples(ii));
     times(ii) = toc;
 end
 semilogx(num_samples, t);

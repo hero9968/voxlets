@@ -36,7 +36,7 @@ for ii = 158:number_shapes
         XY(:, to_remove) = [];
         this_norms(:, to_remove) = [];
         
-        rotated.rendered(jj).scale = normalise_scale(XY);
+        rotated.rendered(jj).scale = normalise_scale_2d(XY);
         XY_scaled = rotated.rendered(jj).scale * XY;
 
         % converting depth to single for space reasons

@@ -7,7 +7,7 @@ segment.idx = idxs;
 segment.mask = reshape(segment.idx, [480, 640]) > 0.5;
 segment.xyz = cloud.xyz(segment.idx>0.5, :);
 segment.norms = cloud.normals(segment.idx>0.5, :);
-segment.scale = 1 / normalise_scale(segment.xyz);
+segment.scale = estimate_size(segment.xyz);
 segment.scaled_xyz = segment.xyz / segment.scale;
 
 % computing features for the segment...

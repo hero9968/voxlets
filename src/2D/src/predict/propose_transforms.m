@@ -12,7 +12,7 @@ norms(:, to_remove) = [];
 
 % choosing a scale for the XY points
 if model.scale_invariant
-    scale = normalise_scale(model_XY);
+    scale = normalise_scale_2d(model_XY);
 else
     scale = 1;
 end

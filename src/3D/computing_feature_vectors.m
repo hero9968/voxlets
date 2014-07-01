@@ -52,7 +52,7 @@ for ii = 1:length(params.model_filelist)
             [this_xyz, mask] = reproject_depth(depth, params.half_intrinsics, nan);
 
             if size(this_xyz, 1) > 10
-                scale(jj) = normalise_scale(this_xyz);
+                scale(jj) = 1 / estimate_size(this_xyz);
                 this_xyz = this_xyz * scale(jj);
 
                 shape_dist(jj, :) = shape_distribution_norms_3d(this_xyz, norms, params.shape_dist);
