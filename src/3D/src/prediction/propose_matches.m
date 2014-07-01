@@ -49,6 +49,20 @@ for ii = 1:num_to_propose
     % getting the model scale ? this too will be taken offline in the future
     t_xyz = reproject_depth(matches(ii).depth, params.half_intrinsics);
     matches(ii).scale = 1 / normalise_scale(t_xyz);
+    matches(ii).xyz = t_xyz(matches(ii).mask(:), :) * matches(ii).scale;
+    
+    % getting the 3d centroid of the rendered image ? also can take this offline!
+    temp_mask = +matches(ii).mask;
+    temp_mask(matches(ii).mask) = 1:sum(sum(matches(ii).mask));
+    matches(ii).centroid_linear_index = temp_mask(round(matches(ii).centroid(2)), round(matches(ii).centroid(1)));
+    matches(ii).centroid_3d = matches(ii).xyz(matches(ii).centroid_linear_index, :);
+    
+    % consider taking a patch around the centroid and aligning the normals
+    % of the two patches to get the normal alignment? Similar to Drost?
+    
+    
+    
+    
     
     
 end

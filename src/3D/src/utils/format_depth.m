@@ -4,5 +4,7 @@ function depth = format_depth(depth)
 % In addition, this function could do other stuff if I really wanted to
 % make that happen.
 
-max_depth = max(depth(:));
-depth(abs(depth-max_depth)<0.01) = nan;
+if ~any(isnan(depth(:)))
+    max_depth = max(depth(:));
+    depth(abs(depth-max_depth)<0.01) = nan;
+end

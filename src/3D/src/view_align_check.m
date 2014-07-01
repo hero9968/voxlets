@@ -79,6 +79,18 @@ hold off
 
 view(10, -40)
 
+%% alternate viewing system, with proper transformation
+[inds] = find(V);
+[i, j, k] = ind2sub(size(V), inds);
+trans_vox = apply_transformation_3d([i,j,k], params.voxelisation.T_vox);
+plot3(trans_vox(:, 1), trans_vox(:, 2), trans_vox(:, 3), '.', 'markersize', 10)
 
+hold on
+for ii = 1:5:42
+    plot3d(all_xyz_trans{ii}, cols(ii));
+end
+hold off
+
+view(10, -40)
 
 
