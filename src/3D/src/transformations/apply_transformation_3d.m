@@ -21,4 +21,8 @@ elseif all(size(T)==[3, 3])
     % applying rotation
     xyz_out = (T * xyz_in')';
     
+else
+    
+    error('Some problem with the input transformation')
 end
+    

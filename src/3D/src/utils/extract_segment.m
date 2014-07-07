@@ -24,6 +24,7 @@ end
 segment.all_angles = linspace(0, 360, length(segment.angle_hist));
 
 segment.centroid = centroid(segment.mask);
+segment.median_depth = median(cloud.depth(segment.idx==1));
 
 % extract the 3D centroid
 %idxs = find(segment.mask);

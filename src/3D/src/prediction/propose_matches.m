@@ -44,12 +44,13 @@ for ii = 1:num_to_propose
     load(this.path, 'depth')
     matches(ii).centroid = centroid(~isnan(depth));
     matches(ii).depth = depth;
+    matches(ii).median_depth = nanmedian(depth(:));    
     matches(ii).mask = ~isnan(depth);
     
     % getting the model scale ? this too will be taken offline in the future
     t_xyz = reproject_depth(matches(ii).depth, params.half_intrinsics);
     matches(ii).scale = estimate_size(t_xyz);
-    matches(ii).xyz = t_xyz(matches(ii).mask(:), :) * matches(ii).scale;
+    matches(ii).xyz = t_xyz(matches(ii).mask(:), :);%t_xyz(matches(ii).mask(:), :) / matches(ii).scale;
     
     % getting the 3d centroid of the rendered image ? also can take this offline!
     temp_mask = +matches(ii).mask;
