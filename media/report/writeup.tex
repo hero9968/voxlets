@@ -78,7 +78,7 @@ In many cases, however, we use a more generic, higher level knowledge about shap
 %However, a single image only sees a small subset of the actual visible surfaces in the scene, and can only directly infer a very small number of occupied voxels.
 
 
-\paragraph{Motivation}
+\paragraph{Application areas}
 It can be very useful for a computer system to know the geometry of hidden areas of a scene, for reasons such as:
 
 \begin{itemize}
@@ -133,6 +133,9 @@ Of course the problem is ill-posed; we therefore can only hope to make a reasona
 % 	\caption{Given a single RGBD image (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
 % \end{figure}
 
+\paragraph{Motivation from other areas}
+Shape sharing...
+
 \subsubsection{Contributions}
 \begin{itemize}
 \item A scale-\emph{variant} mechanism for 6DOF hypothesis proposals, which is robust to local changes in geometrical appearance.
@@ -176,14 +179,15 @@ In our case we are tackling a similar problem at a higher level --- we take RGBD
 
 
 \paragraph{Mesh and image completion}
-In the graphics community, there is a lot of work looking at the completion of missing and occluded parts of 3D meshes. 
+In the graphics community, there is a lot of work looking at the completion of missing and occluded parts of 3D meshes and 2D images. 
 For example, \cite{podolak-esgp-2005} fill holes in a mesh by enforcing watertightness across an octree structure, while \cite{schnabel-eurographics-2009} complete meshes by using primitives extracted from the areas of the scan without missing detail. 
 A good overview of such mesh completion algorithms are given in \cite{ju-cst-2009}.
 
-Image completion, such as \cite{hays-siggraph-2007}, typically has the aim of getting a good visually plausible output irrespective of the accuracy compared to ground truth. 
+Image completion, such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}, typically has the aim of getting a good visually plausible output irrespective of the accuracy compared to ground truth. 
 The results can be very impressive. 
-Typically the image is completed by looking up possible completion regions in a large database of similar images.
-RGBD datasets on the order of millions of images do not yet exist, so we need to take a different approach.
+\cite{hays-siggraph-2007} look up possible completion regions in a large database of similar images, while \cite{criminisi-cvpr-2003} inpaint by selecting and combining multiple plausible patches from other regions of the input image.
+
+Depth images are a more complex beast than meshes and 2D images, and RGBD datasets on the order of millions of images do not yet exist, so we need to take a different approach.
 
 \paragraph{Super-resolution}
 Similar to mesh completion is super-resolution, \eg \cite{macaodha-eccv-2012}. 
@@ -248,9 +252,13 @@ One key motivation is Shape Sharing \cite{kim-eccv-2012}, where silhouettes of o
 
 Big issue with ground truth. Most papers don't have proper ground truth and therefore can only really do qualitative results, \eg \cite{all the papers...}.
 
+\paragraph{Scene relighting}
+\cite{ikeda-acpr-2013} use an RGBD image to do scene relighting from a single image.
+On the other hand, \cite{xiao-cvpr-2014} use the RGBD information to automatically \textit{remove} hard and soft shadows from a single image.
+
 \paragraph{To add to related work:}
 \begin{itemize}
-\item Box world --- predicting object locations and extents through bounding boxes.
+\item Box world --- predicting object locations and extents (and hence unseen completion) through bounding boxes. The problem with this is it gives incredibly coarse occupation information.
 \end{itemize}
 
 
@@ -319,7 +327,26 @@ In this case, we would like to break up the chair into segments, each of which c
 	\label{fig:voxel_coordinates}% 
 \end{figure}
 
+
+
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Mesh voxelisation}
+
+While lots of mesh voxelisation algorithms exist, these are not suitable for our use for two reasons.
+Firstly, the meshes may be poorly constructed or non-watertight; this causes most voxelisation algorithms to fail completely.
+Secondly, the interior of user-created meshes doesn't necessarily accurately reflect the exemplar KinectFusion output.
+We use voxel carving instead, using out multiple rendered depth images. This gives more consistent results regardless of the mesh construction (figure \ref{fig:mesh_voxelisation_options}).
+The only downside with voxel carving is that some smaller details, and self-occluded regions, can lose information.
+
+\begin{figure}
+	\centering% 
+	\includegraphics[width=1.0\linewidth]{mesh_voxelisation_options}% 
+	\figcaption{Depending on its construction, a CAD model (such as that of a box, top) may be voxelised in many different ways (top row). By using voxel carving (bottom row), we maintain consistency regardless of how the mesh is constructed, and the output is analogous to KinFU output.}%
+	\label{fig:mesh_voxelisation_options}% 
+\end{figure}
+
+
+
 % \subsection{Finding matches for each region}
 
 % Find the $n$ nearest neighbours in $\chi^2$ distance space.

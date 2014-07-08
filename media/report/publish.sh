@@ -1,0 +1,1 @@
+scp -p build/writeup.pdf mfirman@newgate.cs.ucl.ac.uk:/cs/research/vecg/prism/data1/PrismGroupMeetings/michael_firman.pdf
