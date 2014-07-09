@@ -4,10 +4,11 @@
  *  Created on: Mar 24, 2012
  *      Author: aitor
  */
+#include <iostream>
 #include <pcl/recognition/hv/hv_papazov.h>
 #include <pcl/console/parse.h>
 #include <pcl/apps/3d_rec_framework/pipeline/local_recognizer.h>
-#include <pcl/apps/3d_rec_framework/pc_source/mesh_source.h>
+#include "mesh_source.h"
 #include <pcl/recognition/cg/geometric_consistency.h>
 #include <pcl/apps/3d_rec_framework/feature_wrapper/local/shot_local_estimator.h>
 #include <pcl/apps/3d_rec_framework/feature_wrapper/local/shot_local_estimator_omp.h>
@@ -316,7 +317,7 @@ int
 main (int argc, char ** argv)
 {
   std::string path = "";
-  std::string desc_name = "shot_omp";
+  std::string desc_name = "shot";
   std::string training_dir = "trained_models/";
   std::string mians_scenes = "";
   int force_retrain = 0;
@@ -326,9 +327,10 @@ main (int argc, char ** argv)
   int scene = -1;
   int detect_clutter = 1;
   int hv_method = 0;
-  int use_hv = 1;
+  int use_hv = 0;
   float thres_hyp_ = 0.2f;
-  float desc_radius = 0.04f;
+  //float desc_radius = 0.04f;
+  float desc_radius = 2e-5f;
 
   pcl::console::parse_argument (argc, argv, "-models_dir", path);
   pcl::console::parse_argument (argc, argv, "-training_dir", training_dir);
@@ -385,7 +387,7 @@ main (int argc, char ** argv)
   mesh_source->setModelScale (0.001f);
   mesh_source->generate (training_dir);
 
-//  std::cout << "Got the mesh source" << std::endl;
+  std::cout << "Got the mesh source" << std::endl;
 
   boost::shared_ptr<pcl::rec_3d_framework::Source<pcl::PointXYZ> > cast_source;
   cast_source = boost::static_pointer_cast<pcl::rec_3d_framework::MeshSource<pcl::PointXYZ> > (mesh_source);
@@ -397,6 +399,7 @@ main (int argc, char ** argv)
   normal_estimator->setDoVoxelGrid (true);
   normal_estimator->setRemoveOutliers (true);
   normal_estimator->setValuesForCMRFalse (0.003f, 0.012f);
+  std::cout << "Set up normals" << std::endl;
 
   //configure keypoint extractor
   boost::shared_ptr<pcl::rec_3d_framework::UniformSamplingExtractor<pcl::PointXYZ> >
@@ -406,6 +409,7 @@ main (int argc, char ** argv)
   //uniform_keypoint_extractor->setSamplingDensity (0.01f);
   uniform_keypoint_extractor->setSamplingDensity (0.005f);
   uniform_keypoint_extractor->setFilterPlanar (true);
+  std::cout << "Set up keypoints" << std::endl;
 
   boost::shared_ptr<pcl::rec_3d_framework::KeypointExtractor<pcl::PointXYZ> > keypoint_extractor;
   keypoint_extractor = boost::static_pointer_cast<pcl::rec_3d_framework::KeypointExtractor<pcl::PointXYZ> > (uniform_keypoint_extractor);
@@ -465,7 +469,7 @@ main (int argc, char ** argv)
     estimator.reset (new pcl::rec_3d_framework::SHOTLocalEstimation<pcl::PointXYZ, pcl::Histogram<352> >);
     estimator->setNormalEstimator (normal_estimator);
     estimator->addKeypointExtractor (keypoint_extractor);
-    estimator->setSupportRadius (0.04f);
+    estimator->setSupportRadius (desc_radius);
 
     boost::shared_ptr<pcl::rec_3d_framework::LocalEstimator<pcl::PointXYZ, pcl::Histogram<352> > > cast_estimator;
     cast_estimator = boost::dynamic_pointer_cast<pcl::rec_3d_framework::LocalEstimator<pcl::PointXYZ, pcl::Histogram<352> > > (estimator);
