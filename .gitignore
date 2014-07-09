@@ -7,3 +7,4 @@ build/
 /src/3D/model_render/voxelisation/voxel
 /src/rendering/test/depth
 todo.md
+.o
