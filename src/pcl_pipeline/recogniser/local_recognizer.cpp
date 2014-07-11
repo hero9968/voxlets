@@ -144,8 +144,8 @@ template<template<class > class Distance, typename PointInT, typename FeatureT>
           typename pcl::PointCloud<FeatureT>::Ptr signatures (new pcl::PointCloud<FeatureT> ());
           PointInTPtr keypoints_pointcloud;
 
-          std::cout << "SIze is " << models->at (i).views_->at (v).size() << "std::endl";
-
+          std::cout << "SIze is " << models->at (i).views_->at (v)->size() << "std::endl";
+          PCL_ERROR("Finish here");
           bool success = estimator_->estimate (models->at (i).views_->at (v), processed, keypoints_pointcloud, signatures);
 
           if (success)
