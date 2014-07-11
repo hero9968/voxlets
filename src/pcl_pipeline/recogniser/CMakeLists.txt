@@ -14,7 +14,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 add_executable(recognise recognise.cpp render.cpp)
-add_executable(global recognise_global.cpp)
+add_executable(global recognise_global.cpp my_prism_segment.cpp)
 add_executable(test temp.cpp)
 
 target_link_libraries(recognise ${PCL_IO_LIBRARIES}  ${PCL_LIBRARIES})
