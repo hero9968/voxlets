@@ -14,7 +14,8 @@
 //#include <pcl/apps/3d_rec_framework/feature_wrapper/global/vfh_estimator.h>
 //#include <pcl/apps/3d_rec_framework/feature_wrapper/global/esf_estimator.h>
 //#include <pcl/apps/3d_rec_framework/feature_wrapper/global/cvfh_estimator.h>
-#include <pcl/apps/3d_rec_framework/feature_wrapper/global/crh_estimator.h>
+//#include <pcl/apps/3d_rec_framework/feature_wrapper/global/crh_estimator.h>
+#include "my_crh_estimator.h"
 #include <pcl/apps/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
 #include <pcl/apps/3d_rec_framework/pipeline/global_nn_recognizer_crh.h>
 #include <pcl/apps/3d_rec_framework/tools/openni_frame_source.h>
@@ -23,14 +24,15 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/console/parse.h>
 
+
+typedef pcl::PointXYZ PointT;
+typedef pcl::rec_3d_framework::Model<PointT> ModelT;
+typedef pcl::VFHSignature308 VFH_T;
+
 std::pair<std::vector <pcl::PointCloud<PointT>::Ptr>, 
           std::vector <pcl::PointIndices> >
 myPrismSegmenter(pcl::PointCloud<PointT>::Ptr cloud, 
               pcl::PointCloud<pcl::Normal>::Ptr cloud_normals);
-
-typedef pcl::rec_3d_framework::Model<PointT> ModelT;
-typedef pcl::PointXYZ PointT;
-typedef pcl::VFHSignature308 VFH_T;
 
 int
 main (int argc, char ** argv)
@@ -78,12 +80,16 @@ main (int argc, char ** argv)
   crh_internal.setNormalEstimator(normal_estimator);
 
   //pcl::rec_3d_framework::GlobalEstimator<PointT, VFH_T> glob_est;
-  crh_internal.setFeatureEstimator(crh_internal);
-
+  
   boost::shared_ptr<pcl::rec_3d_framework::CRHEstimation<PointT, VFH_T> > crh_cast_estimator = 
     boost::make_shared<pcl::rec_3d_framework::CRHEstimation<PointT, VFH_T> >(crh_internal);
-    //boost::dynamic_pointer_cast< pcl::rec_3d_framework::GlobalEstimator<PointT, VFH_T> > (crh_internal);
 
+  boost::shared_ptr<pcl::rec_3d_framework::CRHEstimation<PointT, VFH_T> > crh_cast_to_global = 
+    boost::make_shared<pcl::rec_3d_framework::CRHEstimation<PointT, VFH_T> >(crh_internal);
+
+
+    //crh_cast_estimator->setFeatureEstimator(crh_cast_estimator);
+    //boost::dynamic_pointer_cast< pcl::rec_3d_framework::GlobalEstimator<PointT, VFH_T> > (crh_internal);
 
 
   pcl::rec_3d_framework::GlobalNNCRHRecognizer<Metrics::HistIntersectionUnionDistance, PointT, VFH_T> crh_estimator;
