@@ -12,6 +12,7 @@
 #include <pcl/apps/3d_rec_framework/feature_wrapper/global/vfh_estimator.h>
 #include <pcl/apps/3d_rec_framework/feature_wrapper/global/esf_estimator.h>
 #include <pcl/apps/3d_rec_framework/feature_wrapper/global/cvfh_estimator.h>
+#include <pcl/apps/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
 #include <pcl/apps/3d_rec_framework/tools/openni_frame_source.h>
 #include <pcl/apps/3d_rec_framework/utils/metrics.h>
 #include <pcl/filters/filter.h>
@@ -233,26 +234,5 @@ main (int argc, char ** argv)
     segmentAndClassify<flann::L1, pcl::PointXYZ, pcl::ESFSignature640> (global);
   }
 
-
-  if (desc_name.compare ("cvfh_global") == 0)
-  {
-      boost::shared_ptr<pcl::rec_3d_framework::CVFHEstimation<pcl::PointXYZ, pcl::VFHSignature308> > vfh_estimator;
-      vfh_estimator.reset (new pcl::rec_3d_framework::CVFHEstimation<pcl::PointXYZ, pcl::VFHSignature308>);
-      vfh_estimator->setNormalEstimator (normal_estimator);
-
-      boost::shared_ptr<pcl::rec_3d_framework::GlobalEstimator<pcl::PointXYZ, pcl::VFHSignature308> > cast_estimator;
-      cast_estimator = boost::dynamic_pointer_cast<pcl::rec_3d_framework::CVFHEstimation<pcl::PointXYZ, pcl::VFHSignature308> > (vfh_estimator);
-
-      // this is global_nn_classifer.h(pp)
-      pcl::rec_3d_framework::GlobalNNPipeline<Metrics::HistIntersectionUnionDistance, pcl::PointXYZ, pcl::VFHSignature308> global;
-      global.setDataSource (cast_source);
-      global.setTrainingDir (training_dir);
-      global.setDescriptorName (desc_name);
-      global.setFeatureEstimator (cast_estimator);
-      global.setNN (NN);
-      global.initialize (false);
-
-      segmentAndClassify<Metrics::HistIntersectionUnionDistance, pcl::PointXYZ, pcl::VFHSignature308> (global);
-  }
 
 }
