@@ -18,7 +18,6 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/console/parse.h>
-//#include "my_prism_segment.cpp"
 
 std::pair<std::vector <pcl::PointCloud<pcl::PointXYZ>::Ptr>, 
           std::vector <pcl::PointIndices> >
@@ -75,7 +74,7 @@ segmentAndClassify (typename pcl::rec_3d_framework::GlobalNNPipeline<DistT, Poin
   std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clusters = cluster_out.first;
   std::vector <pcl::PointIndices> indices = cluster_out.second;
 
-  std::cout << "Done the dps - found " << clusters.size() << " clusters " << std::endl;
+  std::cout << ">> Done the dps - found " << clusters.size() << " clusters " << std::endl;
  // vis.removePointCloud ("frame");
 //  vis.addPointCloud<OpenNIFrameSource::PointT> (frame, "frame");
 
@@ -91,6 +90,7 @@ segmentAndClassify (typename pcl::rec_3d_framework::GlobalNNPipeline<DistT, Poin
     cluster_name << "cluster_" << i;
     pcl::visualization::PointCloudColorHandlerRandom<pcl::PointXYZ> random_handler (clusters[i]);
     vis.addPointCloud<pcl::PointXYZ> (clusters[i], random_handler, cluster_name.str ());
+    std::cout << ">> Cluster name is " << cluster_name.str() << std::endl;
 
     global.setInputCloud (xyz_points);
     global.setIndices (indices[i].indices);
@@ -99,12 +99,14 @@ segmentAndClassify (typename pcl::rec_3d_framework::GlobalNNPipeline<DistT, Poin
     std::vector < std::string > categories;
     std::vector<float> conf;
 
-    global.getCategory (categories);
+    global.getCategory (categories);  // getting the categories after classifiercaiont. As we have set just NN=1, then there should only be one category
     global.getConfidence (conf);
 
     std::string category = categories[0];
     Eigen::Vector4f centroid;
     pcl::compute3DCentroid (*xyz_points, indices[i].indices, centroid);
+
+    std::cout << ">> There are  " << categories.size() << " categories " << std::endl;
     for (size_t kk = 0; kk < categories.size (); kk++)
     {
 
@@ -200,6 +202,7 @@ main (int argc, char ** argv)
     boost::shared_ptr<pcl::rec_3d_framework::GlobalEstimator<pcl::PointXYZ, pcl::VFHSignature308> > cast_estimator;
     cast_estimator = boost::dynamic_pointer_cast<pcl::rec_3d_framework::CVFHEstimation<pcl::PointXYZ, pcl::VFHSignature308> > (vfh_estimator);
 
+    // this is global_nn_classifer.h(pp)
     pcl::rec_3d_framework::GlobalNNPipeline<Metrics::HistIntersectionUnionDistance, pcl::PointXYZ, pcl::VFHSignature308> global;
     global.setDataSource (cast_source);
     global.setTrainingDir (training_dir);
@@ -228,6 +231,28 @@ main (int argc, char ** argv)
     global.initialize (false);
 
     segmentAndClassify<flann::L1, pcl::PointXYZ, pcl::ESFSignature640> (global);
+  }
+
+
+  if (desc_name.compare ("cvfh_global") == 0)
+  {
+      boost::shared_ptr<pcl::rec_3d_framework::CVFHEstimation<pcl::PointXYZ, pcl::VFHSignature308> > vfh_estimator;
+      vfh_estimator.reset (new pcl::rec_3d_framework::CVFHEstimation<pcl::PointXYZ, pcl::VFHSignature308>);
+      vfh_estimator->setNormalEstimator (normal_estimator);
+
+      boost::shared_ptr<pcl::rec_3d_framework::GlobalEstimator<pcl::PointXYZ, pcl::VFHSignature308> > cast_estimator;
+      cast_estimator = boost::dynamic_pointer_cast<pcl::rec_3d_framework::CVFHEstimation<pcl::PointXYZ, pcl::VFHSignature308> > (vfh_estimator);
+
+      // this is global_nn_classifer.h(pp)
+      pcl::rec_3d_framework::GlobalNNPipeline<Metrics::HistIntersectionUnionDistance, pcl::PointXYZ, pcl::VFHSignature308> global;
+      global.setDataSource (cast_source);
+      global.setTrainingDir (training_dir);
+      global.setDescriptorName (desc_name);
+      global.setFeatureEstimator (cast_estimator);
+      global.setNN (NN);
+      global.initialize (false);
+
+      segmentAndClassify<Metrics::HistIntersectionUnionDistance, pcl::PointXYZ, pcl::VFHSignature308> (global);
   }
 
 }
