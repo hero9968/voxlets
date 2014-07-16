@@ -1,4 +1,20 @@
-// simple script to convert a text file representation of a voxel grid to a vdb version
+/* simple script to convert a text file representation of a voxel grid to a vdb version
+
+ Takes as input the path to a text file of the format:
+
+    size_x size_y size_z
+    lin_idx1
+    lin_idx2
+    lin_idx3
+    ...
+
+where each lin_idx represents the 1-indexed linear index of an occupied voxel in the grid
+
+Converts this to openvdb format and saves to the second argument
+
+Used a lot of code from:
+http://www.openvdb.org/documentation/doxygen/codeExamples.html
+*/
 
 #include <openvdb/openvdb.h>
 #include <iostream>
@@ -10,9 +26,11 @@ using std::endl;
 
 int main(int argc, char **argv)
 {
-    if (argc < 2)
+    if (argc < 3)
     {
-        cerr << "Require one argument!" << endl;
+        cerr << "Require two arguments!" << endl;
+        cerr << "Usage: " << endl;
+        cerr << "./txt2vdb text_file_in.txt vdb_file_out.vdb" << endl;
         return 0;
     }
 
@@ -22,7 +40,6 @@ int main(int argc, char **argv)
 
     // Create an empty floating-point grid with background value 0. 
     openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
-    //std::cout << "Testing random access:" << std::endl;
     // Get an accessor for coordinate-based access to voxels.
     openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
 
@@ -36,41 +53,88 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    // reading the header - TODO interpret these values
-    std::string header;
-    infile >> header >> header >> header;
-    //cout << "header is " << header;
+    // reading the header
+    size_t dim_x, dim_y, dim_z;
+    infile >> dim_x >> dim_y >> dim_z;
+    //cout << dim_x << " " << dim_y << " " << dim_z << endl;
     
-    size_t dim_x = 100;
-    size_t dim_y = 100;
-    size_t dim_z = 100;
-    size_t lin_idx;
-    // 
+    
+    // reading each idx and adding to the voxel grid
     while(!infile.eof())
     {
+        size_t lin_idx;
         infile >> lin_idx;
         lin_idx--; // file is saved with matlab indexing - here convert to 0-indexing
+
         size_t z = lin_idx / (dim_x * dim_y);
         size_t y = (lin_idx - z * dim_x * dim_y) / (dim_x);
         size_t x = lin_idx - z * dim_x * dim_y - y * dim_x;
+
         //cout << "Lin idx = " << lin_idx << endl;
-        std::cout << x << "," << y << "," << z << endl;        
+        //std::cout << x << "," << y << "," << z << endl;        
         openvdb::Coord xyz(x, y, z);
         accessor.setValue(xyz, 1.0);
 
-//        std::cout << "Grid" << xyz << " = " << accessor.getValue(xyz) << std::endl;
+        //std::cout << "Grid" << xyz << " = " << accessor.getValue(xyz) << std::endl;
     }
 
     infile.close();
-        
-    // Verify that the voxel value at (1000, -200000000, 30000000) is 1.
-    
-        
-    // std::cout << "Testing sequential access:" << std::endl;
-    // // Print all active ("on") voxels by means of an iterator.
-    // for (openvdb::FloatGrid::ValueOnCIter iter = grid->cbeginValueOn(); iter; ++iter) {
-    //     std::cout << "Grid" << iter.getCoord() << " = " << *iter << std::endl;
-    // }
 
+    // Name the grid "LevelSetSphere".
+    grid->setName("voxelgrid");
+    // Create a VDB file object.
+    openvdb::io::File file(argv[2]);
+    // Add the grid pointer to a container.
+    openvdb::GridPtrVec grids;
+    grids.push_back(grid);
+    // Write out the contents of the container.
+    file.write(grids);
+    file.close();
+
+    const openvdb::math::Transform &sourceXform = grid->transform();
+    cerr << sourceXform << endl;
+
+    openvdb::math::Mat4d transform_mat = openvdb::math::Mat4d::identity();
+    transform_mat.preScale(openvdb::math::Vec3d(0.01,0.01,0.01));
+    transform_mat.postTranslate(openvdb::math::Vec3d(-0.5,-0.5,-0.5));
+    //transform_mat.postRotate(openvdb::math::X_AXIS, M_PI/3.0);
+
+    openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(1.0);
+    transform->postMult(transform_mat);
+    grid->setTransform(transform);
+
+    //cerr << "Original: " << sourceXform << endl; // this doesn' work once the transform has been changed! (seg fault)
+    cerr << "Latest: " << grid->transform() << endl;
+    cerr << "Voxside is " << grid->voxelSize() << endl;
+
+    //grid->indexToWorld();
+    // now - need to get this to spit out the transformed voxel coordinates, i.e. transformed into world coordinates
+    //openvdb::FloatGrid::Ptr floatgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+
+    for (openvdb::FloatGrid::ValueOnCIter iter = grid->cbeginValueOn(); iter; ++iter) {
+        //openvdb::math::Vec3d temp;
+        //std::cout << "baseGrid " << grid->indexToWorld(iter.getCoord()) << " = " << *iter << std::endl;
+        std::cout << grid->indexToWorld(iter.getCoord()).x() << " "
+                  << grid->indexToWorld(iter.getCoord()).y() << " "
+                  << grid->indexToWorld(iter.getCoord()).z() << std::endl;
+    }
+    /*
+    // now read the grid back in
+    // Create a VDB file object.
+    openvdb::io::File file2(argv[2]);
+
+    // Open the file.  This reads the file header, but not any grids.
+    file2.open();
+    openvdb::GridBase::Ptr baseGrid = file2.readGrid("voxelgrid");
+
+    // must cast the pointer to floatgrid type before accessing the elements
+    openvdb::FloatGrid::Ptr floatgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+
+    for (openvdb::FloatGrid::ValueOnCIter iter = floatgrid->cbeginValueOn(); iter; ++iter) {
+        std::cout << "baseGrid " << iter.getCoord() << " = " << *iter << std::endl;
+    }
+
+    file2.close();
+    */
 
 }

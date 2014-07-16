@@ -29,5 +29,20 @@ for ii = 1:100
     drawnow
     pause(0.1)
 end
-%%
+%% test - should be zero!
 sum(abs(converted_voxels(:) - original_voxels(:)))
+
+%% New test...
+% Aim is to load a voxelgrid and plot on the same axes as the projected
+% views (see e.g. alignment_check.m or whatever it is...)
+
+% Should I do this here or in openvdb?
+% probably want to get out the world coordinates of occupied voxels from the test
+% program or something
+% Alternatively could do all in MATLAB first .... probably best.
+addpath ../../plotting/
+% now temp.txt contains the transformed voxels
+A = load('temp.txt');
+plot3d(A)
+
+

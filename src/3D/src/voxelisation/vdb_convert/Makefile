@@ -7,4 +7,4 @@ txt2vdb: txt2vdb.cpp
 	$(CC) -o txt2vdb txt2vdb.cpp $(CFLAGS)
 
 clean:
-	rm -rf *o hello
+	rm -rf *o txt2vdb
