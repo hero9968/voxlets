@@ -24,7 +24,7 @@ plot_segment_soup_3d(cloud.rgb.^0.2, idxs, probabilities);
 seg_index = 10;
 segment = extract_segment(cloud, idxs(:, seg_index), params);
 matches = propose_matches(segment, model, 20, 'shape_dist', params, paths);
-
+matches(1)
 %% plotting the closest matches
 %plot_matches(matches, 20, segment.mask, params, paths)
 
@@ -33,11 +33,11 @@ plot3d(cloud.xyz);
 for ii = 1:20
     
     % translating the basis shape to the origin
-    trans1 = translation_matrix_3d(-matches(ii).centroid_3d);
-    rot1 = (transformation_matrix_from_vector(matches(ii).centroid_normal, 1));
+    trans1 = translation_matrix_3d(-matches(ii).transforms.centroid_3d);
+    rot1 = (transformation_matrix_from_vector(matches(ii).transforms.centroid_normal, 1));
     
     % resolving the rotation in the camera plane
-    camera_rot = rotation_matrix(matches(ii).angle + 1.5*7.2);
+    camera_rot = rotation_matrix(matches(ii).transforms.angle + 1.5*7.2);
     camera_rot = [1, 0, 0, 0; zeros(3, 1), camera_rot];
     
     % translation from the origin to the scene segment
@@ -45,7 +45,7 @@ for ii = 1:20
     rot2 = inv(transformation_matrix_from_vector(segment.centroid_normal, 1));
     
     % scale change
-    scale = segment.scale / matches(ii).scale;
+    scale = segment.scale / matches(ii).transforms.scale;
     scale_M = scale_matrix_3d(scale);
     
     % creating and applying final transformation

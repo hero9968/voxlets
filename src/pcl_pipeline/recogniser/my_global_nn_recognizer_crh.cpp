@@ -424,7 +424,7 @@ template<template<class > class Distance, typename PointInT, typename FeatureT>
         {
           PointInTPtr processed (new pcl::PointCloud<PointInT>);
           PointInTPtr view = models->at (i).views_->at (v);
-          std::cout << "Size of view is " << view->size() << std::end
+          std::cout << "Size of view is " << view->size() << std::end;
 
           if (noisify_)
           {
