@@ -241,11 +241,15 @@ All the methods nonetheless share the training step of rendering a 3D object fro
 
 All these methods so far assume that the item in the scene has the exact same geometry of the training instances.
 \cite{cocias-cgvcv-2013} take an alternative approach, where they have a single primitive object for each class, which they fit to the scene and allow to deform to account for inter-class variation.
+\cite{prisacariu-iccv-2011} present a more developed version of this idea, where the latent axes of variation of the shape of the object being fitted are allowed to deform during the pose estimation. 
+These latent axes are found using Gaussian processes.
 
 \paragraph{Robotics and path planning}
-Voxels or 2D occupancy grids are often used in robotics for path planning, and for maintaining a map of the environment. These are typically deterministic approaches, \eg \cite{jetchev-icra-2010}. Sometimes a state model is used to model the states of voxels being occupied, unoccupied or unknown --- the voxel states are then updated as more information is gathered from sensors \cite{toussaint-techreport-2007}.
+Voxels or 2D occupancy grids are often used in robotics for path planning, and for maintaining a map of the environment. 
+These are typically deterministic approaches, \eg \cite{jetchev-icra-2010}. Sometimes a state model is used to model the states of voxels being occupied, unoccupied or unknown --- the voxel states are then updated as more information is gathered from sensors \cite{toussaint-techreport-2007}.
 
-\cite{stentz-icra-1994} introduced D*, an algorithm similar to A* but for path planing in partially unknown environments. The world is in boxes, with arrows pointing to the direction which should be taken.
+\cite{stentz-icra-1994} introduced D*, an algorithm similar to A* but for path planing in partially unknown environments. 
+The world is in boxes, with arrows pointing to the direction which should be taken.
 More recently, \cite{plagemann-iros-2008} used Gaussian processes to fill in missing data in terrain models of environments, effectively treating terrain mapping as a regression problem.
 
 \paragraph{General motivation}
@@ -260,7 +264,8 @@ On the other hand, \cite{xiao-cvpr-2014} use the RGBD information to automatical
 
 \paragraph{To add to related work:}
 \begin{itemize}
-\item Box world --- predicting object locations and extents (and hence unseen completion) through bounding boxes. The problem with this is it gives incredibly coarse occupation information.
+\item Box world --- predicting object locations and extents (and hence unseen completion) through bounding boxes. 
+The problem with this is it gives incredibly coarse occupation information.
 \end{itemize}
 
 
@@ -289,10 +294,12 @@ Requirements of the matching schema:
 \end{itemize}
 
 \paragraph{Scale variance}
-We ensure we can match regions of the same shape but of different scales by rescaling each region by a scale factor $s$, where $s$ is the 95th percentile of the pairwise distances in the region. By using the 95th percentile instead of the maximum distance between pairs of points we become robust to outlying points.
+We ensure we can match regions of the same shape but of different scales by rescaling each region by a scale factor $s$, where $s$ is the 95th percentile of the pairwise distances in the region. 
+By using the 95th percentile instead of the maximum distance between pairs of points we become robust to outlying points.
 
 \subsection{Predicting voxel occupancy}
-The ultimate aim is to predict, for each voxel $v_k$ in the scene, the probably of the event $\occ_k$, \ie the probability that it is occupied or not. We therefore want $\prob(\occ_k | \rgbdimage)$ for each voxel.
+The ultimate aim is to predict, for each voxel $v_k$ in the scene, the probably of the event $\occ_k$, \ie the probability that it is occupied or not. 
+We therefore want $\prob(\occ_k | \rgbdimage)$ for each voxel.
 $$
 \prob(\occ_k | \rgbdimage) = \sum_{i,j} \prob(\occ_k|\basisshape_i)\prob(\basisshape_i|\imregion_j)\prob(\imregion_j|\rgbdimage)
 $$
@@ -301,14 +308,15 @@ $$
 \item $\prob(\occ_k|\basisshape_i)$ ---
 This is $1$ if the voxel is inside the transformed basis shape mesh, and $0$ otherwise.
 \item $\prob(\basisshape_i|\imregion_j)$ ---
-This is the probability that basis shape $\basisshape_i$ is a correct match for region $\imregion_j$. We approximate this based on how well the region $\imregion_j$ matches the visible part of the $\basisshape_i$.
+This is the probability that basis shape $\basisshape_i$ is a correct match for region $\imregion_j$. 
+We approximate this based on how well the region $\imregion_j$ matches the visible part of the $\basisshape_i$.
 \item $\prob(\imregion_j|\rgbdimage)$ ---
 This is the probability that the region of the image $\imregion_j$ is a correct segmentation of image $\rgbdimage$.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Pre-processing}
-We assume we know the up direction of the scene. 
+We assume we know the up direction of the scene.
 We find the largest plane with normals in this direction at the base of the scene, and segment out the areas above this.
 We assume this plane is the tabletop or floor at the base of the image.
 
@@ -316,9 +324,10 @@ We assume this plane is the tabletop or floor at the base of the image.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{A soup of segments}
 
-Our motivation for using a soup of segments together with class matching across class boundaries is like this. 
-Imagine we had a chair in our test set. If in our training set we had a similar chair then we would like to use this, as it would hopefully be a good match. 
-However, if we didn't have a chair in our training set then it is very unlikely that we would be able to find a suitable match. 
+Our motivation for using a soup of segments together with class matching across class boundaries is like this.
+Imagine we had a chair in our test set.
+If in our training set we had a similar chair then we would like to use this, as it would hopefully be a good match.
+However, if we didn't have a chair in our training set then it is very unlikely that we would be able to find a suitable match.
 In this case, we would like to break up the chair into segments, each of which could have a similarly shaped object matched to it.
 
 
@@ -337,13 +346,15 @@ In this case, we would like to break up the chair into segments, each of which c
 While lots of mesh voxelisation algorithms exist, these are not suitable for our use for two reasons.
 Firstly, the meshes may be poorly constructed or non-watertight; this causes most voxelisation algorithms to fail completely.
 Secondly, the interior of user-created meshes doesn't necessarily accurately reflect the exemplar KinectFusion output.
-We use voxel carving instead, using out multiple rendered depth images. This gives more consistent results regardless of the mesh construction (figure \ref{fig:mesh_voxelisation_options}).
+We use voxel carving instead, using out multiple rendered depth images.
+This gives more consistent results regardless of the mesh construction (figure \ref{fig:mesh_voxelisation_options}).
 The only downside with voxel carving is that some smaller details, and self-occluded regions, can lose information.
 
 \begin{figure}
 	\centering% 
 	\includegraphics[width=1.0\linewidth]{mesh_voxelisation_options}% 
-	\figcaption{Depending on its construction, a CAD model (such as that of a box, top) may be voxelised in many different ways (top row). By using voxel carving (bottom row), we maintain consistency regardless of how the mesh is constructed, and the output is analogous to KinFU output.}%
+	\figcaption{Depending on its construction, a CAD model (such as that of a box, top) may be voxelised in many different ways (top row).
+	By using voxel carving (bottom row), we maintain consistency regardless of how the mesh is constructed, and the output is analogous to KinFU output.}%
 	\label{fig:mesh_voxelisation_options}% 
 \end{figure}
 
@@ -421,7 +432,8 @@ The only downside with voxel carving is that some smaller details, and self-occl
 \begin{figure}
 	\centering% 
 	\includegraphics[width=1.0\columnwidth]{guo.png}% 
-	\figcaption{Representation of objects in the NYU dataset, provided from \cite{guo-iccv-2013}. Not a perfect representation but perhaps reasonable to some extents.}% 
+	\figcaption{Representation of objects in the NYU dataset, provided from \cite{guo-iccv-2013}.
+	Not a perfect representation but perhaps reasonable to some extents.}% 
 	\label{fig:guo_labels}% 
 \end{figure}
 
@@ -434,7 +446,8 @@ Use the database from Fisher \ea \cite{fisher-siggraphasia-2012}.
 \subsubsection{Potential test datasets}
 \begin{itemize}
 \item Create our own KinFu dataset
-\item Kaparthy \ea --- would probably have to re-render their meshes. Also don't have the TSDF etc. Lots of problems
+\item Kaparthy \ea --- would probably have to re-render their meshes.
+Also don't have the TSDF etc. Lots of problems
 \item NYU dataset --- classic dataset. Potential ground truth labels from \cite{guo-iccv-2013} (figure \ref{fig:guo_labels}) or \cite{kim-iccv-2013}.
 \item \cite{fisher-siggraphasia-2012}, use their synthetic scenes (great for a first pass!)
 \end{itemize}
