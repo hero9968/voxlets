@@ -37,6 +37,10 @@ global_nn_recognizer_crh.hpp uses crh_estimator like so:
   crh_estimator_->estimate (view, processed, signatures, centroids);
 
 
+Written my own train_crh.cpp now.
+Seems to almost compile, but something is fucking up.
+Think I need to try a minimum working example to get this to work...
+
 
 
 

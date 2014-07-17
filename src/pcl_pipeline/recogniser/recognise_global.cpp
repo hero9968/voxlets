@@ -19,6 +19,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/console/parse.h>
+#include <pcl/features/normal_3d.h>
 
 std::pair<std::vector <pcl::PointCloud<pcl::PointXYZ>::Ptr>, 
           std::vector <pcl::PointIndices> >
