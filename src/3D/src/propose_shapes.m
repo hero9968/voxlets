@@ -28,7 +28,8 @@ matches = propose_matches(segment, model, 20, 'shape_dist', params, paths);
 %% plotting the closest matches
 %plot_matches(matches, 20, segment.mask, params, paths)
 
-%% 3D alignment visualisation
+%% 3D alignment visualisation on a per-region basis
+plot3d(cloud.xyz);
 for ii = 1:20
     
     % translating the basis shape to the origin
@@ -36,7 +37,7 @@ for ii = 1:20
     rot1 = (transformation_matrix_from_vector(matches(ii).centroid_normal, 1));
     
     % resolving the rotation in the camera plane
-    camera_rot = rotation_matrix(matches(ii).angle);
+    camera_rot = rotation_matrix(matches(ii).angle + 1.5*7.2);
     camera_rot = [1, 0, 0, 0; zeros(3, 1), camera_rot];
     
     % translation from the origin to the scene segment
@@ -48,19 +49,15 @@ for ii = 1:20
     scale_M = scale_matrix_3d(scale);
     
     % creating and applying final transformation
-    transf = double(trans2 * rot2 * camera_rot* scale_M * rot1 * trans1);
+    transf = double(trans2 * rot2 * camera_rot * scale_M * rot1 * trans1);
     translated_match = apply_transformation_3d(matches(ii).xyz, transf);
    
-    subplot(4, 5, ii)
-    plot3d(translated_match, 'r')
+    %subplot(4, 5, ii)
     hold on
-    plot3d(segment.xyz);
-    hold off
+    plot3d(translated_match, 'r')
     
 end
-
-
-
+hold off
 
 %% now must align the match into the original image
 imagesc(cloud.depth)

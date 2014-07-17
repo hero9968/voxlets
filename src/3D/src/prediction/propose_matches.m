@@ -63,7 +63,7 @@ for ii = 1:num_to_propose
     matches(ii).centroid_on_mask = [XX(neighbour_idx), YY(neighbour_idx)];
     linear_index = temp_mask(XX(neighbour_idx), YY(neighbour_idx));
     %matches(ii).centroid_3d = matches(ii).xyz(linear_index, :);
-    warning('Median')
+%    warning('Median')
     matches(ii).centroid_3d = nanmedian(matches(ii).xyz, 1);
     
     %imagesc(matches(ii).mask);
