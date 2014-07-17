@@ -14,6 +14,7 @@
 \usepackage{subfigure}
 \usepackage{graphicx}
 \usepackage{nonfloat}
+\usepackage{url}
 \graphicspath{{imgs/}}
 
 \usepackage{xspace}
@@ -108,10 +109,11 @@ Of course the problem is ill-posed; we therefore can only hope to make a reasona
 
 % We aren't making assumptions about class, unlike \eg shotton (people) or room modelling.
 
-% \subsubsection{Motivation for using a voxelised world}
+\subsubsection{Motivation for using a voxelised world}
 
-% Voxels are expensive compared to point clouds and meshes. 
-% However they are a very natural representation of our world, and have been shown to work well for reconstruction \eg KinFu, other voxel carving paper. 
+Voxels can be expensive compared to point clouds and meshes. 
+However they are a very natural representation of our world, and have been shown to work well for reconstruction \eg KinFu and other voxel carving papers. 
+With tools such as OpenVDB\footnote{\url{www.openvdb.org}}, voxelised representations of objects can be stored and manipulated efficiently.
 
 % \begin{quote}
 % Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
