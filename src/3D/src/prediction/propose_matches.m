@@ -7,10 +7,10 @@ function matches = propose_matches(segment, model, num_to_propose, feature_to_us
 % matches(1).view
 % matches(1).distance
 if nargin < 4 || strcmp(feature_to_use, 'shape_dist')
-    segment_features = segment.shape_dist;
+    segment_features = segment.features.shape_dist;
     model_features = model.all_shape_dists;
 elseif strcmp(feature_to_use, 'edge_shape_dist')
-    segment_features = segment.edge_shape_dist;
+    segment_features = segment.features.edge_shape_dist;
     model_features = model.all_edge_shape_dists;
 else
     error('Unknown feature vector') 
@@ -34,9 +34,9 @@ for ii = 1:num_to_propose
     %[~, ~, this_T1] = edge_normals(~isnan(depth), 5);
     this_T = model.all_edge_angles_fv(idx(ii), :);
 
-    angle_dists = chi_square_statistics_fast(this_T(:)', segment.angle_hists);
+    angle_dists = chi_square_statistics_fast(this_T(:)', segment.features.angle_hists);
     [~, dist_ind] = min(angle_dists);
-    matches(ii).transforms.angle = segment.all_angles(dist_ind);
+    matches(ii).transforms.angle = segment.features.all_angles(dist_ind);
     
     % ultimately this next bit will be taken offline...
     this.model = params.model_filelist{matches(ii).model.idx};
