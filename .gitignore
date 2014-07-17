@@ -7,8 +7,10 @@ build/
 /src/3D/model_render/voxelisation/voxel
 /src/rendering/test/depth
 todo.md
-.o
+*.o
 /src/3D/src/voxelisation/vdb_convert/txt2vdb
 /src/3D/src/voxelisation/vdb_convert/vdb_convert.*
 /src/3D/src/voxelisation/vdb_convert/temp.txt
-/src/3D/src/voxelisation/vdb_convert/test.vdb
+/src/tools/openvdb_tests/hellomake
+/src/tools/openvdb_tests/create
+*.vdb
