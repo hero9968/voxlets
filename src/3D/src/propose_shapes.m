@@ -21,7 +21,7 @@ cloud = loadpgm_as_cloud('~/projects/shape_sharing/data/3D/scenes/first_few_rend
 plot_segment_soup_3d(cloud.rgb.^0.2, idxs, probabilities);
 
 %% Choosing a segment and computing the feature vector
-seg_index = 10;
+seg_index = 1;
 segment = extract_segment(cloud, idxs(:, seg_index), params);
 matches = propose_matches(segment, model, 20, 'shape_dist', params, paths);
 segment
@@ -29,33 +29,20 @@ segment
 %plot_matches(matches, 20, segment.mask, params, paths)
 
 %% 3D alignment visualisation on a per-region basis
+clf
 plot3d(cloud.xyz);
+
 for ii = 1:20
-    
-    % translating the basis shape to the origin
-    trans1 = translation_matrix_3d(-matches(ii).transforms.centroid_3d);
-    rot1 = (transformation_matrix_from_vector(matches(ii).transforms.centroid_normal, 1));
-    
-    % resolving the rotation in the camera plane
-    camera_rot = rotation_matrix(matches(ii).transforms.angle + 1.5*7.2);
-    camera_rot = [1, 0, 0, 0; zeros(3, 1), camera_rot];
-    
-    % translation from the origin to the scene segment
-    trans2 = translation_matrix_3d(segment.transforms.centroid_3d.xyz);
-    rot2 = inv(transformation_matrix_from_vector(segment.transforms.centroid_normal, 1));
-    
-    % scale change
-    scale = segment.transforms.scale / matches(ii).transforms.scale;
-    scale_M = scale_matrix_3d(scale);
-    
+
     % creating and applying final transformation
-    transf = double(trans2 * rot2 * camera_rot * scale_M * rot1 * trans1);
+    transf = double(segment.transforms.final_M * matches(ii).transforms.final_M);
     translated_match = apply_transformation_3d(matches(ii).xyz, transf);
    
     %subplot(4, 5, ii)
+    %plot3d(segment.cloud.xyz);
     hold on
     plot3d(translated_match, 'r')
-    
+    hold off
 end
 hold off
 

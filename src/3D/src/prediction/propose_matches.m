@@ -80,4 +80,18 @@ for ii = 1:num_to_propose
     neighbour_xyz = matches(ii).xyz(neighbour_idx, :);
     matches(ii).transforms.centroid_normal = calcNormal( neighbour_xyz, matches(ii).transforms.centroid_3d);
 
+    % FINAL TRANSFORMATION MATRICES
+    
+    % translating the basis shape to the origin
+    trans1 = translation_matrix_3d(-matches(ii).transforms.centroid_3d);
+    rot1 = (transformation_matrix_from_vector(matches(ii).transforms.centroid_normal, 1));
+    
+    % resolving the rotation in the camera plane
+    camera_rot = rotation_matrix(matches(ii).transforms.angle + 1.5*7.2);
+    camera_rot = [1, 0, 0, 0; zeros(3, 1), camera_rot];
+    
+    scale_matches = scale_matrix_3d(1 / matches(ii).transforms.scale);
+    
+    matches(ii).transforms.final_M = scale_matches * camera_rot * rot1 * trans1;
+    
 end

@@ -45,4 +45,15 @@ segment.transforms.centroid_3d.norm = segment.cloud.norms(centroid_linear_index,
 neighbour_xyz = segment.cloud.xyz(neighbour_idx, :);
 segment.transforms.centroid_normal = calcNormal( neighbour_xyz, segment.transforms.centroid_3d.xyz );
 
+%segment.transforms.
+
+% FINAL TRANSFORMATION MATRIX
+
+% translation from the origin to the scene segment
+trans2 = translation_matrix_3d(segment.transforms.centroid_3d.xyz);
+rot2 = inv(transformation_matrix_from_vector(segment.transforms.centroid_normal, 1));
+scale_segment = scale_matrix_3d(segment.transforms.scale);
+
+% combining
+segment.transforms.final_M = trans2 * rot2 * scale_segment; 
 
