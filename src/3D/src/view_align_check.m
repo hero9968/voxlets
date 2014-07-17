@@ -3,7 +3,6 @@
 cd ~/projects/shape_sharing/src/3D/src
 clear
 addpath plotting/
-addpath src
 addpath transformations/
 run ../define_params_3d.m
 
@@ -79,7 +78,7 @@ hold off
 
 view(10, -40)
 
-%% alternate viewing system, with proper transformation
+%% alternate viewing system, showing voxels with with proper transformation
 [inds] = find(V);
 [i, j, k] = ind2sub(size(V), inds);
 trans_vox = apply_transformation_3d([i,j,k], params.voxelisation.T_vox);

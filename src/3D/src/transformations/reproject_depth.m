@@ -11,6 +11,9 @@ full_stack = [xgrid(:) .* depth(:), ygrid(:).* depth(:), depth(:)];
 % apply inverse intrinsics, and convert to standard coloum format
 xyz = (K \ full_stack')';
 
+% could do depth multiplication here...
+
+
 % removing points at max depth
 if nargin > 2
     if isnan(max_depth)
