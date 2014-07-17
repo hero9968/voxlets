@@ -56,7 +56,7 @@ int main(int argc, char **argv)
     // reading the header
     size_t dim_x, dim_y, dim_z;
     infile >> dim_x >> dim_y >> dim_z;
-    //cout << dim_x << " " << dim_y << " " << dim_z << endl;
+    cerr << dim_x << " " << dim_y << " " << dim_z << endl;
     
     
     // reading each idx and adding to the voxel grid
@@ -70,17 +70,46 @@ int main(int argc, char **argv)
         size_t y = (lin_idx - z * dim_x * dim_y) / (dim_x);
         size_t x = lin_idx - z * dim_x * dim_y - y * dim_x;
 
-        //cout << "Lin idx = " << lin_idx << endl;
-        //std::cout << x << "," << y << "," << z << endl;        
+        //cerr << "Lin idx = " << lin_idx << endl;
+        //cerr << x << "," << y << "," << z << endl;
         openvdb::Coord xyz(x, y, z);
         accessor.setValue(xyz, 1.0);
 
-        //std::cout << "Grid" << xyz << " = " << accessor.getValue(xyz) << std::endl;
+        //cerr << "Grid" << xyz << " = " << accessor.getValue(xyz) << std::endl;
     }
 
     infile.close();
 
-    // Name the grid "LevelSetSphere".
+    // reading the transform from the file
+    const openvdb::math::Transform &sourceXform = grid->transform();
+    cerr << sourceXform << endl;
+
+    // adding transform to the grid to transform into world coordinates
+    openvdb::math::Mat4d transform_mat = openvdb::math::Mat4d::identity();
+    transform_mat.preScale(openvdb::math::Vec3d(0.01,0.01,0.01));
+    transform_mat.postTranslate(openvdb::math::Vec3d(-0.5,-0.5,-0.5));
+
+    openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(1.0);
+    transform->postMult(transform_mat);
+    grid->setTransform(transform);
+
+    // displaying the applied transform to the user
+    //cerr << "Original: " << sourceXform << endl; // this doesn' work once the transform has been changed! (seg fault)
+    cerr << "Latest: " << grid->transform() << endl;
+    cerr << "Voxside is " << grid->voxelSize() << endl;
+
+    // spitting out the transformed voxel coordinates, i.e. transformed into world coordinates
+    //openvdb::FloatGrid::Ptr floatgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+
+    for (openvdb::FloatGrid::ValueOnCIter iter = grid->cbeginValueOn(); iter; ++iter) {
+        //openvdb::math::Vec3d temp;
+        //std::cout << "baseGrid " << grid->indexToWorld(iter.getCoord()) << " = " << *iter << std::endl;
+        std::cout << grid->indexToWorld(iter.getCoord()).x() << " "
+                  << grid->indexToWorld(iter.getCoord()).y() << " "
+                  << grid->indexToWorld(iter.getCoord()).z() << std::endl;
+    }
+
+    // saving the grid to disk
     grid->setName("voxelgrid");
     // Create a VDB file object.
     openvdb::io::File file(argv[2]);
@@ -91,33 +120,7 @@ int main(int argc, char **argv)
     file.write(grids);
     file.close();
 
-    const openvdb::math::Transform &sourceXform = grid->transform();
-    cerr << sourceXform << endl;
 
-    openvdb::math::Mat4d transform_mat = openvdb::math::Mat4d::identity();
-    transform_mat.preScale(openvdb::math::Vec3d(0.01,0.01,0.01));
-    transform_mat.postTranslate(openvdb::math::Vec3d(-0.5,-0.5,-0.5));
-    //transform_mat.postRotate(openvdb::math::X_AXIS, M_PI/3.0);
-
-    openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(1.0);
-    transform->postMult(transform_mat);
-    grid->setTransform(transform);
-
-    //cerr << "Original: " << sourceXform << endl; // this doesn' work once the transform has been changed! (seg fault)
-    cerr << "Latest: " << grid->transform() << endl;
-    cerr << "Voxside is " << grid->voxelSize() << endl;
-
-    //grid->indexToWorld();
-    // now - need to get this to spit out the transformed voxel coordinates, i.e. transformed into world coordinates
-    //openvdb::FloatGrid::Ptr floatgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
-
-    for (openvdb::FloatGrid::ValueOnCIter iter = grid->cbeginValueOn(); iter; ++iter) {
-        //openvdb::math::Vec3d temp;
-        //std::cout << "baseGrid " << grid->indexToWorld(iter.getCoord()) << " = " << *iter << std::endl;
-        std::cout << grid->indexToWorld(iter.getCoord()).x() << " "
-                  << grid->indexToWorld(iter.getCoord()).y() << " "
-                  << grid->indexToWorld(iter.getCoord()).z() << std::endl;
-    }
     /*
     // now read the grid back in
     // Create a VDB file object.
