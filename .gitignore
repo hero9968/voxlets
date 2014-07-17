@@ -1,5 +1,6 @@
 CMakeFiles/
 build/
+data/
 /media/ppt/
 /media/results/
 /media/notes/
@@ -13,4 +14,5 @@ todo.md
 /src/3D/src/voxelisation/vdb_convert/temp.txt
 /src/tools/openvdb_tests/hellomake
 /src/tools/openvdb_tests/create
+/src/pcl_pipeline/recogniser-build
 *.vdb
