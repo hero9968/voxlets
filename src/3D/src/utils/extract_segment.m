@@ -26,12 +26,19 @@ segment.all_angles = linspace(0, 360, length(segment.angle_hist));
 segment.centroid = centroid(segment.mask);
 segment.median_depth = median(cloud.depth(segment.idx==1));
 
-% extract the 3D centroid
-%idxs = find(segment.mask);
-temp_mask = +segment.mask;
-temp_mask(segment.mask) = 1:length(segment.xyz);
-centroid_linear_index = temp_mask(round(segment.centroid(2)), round(segment.centroid(1)));
 
-segment.centroid_3d.xyz = segment.xyz(centroid_linear_index, :);
+centroid_linear_index =  centroid_2d_to_linear_index(segment.centroid, segment.mask);
+%centroid_linear_index
+%[~, neighbour_idx] = pdist2(segment.xyz, segment.centroid_3d, 'euclidean', 'smallest', 1000);
+
+%segment.centroid_3d.xyz = segment.xyz(centroid_linear_index, :);
+segment.centroid_3d.xyz = nanmedian(segment.xyz, 1);
 segment.centroid_3d.norm = segment.norms(centroid_linear_index, :);
+
+% compute the centroid normal - not just from the point but from a few more
+% also...
+[~, neighbour_idx] = pdist2(segment.xyz, segment.centroid_3d.xyz, 'euclidean', 'smallest', 1000);
+neighbour_xyz = segment.xyz(neighbour_idx, :);
+segment.centroid_normal = calcNormal( neighbour_xyz, segment.centroid_3d.xyz );
+
 

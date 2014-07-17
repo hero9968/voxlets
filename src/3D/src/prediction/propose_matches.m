@@ -55,15 +55,29 @@ for ii = 1:num_to_propose
     % getting the 3d centroid of the rendered image ? also can take this offline!
     temp_mask = +matches(ii).mask;
     temp_mask(matches(ii).mask) = 1:sum(sum(matches(ii).mask));
-    matches(ii).centroid_linear_index = temp_mask(round(matches(ii).centroid(2)), round(matches(ii).centroid(1)));
-    matches(ii).centroid_3d = matches(ii).xyz(matches(ii).centroid_linear_index, :);
     
+    % want centroid linear index to be cloest position in the mask to the
+    % point... maybe the point is in a hole on the mask!
+    [XX, YY] = find(temp_mask);
+    [~, neighbour_idx] = pdist2([YY, XX], matches(ii).centroid, 'euclidean', 'smallest', 1);
+    matches(ii).centroid_on_mask = [XX(neighbour_idx), YY(neighbour_idx)];
+    linear_index = temp_mask(XX(neighbour_idx), YY(neighbour_idx));
+    %matches(ii).centroid_3d = matches(ii).xyz(linear_index, :);
+    warning('Median')
+    matches(ii).centroid_3d = nanmedian(matches(ii).xyz, 1);
+    
+    %imagesc(matches(ii).mask);
+    %hold on
+    %plot(YY(idx), XX(idx), 'r+', 'markersize', 10)
+    %hold off
+    %matches(ii).centroid_linear_index = temp_mask(round(matches(ii).centroid(2)), round(matches(ii).centroid(1)));
+    %matches(ii).centroid_3d = matches(ii).xyz(matches(ii).centroid_linear_index, :);
+    %break
     % consider taking a patch around the centroid and aligning the normals
     % of the two patches to get the normal alignment? Similar to Drost?
     
-    
-    
-    
-    
-    
+    [~, neighbour_idx] = pdist2(matches(ii).xyz, matches(ii).centroid_3d, 'euclidean', 'smallest', 1000);
+    neighbour_xyz = matches(ii).xyz(neighbour_idx, :);
+    matches(ii).centroid_normal = calcNormal( neighbour_xyz, matches(ii).centroid_3d);
+
 end
