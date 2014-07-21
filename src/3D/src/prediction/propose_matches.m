@@ -16,6 +16,14 @@ else
     error('Unknown feature vector') 
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+warning('Only using one model -view')
+model_view_to_use = 6;
+model_to_use = 4;
+to_remove =  model.all_model_idx ~= model_to_use;% | model.all_view_idx ~= model_view_to_use;
+model_features(to_remove, :)  = inf;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 dists = chi_square_statistics_fast(segment_features, model_features);
 [~, idx] = sort(dists, 'ascend');
 
@@ -49,10 +57,20 @@ for ii = 1:num_to_propose
     
     % getting the model scale ? this too will be taken offline in the future
     t_xyz = reproject_depth(matches(ii).depth, params.half_intrinsics);
+    t_xyz(:, 2:3) = -t_xyz(:, 2:3);
     matches(ii).transforms.scale = estimate_size(t_xyz);
     matches(ii).xyz = t_xyz(matches(ii).mask(:), :);%t_xyz(matches(ii).mask(:), :) / matches(ii).scale;
     
-    % getting the 3d centroid of the rendered image ? also can take this offline!
+    % here will transform points to be in OBJECT coordinates - also can take this offline!
+    rot_name = sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.csv', matches(ii).model.view);
+    T = csvread(rot_name);
+    matches(ii).xyz = apply_transformation_3d(matches(ii).xyz, T);
+    %invT = inv(T);
+    matches(ii).transforms.inplane_rotation = in_camera_rotation_correction(T);
+    
+    % NOTE - would also have to do norms here if retaining them
+    
+    % getting the 3d centroid of the rendered image - also can take this offline!
     temp_mask = +matches(ii).mask;
     temp_mask(matches(ii).mask) = 1:sum(sum(matches(ii).mask));
     
@@ -87,7 +105,7 @@ for ii = 1:num_to_propose
     rot1 = (transformation_matrix_from_vector(matches(ii).transforms.centroid_normal, 1));
     
     % resolving the rotation in the camera plane
-    camera_rot = rotation_matrix(matches(ii).transforms.angle + 1.5*7.2);
+    camera_rot = rotation_matrix(matches(ii).transforms.angle + 1.5*7.2 - matches(ii).transforms.inplane_rotation);
     camera_rot = [1, 0, 0, 0; zeros(3, 1), camera_rot];
     
     scale_matches = scale_matrix_3d(1 / matches(ii).transforms.scale);
