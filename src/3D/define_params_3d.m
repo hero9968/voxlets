@@ -16,6 +16,7 @@ paths.basis_models.normals = [paths.basis_models.root, 'normals/%s/norms_%d.mat'
 paths.basis_models.rendered =  [paths.basis_models.root, 'renders/%s/depth_%d.mat'];
 paths.basis_models.voxelised = [paths.basis_models.root, 'voxelised/'];
 paths.basis_models.voxelised_text = [paths.basis_models.root, 'voxelised_text/'];
+paths.basis_models.voxelised_vdb = [paths.basis_models.root, 'voxelised_vdb/'];
 paths.basis_models.halo_path = [paths.basis_models.root, 'halo/'];
 paths.basis_models.fv_path = [paths.basis_models.root, 'fv/'];
 paths.basis_models.fv_file = [paths.basis_models.fv_path, '%s.mat'];

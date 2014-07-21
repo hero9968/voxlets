@@ -1,5 +1,5 @@
 clear
-cd ~/projects/shape_sharing/3D
+cd ~/projects/shape_sharing/src/3D
 define_params_3d
 
 addpath src/model_render/src/

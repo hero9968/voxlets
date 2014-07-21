@@ -3,6 +3,7 @@
 clear
 close all
 cd ~/projects/shape_sharing/src/3D
+addpath ../common/
 define_params_3d
 threshold = 40;
 
@@ -35,3 +36,27 @@ for ii = 1:length(params.model_filelist)
     
     fclose(fid);
 end
+
+%% Setting dyld path for libtbb to be referenced. 
+% Hope this doesn't screw anything else up...
+setenv('DYLD_LIBRARY_PATH', ['/usr/local/lib:' getenv('DYLD_LIBRARY_PATH')])
+
+%% Now converting these text voxels to vdb using the script...
+for ii = 1:length(params.model_filelist)
+    
+    text_path = [paths.basis_models.voxelised_text, params.model_filelist{ii}, '.txt'];
+    vdb_path = [paths.basis_models.voxelised_vdb, params.model_filelist{ii}, '.vdb'];
+    
+    if exist(vdb_path, 'file')
+        disp(['Skipping ' num2str(ii)])
+        continue;
+    end
+    
+    torun = ['./src/voxelisation/vdb_convert/txt2vdb ' text_path ' ' vdb_path];
+    system(torun)
+    
+    done(ii, length(params.model_filelist))
+
+end
+
+

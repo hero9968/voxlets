@@ -1,6 +1,6 @@
 %% script to generate halo and probably save files to disk...
 clear
-cd ~/projects/shape_sharing/3D
+cd ~/projects/shape_sharing/src/3D
 run define_params_3d.m
 close all
 addpath model_render/src/
