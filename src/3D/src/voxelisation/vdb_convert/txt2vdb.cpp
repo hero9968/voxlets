@@ -104,9 +104,10 @@ int main(int argc, char **argv)
     for (openvdb::FloatGrid::ValueOnCIter iter = grid->cbeginValueOn(); iter; ++iter) {
         //openvdb::math::Vec3d temp;
         //std::cout << "baseGrid " << grid->indexToWorld(iter.getCoord()) << " = " << *iter << std::endl;
-        std::cout << grid->indexToWorld(iter.getCoord()).x() << " "
-                  << grid->indexToWorld(iter.getCoord()).y() << " "
-                  << grid->indexToWorld(iter.getCoord()).z() << std::endl;
+        
+       // std::cout << grid->indexToWorld(iter.getCoord()).x() << " "
+        //          << grid->indexToWorld(iter.getCoord()).y() << " "
+         //         << grid->indexToWorld(iter.getCoord()).z() << std::endl;
     }
 
     // saving the grid to disk
