@@ -185,6 +185,10 @@ In the graphics community, there is a lot of work looking at the completion of m
 For example, \cite{podolak-esgp-2005} fill holes in a mesh by enforcing watertightness across an octree structure, while \cite{schnabel-eurographics-2009} complete meshes by using primitives extracted from the areas of the scan without missing detail. 
 A good overview of such mesh completion algorithms are given in \cite{ju-cst-2009}.
 
+\cite{silberman-eccv-2014} complete meshes from partial KinFU reconstructions, \eg behind items of furniture.
+They use this for augmeted realist situations, \eg allowing balls to bounce off floor in unseen areas.
+(Not exactly sure of the method they use for completion!)
+
 Image completion, such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}, typically has the aim of getting a good visually plausible output irrespective of the accuracy compared to ground truth. 
 The results can be very impressive. 
 \cite{hays-siggraph-2007} look up possible completion regions in a large database of similar images, while \cite{criminisi-cvpr-2003} inpaint by selecting and combining multiple plausible patches from other regions of the input image.
