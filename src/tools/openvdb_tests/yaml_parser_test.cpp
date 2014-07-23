@@ -38,17 +38,7 @@ int main()
 	for (size_t i = 0; i < transforms.size(); ++i)
 	{
 		cerr << "Model number " << i << ": " << transforms[i]["name"] << endl;
-
-		// extract a vector of openvdb transformations
-		std::vector<openvdb::Mat4R> all_transforms;
-
-		for (size_t j = 0; j < transforms[i]["transform"].size(); ++j)
-		{
-			openvdb::Mat4R T = extract_matrix(transforms[i]["transform"][j]["R"], transforms[i]["transform"][j]["T"]);
-			all_transforms.push_back(T);
-		}
-		cerr << "There are " << all_transforms.size() << " transforms" << endl;	
-
+		
 		// load in the vdb voxel grid for this model
 		std::string fullstring = fullpath + transforms[i]["name"].as<std::string>() + ".vdb";
 		cerr << "Loading " << fullstring << endl;
@@ -59,13 +49,12 @@ int main()
 
 		// cast the baseGrid to a double grid
 		grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
-
-		// go over the vector of the required transformations
-		for (size_t j = 0; j < all_transforms.size(); ++j)
+		
+		for (size_t j = 0; j < transforms[i]["transform"].size(); ++j)
 		{
-
 			cout << "Transforming " << endl;
-			const openvdb::Mat4R this_transform = all_transforms[j];
+
+			openvdb::Mat4R this_transform = extract_matrix(transforms[i]["transform"][j]["R"], transforms[i]["transform"][j]["T"]);
 			cout << this_transform << endl;
 			openvdb::FloatGrid::Ptr gridCopy = grid->deepCopy();
 			openvdb::FloatGrid::Ptr targetGrid = openvdb::FloatGrid::create();
@@ -97,6 +86,5 @@ int main()
 	// Write out the contents of the container.
 	fileout.write(grids);
 	fileout.close();	
-
 
 }
