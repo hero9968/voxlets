@@ -14,6 +14,7 @@ CMakeLists.txt.user
 /src/3D/src/voxelisation/vdb_convert/txt2vdb
 /src/tools/openvdb_tests/hellomake
 /src/tools/openvdb_tests/create
+/src/tools/openvdb_tests/yaml
 /src/tools/rendering/test/depth
 /src/pcl_pipeline/recogniser-build
 /src/common/toolbox/

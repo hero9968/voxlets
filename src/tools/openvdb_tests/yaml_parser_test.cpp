@@ -20,6 +20,7 @@ openvdb::Mat4R extract_matrix(YAML::Node R, YAML::Node T)
 					  	  R[1][0].as<double>(), R[1][1].as<double>(), R[1][2].as<double>(), T[1].as<double>(),
 					  	  R[2][0].as<double>(), R[2][1].as<double>(), R[2][2].as<double>(), T[2].as<double>(),
 					  	  zero, zero, zero, one);
+	trans = trans.transpose();
 	return trans;
 }
 
@@ -27,11 +28,11 @@ openvdb::Mat4R extract_matrix(YAML::Node R, YAML::Node T)
 int main()
 {
 	openvdb::initialize();
-	YAML::Node transforms = YAML::LoadFile("test.yaml");
+	YAML::Node transforms = YAML::LoadFile("../../3D/src/test.yaml");
 
 	// the final output grid...
 	openvdb::FloatGrid::Ptr outputGrid = openvdb::FloatGrid::create();
-
+	openvdb::FloatGrid::Ptr grid;
 
 	// loop over each object to be loaded in
 	for (size_t i = 0; i < transforms.size(); ++i)
@@ -39,20 +40,13 @@ int main()
 		cerr << "Model number " << i << ": " << transforms[i]["name"] << endl;
 
 		// extract a vector of openvdb transformations
-		std::vector<openvdb::Mat4R > all_transforms;
-		if (transforms[i]["transform"]["R"])
+		std::vector<openvdb::Mat4R> all_transforms;
+
+		for (size_t j = 0; j < transforms[i]["transform"].size(); ++j)
 		{
-			//cerr << 0 << ": " << transforms[i]["transform"] << endl;
-			openvdb::Mat4R T = extract_matrix(transforms[i]["transform"]["R"], transforms[i]["transform"]["T"]);
+			openvdb::Mat4R T = extract_matrix(transforms[i]["transform"][j]["R"], transforms[i]["transform"][j]["T"]);
 			all_transforms.push_back(T);
 		}
-		else
-			for (size_t j = 0; j < transforms[i]["transform"].size(); ++j)
-			{
-				//cerr << j << ": " << transforms[i]["transform"][j] << endl;
-				openvdb::Mat4R T = extract_matrix(transforms[i]["transform"][j]["R"], transforms[i]["transform"][j]["T"]);
-				all_transforms.push_back(T);
-			}
 		cerr << "There are " << all_transforms.size() << " transforms" << endl;	
 
 		// load in the vdb voxel grid for this model
@@ -64,7 +58,7 @@ int main()
 		file.close();
 
 		// cast the baseGrid to a double grid
-		openvdb::FloatGrid::Ptr grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+		grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
 
 		// go over the vector of the required transformations
 		for (size_t j = 0; j < all_transforms.size(); ++j)
@@ -76,26 +70,33 @@ int main()
 			openvdb::FloatGrid::Ptr gridCopy = grid->deepCopy();
 			openvdb::FloatGrid::Ptr targetGrid = openvdb::FloatGrid::create();
 
-			//openvdb::math::Transform::Ptr linearTransform =
-			  //  openvdb::math::Transform::createLinearTransform(this_transform);
 			openvdb::tools::GridTransformer transformer(this_transform);
 
+			// this is some linear transformation shit which doesn't really work at the moment
+			//openvdb::math::Transform::Ptr linearTransform =
+			  //  openvdb::math::Transform::createLinearTransform(this_transform);
 		    //targetGrid->setTransform(linearTransform);
    			//openvdb::tools::resampleToMatch<openvdb::tools::PointSampler>(*grid, *targetGrid);
 
 			// Resample using nearest-neighbor interpolation.
 			transformer.transformGrid<openvdb::tools::PointSampler, openvdb::FloatGrid>(
 			    *gridCopy, *targetGrid);
-			//break;
 
 			// add into main grid (compositinbg modifies the frit grid and leaves the second empty)
 			openvdb::tools::compSum(*outputGrid, *targetGrid);
 			cerr << "Done transformation " << endl;
 		}
 
-
-
 	}
+
+	// saving the grid to file
+	openvdb::io::File fileout("outputgrid.vdb");
+	// Add the grid pointer to a container.
+	openvdb::GridPtrVec grids;
+	grids.push_back(outputGrid);
+	// Write out the contents of the container.
+	fileout.write(grids);
+	fileout.close();	
 
 
 }
