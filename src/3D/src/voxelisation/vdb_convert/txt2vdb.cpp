@@ -85,6 +85,7 @@ int main(int argc, char **argv)
     cerr << sourceXform << endl;
 
     // adding transform to the grid to transform into world coordinates
+    /*
     openvdb::math::Mat4d transform_mat = openvdb::math::Mat4d::identity();
     transform_mat.preScale(openvdb::math::Vec3d(0.01,0.01,0.01));
     transform_mat.postTranslate(openvdb::math::Vec3d(-0.5,-0.5,-0.5));
@@ -97,6 +98,7 @@ int main(int argc, char **argv)
     //cerr << "Original: " << sourceXform << endl; // this doesn' work once the transform has been changed! (seg fault)
     cerr << "Latest: " << grid->transform() << endl;
     cerr << "Voxside is " << grid->voxelSize() << endl;
+    */
 
     // spitting out the transformed voxel coordinates, i.e. transformed into world coordinates
     //openvdb::FloatGrid::Ptr floatgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);

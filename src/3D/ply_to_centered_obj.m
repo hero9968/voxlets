@@ -3,17 +3,16 @@ cd ~/projects/shape_sharing/3D/
 clear
 run define_params_3d.m
 addpath(genpath('.'))
-OVERWRITE = false;
 %edit write_obj
 
 %%
-for ii = 1%$:length(params.model_filelist)
+for ii = params.files_to_use
     
     input_file = [paths.basis_models.originals '/' params.model_filelist{ii} '.obj'];
     output_file = [paths.basis_models.centred '/' params.model_filelist{ii} '.obj'];
     meta_file = [paths.basis_models.centred '/' params.model_filelist{ii} '.mat'];
     
-    if exist(output_file,'file') && exist(meta_file,'file') && ~OVERWRITE
+    if exist(output_file,'file') && exist(meta_file,'file') && ~params.overwrite
         continue;
     end
 	

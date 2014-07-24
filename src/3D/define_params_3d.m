@@ -52,6 +52,11 @@ fclose(fid);
 params.model_filelist = filelist{1};
 clear filelist fid ans
 
+% which files to operate on - and should we be overwriting?
+% NB good algorithm test is to set files_to_use = 1 and overwrite = true
+params.files_to_use = 1:4; % 1:length(params.model_filelist);
+params.overwrite = true;
+
 % params for the rendering of the model
 params.model_render.hemisphere = 0;
 params.model_render.level = 1;

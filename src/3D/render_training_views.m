@@ -1,8 +1,8 @@
 % a script to render the models from different angles, using the python
 % script.
 %
-cd ~/projects/shape_sharing/3D/
 clear
+cd ~/projects/shape_sharing/src/3D/
 run define_params_3d.m
 
 %% generating a reduced filelist which only consists of files which are small enough
@@ -22,7 +22,7 @@ fclose(fid);
 %}
 
 %%
-for ii = 1:length(params.model_filelist)
+for ii = params.files_to_use
     
     model = params.model_filelist{ii};
     
@@ -43,7 +43,7 @@ for ii = 1:length(params.model_filelist)
 	% deciding if to continue
     if length(dir(outdir)) >= 44
         disp(['Skipping number ' num2str(ii)]);
-        continue;
+        %continue;
     end
     
     disp(['Doing number ' num2str(ii)]);

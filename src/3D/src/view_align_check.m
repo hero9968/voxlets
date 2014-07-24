@@ -41,7 +41,7 @@ for ii = 1:42
     this_xyz = reproject_depth(this_depth, params.half_intrinsics, max_depth);
     this_xyz(:, 2) = -this_xyz(:, 2);
     this_xyz(:, 3) = -this_xyz(:, 3);
-    
+    all_xyz{ii} = this_xyz;
     
     % extracting the rotation matrix
     rot_name = sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.csv', ii);
@@ -91,5 +91,28 @@ end
 hold off
 
 view(10, -40)
+
+%% plotting objects in their natural view with the voxels transformed to them!
+count = 1;
+for ii = 1:4%42
+    
+    subplot(2, 2, count);
+    count = count + 1;
+    plot3d(all_xyz{ii}, 'g')
+    view(0, 90)
+    
+    % transform voxels
+    rot_name = sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.csv', ii);
+    T = csvread(rot_name);
+    temp_vox = apply_transformation_3d(trans_vox, inv(T));
+    
+    hold on
+    plo3d(temp_vox)
+    hold off
+    
+    % adding voxels in
+end
+
+
 
 

@@ -1,16 +1,16 @@
 CC=clang++
-CFLAGS=-I/Users/Michael/builds/openvdb_etc/ -L/usr/local/lib/ -ltbb -lHalf  -lopenvdb
+CFLAGS=-I/usr/local//OpenVDB/include/ -L/usr/local/lib/ -ltbb -lHalf  -lopenvdb
 
 all: hellomake create yaml
 
 hellomake: hello_world.cpp
-	$(CC) -o hellomake hello_world.cpp $(CFLAGS)
+	$(CC) -o $@ hello_world.cpp $(CFLAGS)
 
 create: create_write_grid.cpp
-	$(CC) -o create create_write_grid.cpp $(CFLAGS)
+	$(CC) -o $@ create_write_grid.cpp $(CFLAGS)
 
 yaml: yaml_parser_test.cpp
-	$(CC) -o yaml yaml_parser_test.cpp  -lyaml-cpp $(CFLAGS)
+	$(CC) -o $@ yaml_parser_test.cpp  -lyaml-cpp $(CFLAGS)
 
 clean:
-	rm -rf *o hello
+	rm -rf *.o hellomake create yaml

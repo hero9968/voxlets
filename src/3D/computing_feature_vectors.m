@@ -1,9 +1,10 @@
 % Computing all the feature vectors. The aim is to end up with them as
 % a single .mat file for each of the 1600 or so objects...
 
-cd ~/projects/shape_sharing/3D/
+cd ~/projects/shape_sharing/src/3D/
 clear
 addpath(genpath('.'))
+addpath ../2D/src/utils/
 run define_params_3d.m
 
 number_renders = 42;
@@ -11,7 +12,7 @@ params.shape_dist.rescaling = 0;
 params.shape_dist.num_samples = 20000;
 
 %%
-for ii = 1:length(params.model_filelist)
+for ii = params.files_to_use
 
     tic
     
@@ -19,7 +20,7 @@ for ii = 1:length(params.model_filelist)
     model = params.model_filelist{ii};
     outfile = sprintf(paths.basis_models.fv_file, model);
 
-    if exist(outfile, 'file')
+    if exist(outfile, 'file') && ~params.overwrite
         disp(['Skipping ' num2str(ii)])
         continue
     end

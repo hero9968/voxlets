@@ -1,7 +1,7 @@
 % Computing all the feature vectors. The aim is to end up with them as
 % a single .mat file for each of the 1600 or so objects...
 
-cd ~/projects/shape_sharing/3D/
+cd ~/projects/shape_sharing/src/3D/
 clear
 addpath(genpath('.'))
 run define_params_3d.m

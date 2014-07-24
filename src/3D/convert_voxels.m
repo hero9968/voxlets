@@ -8,12 +8,12 @@ define_params_3d
 threshold = 40;
 
 %%
-for ii = 1:length(params.model_filelist)
+for ii = params.files_to_use
     
     voxel_path = [paths.basis_models.voxelised, params.model_filelist{ii}, '.mat'];
     text_path = [paths.basis_models.voxelised_text, params.model_filelist{ii}, '.txt'];
     
-    if exist(text_path, 'file')
+    if exist(text_path, 'file') && ~params.overwrite
         disp(['Skipping ' num2str(ii)])
         continue;
     end
@@ -42,12 +42,12 @@ end
 setenv('DYLD_LIBRARY_PATH', ['/usr/local/lib:' getenv('DYLD_LIBRARY_PATH')])
 
 %% Now converting these text voxels to vdb using the script...
-for ii = 1:length(params.model_filelist)
+for ii = params.files_to_use
     
     text_path = [paths.basis_models.voxelised_text, params.model_filelist{ii}, '.txt'];
     vdb_path = [paths.basis_models.voxelised_vdb, params.model_filelist{ii}, '.vdb'];
     
-    if exist(vdb_path, 'file')
+    if exist(vdb_path, 'file') && ~params.overwrite
         disp(['Skipping ' num2str(ii)])
         continue;
     end

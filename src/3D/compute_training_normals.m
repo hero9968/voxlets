@@ -1,13 +1,13 @@
 % Compute normals for each training view
 % (Not bothering for now...)
-cd ~/projects/shape_sharing/3D/
+cd ~/projects/shape_sharing/src/3D/
 clear
 run define_params_3d.m
 addpath(genpath('.'))
 
 %% 
 
-for ii = 1%:length(params.model_filelist)
+for ii = params.files_to_use
 
     model = params.model_filelist{ii};
     outdir = sprintf(paths.basis_models.normals_dir, model);
@@ -26,7 +26,7 @@ for ii = 1%:length(params.model_filelist)
         depthfile = sprintf(paths.basis_models.rendered, model, jj);
        
         % deciding if to continue
-        if exist(outfile, 'file')
+        if exist(outfile, 'file') && ~params.overwrite
             disp(['Skipping number ' num2str(ii)]);
             continue;
         end

@@ -10,13 +10,13 @@ run define_params_3d.m
 number_renders = 42;
 
 %%
-for ii = 1%:length(params.model_filelist)
+for ii = params.files_to_use
     
     % output place
     model = params.model_filelist{ii};
     outfile = sprintf(paths.basis_models.combined_file, model);
     
-    if exist(outfile, 'file')
+    if exist(outfile, 'file') && ~params.overwrite
         disp(['Skipping ' num2str(ii)])
         continue
     end
@@ -32,9 +32,7 @@ for ii = 1%:length(params.model_filelist)
         this_norms_name = sprintf(paths.basis_models.normals, model, jj);
         
         this_depth = load_for_parfor(this_depth_name, 'depth');
-        max_depth = max(this_depth(:));
-        mask = abs(this_depth-max_depth)< 0.001;
-        this_depth(mask) = nan;
+        this_depth = format_depth(this_depth);
                        
         normals = load_for_parfor(this_norms_name, 'normals');
         curvature = load_for_parfor(this_norms_name, 'curvature');
@@ -50,7 +48,7 @@ for ii = 1%:length(params.model_filelist)
         
     end
     
-    %save(outfile, 'renders')
+    save(outfile, 'renders')
 
     disp(['Done ' num2str(ii) ' in ' num2str(toc) ' s'])
 end
@@ -58,11 +56,11 @@ end
 
 
 %% new code to recreate the renders files...
-
+% I think this is to save space (i.e. saving as a better version?)
 
 %% 
 tic
-for ii = 1:length(params.model_filelist)
+for ii = params.files_to_use
     
     % output place
     model = params.model_filelist{ii};

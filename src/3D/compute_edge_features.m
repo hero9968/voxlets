@@ -11,9 +11,9 @@ params.shape_dist.rescaling = 0;
 params.shape_dist.num_samples = 20000;
 
 %%
-for ii = 101:length(params.model_filelist)
+for ii = params.files_to_use
 
-    tic
+    start_time = tic;
     
     % output place
     model = params.model_filelist{ii};
@@ -51,7 +51,7 @@ for ii = 101:length(params.model_filelist)
     %save(outfile, 'shape_dist', 'scale', 'transform_to_origin', 'edge_shape_dist');
     save(outfile, 'edge_fv', '-append')
 
-    disp(['Done ' num2str(ii) ' in ' num2str(toc) 's']);
+    disp(['Done ' num2str(ii) ' in ' num2str(toc(start_time)) 's']);
     
 end
 
