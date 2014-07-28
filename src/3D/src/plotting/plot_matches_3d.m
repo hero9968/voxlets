@@ -16,7 +16,6 @@ for ii = 1:length(matches)
     % loop over (and plot) each transformation for this basis shape
     for jj = 1:length(matches{ii}.transform)
         this_transform = [matches{ii}.transform{jj}.R, matches{ii}.transform{jj}.T'; 0 0 0 1];
-        this_transform
         translated_match = apply_transformation_3d(this_vox_xyz, this_transform);%this_match.vox_transformation);
         xyz{ii}{jj} = translated_match;
         

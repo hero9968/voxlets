@@ -80,21 +80,23 @@ WriteYaml('test.yaml', matches, 0);
 
 
 %% 3D visualisation of the regions
+subplot(121)
 plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
 for ii = 1:length(all_matches)
     plot3d(apply_transformation_3d(all_matches(ii).xyz, all_matches(ii).transformation));
 end
 hold off
+view(122, 90)
 
 %% 3D alignment visualisation of the voxels
 % (This is basically equivalnt to what the c++ yaml visualiser should do)
-clf
+subplot(122)
 plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
 xyz = plot_matches_3d(matches);
 hold off
-view(122, 30)
+view(122, 90)
 
 
 
