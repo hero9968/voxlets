@@ -1,4 +1,5 @@
-function [output_matrix, final_idx, probs, all_idx] = segment_soup_3d( cloud, opts )
+function [output_matrix, final_idx, probs, all_idx, transform_to_plane] = ...
+    segment_soup_3d( cloud, opts )
 % forms a segmentation of 3D data into multiple different segmentations
 % cloud is a structure with xyz, normals, curvature as fields
 % opts is a structure with options
@@ -19,6 +20,7 @@ filter_opts.overlap_threshold = opts.overlap_threshold;
 N = length(smoothness_thresholds) * length(curvature_thresholds);
 
 all_idx = cell(1, N);
+updir = cell(1, N);
 count = 1;
 
 for ii = 1:length(smoothness_thresholds)
@@ -27,7 +29,7 @@ for ii = 1:length(smoothness_thresholds)
         opts.smoothness_threshold = smoothness_thresholds(ii);
         opts.curvature_threshold = curvature_thresholds(jj);
         
-        [all_idx{count}] = segment_wrapper(cloud_filtered, opts);
+        [all_idx{count}, ~, updir{count}] = segment_wrapper(cloud_filtered, opts);
         
         disp(['Done ' num2str(count) ' of ' num2str(N)])
         
@@ -35,6 +37,10 @@ for ii = 1:length(smoothness_thresholds)
         
     end
 end
+
+% combinging the updirs
+final_updir = normalise_length(median(cell2mat(updir')));
+transform_to_plane = mat_from_plane(final_updir);
 
 % combining all the segmentations together
 segmented_matrix = cell2mat(all_idx);

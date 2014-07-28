@@ -34,6 +34,7 @@ Use like this:
 #define CURVATURE_THRESHOLD_IN prhs[7]
 
 #define SEGMENTS_OUT plhs[0]
+#define UPDIR_OUT plhs[1]
 
 
 
@@ -335,5 +336,12 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 
   t_diff = (double)(clock() - time1)/CLOCKS_PER_SEC;
   mexPrintf("...Returning done: %f\n", t_diff);
+  
+  // returning up-dir to MEX
+  UPDIR_OUT = mxCreateNumericMatrix( 1, 4, mxSINGLE_CLASS, mxREAL);
+  float *out_ptr2 = (float*)mxGetData(UPDIR_OUT);
+  
+  for (size_t j = 0; j < 4; ++j)
+      out_ptr2[j] = plane_vect.at(best_plane).coefficients->values[j]; 
 
 }

@@ -1,4 +1,4 @@
-function [idx_out, temp_idx_out] = segment_wrapper( cloud, opts )
+function [idx_out, temp_idx_out, updir] = segment_wrapper( cloud, opts )
 % matlab wrapper for fpfh mex function
 
 xyz = cloud.xyz;
@@ -13,7 +13,7 @@ normals(to_remove, :) = [];
 curve(to_remove) = [];
 
 % doing computation
-temp_idx_out = segment_prism_mex( double(xyz), double(normals), double(curve), ...
+[temp_idx_out, updir]= segment_prism_mex( double(xyz), double(normals), double(curve), ...
     int32(opts.min_cluster_size), int32(opts.max_cluster_size), ...
     int32(opts.num_neighbours), opts.smoothness_threshold, ...
     opts.curvature_threshold );

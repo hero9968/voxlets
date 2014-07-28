@@ -39,7 +39,7 @@ if isfield(opts, 'just_dists') && opts.just_dists
     
 else
 
-    [~, idx] = pdist2(dict, [dists(:), angles(:)], 'Euclidean', 'Smallest', 1);
+    [~, idx] = pdist2(double(dict), [dists(:), angles(:)], 'Euclidean', 'Smallest', 1);
     fv = accumarray(idx(:), 1, [size(dict, 1), 1]);
     fv = fv(:)' / sum(fv);
     
