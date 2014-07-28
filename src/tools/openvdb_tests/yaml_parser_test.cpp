@@ -12,14 +12,14 @@ std::string fullpath = "/Users/Michael/projects/shape_sharing/data/3D/basis_mode
 
 // helper function to convert nodes containing R and T 
 // components into openvdb transformation matrix format
-openvdb::Mat4R extract_matrix(YAML::Node R, YAML::Node T)
+openvdb::Mat4R extract_matrix(const YAML::Node R, const YAML::Node T)
 {
 	double zero = 0;
 	double one = 1;
 	openvdb::Mat4R trans( R[0][0].as<double>(), R[0][1].as<double>(), R[0][2].as<double>(), T[0].as<double>(),
-					  	  R[1][0].as<double>(), R[1][1].as<double>(), R[1][2].as<double>(), T[1].as<double>(),
-					  	  R[2][0].as<double>(), R[2][1].as<double>(), R[2][2].as<double>(), T[2].as<double>(),
-					  	  zero, zero, zero, one);
+							R[1][0].as<double>(), R[1][1].as<double>(), R[1][2].as<double>(), T[1].as<double>(),
+							R[2][0].as<double>(), R[2][1].as<double>(), R[2][2].as<double>(), T[2].as<double>(),
+							zero, zero, zero, one/100);
 	trans = trans.transpose();
 	return trans;
 }
@@ -49,23 +49,17 @@ int main()
 
 		// cast the baseGrid to a double grid
 		grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
-		
+
 		for (size_t j = 0; j < transforms[i]["transform"].size(); ++j)
 		{
-			cout << "Transforming " << endl;
+			cerr << "Transforming " << endl;
 
 			openvdb::Mat4R this_transform = extract_matrix(transforms[i]["transform"][j]["R"], transforms[i]["transform"][j]["T"]);
-			cout << this_transform << endl;
+			cerr << this_transform << endl;
 			openvdb::FloatGrid::Ptr gridCopy = grid->deepCopy();
 			openvdb::FloatGrid::Ptr targetGrid = openvdb::FloatGrid::create();
 
 			openvdb::tools::GridTransformer transformer(this_transform);
-
-			// this is some linear transformation shit which doesn't really work at the moment
-			//openvdb::math::Transform::Ptr linearTransform =
-			  //  openvdb::math::Transform::createLinearTransform(this_transform);
-		    //targetGrid->setTransform(linearTransform);
-   			//openvdb::tools::resampleToMatch<openvdb::tools::PointSampler>(*grid, *targetGrid);
 
 			// Resample using nearest-neighbor interpolation.
 			transformer.transformGrid<openvdb::tools::PointSampler, openvdb::FloatGrid>(
@@ -76,6 +70,17 @@ int main()
 			cerr << "Done transformation " << endl;
 		}
 
+	}
+
+	// print the entire output grid
+	for (openvdb::FloatGrid::ValueOnCIter iter = outputGrid->cbeginValueOn(); iter; ++iter)
+	{
+		std::stringstream ss;
+		ss << iter.getCoord();
+		std::string str = ss.str();
+		str.erase(std::remove(str.begin(), str.end(), '['), str.end());
+		str.erase(std::remove(str.begin(), str.end(), ']'), str.end());	
+		cout << str << endl;
 	}
 
 	// saving the grid to file

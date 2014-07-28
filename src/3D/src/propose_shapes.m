@@ -10,23 +10,30 @@ load(paths.structured_model_file, 'model')
 %% loading in some of the ECCV dataset, normals + segmentation
 cloud = loadpgm_as_cloud('~/projects/shape_sharing/data/3D/scenes/first_few_render_noisy00000.pgm', params.full_intrinsics);
 [cloud.normals, cloud.curvature] = normals_wrapper(cloud.xyz, 'knn', 50);
-[idxs, idxs_without_nans, probabilities, all_idx] = segment_soup_3d(cloud, params.segment_soup);
+[cloud.segment.idxs, ~, cloud.segment.probabilities, ~, cloud.segment.rotate_to_plane] = ...
+    segment_soup_3d(cloud, params.segment_soup);
 
 %% plotting segments
-plot_segment_soup_3d(cloud.rgb.^0.2, idxs, probabilities);
+plot_segment_soup_3d(cloud.rgb.^0.2, cloud.segment.idxs, cloud.segment.probabilities);
+
+%% plot 3d after rotation...
+temp_xyz = apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane);
+plot3d(temp_xyz)
+view(0, 0)
 
 %% Finding all the possible transformations into the scene
+proposals_per_region = 1;
 all_matches = [];
-for seg_index = [1, 10]%:size(idxs, 2);
+for seg_index = 1:size(cloud.segment.idxs, 2);
     
-    segment = extract_segment(cloud, idxs(:, seg_index), params);
-    segment_matches = propose_matches(segment, model, 20, 'shape_dist', params, paths);
+    segment = extract_segment(cloud, cloud.segment.idxs(:, seg_index), params);
+    segment_matches = propose_matches(segment, model, proposals_per_region, 'shape_dist', params, paths);
     
-    for ii = 1:20
+    for ii = 1:proposals_per_region
 
         % creating and applying final transformation
-        transf = double(segment.transforms.final_M * segment_matches(ii).transforms.final_M);
-        vox_transf = double(segment.transforms.final_M * segment_matches(ii).transforms.final_M * segment_matches(ii).transforms.vox_inv * params.voxelisation.T_vox);
+        transf = double(cloud.segment.rotate_to_plane * segment.transforms.final_M * segment_matches(ii).transforms.final_M);
+        vox_transf = double(transf * segment_matches(ii).transforms.vox_inv * params.voxelisation.T_vox);
         translated_match = apply_transformation_3d(segment_matches(ii).xyz, transf);
 
         % combining some of the most vital info into a new structure
@@ -40,7 +47,7 @@ for seg_index = [1, 10]%:size(idxs, 2);
         all_matches = [all_matches, this_match];
     end
     
-    done(seg_index, size(idxs, 2));    
+    done(seg_index, size(cloud.segment.idxs, 2));    
 end
 
 %% Condense all the transformations into one nice structure heirarchy
@@ -55,7 +62,7 @@ for ii = 1:length(unique_objects)
     for jj = 1:length(this_matches)
         transM = all_matches(this_matches(jj)).vox_transformation;
         transform.T = transM(1:3, 4)';
-        transform.R = transM(1:3, 1:3);
+        transform.R = transM(1:3, 1:3);% * [0, 1, 0; -1, 0, 0; 0, 0, 1];
         transform.weight = 1;
         transform.region = all_matches(this_matches(jj)).region;
         match.transform{end+1} = transform;
@@ -65,44 +72,55 @@ end
 
 %matches{1}.transform([1:7, 9:end]) = []
 % writing to YAML file
+%matches{1}.transform{1}.R = eye(3) / 100;
+%matches{1}.transform{1}.T = 0 * matches{1}.transform{1}.T;
 WriteYaml('test.yaml', matches, 0);
 % plotting the closest matches
 %plot_matches(matches, 20, segment.mask, params, paths)
 
-%% 3D alignment visualisation of all matches
-% (This is basically equivalnt to what the c++ yaml visualiser should do)
-plot3d(cloud.xyz, 'y');
-hold on
-plot_matches_3d(matches);
-hold off
 
-%% now must align the match into the original image
-imagesc(cloud.depth)
+%% 3D visualisation of the regions
+plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
-plot(segment.centroid(1), segment.centroid(2), 'r+')
-hold off
-
-%% 2D alignment visualisation
-clf
-T = cloud.depth;
-for ii = 1:10
-    
-    % computing translations, rotations and scales
-    trans1 = translation_matrix(-segment_matches(ii).centroid(1), -segment_matches(ii).centroid(2));
-    rot = rotation_matrix(segment_matches(ii).angle);
-    trans2 = translation_matrix(segment.centroid(1), segment.centroid(2));
-    scale = (segment_matches(ii).median_depth / segment.median_depth ) * ...
-        (2) * (segment.scale / segment_matches(ii).scale);
-    scale_M = double(scale_matrix(scale));
-    
-    transf = maketform('affine', (trans2 * rot * scale_M * trans1)');
-    [H, W] = size(cloud.depth);
-    
-    depth = segment_matches(ii).depth;
-    depth(isnan(depth)) = 0;
-    translated_match = imtransform(depth, transf, 'nearest', 'XData', [1 W], 'YData', [1 H], 'size', size(T));
-    T = translated_match/10 + T;
-    
+for ii = 1:length(all_matches)
+    plot3d(apply_transformation_3d(all_matches(ii).xyz, all_matches(ii).transformation));
 end
+hold off
 
-imagesc(T)
+%% 3D alignment visualisation of the voxels
+% (This is basically equivalnt to what the c++ yaml visualiser should do)
+clf
+plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
+hold on
+xyz = plot_matches_3d(matches);
+hold off
+view(122, 30)
+
+
+
+%% Checking alignment
+%plot_matches_3d(matches);
+
+%% sorting out the transformation fuckups
+openvdb = load('/Users/Michael/projects/shape_sharing/src/tools/openvdb_tests/final_locations.txt');
+%openvdb = openvdb(:, [2, 1, 3]);
+matlab = [xyz{1}{1}(:, :) * 100];% xyz{1}{2}(:, :) * 100];
+whos matlab openvdb
+voxeldiff(openvdb, matlab)
+view(-45, 90)
+
+%%
+plot3d(round(matlab), 'r');
+hold on
+plot3d(openvdb+0.5, 'g');
+hold off
+
+%% basic fuckery
+openvdb = load('/Users/Michael/projects/shape_sharing/src/3D/src/voxelisation/vdb_convert/base_file.txt');
+%openvdb = openvdb(:, [2, 1, 3]);
+matlab = load_vox('1046b3d5a381a8902e5ae31c6c631a39');
+%whos matlab openvdb
+voxeldiff(openvdb, matlab)
+view(-45, 30)
+
+
