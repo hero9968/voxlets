@@ -31,6 +31,7 @@
 \newcommand{\pcloud}{\mathcal{P}}
 \newcommand{\point}{\mathbf{p}}
 \newcommand{\normal}{\mathbf{n}}
+\newcommand{\ray}{\mathbf{R}}
 
 \title{Predicting Voxel Occupancy From a Single RGBD Image}
 
@@ -101,7 +102,6 @@ In effect we are hypothesising that any two objects that have a similar shape fr
 Of course the problem is ill-posed; we therefore can only hope to make a reasonable guess of the occupancy and we rely on the predictability and repeatability of the world.
 
 %In addition, our output can act as a prior for algorithms such as registration.
-
 
 % \subsubsection{What is our hypothesis?}
 
@@ -317,6 +317,23 @@ We approximate this based on how well the region $\imregion_j$ matches the visib
 \item $\prob(\imregion_j|\rgbdimage)$ ---
 This is the probability that the region of the image $\imregion_j$ is a correct segmentation of image $\rgbdimage$.
 \end{itemize}
+
+\subsection{Predicting voxel occupancy --- alternative}
+The ultimate aim is to predict, for each voxel $v_k$ in the scene, the probably of the event $\occ_k$, \ie the probability that it is occupied or not. 
+We therefore want $\prob(\occ_k)$ for each voxel.
+$$
+\prob(\occ_k ) = \sum_{i,j} \prob(\occ_k|\basisshape_i)\prob(\basisshape_i|\ray_j)
+$$
+
+\begin{itemize}
+\item $\prob(\occ_k|\basisshape_i)$ ---
+This is $1$ if the voxel is inside the transformed basis shape mesh, and $0$ otherwise.
+\item $\prob(\basisshape_i|\ray_j)$ ---
+This is the probability of the event that $\basisshape_i$ is the correct shape to explain the shape of the object along ray $\ray_j$.
+\end{itemize}
+
+The only reason that voxel $k$ can be viewed or not is because of objects which may or may not be lying on the path in the direction of the voxel.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Pre-processing}
