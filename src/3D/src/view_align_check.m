@@ -7,7 +7,7 @@ addpath transformations/
 run ../define_params_3d.m
 
 %% setting up the paths
-num = 1;
+num = 100;
 model = params.model_filelist{num};
 
 %% loading in the views and plotting
@@ -61,7 +61,7 @@ hold off
 
 %% now loading in the voxel grid for this modelclf
 clf
-voxel_filename = sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/voxelised/%s.mat', model);
+voxel_filename = './voxelisation/clement_carving/temp.mat';%sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/voxelised/%s.mat', model);
 vox_struct = load(voxel_filename);
 V = vox_struct.vol;
 V(V<30) = 0;
@@ -79,18 +79,31 @@ hold off
 view(10, -40)
 
 %% alternate viewing system, showing voxels with with proper transformation
+clf
+height = -0.2;
+thresh = 40.01;
+T_vox = [0 1/200 0 -0.5-0.0025; 
+        1/200 0 0 -0.5-0.0025; 
+        0 0 1/200 -0.5; 
+        0 0 0 1];
+cols = 'rgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykc';
 [inds] = find(V);
 [i, j, k] = ind2sub(size(V), inds);
-trans_vox = apply_transformation_3d([i,j,k], params.voxelisation.T_vox);
-plot3(trans_vox(:, 1), trans_vox(:, 2), trans_vox(:, 3), '.', 'markersize', 10)
-
+trans_vox = apply_transformation_3d([i,j,k], T_vox);
+to_plot = abs(trans_vox(:, 3) - height) < thresh;
+plot3(trans_vox(to_plot, 1), trans_vox(to_plot, 2), trans_vox(to_plot, 3), '.', 'markersize', 10)
+axis image
+%%
 hold on
-for ii = 1:5:42
-    plot3d(all_xyz_trans{ii}, cols(ii));
+count = 1;
+for ii = 1:10:42
+    to_plt = abs(all_xyz_trans{ii}(:, 3) - height) < thresh;
+    plot3d(all_xyz_trans{ii}(to_plt, :), cols(count));
+    count = count + 1
 end
 hold off
 
-view(10, -40)
+view(0, 90)
 
 %% plotting objects in their natural view with the voxels transformed to them!
 count = 1;
