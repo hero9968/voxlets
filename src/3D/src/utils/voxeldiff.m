@@ -7,11 +7,13 @@ v2 = double(round(v2));
 
 v1_only = setdiff(v1, v2, 'rows');
 v2_only = setdiff(v2, v1, 'rows');
+both = intersect(v1, v2, 'rows');
 
 clf
 plot3d(v1_only, 'r');
 hold on
 plot3d(v2_only, 'g');
+plot3d(both, 'b');
 hold off
 
 if isempty(v1_only) && isempty(v2_only)

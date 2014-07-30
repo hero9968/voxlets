@@ -22,7 +22,7 @@ plot3d(temp_xyz)
 view(0, 0)
 
 %% Finding all the possible transformations into the scene
-proposals_per_region = 1;
+proposals_per_region = 2;
 all_matches = [];
 for seg_index = 1:size(cloud.segment.idxs, 2);
     
@@ -79,8 +79,8 @@ WriteYaml('test.yaml', matches, 0);
 %plot_matches(matches, 20, segment.mask, params, paths)
 
 
-%% 3D visualisation of the regions
-subplot(121)
+%% 3D visualisation of the regions aligned in
+subplot(221)
 plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
 for ii = 1:length(all_matches)
@@ -91,13 +91,30 @@ view(122, 90)
 
 %% 3D alignment visualisation of the voxels
 % (This is basically equivalnt to what the c++ yaml visualiser should do)
-subplot(122)
+subplot(222)
 plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
 xyz = plot_matches_3d(matches);
 hold off
 view(122, 90)
 
+%% 3D alignment visualisation of the openvdb voxels
+% (run ./yaml > final_locations.txt in the correct folder first)
+clf % subplot(223)
+plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
+hold on
+openvdb = load('/Users/Michael/projects/shape_sharing/src/tools/openvdb_tests/final_locations.txt');
+plot3d(openvdb(:, 1:3)/100)
+hold off
+view(122, 90)
+
+%% trying to do nice plotting of voxel slices in 2D space
+for ii = 0.05:0.05:0.4
+    plot_voxel_scene(cloud, openvdb, ii)
+    drawnow
+    pause(0.5)
+    ii
+end
 
 
 %% Checking alignment
@@ -108,7 +125,7 @@ openvdb = load('/Users/Michael/projects/shape_sharing/src/tools/openvdb_tests/fi
 %openvdb = openvdb(:, [2, 1, 3]);
 matlab = [xyz{1}{1}(:, :) * 100];% xyz{1}{2}(:, :) * 100];
 whos matlab openvdb
-voxeldiff(openvdb, matlab)
+voxeldiff(openvdb(:, 1:3), matlab)
 view(-45, 90)
 
 %%
@@ -125,4 +142,17 @@ matlab = load_vox('1046b3d5a381a8902e5ae31c6c631a39');
 voxeldiff(openvdb, matlab)
 view(-45, 30)
 
+
+
+%% checking the voxel align - should be able to run this by itself
+model_name = params.model_filelist{100};
+matlab_vox = load_vox(model_name);
+
+voxel_filename = sprintf('/Users/Michael/projects/shape_sharing/src/3D/src/voxelisation/vdb_convert/%s.txt', model_name);
+openvdb_vox = load(voxel_filename);
+
+plot3d(matlab_vox, 'b');
+hold on
+plot3d(openvdb_vox, 'r');
+hold off
 

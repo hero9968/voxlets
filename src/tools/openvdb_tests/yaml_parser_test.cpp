@@ -80,7 +80,7 @@ int main()
 		std::string str = ss.str();
 		str.erase(std::remove(str.begin(), str.end(), '['), str.end());
 		str.erase(std::remove(str.begin(), str.end(), ']'), str.end());	
-		cout << str << endl;
+		cout << str << ", " << iter.getValue() << endl;
 	}
 
 	// saving the grid to file

@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
         //cerr << "Lin idx = " << lin_idx << endl;
         //cerr << x << "," << y << "," << z << endl;
-        openvdb::Coord xyz(++x, ++y, ++z); // converting back to 1-based indexing?
+        openvdb::Coord xyz(++y, ++x, ++z); // converting back to 1-based indexing?
         accessor.setValue(xyz, 1.0);
 
         //cerr << "Grid" << xyz << " = " << accessor.getValue(xyz) << std::endl;
