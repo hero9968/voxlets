@@ -40,7 +40,7 @@ end
 
 % combinging the updirs
 final_updir = normalise_length(median(cell2mat(updir')));
-transform_to_plane = mat_from_plane(final_updir);
+transform_to_plane = double(mat_from_plane(final_updir));
 
 % combining all the segmentations together
 segmented_matrix = cell2mat(all_idx);

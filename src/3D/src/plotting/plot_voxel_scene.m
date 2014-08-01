@@ -9,6 +9,7 @@ pixel_height  = temp_xyz(:, 3);
 
 subplot(121)
 plot_line_scene(cloud.rgb, pixel_height, height, threshold);
+title(num2str(height))
 
 subplot(122)
 cla
