@@ -3,12 +3,13 @@
 cd ~/projects/shape_sharing/src/3D/src
 clear
 addpath plotting/
+addpath utils/
 addpath transformations/
 run ../define_params_3d.m
 
 %% setting up the paths
 num = 100;
-model = params.model_filelist{num};
+model = '6d9b13361790d04d457ba044c28858b1';%params.model_filelist{num};
 
 %% loading in the views and plotting
 num_views = 42;
@@ -60,14 +61,15 @@ end
 hold off
 
 %% now loading in the voxel grid for this modelclf
-clf
 voxel_filename = './voxelisation/clement_carving/temp.mat';%sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/voxelised/%s.mat', model);
 vox_struct = load(voxel_filename);
-V = vox_struct.vol;
-V(V<30) = 0;
+V = full_3d(150*[1, 1, 1], vox_struct.sparse_volume);
+
+%%
 V = permute(V, [2, 1, 3]);
-R = [-0.5, 0.5];
-vol3d('CData', V, 'XData', R, 'YData', R, 'ZData', R)
+clf
+R = [-vox_struct.size, vox_struct.size];
+vol3d('CData', double(V), 'XData', R, 'YData', R, 'ZData', R)
 axis image
 
 hold on
@@ -82,9 +84,10 @@ view(10, -40)
 clf
 height = -0.2;
 thresh = 40.01;
-T_vox = [0 1/200 0 -0.5-0.0025; 
-        1/200 0 0 -0.5-0.0025; 
-        0 0 1/200 -0.5; 
+scale = 1/vox_struct.size;
+T_vox = [0 scale 0 -0.5-0.0025; 
+        scale 0 0 -0.5-0.0025; 
+        0 0 scale -0.5; 
         0 0 0 1];
 cols = 'rgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykcrgykc';
 [inds] = find(V);
@@ -120,7 +123,7 @@ for ii = 1:4%42
     temp_vox = apply_transformation_3d(trans_vox, inv(T));
     
     hold on
-    plo3d(temp_vox)
+    plot3d(temp_vox)
     hold off
     
     % adding voxels in

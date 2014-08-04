@@ -1,44 +1,38 @@
-# -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
-
-# <codecell>
-
-#import cv, cv2
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import scipy.io
 import time
-# <codecell>
+import cv2
 
 plt.ion()
 
-modelname = "1f8275f1c106144ff11c3739edd52fa3";
 
 modelpath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/%s/depth_%d.mat"
 renderspath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/"
-#modelname = "1046b3d5a381a8902e5ae31c6c631a39";
 halopath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.mat"
 savedir = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/voxelised/"
+
 imheight = 240
 imwidth = 320
 nbFrames = 42
-res = 100  # resolution of the voxel grid
+res = 150  # resolution of the voxel grid
+grace_zone_size = 0.05 # give an extra voxel of space
+number_frames = 42      # how many frames are there around the sphere?
+size = 0.5  # half the total size of the voxel box in each dimension
 
+def render_model(modelname, savepath):
 
-def render_model(modelname):
-    #origin = np.array([[-0.475, 3.062, -0.582, 1]]).T
     origin = np.array([[0, 0, 0, 1]]).T
     volume = np.zeros((res,res,res), dtype=np.uint8)
-    size = 0.5
 
     coords = np.ones((4,res,res,res))
     coords[0:3,:,:,:] = np.mgrid[origin[0]-size:origin[0]+size:res*1j, origin[1]-size:origin[1]+size:res*1j, origin[2]-size:origin[2]+size:res*1j]
 
     X = coords.reshape((4, res**3))
 
-    for i in xrange(42):
+    for i in xrange(number_frames):
 
         #print "Printing frame %d" % i
 
@@ -47,8 +41,13 @@ def render_model(modelname):
         #print img_raw.min()
         #print img_raw.max()
         mask = np.uint8(img_raw < 3 )
+
+        # dilating the mask
+        kernel = np.ones((5,5),'int')
+        mask = cv2.dilate(mask,kernel)
+
         fmask = mask.flatten()
-    #plt.imshow(mask)
+        #plt.imshow(mask)
         #plt.draw()
 
         # loading extrinsic (R) and intrinsic (K) parameters
@@ -82,7 +81,7 @@ def render_model(modelname):
         # which pixels in the image these voxels project to
         valid_img_coords = ip[:,valid_volume_coords] 
         
-        # boolean array – do these voxels fall inside the object mask or not? 
+        # boolean array - do these voxels fall inside the object mask or not? 
         vals = mask[valid_img_coords[1,:], valid_img_coords[0,:]] 
 
         # ...and what are their depths in the input image?
@@ -92,7 +91,7 @@ def render_model(modelname):
         # negating items in the boolean array which are at the wrong depth
         #print voxel_depths.min()
         #print voxel_depths.max()
-        vals[voxel_depths < image_depths] = 0
+        vals[voxel_depths < (image_depths-grace_zone_size)] = 0
         
         # creating voxel matrix for this image, populate with boolean array values (in mask or not?)
         tempv = np.zeros(res**3, dtype=np.uint8)
@@ -104,15 +103,20 @@ def render_model(modelname):
         
     print "Done all frames."
 
-    d = dict(vol=volume, coords=coords, res=res, origin=origin, size=size, depth=lmbd)
-    savepath = savedir + modelname + '.mat'
+    # Finally convert the voxels to a sparse representation
+    #sparse_volume = np.where(volume == number_frames)
+    sparse_volume = np.nonzero(volume.flatten(order='F') == number_frames)
+    sparse_volume = sparse_volume[0] + 1
+
+    d = dict(sparse_volume=sparse_volume, coords=coords, res=res, origin=origin, size=size)
+    
     scipy.io.savemat(savepath, d)
 
 
 #def render_all():
 # rendering all views
-number = 1;
-for modelname in os.listdir(renderspath):
+number = 0;
+for modelname in ['6d9b13361790d04d457ba044c28858b1']: #os.listdir(renderspath):
     tic = time.time()
     number += 1
 
@@ -122,16 +126,16 @@ for modelname in os.listdir(renderspath):
         print modelname + " does not seem to be a directory"
         continue
 
-    savepath = savedir + modelname + '.mat'
+    savepath = 'temp.mat' #savedir + modelname + '.mat'
     if os.path.isfile(savepath):
         print "Skipping " + modelname
-        continue
+        #continue
 
-    render_model(modelname)
+    render_model(modelname, savepath)
     
     toc = time.time() - tic;
     print "Done " + str(number) + " in " + str(toc) + "s"
-
+    
 
 
 # <codecell>

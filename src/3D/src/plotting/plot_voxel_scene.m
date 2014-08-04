@@ -50,11 +50,26 @@ xyz_to_plot = abs(xyz(:, 3) - height) < threshold;
 sum(voxels_to_plot);
 sum(xyz_to_plot);
 
-scatter(voxels(voxels_to_plot, 2)/100, -voxels(voxels_to_plot, 1)/100, voxels(voxels_to_plot, 4)*10, 'bo');
+% trying to do voxels as an image
+%{
+xmax = max(abs(xyz(:, 2)));
+ymax = max(xyz(:, 1));
+ymin = min(xyz(:, 1));
+transformed_vox = [voxels(voxels_to_plot, 2)/100 + xmax, -(voxels(voxels_to_plot, 1)/100)];
+
+round(transformed_vox*100)
+scale = 1/100;
+translation = xmax/scale;
+%}
+%transform = 
+
+% scatter plot of 2d points
+scatter(voxels(voxels_to_plot, 2)/100, -voxels(voxels_to_plot, 1)/100, voxels(voxels_to_plot, 4)*10, voxels(voxels_to_plot, 4), 'filled');
 hold on
 scatter(xyz(xyz_to_plot, 2), -xyz(xyz_to_plot, 1), 2, 'r+');%, 'filled');
 hold off
 axis image
+colormap(jet)
 
 %xmax = max(abs(get(gca, 'xlim')));
 xmax = max(abs(xyz(:, 2)));

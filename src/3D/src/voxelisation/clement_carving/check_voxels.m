@@ -1,5 +1,7 @@
 cd ~/projects/shape_sharing/src/3D/src/voxelisation/clement_carving/
+clear
 addpath ../../plotting/
+run ../../../define_params_3d.m
 
 %%
 %%[AA, BB] = system('python Carving.py');
@@ -34,13 +36,45 @@ cvals = linspace(-1,3,10);
 figure
 contourslice(X,Y,Z,T,Sx,Sy,Sz,cvals);
 axis image
+
 %%
 modelpath = '/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/%s/depth_%d.mat';
-modelname = '11832029ed477440e279c4dee8066f27';
+modelname = '1f8275f1c106144ff11c3739edd52fa3';
 for ii = 1:42
     name = sprintf(modelpath, modelname, ii);
     load(name, 'depth')
+    depths{ii} = depth;
     subplot(6, 7, ii)
-    imagesc(depth);
+    imagesc(depth<3);
     axis image
 end
+
+%%
+%modelname = '6d9b13361790d04d457ba044c28858b1';
+modelname = '1f8275f1c106144ff11c3739edd52fa3';
+%modelname = params.model_filelist{100};
+fullpath = [paths.basis_models.voxelised '/' modelname];
+T = load('temp.mat');
+%T = load(fullpath);
+figure
+V = double(T.vol==42);
+vol3d('CData', V)
+axis image
+view(0, 0)
+
+%% 
+for ii = 1:size(V, 3)
+   imagesc(V(:, :, ii))
+   drawnow
+   title(num2str(ii))
+   pause(0.1);
+   
+end
+
+%%
+xyz = reproject_depth(depths{1}, params.half_intrinsics);
+
+xyz2 = apply_transformation_3d(xyz, 
+
+
+
