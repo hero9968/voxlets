@@ -8,11 +8,11 @@ import cv2
 
 plt.ion()
 
-
-modelpath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/%s/depth_%d.mat"
-renderspath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/"
-halopath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_%d.mat"
-savedir = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/voxelised/"
+base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
+modelpath = base_path + "renders/%s/depth_%d.mat"
+renderspath = base_path + "renders/"
+halopath = base_path + "halo/mat_%d.mat"
+savedir = base_path + "voxelised/"
 
 imheight = 240
 imwidth = 320
@@ -33,8 +33,6 @@ def render_model(modelname, savepath):
     X = coords.reshape((4, res**3))
 
     for i in xrange(number_frames):
-
-        #print "Printing frame %d" % i
 
         depth_mats = scipy.io.loadmat(modelpath % (modelname, i+1))
         img_raw = depth_mats["depth"]
@@ -120,7 +118,7 @@ for modelname in ['6d9b13361790d04d457ba044c28858b1']: #os.listdir(renderspath):
     tic = time.time()
     number += 1
 
-    print "Processing " + modelname
+    print "Processing " + renderspath + modelname
 
     if not os.path.isdir(renderspath + modelname):
         print modelname + " does not seem to be a directory"

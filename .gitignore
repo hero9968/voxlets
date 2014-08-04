@@ -10,7 +10,6 @@ CMakeLists.txt.user
 /media/notes/
 /src/2D/src/scratch/
 /src/3D/src/voxelisation/vdb_convert/vdb_convert.*
-/src/3D/src/voxelisation/vdb_convert/temp.txt
 /src/3D/src/voxelisation/vdb_convert/txt2vdb
 /src/3D/src/voxelisation/vdb_convert/vdb2txt
 /src/tools/openvdb_tests/hellomake
@@ -20,3 +19,4 @@ CMakeLists.txt.user
 /src/pcl_pipeline/recogniser-build
 /src/common/toolbox/
 /src/tools/matvtk_tests/matVTK1.0/
+temp.*
