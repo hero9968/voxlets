@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import scipy.io
 import time
-import cv2
+#import cv2
 
 plt.ion()
 
@@ -42,7 +42,7 @@ def render_model(modelname, savepath):
 
         # dilating the mask
         kernel = np.ones((5,5),'int')
-        mask = cv2.dilate(mask,kernel)
+        #mask = cv2.dilate(mask,kernel)
 
         fmask = mask.flatten()
         #plt.imshow(mask)
