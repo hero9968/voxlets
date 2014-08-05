@@ -104,17 +104,21 @@ def render_model(modelname, savepath):
     # Finally convert the voxels to a sparse representation
     #sparse_volume = np.where(volume == number_frames)
     sparse_volume = np.nonzero(volume.flatten(order='F') == number_frames)
-    sparse_volume = sparse_volume[0] + 1
+    sparse_volume = np.int32(sparse_volume[0] + 1)
 
-    d = dict(sparse_volume=sparse_volume, coords=coords, res=res, origin=origin, size=size)
-    
+    print "There are " + str(len(sparse_volume)) + " occupied voxels"
+
+    d = dict(sparse_volume=sparse_volume, res=res, origin=origin, size=size)
     scipy.io.savemat(savepath, d)
+    
+
+
 
 
 #def render_all():
 # rendering all views
 number = 0;
-for modelname in ['6d9b13361790d04d457ba044c28858b1']: #os.listdir(renderspath):
+for modelname in os.listdir(renderspath):
     tic = time.time()
     number += 1
 
@@ -124,10 +128,10 @@ for modelname in ['6d9b13361790d04d457ba044c28858b1']: #os.listdir(renderspath):
         print modelname + " does not seem to be a directory"
         continue
 
-    savepath = 'temp.mat' #savedir + modelname + '.mat'
+    savepath = savedir + modelname + '.mat'
     if os.path.isfile(savepath):
         print "Skipping " + modelname
-        #continue
+        continue
 
     render_model(modelname, savepath)
     
