@@ -1,4 +1,4 @@
-function [matches, short_match] = propose_matches(segment, model, num_to_propose, feature_to_use, params, paths)
+function [matches, short_match] = propose_matches(segment, model, params, paths)
 % uses the model to propose matches for the segment
 % matches is a structure with the following form:
 % matches(1).model
@@ -11,6 +11,9 @@ function [matches, short_match] = propose_matches(segment, model, num_to_propose
 % 1) It doesn't contain any of the original segment info so is smaller, and 
 % 2) It combines transformations into a coordinate system aligned with the
 % ground plane
+
+num_to_propose = params.proposals.proposals_per_region;
+feature_to_use = params.proposals.feature_vector;
 
 if nargin < 4 || strcmp(feature_to_use, 'shape_dist')
     segment_features = segment.features.shape_dist;
@@ -92,14 +95,10 @@ for ii = 1:num_to_propose
     camera_rot = [1, 0, 0, 0; zeros(3, 1), camera_rot];
     
     matches(ii).transforms.final_M = double(scale_matches * camera_rot * rot1 * trans1);
-    
-    % VOXEL DATA
-    
-    matches(ii).vox_xyz = load_vox(matches(ii).model.name);
-    
+     
     % CREATING SHORT MATCH (condensed match structure)
 
-    transf = double(segment.rotate_to_plane * segment.transforms.final_M * matches(ii).transforms.final_M);
+    transf = double(segment.transforms.rotate_to_plane * segment.transforms.final_M * matches(ii).transforms.final_M);
     vox_transf = double(transf * matches(ii).transforms.vox_inv * params.voxelisation.T_vox);
     %translated_match = apply_transformation_3d(segment_matches(ii).xyz, transf);
     
@@ -110,6 +109,12 @@ for ii = 1:num_to_propose
 	short_match(ii).vox_transformation = vox_transf;
 	short_match(ii).region = segment.seg_index;
     short_match(ii).xyz = matches(ii).xyz;
-    short_match(ii).vox_xyz = matches(ii).vox_xyz;
+    
+	% VOXEL DATA
+    
+    if params.proposals.load_voxels
+        matches(ii).vox_xyz = load_vox(matches(ii).model.name);
+        short_match(ii).vox_xyz = matches(ii).vox_xyz;
+    end
    
 end

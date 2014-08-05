@@ -20,8 +20,12 @@ cloud = loadpgm_as_cloud(cloud_pgm_path, params.full_intrinsics);
 plot_segment_soup_3d(cloud.rgb.^0.2, cloud.segment.idxs, cloud.segment.probabilities);
 
 %% Finding all the possible transformations into the scene
-proposals_per_region = 2;
+params.proposals.proposals_per_region = 2;
+params.proposals.feature_vector = 'shape_dist';
+params.proposals.load_voxels = false;
+
 all_matches = [];
+
 for seg_index = 1:size(cloud.segment.idxs, 2);
     
     % getting just the points, normals, rgb etc corresponding to this region
@@ -29,7 +33,7 @@ for seg_index = 1:size(cloud.segment.idxs, 2);
     segment.seg_index = seg_index;
     
     % for this region, propose matching shapes (+transforms) from the database
-    [segment_matches, these_matches] = propose_matches(segment, model, proposals_per_region, 'shape_dist', params, paths);
+    [segment_matches, these_matches] = propose_matches(segment, model, params, paths);
     
     % combining all the matches into one big array
     all_matches = [all_matches, these_matches];

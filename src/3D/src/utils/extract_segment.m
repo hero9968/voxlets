@@ -57,3 +57,5 @@ scale_segment = scale_matrix_3d(segment.transforms.scale);
 % combining
 segment.transforms.final_M = trans2 * rot2 * scale_segment; 
 
+segment.transforms.rotate_to_plane = cloud.segment.rotate_to_plane;
+
