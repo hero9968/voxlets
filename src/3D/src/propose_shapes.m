@@ -7,17 +7,11 @@ addpath(genpath('../../common/'))
 run ../define_params_3d
 load(paths.structured_model_file, 'model')
 
-%% loading in some of the ECCV dataset, normals + segmentation
-cloud_pgm_path = '~/projects/shape_sharing/data/3D/scenes/first_few_render_noisy00000.pgm';
-cloud = loadpgm_as_cloud(cloud_pgm_path, params.full_intrinsics);
-
-[cloud.normals, cloud.curvature] = normals_wrapper(cloud.xyz, 'knn', 50);
-
-[cloud.segment.idxs, ~, cloud.segment.probabilities, ~, cloud.segment.rotate_to_plane] = ...
-    segment_soup_3d(cloud, params.segment_soup);
+%% loading the saved and segmented cloud from disk
+load(paths.test_dataset.artificial_scene, 'cloud')
 
 %% plotting segments
-plot_segment_soup_3d(cloud.rgb.^0.2, cloud.segment.idxs, cloud.segment.probabilities);
+plot_segment_soup_3d(cloud.rgb, cloud.segment.idxs, cloud.segment.probabilities);
 
 %% Finding all the possible transformations into the scene
 params.proposals.proposals_per_region = 2;
@@ -26,28 +20,24 @@ params.proposals.load_voxels = false;
 
 all_matches = [];
 
-for seg_index = 1:size(cloud.segment.idxs, 2);
-    
-    % getting just the points, normals, rgb etc corresponding to this region
-    segment = extract_segment(cloud, cloud.segment.idxs(:, seg_index), params);
-    segment.seg_index = seg_index;
+for seg_idx = 1:size(cloud.segment.idxs, 2);
     
     % for this region, propose matching shapes (+transforms) from the database
-    [segment_matches, these_matches] = propose_matches(segment, model, params, paths);
+    [segment_matches, these_matches] = ...
+        propose_matches(cloud.segments{seg_idx}, model, params, paths);
     
     % combining all the matches into one big array
     all_matches = [all_matches, these_matches];
     
-    done(seg_index, size(cloud.segment.idxs, 2));    
+    done(seg_idx, size(cloud.segment.idxs, 2));    
 end
 
 %% write the matches and the transformations to a yaml file for openvdb to read
 yaml_matches = convert_matches_to_yaml(all_matches);
 WriteYaml('test.yaml', yaml_matches);
 
-
 %% 3D visualisation of the regions aligned in
-clf%subplot(221)
+subplot(221)
 plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
 for ii = 1:length(all_matches)
@@ -61,13 +51,13 @@ view(122, 90)
 subplot(222)
 plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
-xyz = plot_matches_3d(matches);
+xyz = plot_matches_3d(yaml_matches);
 hold off
 view(122, 90)
 
 %% 3D alignment visualisation of the openvdb voxels
 % (run ./yaml > final_locations.txt in the correct folder first)
-clf % subplot(223)
+subplot(223)
 plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
 openvdb = load('/Users/Michael/projects/shape_sharing/src/tools/openvdb_tests/final_locations.txt');

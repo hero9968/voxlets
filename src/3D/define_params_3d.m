@@ -41,6 +41,9 @@ paths.shape_dist_dict = [paths.basis_models.root, 'shape_dist_dict.mat'];
 
 paths.structured_model_file = [paths.data_3d, 'structured_model.mat'];
 
+% where to save the test scenes
+paths.test_dataset.artificial_scene = [paths.data_3d, 'scenes/artificial_cloud.mat'];
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Defining parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -103,3 +106,7 @@ params.voxelisation.T_vox = [0 1/100 0 -0.5-0.0025;
                             1/100 0 0 -0.5-0.0025; 
                             0 0 1/100 -0.5; 
                             0 0 0 1];
+
+% parmaters to do with the dataset where we test on the training models
+params.test_dataset.views_to_use = [2, 8, 20, 33, 38];
+params.test_dataset.models_to_use = 200;%:10:160

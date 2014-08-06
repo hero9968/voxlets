@@ -12,7 +12,7 @@ for ii = 1:size(segmentation, 2)
     temp_image = reshape(segmentation(:, ii), h, w) > 0.5;
     
     subplot(n, m, ii)
-    plot_depth_segmentation(base_image, temp_image);
+    plot_depth_segmentation(base_image.^0.2, temp_image);
     
     if nargin == 3
         title([num2str(ii), ' - ', num2str(extra_titles(ii))])
