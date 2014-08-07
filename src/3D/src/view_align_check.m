@@ -61,12 +61,14 @@ end
 hold off
 
 %% now loading in the voxel grid for this modelclf
-voxel_filename = './voxelisation/clement_carving/temp.mat';%sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/voxelised/%s.mat', model);
+%voxel_filename = './voxelisation/clement_carving/temp.mat';%sprintf('/Users/Michael/projects/shape_sharing/data/3D/basis_models/voxelised/%s.mat', model);
+voxel_filename = ['~/projects/shape_sharing/data/3D/basis_models/voxelised/' model '.mat'];
 vox_struct = load(voxel_filename);
 V = full_3d(150*[1, 1, 1], vox_struct.sparse_volume);
+V = permute(V, [2, 1, 3]);
 
 %%
-V = permute(V, [2, 1, 3]);
+%
 clf
 R = [-vox_struct.size, vox_struct.size];
 vol3d('CData', double(V), 'XData', R, 'YData', R, 'ZData', R)
@@ -78,7 +80,7 @@ for ii = 1:5:42
 end
 hold off
 
-view(10, -40)
+view(10, -4)
 
 %% alternate viewing system, showing voxels with with proper transformation
 clf
