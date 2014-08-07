@@ -102,9 +102,9 @@ params.rgbddataset_intrinsics = [570.3, 0, 320; ...
                       
 % the transformation for the voxel grid
 % grid is 100x100x100, centered at 0, 0, 0 with a range from -0.5 to 0.5
-params.voxelisation.T_vox = [0 1/100 0 -0.5-0.0025; 
-                            1/100 0 0 -0.5-0.0025; 
-                            0 0 1/100 -0.5; 
+params.voxelisation.T_vox = [0 1/150 0 -0.5-0.0025; 
+                            1/150 0 0 -0.5-0.0025; 
+                            0 0 1/150 -0.5; 
                             0 0 0 1];
 
 % parmaters to do with the dataset where we test on the training models

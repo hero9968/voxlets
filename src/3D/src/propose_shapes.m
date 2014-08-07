@@ -48,7 +48,8 @@ view(122, 90)
 
 %% 3D alignment visualisation of the voxels
 % (This is basically equivalnt to what the c++ yaml visualiser should do)
-subplot(222)
+%subplot(222)
+clf
 plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
 hold on
 xyz = plot_matches_3d(yaml_matches);
