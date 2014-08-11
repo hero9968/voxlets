@@ -1,4 +1,4 @@
-classdef pcloud < handle
+classdef structuredcloud < handle
 % PCLASS is a point cloud class
 % stores a cloud and associated depth image, normals, etc
 % this is for a *structured* cloud, where each point is associated with a point
@@ -23,139 +23,137 @@ classdef pcloud < handle
     
     methods (Access = public)
         
-        function obj = pcloud(varargin)
+        function self = structuredcloud(varargin)
             
         % loading in a cloud
         
-            disp(num2str(nargin))
-            
             if nargin == 1 && ischar(varargin{1})
                 
                 [~, ~, ext] = fileparts(varargin{1});
                 
-                disp(ext)
-                
                 switch ext
                     case '.pgm'
                         
-                        obj.depth = readpgm(varargin{1});
-                        obj.set_as_kinect();
-                        obj.xyz = projection(obj.depth, obj.intrinsics);
+                        self.depth = readpgm(varargin{1});
+                        self.set_as_kinect();
+                        self.xyz = projection(self.depth, self.intrinsics);
                         
                         % inserting nans
-                        obj.mask = obj.depth > 0;
-                        obj.depth(~obj.mask) = nan;
-                        obj.xyz(~obj.mask, :) = nan;
+                        self.mask = self.depth > 0;
+                        self.depth(~self.mask) = nan;
+                        self.xyz(~self.mask, :) = nan;
                         
-                        obj.sanity_check();
+                        self.sanity_check();
                         
                     case '.pcd'
                         % not entirely sorted out yet...
                         P = loadpcd(varargin{1});
                         
-                        obj.xyz = P(:, :, 1:3);
-                        obj.xyz = reshape(permute(obj.xyz, [3, 1, 2]), 3, [])';
-                        obj.depth = P(:, :, 3);
+                        self.xyz = P(:, :, 1:3);
+                        self.xyz = reshape(permute(self.xyz, [3, 1, 2]), 3, [])';
+                        self.depth = P(:, :, 3);
                         
                         if size(P, 2) > 3
-                            obj.rgb = P(:, :, 4:6);
+                            self.rgb = P(:, :, 4:6);
                         end
                 end
             end
             
         end
         
-        function showdepth(obj)    
-            imagesc(obj.depth)
+        function showdepth(self)    
+            imagesc(self.depth)
             axis image
         end
         
-        function plot3d(obj, varargin)
-            plot3d(obj.xyz_non_nan, varargin{:}) 
+        function plot3d(self, varargin)
+            plot3d(self.xyz_non_nan, varargin{:}) 
         end
         
-        function obj = project_depth(obj, intrinsics)
+        function self = project_depth(self, intrinsics)
         % project the depth image into the 3d points
         
             if nargin == 2
-                obj.intrinsics = intrinsics;
+                self.intrinsics = intrinsics;
             end
             
-            obj.xyz = projection(obj.depth, obj.intrinsics);
+            self.xyz = projection(self.depth, self.intrinsics);
 
-            obj.sanity_check();
+            self.sanity_check();
             
         end
         
-        function obj = set_as_kinect(obj)
+        function self = set_as_kinect(self)
         % sets the defaults for kinect (v1) images
         
-            obj.intrinsics = [];
+            self.intrinsics = [];
             
             focal_length = 240/(tand(43/2));
-            obj.intrinsics = [focal_length, 0, 320; ...
+            self.intrinsics = [focal_length, 0, 320; ...
                               0, focal_length, 240; ...
                               0, 0, 1];           
         end
         
-        function sanity_check(obj)
+        function sanity_check(self)
         % checking all the objects are of the correct sizes
         
-            assert(isequal(size(obj.depth), size(obj.mask)))
+            assert(isequal(size(self.depth), size(self.mask)))
 
-            %if ~isempty(obj.rgb)
-            %    assert(size(obj.rgb, 1) == obj.height)
-            %    assert(size(obj.rgb, 2) == obj.width)
+            %if ~isempty(self.rgb)
+            %    assert(size(self.rgb, 1) == self.height)
+            %    assert(size(self.rgb, 2) == self.width)
             %end
-            height = size(obj.mask, 1);
-            width = size(obj.mask, 2);
+            height = size(self.mask, 1);
+            width = size(self.mask, 2);
             
-            assert(size(obj.xyz, 1) == height*width);
-            assert(size(obj.xyz, 2) == 3);
+            assert(size(self.xyz, 1) == height*width);
+            assert(size(self.xyz, 2) == 3);
             
-            if ~isempty(obj.normals)
-                assert(size(obj.normals, 1) ==  height*width)
+            if ~isempty(self.normals)
+                assert(size(self.normals, 1) ==  height*width)
             end
             
             % todo - checking the nan locations are all in the same place
         end
         
-        function segment = extract_segment(obj, idx)
+        function segment = extract_segment(self, idx)
         % extracting a segment from an index number
         
-            assert(~isempty(obj.segmentsoup), 'Must have a segmentation to extract a segment')
-            assert(size(obj.segmentsoup, 1) == size(obj.xyz, 1), ...
+            assert(~isempty(self.segmentsoup), 'Must have a segmentation to extract a segment')
+            assert(size(self.segmentsoup, 1) == size(self.xyz, 1), ...
                 'Segmentation must be same size as point cloud')
         
             if strcmp(idx, 'all')
-                idx = 1:size(obj.segmentsoup, 2);
+                idx = 1:size(self.segmentsoup, 2);
             end
                        
             for ii = 1:length(idx)
-                this_segment = obj.segmentsoup(:, idx(ii));
-                segment(ii) = extract_segment_from_indices(obj, this_segment);
+                this_segment = self.segmentsoup(:, idx(ii));
+                segment(ii) = extract_segment_from_indices(self, this_segment);
             end
         
         end
         
-        function segment = extract_segment_from_indices(obj, indices)    
+        function seg = extract_segment_from_indices(self, indices)    
         % extracts a segment from the cloud based on a vector of indices
         % indices can either be logical array or array of index values
             
-            segment.xyz = obj.xyz(indices, :);
-            segment.normals = obj.normals(indices, :);
-            segment.viewpoint = obj.viewpoint;
+            seg = segment;
+            seg.xyz = self.xyz(indices, :);
+            seg.normals = self.normals(indices, :);
+            seg.curvature = self.curvature(indices);
+            seg.viewpoint = self.viewpoint;
+            seg.plane_rotate = self.plane_rotate;
             
             % extracting the full mask
-            segment.mask = 0 * obj.mask;
-            segment.mask(indices) = true;
+            seg.mask = reshape(indices, size(self.mask));
             
         end
         
-        function xyz = xyz_non_nan(obj, idx)
+        function xyz = xyz_non_nan(self, idx)
         % get just the non-nan xyz
         
-            xyz = obj.xyz(obj.mask(:), :);
+            xyz = self.xyz(self.mask(:), :);
             
             if nargin == 2
                 xyz = xyz(idx, :);
@@ -163,10 +161,10 @@ classdef pcloud < handle
            
         end
         
-        function normals = normals_non_nan(obj, idx)
+        function normals = normals_non_nan(self, idx)
         % get just the non-nan normals
         
-            normals = obj.normals(obj.mask(:), :);
+            normals = self.normals(self.mask(:), :);
             
             if nargin == 2
                 normals = normals(idx, :);
@@ -174,10 +172,10 @@ classdef pcloud < handle
            
         end
         
-        function curvature = curvature_non_nan(obj, idx)
+        function curvature = curvature_non_nan(self, idx)
         % get just the non-nan curvature
         
-            curvature = obj.curvature(obj.mask(:));
+            curvature = self.curvature(self.mask(:));
             
             if nargin == 2
                 curvature = curvature(idx, :);
@@ -186,10 +184,10 @@ classdef pcloud < handle
         end
         
         
-        function cloud_size = get_size(obj, dim)
+        function cloud_size = get_size(self, dim)
         % getting a size of the depth image
             
-            cloud_size = size(obj.depth);
+            cloud_size = size(self.depth);
             
             if nargin == 2
                 cloud_size = cloud_size(dim);

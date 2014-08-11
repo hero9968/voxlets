@@ -8,7 +8,30 @@ run ../define_params_3d
 load(paths.structured_model_file, 'model')
 
 %% loading the saved and segmented cloud from disk
-load(paths.test_dataset.artificial_scene, 'cloud')
+%load(paths.test_dataset.artificial_scene, 'cloud')
+ii = 1;
+view_idx = 2;
+model3d.idx = params.test_dataset.models_to_use(ii);
+model3d.name = params.model_filelist{model3d.idx};
+load(sprintf(paths.basis_models.combined_file, model3d.name), 'renders')
+
+cloud = [];
+cloud.depth = renders(view_idx).depth;
+cloud.mask = ~isnan(cloud.depth);
+cloud.xyz = reproject_depth(cloud.depth, params.half_intrinsics);
+%cloud.xyz = cloud.xyz(cloud.mask(:), :);
+cloud.normals = renders(view_idx).normals;
+cloud.scale = estimate_size(cloud.xyz);
+cloud.scaled_xyz = cloud.xyz / cloud.scale;
+
+cloud.segment.idxs = ones(length(cloud.xyz), 1);
+cloud.rgb = repmat(cloud.depth, [1, 1, 3]) - 1;
+cloud.segment.probabilities = [1];
+%segment.cloud = cloud;
+for seg_idx = 1
+    cloud.segments{seg_idx} = ...
+        extract_segment(cloud, cloud.segment.idxs(:, seg_idx), params);
+end
 
 %% plotting segments
 plot_segment_soup_3d(cloud.rgb, cloud.segment.idxs, cloud.segment.probabilities);

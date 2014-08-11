@@ -10,11 +10,13 @@ run ../define_params_3d
 cloud_pgm_path = '~/projects/shape_sharing/data/3D/scenes/first_few_render_noisy00000.pgm';
 
 %% loading in some of the ECCV dataset, normals + segmentation
-cloud = loadpgm_as_cloud(cloud_pgm_path, params.full_intrinsics);
+%cloud = loadpgm_as_cloud(cloud_pgm_path, params.full_intrinsics);
+cloud = structuredcloud(cloud_pgm_path);
 
+%%
 [cloud.normals, cloud.curvature] = normals_wrapper(cloud.xyz, 'knn', 50);
 
-[cloud.segment.idxs, cloud.segment.probabilities, cloud.segment.rotate_to_plane] = ...
+[cloud.segmentsoup, ~, cloud.plane_rotate] = ...
     segment_soup_3d(cloud, params.segment_soup);
 
 %% extracting the segments
