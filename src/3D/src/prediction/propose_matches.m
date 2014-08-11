@@ -109,7 +109,9 @@ for ii = 1:num_to_propose
 	short_match(ii).vox_transformation = vox_transf;
 	short_match(ii).region = segment.idx;
     short_match(ii).xyz = matches(ii).xyz;
-    
+    short_match(ii).camera_roll = matches(ii).transforms.angle + 1.5*7.2;
+    short_match(ii).depth = matches(ii).depth;
+        
 	% VOXEL DATA
     
     if params.proposals.load_voxels

@@ -36,10 +36,6 @@ for seg_idx = 1
         extract_segment(cloud, cloud.segment.idxs(:, seg_idx), params);
 end
 %}
-%%
-t_seg = segments(3);
-t_seg.compute_transform_to_origin()
-
 
 %% plotting segments
 cloud.plot_segment_soup()
@@ -51,7 +47,7 @@ params.proposals.load_voxels = false;
 
 all_matches = [];
 
-for seg_idx = 1:cloud.get_num_segments()
+for seg_idx = 1:length(segments)
     
     
     segments(seg_idx).features = compute_segment_features(segments(seg_idx), params);
@@ -64,7 +60,7 @@ for seg_idx = 1:cloud.get_num_segments()
     % combining all the matches into one big array
     all_matches = [all_matches, these_matches];
     
-    done(seg_idx, cloud.get_num_segments());    
+    done(seg_idx, length(segments));
 end
 
 %% write the matches and the transformations to a yaml file for openvdb to read

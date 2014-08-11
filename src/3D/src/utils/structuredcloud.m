@@ -34,14 +34,10 @@ classdef structuredcloud < handle
                 switch ext
                     case '.pgm'
                         
-                        self.depth = readpgm(varargin{1});
+                        depth_from_file = readpgm(varargin{1});
+                        self.set_depth(depth_from_file);
                         self.set_as_kinect();
                         self.xyz = projection(self.depth, self.intrinsics);
-                        
-                        % inserting nans
-                        self.mask = self.depth > 0;
-                        self.depth(~self.mask) = nan;
-                        self.xyz(~self.mask, :) = nan;
                         
                         self.sanity_check();
                         
@@ -119,6 +115,11 @@ classdef structuredcloud < handle
             num_segs = size(self.segmentsoup, 2);
         end
         
+        function set_depth(self, depth)
+            self.depth = depth;
+            self.mask = self.depth > 0;
+            self.depth(~self.mask) = nan;
+        end
         
         function sanity_check(self)
         % checking all the objects are of the correct sizes
