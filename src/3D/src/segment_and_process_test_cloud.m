@@ -10,7 +10,6 @@ run ../define_params_3d
 cloud_pgm_path = '~/projects/shape_sharing/data/3D/scenes/first_few_render_noisy00000.pgm';
 
 %% loading in some of the ECCV dataset, normals + segmentation
-%cloud = loadpgm_as_cloud(cloud_pgm_path, params.full_intrinsics);
 cloud = structuredcloud(cloud_pgm_path);
 
 %%
@@ -20,12 +19,8 @@ cloud = structuredcloud(cloud_pgm_path);
     segment_soup_3d(cloud, params.segment_soup);
 
 %% extracting the segments
-clear segments
-for seg_idx = 1:size(cloud.segmentsoup, 2);
-    
-    segments(seg_idx) = cloud.extract_segment(seg_idx);
-    done(seg_idx, size(cloud.segmentsoup, 2));
-end
+num_segments = size(cloud.segmentsoup, 2);
+segments = cloud.extract_segment(1:num_segments);
 
 %% saving
 save(paths.test_dataset.artificial_scene, 'cloud', 'segments')

@@ -8,7 +8,10 @@ run ../define_params_3d
 load(paths.structured_model_file, 'model')
 
 %% loading the saved and segmented cloud from disk
-%load(paths.test_dataset.artificial_scene, 'cloud')
+%clear classes
+load(paths.test_dataset.artificial_scene, 'cloud', 'segments')
+
+%{
 ii = 1;
 view_idx = 2;
 model3d.idx = params.test_dataset.models_to_use(ii);
@@ -32,9 +35,14 @@ for seg_idx = 1
     cloud.segments{seg_idx} = ...
         extract_segment(cloud, cloud.segment.idxs(:, seg_idx), params);
 end
+%}
+%%
+t_seg = segments(3);
+t_seg.compute_transform_to_origin()
+
 
 %% plotting segments
-plot_segment_soup_3d(cloud.rgb, cloud.segment.idxs, cloud.segment.probabilities);
+cloud.plot_segment_soup()
 
 %% Finding all the possible transformations into the scene
 params.proposals.proposals_per_region = 2;
@@ -43,16 +51,20 @@ params.proposals.load_voxels = false;
 
 all_matches = [];
 
-for seg_idx = 1:size(cloud.segment.idxs, 2);
+for seg_idx = 1:cloud.get_num_segments()
+    
+    
+    segments(seg_idx).features = compute_segment_features(segments(seg_idx), params);
+    segments(seg_idx).compute_transform_to_origin();
     
     % for this region, propose matching shapes (+transforms) from the database
     [segment_matches, these_matches] = ...
-        propose_matches(cloud.segments{seg_idx}, model, params, paths);
+        propose_matches(segments(seg_idx), model, params, paths);
     
     % combining all the matches into one big array
     all_matches = [all_matches, these_matches];
     
-    done(seg_idx, size(cloud.segment.idxs, 2));    
+    done(seg_idx, cloud.get_num_segments());    
 end
 
 %% write the matches and the transformations to a yaml file for openvdb to read
@@ -60,8 +72,9 @@ yaml_matches = convert_matches_to_yaml(all_matches);
 WriteYaml('test.yaml', yaml_matches);
 
 %% 3D visualisation of the regions aligned in
+clf
 subplot(221)
-plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
+plot3d(apply_transformation_3d(cloud.xyz, cloud.plane_rotate), 'y');
 hold on
 for ii = 1:length(all_matches)
     plot3d(apply_transformation_3d(all_matches(ii).xyz, all_matches(ii).transformation));
@@ -73,7 +86,7 @@ view(122, 90)
 % (This is basically equivalnt to what the c++ yaml visualiser should do)
 %subplot(222)
 clf
-plot3d(apply_transformation_3d(cloud.xyz, cloud.segment.rotate_to_plane), 'y');
+plot3d(apply_transformation_3d(cloud.xyz, cloud.plane_rotate), 'y');
 hold on
 xyz = plot_matches_3d(yaml_matches);
 hold off

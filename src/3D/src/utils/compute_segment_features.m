@@ -7,7 +7,7 @@ function features = compute_segment_features(cloud, params)
 %           original 2d image
 
 features.shape_dist = ...
-    shape_distribution_norms_3d(cloud.scaled_xyz, cloud.norms, params.shape_dist);
+    shape_distribution_norms_3d(cloud.scaled_xyz, cloud.normals, params.shape_dist);
 
 features.edge_shape_dist = ...
     edge_shape_dists_norms(cloud.mask, params.shape_dist.edge_dict);

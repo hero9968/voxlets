@@ -7,8 +7,8 @@ function [output_matrix, probs, transform_to_plane, final_idx, all_idx] = ...
 % output_matrix
 
 % setting parameters for segmentation and combination
-smoothness_thresholds = (10/180) * pi;%(([5:10:25]) / 180 ) * pi;
-curvature_thresholds = [0.1];%, 1, 20];
+smoothness_thresholds = (([5:10:25]) / 180 ) * pi;
+curvature_thresholds = [0.1, 1, 20];
 
 filter_opts.min_size = opts.min_cluster_size;
 filter_opts.overlap_threshold = opts.overlap_threshold;

@@ -70,6 +70,27 @@ classdef structuredcloud < handle
             plot3d(self.xyz_non_nan, varargin{:}) 
         end
         
+        function plot_segment_soup(self)
+            
+            num_segments = size(self.segmentsoup, 2);
+            [n, m] = best_subplot_dims(num_segments);
+            
+            base_image = self.depth;
+            
+            % plotting each segmentation on separate subplot
+            for ii = 1:size(self.segmentsoup, 2)
+
+                temp_image = reshape(self.segmentsoup(:, ii), size(self.depth)) > 0.5;
+
+                subplot(n, m, ii)
+                plot_depth_segmentation(base_image.^0.2, temp_image);
+
+                title(num2str(ii))
+
+            end
+            
+        end
+        
         function self = project_depth(self, intrinsics)
         % project the depth image into the 3d points
         
@@ -93,6 +114,11 @@ classdef structuredcloud < handle
                               0, focal_length, 240; ...
                               0, 0, 1];           
         end
+        
+        function num_segs = get_num_segments(self)
+            num_segs = size(self.segmentsoup, 2);
+        end
+        
         
         function sanity_check(self)
         % checking all the objects are of the correct sizes
