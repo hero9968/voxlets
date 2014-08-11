@@ -130,6 +130,7 @@ classdef structuredcloud < handle
             for ii = 1:length(idx)
                 this_segment = self.segmentsoup(:, idx(ii));
                 segment(ii) = extract_segment_from_indices(self, this_segment);
+                segment(ii).idx = idx(ii);
             end
         
         end

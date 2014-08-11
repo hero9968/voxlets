@@ -13,6 +13,7 @@ classdef segment < handle
         viewpoint   % 4 x 4             viewpoint and viewing direction of original cloud
         intrinsics  % 3 x 3             intrinsic matrix of original cloud
         plane_rotate % 4 x 4            matrix to rotate points to align with scene's dominant plane
+        idx         % 1                 number segment in the original cloud
 
         % NOTE: there are N points in the segment
         

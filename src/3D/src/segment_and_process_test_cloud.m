@@ -20,15 +20,12 @@ cloud = structuredcloud(cloud_pgm_path);
     segment_soup_3d(cloud, params.segment_soup);
 
 %% extracting the segments
-for seg_idx = 1:size(cloud.segment.idxs, 2);
+clear segments
+for seg_idx = 1:size(cloud.segmentsoup, 2);
     
-    cloud.segments{seg_idx} = ...
-        extract_segment(cloud, cloud.segment.idxs(:, seg_idx), params);
-    cloud.segments{seg_idx}.seg_index = seg_idx;
-    cloud.segments{seg_idx} = rmfield(cloud.segments{seg_idx}, 'cloud');
-    
-    done(seg_idx, size(cloud.segment.idxs, 2));
+    segments(seg_idx) = cloud.extract_segment(seg_idx);
+    done(seg_idx, size(cloud.segmentsoup, 2));
 end
 
 %% saving
-save(paths.test_dataset.artificial_scene, 'cloud')
+save(paths.test_dataset.artificial_scene, 'cloud', 'segments')
