@@ -39,7 +39,7 @@ for ii = 1:length(smoothness_thresholds)
 end
 
 % combinging the updirs
-final_updir = normalise_length(median(cell2mat(updir')));
+final_updir = median(cell2mat(updir'), 1);
 transform_to_plane = double(mat_from_plane(final_updir));
 
 % combining all the segmentations together
@@ -65,6 +65,7 @@ final_idx = final_idx';
 % restoring the matrix to its full size
 output_matrix = zeros(size(cloud.xyz, 1), size(final_idx, 2));
 output_matrix(~idxs_removed, :) = final_idx;
+output_matrix = output_matrix==1; % convert to logical
 
 % computing per-region probabilities
 probs = binary_matrix * per_segmentation_prob(:);
@@ -78,11 +79,14 @@ idxs_removed = any(isnan(cloud.xyz), 2) | ...
             any(isnan(cloud.normals), 2) | ...
             isnan(cloud.curvature);
         
-cloud_filtered = cloud;
+%cloud_filtered = cloud;
+cloud_filtered.xyz = cloud.xyz_non_nan;
+cloud_filtered.normals = cloud.normals_non_nan;
+cloud_filtered.curvature = cloud.curvature_non_nan;
 
-cloud_filtered.xyz(idxs_removed, :) = [];
-cloud_filtered.normals(idxs_removed, :) = [];
-cloud_filtered.curvature(idxs_removed) = [];
+%cloud_filtered.xyz(idxs_removed, :) = [];
+%cloud_filtered.normals(idxs_removed, :) = [];
+%cloud_filtered.curvature(idxs_removed) = [];
 
 
 

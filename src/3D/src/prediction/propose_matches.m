@@ -98,7 +98,7 @@ for ii = 1:num_to_propose
      
     % CREATING SHORT MATCH (condensed match structure)
 
-    transf = double(segment.transforms.rotate_to_plane * segment.transforms.final_M * matches(ii).transforms.final_M);
+    transf = double(segment.plane_rotate * segment.transform_to_origin * matches(ii).transforms.final_M);
     vox_transf = double(transf * matches(ii).transforms.vox_inv * params.voxelisation.T_vox);
     %translated_match = apply_transformation_3d(segment_matches(ii).xyz, transf);
     
@@ -107,9 +107,11 @@ for ii = 1:num_to_propose
     short_match(ii).object_name = matches(ii).model.name;
 	short_match(ii).transformation = transf;
 	short_match(ii).vox_transformation = vox_transf;
-	short_match(ii).region = segment.seg_index;
+	short_match(ii).region = segment.idx;
     short_match(ii).xyz = matches(ii).xyz;
-    
+    short_match(ii).camera_roll = matches(ii).transforms.angle + 1.5*7.2;
+    short_match(ii).depth = matches(ii).depth;
+        
 	% VOXEL DATA
     
     if params.proposals.load_voxels
