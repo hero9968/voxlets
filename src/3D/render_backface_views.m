@@ -7,7 +7,7 @@ cd ~/projects/shape_sharing/src/3D/
 run define_params_3d.m
 
 %%
-for ii = 1%params.files_to_use
+for ii = 1:params.files_to_use
     
     model = params.model_filelist{ii};
 
@@ -38,24 +38,4 @@ for ii = 1%params.files_to_use
     disp(['Done ' num2str(ii)]);
 end
 
-
-%% display the depth maps for a certain object
-
-model_idx = 1;
-model_name = params.model_filelist{model_idx};
-    
-outdir = ['/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/' model_name];
-
-for ii = 1:42
-
-    % loading the depth image
-    load([outdir, '/depth_' num2str(ii) '.mat'], 'depth');
-    
-    % plotting the depth image in a subplot
-    subplot(6, 7, ii);
-    imagesc(depth);
-    axis image off
-    title(num2str(ii));
-    
-end
 
