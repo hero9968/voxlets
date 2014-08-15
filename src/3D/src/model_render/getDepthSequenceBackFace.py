@@ -110,7 +110,8 @@ print("Loaded " + str(len(triangles)) + " triangles and " + str(len(verts)) + " 
 # A general OpenGL initialization function.  Sets all of the initial parameters.
 def InitGL(Width, Height):				# We call this right after our OpenGL window is created.
     glClearColor(0.0, 0.0, 0.0, 0.0)	# This Will Clear The Background Color To Black
-    glClearDepth(1.0)					# Enables Clearing Of The Depth Buffer
+    glClearDepth(0.0)					# Enables Clearing Of The Depth Buffer
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glDisable(GL_CULL_FACE)
     #glEnable(GL_DEPTH_TEST)				# Enables Depth Testing
     #glDepthFunc(GL_NEVER)				# The Type Of Depth Test To Do
@@ -118,7 +119,7 @@ def InitGL(Width, Height):				# We call this right after our OpenGL window is cr
     glDepthMask(GL_TRUE) 				# answer from http://stackoverflow.com/questions/25294178/opengl-get-distance-to-farthest-face-from-camera-instead-of-closest-face/25294298#25294298
     glEnable(GL_DEPTH_TEST)				# Enables Depth Testing
     glShadeModel(GL_SMOOTH)				# Enables Smooth Color Shading
-    #glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    #
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
   
