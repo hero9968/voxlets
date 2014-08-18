@@ -7,7 +7,7 @@ cd ~/projects/shape_sharing/src/3D/
 run define_params_3d.m
 
 %%
-for ii = 1:params.files_to_use
+for ii = 1:1601
     
     model = params.model_filelist{ii};
 
