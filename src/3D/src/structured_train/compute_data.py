@@ -43,6 +43,11 @@ def extract_mask(render):
 	return ~np.isnan(render)
 
 def sample_from_mask(mask, num_samples=1, border_size=0):
+	'''
+	Samples 2D locations from the 2D binary mask.
+	If num_samples == -1, returns all valid locations from mask, otherwise returns random sample.
+	Does not return any points within border_size of edge of mask
+	'''
 	#border size is the width at the edge of the mask from which we are not allowed to sample
 	indices = np.array(np.nonzero(mask))
 	if indices.shape[1]:
@@ -57,7 +62,9 @@ def sample_from_mask(mask, num_samples=1, border_size=0):
 	indices = np.delete(indices, np.nonzero(to_remove), 1)
 
 	# doing the sampling
-	if np.any(indices):
+	if num_samples == -1:
+		return indices.transpose()
+	elif np.any(indices):
 		return indices[:, np.random.randint(0, indices.shape[1], num_samples)].transpose()
 	else:
 		return np.tile(np.array(mask.shape)/2, (num_samples, 1))
@@ -131,7 +138,7 @@ def spider_features(edgeimage, index):
 	#print spider
 	return spider
 
-def features_and_depths(modelname, view_idx):
+def features_and_depths(modelname, view_idx, num_samples=samples_per_image):
 	frontrender = load_frontrender(modelname, view_idx)
 	backrender = load_backrender(modelname, view_idx)
 
@@ -143,17 +150,16 @@ def features_and_depths(modelname, view_idx):
 	print "View: " + str(view_idx) + " ... " + str(np.sum(np.sum(mask - extract_mask(backrender))))
 	#assert np.all(mask==extract_mask(backrender))
 
-
 	# sample pairs of coordinates
-	indices = sample_from_mask(mask, samples_per_image, hww)
+	indices = sample_from_mask(mask, num_samples, hww)
 
 	# plot the front render and the sampled pairs
-	if False:
+	if True:
 		plt.imshow(frontrender)
 		plt.hold(True)
 		plt.plot(indices[:, 1], indices[:, 0], '.')
 		plt.hold(False)
-		plt.savefig("test_plot.png", dpi=96)
+		plt.savefig("test_plot.eps")
 
 	spiders = [spider_features(edgeimage, index) 
 						for index in indices]

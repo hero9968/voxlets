@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 import cPickle as pickle
 
+patch_features_only = False
+
 base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
 models_list = base_path + 'databaseFull/fields/models.txt'
 
@@ -66,53 +68,49 @@ def resample_inputs(X, Y, num_samples):
 	return X[idxs,:], Y[idxs]
 
 
-# loading the data
-# For now, am only going to use one file to train on...
-f = open(models_list, 'r')
-rawdata = []
-for idx, line in enumerate(f):
-	temp = load_modeldata(line.strip())
-	if temp:
-		rawdata.append(temp)
-	print idx 
-	if idx > 100:
-		break
-f.close()
+if __name__ == '__main__':
 
-#import pdb; pdb.set_trace()
-#
-#		modelname = line.strip()
-#modelnames = ['109d55a137c042f5760315ac3bf2c13e']
-#rawdata = [load_modeldata(name.strip()) for name in f]
-#print rawdata
-data = list_of_dicts_to_dict(rawdata)
+	# loading the data
+	# For now, am only going to use one file to train on...
+	f = open(models_list, 'r')
+	rawdata = []
+	for idx, line in enumerate(f):
+		temp = load_modeldata(line.strip())
+		if temp:
+			rawdata.append(temp)
+		print idx 
+		if idx > 75:
+			break
+	f.close()
 
-# constructing the X and Y variables
-Y = np.array(data['depth_diffs']).ravel()
-Y = nan_to_value(Y, 0)
-print Y.shape
-patch_in = np.array(data['patch_features']).reshape((-1, data['patch_features'][0].shape[1]))
-patch_features = nan_to_value(patch_in, 0)
-spider_features = replace_nans_with_col_means(np.array(data['spider_features']))
-X = patch_features#np.concatenate((patch_features, spider_features), axis=1)
-#import pdb; pdb.set_trace()
+	data = list_of_dicts_to_dict(rawdata)
 
-print "X shape is " + str(X.shape)
-print "Y shape is " + str(Y.shape)
+	# constructing the X and Y variables
+	Y = np.array(data['depth_diffs']).ravel()
+	Y = nan_to_value(Y, 0)
+	print Y.shape
+	patch_in = np.array(data['patch_features']).reshape((-1, data['patch_features'][0].shape[1]))
+	patch_features = nan_to_value(patch_in, 0)
+	spider_features = replace_nans_with_col_means(np.array(data['spider_features']))
+	#if patch_features_only:
+	X = patch_features
+	#else:
+	#	X = np.concatenate((patch_features, spider_features), axis=1)
 
-# Here do some subsampling to reduce the size of the input datasets...
-num_samples = 250000
-X,Y = resample_inputs(X, Y, num_samples)
+	#import pdb; pdb.set_trace()
 
-print "X shape is " + str(X.shape)
-print "Y shape is " + str(Y.shape)
+	print "X shape is " + str(X.shape)
+	print "Y shape is " + str(Y.shape)
 
-# training the forest
-print "Training forest..."
-clf = RandomForestRegressor(n_estimators=10,n_jobs=4)
-clf.fit(X,Y)
-pickle.dump(clf, open("model.pkl", "wb") )
+	# Here do some subsampling to reduce the size of the input datasets...
+	num_samples = 250#000
+	X,Y = resample_inputs(X, Y, num_samples)
 
-print clf.feature_importances_
+	print "X shape is " + str(X.shape)
+	print "Y shape is " + str(Y.shape)
 
-#import pdb; pdb.set_trace()
+	# training the forest
+	print "Training forest..."
+	clf = RandomForestRegressor(n_estimators=10,n_jobs=4)
+	clf.fit(X,Y)
+	pickle.dump(clf, open("spidermodel.pkl", "wb") )
