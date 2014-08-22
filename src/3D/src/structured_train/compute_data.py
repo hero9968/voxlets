@@ -94,7 +94,7 @@ class depth_feature_engine(object):
 		elif np.any(indices):
 			return indices[:, np.random.randint(0, indices.shape[1], num_samples)].transpose()
 		else:
-			return np.tile(np.array(mask.shape)/2, (num_samples, 1))
+			return np.tile(np.array(self.mask.shape)/2, (num_samples, 1))
 
 	def depth_difference(self, index):
 		''' 
@@ -252,12 +252,12 @@ if __name__ == '__main__':
 
 		modelname = line.strip()
 		fileout = base_path + 'features/' + modelname + '.mat'
-		
+
 		if os.path.isfile(fileout): 
-			temp = scipy.io.loadmat(fileout)['depths']
-			if len(temp) == number_views * samples_per_image:
-				print "Continuing model " + modelname
-				continue
+			#temp = scipy.io.loadmat(fileout)['depths']
+			#if len(temp) == number_views * samples_per_image:
+			print "Continuing model " + modelname
+			continue
 
 		print "Doing model " + modelname
 
