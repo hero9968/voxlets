@@ -8,6 +8,8 @@ from OpenGL.GLU import *
 import scipy.io
 import sys
 
+import timeit
+
 
 args = sys.argv
 
@@ -20,6 +22,7 @@ radius = float(args[2])
 startIdx = int(args[3])
 endIdx = int(args[4])
 
+global showallverts
 
 def loadOBJ(filename):
 	numVerts = 0
@@ -50,11 +53,8 @@ def loadOBJ(filename):
     
     
 def drawMesh():
-    glBegin(GL_TRIANGLES)
-    for i in range(len(triangles)):
-        glVertex3fv(triangles[i])
-    glEnd()
-
+	global showallverts
+	glCallList(showallverts)
     
 def getPlane(mat):
     n = mat[0:3, 2]
@@ -70,16 +70,12 @@ def loadXform():
     # loading the transform from disk
     filename = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_" + str(idx) + ".csv"    
     xform = np.genfromtxt(filename, delimiter=',')
-    print "Xform is " + str(xform)
-    
+
     # adjusting the radius according to user supplied arguments
     xform[0:3,3] = radius * xform[0:3,3]
-    print "Xform after is " + str(xform)
 	
 	# taking the inverse
     transMatrix = np.linalg.pinv(xform.T)
-    
-    print "Xform " + str(idx) + " loaded."
 
 zNear = 0.1
 zFar = 10.0 # I had this set to 2 * radius for a bit...
@@ -95,13 +91,26 @@ Width, Height = 320, 240
 window = 0
 
 modelsPath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/centred/"
-savePath =   "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders/"
+savePath =   "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders_quicktest/"
 
 idx = startIdx
 
 transMatrix = np.zeros((4,4))
 
 triangles, verts = loadOBJ(modelsPath + "/" + scene + ".obj")
+
+# creating a display list for putting the triangles on the screen
+#showallverts = glGenLists(1)
+#glNewList(showallverts, GL_COMPILE)
+#glBegin(GL_TRIANGLES)
+#for i in range(len(triangles)):
+#	print "s"
+   #glVertex3fv(triangles[i])
+#glEnd()
+#glEndList()
+
+#sys.exit("done here")
+ 
 #triangles, verts = loadOBJ("/Users/Michael/projects/shape_sharing/3D/model_render/data/cube.obj")
 
 print("Loaded " + str(len(triangles)) + " triangles and " + str(len(verts)) + " verts")
@@ -118,7 +127,6 @@ def InitGL(Width, Height):				# We call this right after our OpenGL window is cr
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
   
-    
     # Calculate The Aspect Ratio Of The Window
     gluPerspective(43.0, float(Width)/float(Height), zNear, zFar)
 
@@ -141,7 +149,7 @@ def DrawGLScene():
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	# Clear The Screen And The Depth Buffer
 	glLoadIdentity();					# Reset The View
-    
+
 	glLoadMatrixf(transMatrix)
 	#gluLookAt()
 
@@ -154,9 +162,10 @@ def DrawGLScene():
     
 def printDepth():
     global idx, transMatrix, verts
-    depth = np.array(glReadPixels(0, 0, Width, Height, GL_DEPTH_COMPONENT, GL_FLOAT), dtype=np.float32)
-    print "Depth size is " + str(depth.shape)
     
+    tempdepth = glReadPixels(0, 0, Width, Height, GL_DEPTH_COMPONENT, GL_FLOAT)
+    depth = np.array(tempdepth, dtype=np.float32)
+
     depth.shape = Height, Width
     depth = np.flipud(depth)
     
@@ -168,12 +177,7 @@ def printDepth():
     dists = distPlane(plane[0], plane[1], verts)
     
     dico = dict(depth=depth, dists=dists)
-    
     scipy.io.savemat(savePath + scene + "/depth_" + str(idx) + ".mat", dico)
-    print "mat written"
-    
-    # seeing how many depth aren't at the maximum...
-    print "Minimum depth is " + str(np.amin(depth))
 
 
 # The function called whenever a key is pressed. Note the use of Python tuples to pass in: (key, x, y)
@@ -187,14 +191,12 @@ def keyPressed(*args):
    
 def timerf(time):
     global idx, meshmodel
-    
-    print "timerfunc"
-    
+        
     if idx <= endIdx:
+        tic = timeit.default_timer()
         loadXform()
         DrawGLScene()
         printDepth()
-        print "Frame " + str(idx) + " done."
         idx += 1
         glutTimerFunc(10, timerf, 0)
     else:
@@ -202,7 +204,7 @@ def timerf(time):
         print "Done"
         
 def main():
-	global window, idx
+	global window, idx, showallverts
 
 	glutInit(sys.argv)
 
@@ -246,10 +248,22 @@ def main():
 	# Initialize our window.
 	InitGL(Width, Height)
 
+	# setting up the display list
+	showallverts = glGenLists(1)
+	glNewList(showallverts, GL_COMPILE)
+	glBegin(GL_TRIANGLES)
+	for i in range(len(triangles)):
+		glVertex3fv(triangles[i])
+	glEnd()
+	glEndList()
+
 	# Start Event Processing Engine
 	glutMainLoop()
-    
+	    
 	#printDepth()
 
 # Print message to console, and kick off the main to get it rolling.
+tic = timeit.default_timer()
 main()
+print 'Final time: ' + str(timeit.default_timer() - tic)
+

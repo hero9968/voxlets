@@ -21,6 +21,9 @@ startIdx = int(args[3]) # typically 1
 endIdx = int(args[4])	# typically 42
 
 
+global showallverts
+
+
 def loadOBJ(filename):
 	numVerts = 0
 	verts = []
@@ -50,11 +53,9 @@ def loadOBJ(filename):
     
     
 def drawMesh():
-    glBegin(GL_TRIANGLES)
-    for i in range(len(triangles)):
-        glVertex3fv(triangles[i])
-    glEnd()
-
+    global showallverts
+    glCallList(showallverts)
+    
     
 def getPlane(mat):
     n = mat[0:3, 2]
@@ -70,16 +71,16 @@ def loadXform():
     # loading the transform from disk
     filename = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_" + str(idx) + ".csv"    
     xform = np.genfromtxt(filename, delimiter=',')
-    print "Xform is " + str(xform)
+    #print "Xform is " + str(xform)
     
     # adjusting the radius according to user supplied arguments
     xform[0:3,3] = radius * xform[0:3,3]
-    print "Xform after is " + str(xform)
+    #print "Xform after is " + str(xform)
 	
 	# taking the inverse
     transMatrix = np.linalg.pinv(xform.T)
     
-    print "Xform " + str(idx) + " loaded."
+    #print "Xform " + str(idx) + " loaded."
 
 zNear = 0.1
 zFar = 10.0 # I had this set to 2 * radius for a bit...
@@ -158,9 +159,9 @@ def DrawGLScene():
 	return
     
 def printDepth():
-    global idx, transMatrix, verts
+    #global idx, transMatrix, verts
     depth = np.array(glReadPixels(0, 0, Width, Height, GL_DEPTH_COMPONENT, GL_FLOAT), dtype=np.float32)
-    print "Depth size is " + str(depth.shape)
+    #print "Depth size is " + str(depth.shape)
     
     depth.shape = Height, Width
     depth = np.flipud(depth)
@@ -175,10 +176,10 @@ def printDepth():
     dico = dict(depth=depth, dists=dists)
     
     scipy.io.savemat(savePath + scene + "/depth_" + str(idx) + ".mat", dico)
-    print "mat written"
+    #print "mat written"
     
     # seeing how many depth aren't at the maximum...
-    print "Minimum depth is " + str(np.amin(depth))
+    #print "Minimum depth is " + str(np.amin(depth))
 
 
 # The function called whenever a key is pressed. Note the use of Python tuples to pass in: (key, x, y)
@@ -192,14 +193,11 @@ def keyPressed(*args):
    
 def timerf(time):
     global idx, meshmodel
-    
-    print "timerfunc"
-    
+        
     if idx <= endIdx:
         loadXform()
         DrawGLScene()
         printDepth()
-        print "Frame " + str(idx) + " done."
         idx += 1
         glutTimerFunc(10, timerf, 0)
     else:
@@ -207,52 +205,62 @@ def timerf(time):
         print "Done"
         
 def main():
-	global window, idx
+    global window, idx, showallverts
 
-	glutInit(sys.argv)
+    glutInit(sys.argv)
 
-	# Select type of Display mode:
-	#  Double buffer
-	#  RGBA color
-	# Alpha components supported
-	# Depth buffer
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
-	#glutInitDisplayMode(GLUT_DEPTH)
+    # Select type of Display mode:
+    #  Double buffer
+    #  RGBA color
+    # Alpha components supported
+    # Depth buffer
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH)
+    #glutInitDisplayMode(GLUT_DEPTH)
 
-	# get a 640 x 480 window
-	glutInitWindowSize(Width, Height)
+    # get a 640 x 480 window
+    glutInitWindowSize(Width, Height)
 
-	# the window starts at the upper left corner of the screen
-	glutInitWindowPosition(0, 0)
+    # the window starts at the upper left corner of the screen
+    glutInitWindowPosition(0, 0)
 
-	# Okay, like the C version we retain the window id to use when closing, but for those of you new
-	# to Python (like myself), remember this assignment would make the variable local and not global
-	# if it weren't for the global declaration at the start of main.
-	window = glutCreateWindow("Jeff Molofee's GL Code Tutorial ... NeHe '99")
+    # Okay, like the C version we retain the window id to use when closing, but for those of you new
+    # to Python (like myself), remember this assignment would make the variable local and not global
+    # if it weren't for the global declaration at the start of main.
+    window = glutCreateWindow("Jeff Molofee's GL Code Tutorial ... NeHe '99")
 
-   	# Register the drawing function with glut, BUT in Python land, at least using PyOpenGL, we need to
-	# set the function pointer and invoke a function to actually register the callback, otherwise it
-	# would be very much like the C version of the code.
-	glutDisplayFunc(DrawGLScene)
+    	# Register the drawing function with glut, BUT in Python land, at least using PyOpenGL, we need to
+    # set the function pointer and invoke a function to actually register the callback, otherwise it
+    # would be very much like the C version of the code.
+    glutDisplayFunc(DrawGLScene)
 
-	# Uncomment this line to get full screen.
-	# glutFullScreen()
+    # Uncomment this line to get full screen.
+    # glutFullScreen()
 
-	# When we are doing nothing, redraw the scene.
-	#glutIdleFunc(idleFunc)
-    
-	glutTimerFunc(10, timerf, 0)
+    # When we are doing nothing, redraw the scene.
+    #glutIdleFunc(idleFunc)
 
-	# Register the function called when our window is resized.
-	glutReshapeFunc(ReSizeGLScene)
-	# Register the function called when the keyboard is pressed.
-	glutKeyboardFunc(keyPressed)
+    glutTimerFunc(10, timerf, 0)
 
-	# Initialize our window.
-	InitGL(Width, Height)
+    # Register the function called when our window is resized.
+    glutReshapeFunc(ReSizeGLScene)
+    # Register the function called when the keyboard is pressed.
+    glutKeyboardFunc(keyPressed)
 
-	# Start Event Processing Engine
-	glutMainLoop()
+    # Initialize our window.
+    InitGL(Width, Height)
+
+    # setting up the display list
+    showallverts = glGenLists(1)
+    glNewList(showallverts, GL_COMPILE)
+    glBegin(GL_TRIANGLES)
+    for i in range(len(triangles)):
+        glVertex3fv(triangles[i])
+    glEnd()
+    glEndList()
+
+
+    # Start Event Processing Engine
+    glutMainLoop()
     
 	#printDepth()
 
