@@ -28,4 +28,5 @@ for idx, line in enumerate(f):
 	else:
 		os.mkdir(outfolder)
 
+	print "Done " + str(idx) 
 	call(["python", python_filename, modelname, "1", "1", "42"])

@@ -110,7 +110,7 @@ class depth_feature_engine(object):
 		if self.samples_per_image == -1:
 			pass # do nothing - keep all indices
 		elif np.any(self.indices): # downsample indices
-			self.indices = self.indices[np.random.randint(0, self.indices.shape[1], samples_per_image), :]
+			self.indices = self.indices[np.random.randint(0, self.indices.shape[1], self.samples_per_image), :]
 		else: # no indices - just repeat centre point
 			self.indices = np.tile(np.array(self.mask.shape)/2, (samples_per_image, 1))
 			
@@ -179,7 +179,7 @@ class depth_feature_engine(object):
 
 		# sample pairs of coordinates
 		#indices = self.sample_from_mask(self.samples_per_image, self.hww)
-		print "SI = " + str(self.indices.shape)
+		#print "SI = " + str(self.indices.shape)
 		#print "S"
 
 		self.spider_features = [self.calc_spider_features(index) for index in self.indices]
@@ -231,12 +231,14 @@ class depth_feature_engine(object):
 #features, depths, indices = zip(*(features_and_depths(modelname, view+1) 
 						#for view in range(number_views)))
 
+samples_per_image = 100
+
 def compute_features(modelname_and_view):
 	'''
 	helper function to deal with the two-way problem
 	'''
 	engine = depth_feature_engine(modelname_and_view[0], modelname_and_view[1]+1)
-	engine.sample_from_mask()
+	engine.sample_from_mask(samples_per_image)
 	engine.compute_features_and_depths()
 	return engine.features_and_depths_as_dict()
 
@@ -254,7 +256,7 @@ def list_of_dicts_to_dict(list_of_dicts):
 
  	return result
 
-#samples_per_image = 1000
+
 
 if __name__ == '__main__':
 
@@ -265,7 +267,7 @@ if __name__ == '__main__':
 	for idx, line in enumerate(f):
 
 		modelname = line.strip()
-		fileout = base_path + 'features/' + modelname + '.mat'
+		fileout = base_path + 'structured/features/' + modelname + '.mat'
 
 		if os.path.isfile(fileout): 
 			#temp = scipy.io.loadmat(fileout)['depths']
@@ -278,12 +280,12 @@ if __name__ == '__main__':
 		tic = timeit.default_timer()
 
 		zipped_arguments = itertools.izip(itertools.repeat(modelname), range(number_views))
-		# try:
-		# 	dict_list = pool.map(compute_features, zipped_arguments)
-		# except:
-		# 	print "Failed!!"
-		# 	continue
-		dict_list = [compute_features(tt) for tt in zipped_arguments]
+		try:
+			dict_list = pool.map(compute_features, zipped_arguments)
+		except:
+		 	print "Failed!!"
+		 	continue
+		#dict_list = [compute_features(tt) for tt in zipped_arguments]
 
 		fulldict = list_of_dicts_to_dict(dict_list)
 
