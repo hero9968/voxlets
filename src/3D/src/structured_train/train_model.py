@@ -14,7 +14,6 @@ small_model = True # if true, then only load a few of the models (v quick, good 
 
 base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
 models_list = base_path + 'databaseFull/fields/models.txt'
-split_path = base_path + 'structured/split.mat'
 
 if small_model:
 	combined_features_path = base_path + 'structured/combined_features_small.mat'
