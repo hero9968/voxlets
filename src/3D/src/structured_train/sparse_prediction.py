@@ -13,15 +13,15 @@ import yaml
 # setting paths
 base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
 combined_features_path = base_path + 'structured/combined_features/test_small.mat'
-results_folder = "./data/results/"
-rf_folder_path = "./models/"
+results_folder = "./data/results_small/"
+rf_folder_path = "./data/models/"
 
-model_config_filepath = './models_config.yaml'
+model_config_filepath = './data/models_config.yaml'
 
 # setting options for the per-voxel ROC curves
 # NOTE: Currently the ROC is being computed on the depth-diff measurements, including the max depth
 voxel_depth = 100  # how deep to consider the scene to be in voxels
-max_depth_to_consider = 0.2 # depths beyond this are ignored. <voxel_depth> pixels span the whole depth
+max_depth_to_consider = 0.5 # depths beyond this are ignored. <voxel_depth> pixels span the whole depth
 scale_factor = voxel_depth/max_depth_to_consider
 
 def predict_per_tree(random_forest, X):
@@ -75,6 +75,9 @@ for modeloption in all_models:
 	# doing the ROC curves
 	scaled_pred = (scale_factor * Y_pred).astype(int).transpose()
 	scaled_gt = (scale_factor * Y_gt).astype(int).flatten()
+	print "Max GT depth (voxels) is " + str(np.max(scaled_gt))
+	print "Max pred depth (voxels) is " + str(np.max(scaled_pred.flatten()))
+	
 	all_gt_voxels = [populate_voxels([gt_val], voxel_depth) for gt_val in scaled_gt]
 	all_pred_voxels = [populate_voxels(pred_val, voxel_depth) for pred_val in scaled_pred]
 

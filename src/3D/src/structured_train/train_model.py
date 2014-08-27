@@ -1,26 +1,30 @@
 '''
-This script brings together all the structured information and trains a RF on them
+This script brings together all the structured data and trains a RF on them
 '''
 
-#import pdb; pdb.set_trace()
 import os
 import numpy as np
 import scipy.io
 from sklearn.ensemble import RandomForestRegressor
 import cPickle as pickle
 import timeit
+import yaml
 
 small_model = True # if true, then only load a few of the models (v quick, good for testing)
+overwrite = False  # if true, then overwrite models if they already exist
 
 base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
 models_list = base_path + 'databaseFull/fields/models.txt'
 
+model_config_filepath = './data/models_config.yaml'
+
 if small_model:
-	combined_features_path = base_path + 'structured/combined_features_small.mat'
-	num_samples = 2500
+	print "Warning - using small dataset (don't use for final model training)"
+	combined_features_path = base_path + 'structured/combined_features/train_small.mat'
+	rf_folder_path = "./data/models_small/"
 else:
-	combined_features_path = base_path + 'structured/combined_features.mat'
-	num_samples = 250000
+	combined_features_path = base_path + 'structured/combined_features/train.mat'
+	rf_folder_path = "./data/models/"
 
 
 def resample_inputs(X, Y, num_samples):
@@ -41,17 +45,31 @@ def resample_inputs(X, Y, num_samples):
 	return X[idxs,:], Y[idxs]
 
 
-# setting up the options
-number_trees = 10
-use_spider = False
+# loading the data
+train_data = scipy.io.loadmat(combined_features_path)
 
-if __name__ == '__main__':
+# looping over each model from the config file
+all_models = yaml.load(open(model_config_filepath, 'r'))
 
-	# loading the data
-	train_data = scipy.io.loadmat(combined_features_path)
-	X = train_data['patch_features']
+for modeloption in all_models:
+
+	rfmodel_path = rf_folder_path + modeloption['name'] + '.pkl'
+	if not overwrite and os.path.isfile(rfmodel_path):
+		print modeloption['name'] + " already exists ... skipping"
+		continue
+	
+	print "Training model " + modeloption['name']
+
+	number_trees = modeloption['trees']
+	num_samples = modeloption['number_samples']
+
+	if small_model and num_samples > 10000:
+		print "On small model option, so skipping models with many features"
+		continue
+
+	X = [train_data[feature] for feature in modeloption['features']]
+	X = np.concatenate(X, axis=1)
 	Y = train_data['Y'].flatten()
-	#X = np.concatenate((patch_features, spider_features), axis=1)
 
 	print "Before resampling..."
 	print "X shape is " + str(X.shape)
@@ -71,5 +89,5 @@ if __name__ == '__main__':
 	clf.fit(X,Y)
 
 	print "Saving to disk..."
-	pickle.dump(clf, open("spidermodel2.pkl", "wb") )
+	pickle.dump(clf, open(rfmodel_path, "wb") )
 	print 'Done training in ' + str(timeit.default_timer() - tic)
