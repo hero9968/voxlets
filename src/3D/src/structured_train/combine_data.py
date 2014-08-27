@@ -9,7 +9,7 @@ import collections
 import scipy.stats as stats
 
 # User options
-small_model = True # small model has very few features, just used for testing algorithms...
+small_model = False # small model has very few features, just used for testing algorithms...
 category = 'train'  # options are test and train - are we doing test or train data?
 
 # setting paths
@@ -50,8 +50,8 @@ def replace_nans_with_col_means(X):
 	'''
 	http://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
 	'''
-	print X.shape
 	col_mean = stats.nanmean(X,axis=0)
+	col_mean = nan_to_value(col_mean, 0)
 	inds = np.where(np.isnan(X))
 	X[inds]=np.take(col_mean,inds[1])
 	return X
@@ -84,8 +84,10 @@ patch_features = nan_to_value(patch_feature_nan, 0)
 
 print "Extracting spider features..."
 spider_feature_dimension = data['spider_features'][0].shape[1]
+spider_features = np.array(data['spider_features'])
 spider_features = spider_features.reshape(-1, spider_feature_dimension)
-spider_features = replace_nans_with_col_means(np.array(data['spider_features']))
+spider_features = replace_nans_with_col_means(spider_features)
+print "Nan count: " + str(np.sum(np.isnan(spider_features)))
 
 print "Saving to file..."
 d = dict(spider_features=spider_features,
