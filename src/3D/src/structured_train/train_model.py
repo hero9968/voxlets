@@ -9,23 +9,18 @@ from sklearn.ensemble import RandomForestRegressor
 import cPickle as pickle
 import timeit
 import yaml
+import paths
 
 small_model = True # if true, then only load a few of the models (v quick, good for testing)
-overwrite = False  # if true, then overwrite models if they already exist
-
-base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
-models_list = base_path + 'databaseFull/fields/models.txt'
-
-model_config_filepath = './data/models_config.yaml'
+overwrite = True  # if true, then overwrite models if they already exist
 
 if small_model:
 	print "Warning - using small dataset (don't use for final model training)"
-	combined_features_path = base_path + 'structured/combined_features/train_small.mat'
-	rf_folder_path = "./data/models_small/"
+	combined_features_path = paths.combined_train_features_small
+	rf_folder_path = paths.rf_folder_path_small
 else:
-	combined_features_path = base_path + 'structured/combined_features/train.mat'
-	rf_folder_path = "./data/models/"
-
+	combined_features_path = paths.combined_train_features
+	rf_folder_path = paths.rf_folder_path
 
 def resample_inputs(X, Y, num_samples):
 	'''
@@ -49,7 +44,7 @@ def resample_inputs(X, Y, num_samples):
 train_data = scipy.io.loadmat(combined_features_path)
 
 # looping over each model from the config file
-all_models = yaml.load(open(model_config_filepath, 'r'))
+all_models = yaml.load(open(paths.model_config, 'r'))
 
 for modeloption in all_models:
 

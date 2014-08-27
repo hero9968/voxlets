@@ -7,22 +7,22 @@ import os
 import scipy.io
 import collections
 import scipy.stats as stats
+import paths
 
 # User options
 small_model = False # small model has very few features, just used for testing algorithms...
 category = 'train'  # options are test and train - are we doing test or train data?
 
 # setting paths
-base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
-split_path = base_path + 'structured/split.mat'
-combined_features_save_path = base_path + 'structured/combined_features/'
+combined_features_save_path = paths.base_path + 'structured/combined_features/'
 
 combined_features_save_path += category  # should be 'test' or 'train'
 if small_model:	combined_features_save_path += '_small'
 combined_features_save_path += '.mat'
 
 def load_modeldata(modelname):
-	modelpath = base_path + 'structured/features/' + modelname + '.mat'
+	modelpath = paths.model_features + modelname + '.mat'
+
 	if os.path.isfile(modelpath):
 		return scipy.io.loadmat(modelpath)
 	else:
@@ -59,7 +59,7 @@ def replace_nans_with_col_means(X):
 
 # loading the data
 # For now, am only going to use one file to train on...
-object_names = scipy.io.loadmat(split_path)[category + '_names']
+object_names = scipy.io.loadmat(paths.split_path)[category + '_names']
 rawdata = []
 print "There are " + str(len(object_names)) + " objects"
 for idx, line in enumerate(object_names):

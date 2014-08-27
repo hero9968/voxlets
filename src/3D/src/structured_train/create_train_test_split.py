@@ -6,15 +6,13 @@ also a boolean array with the training items indicated
 import os
 import numpy as np
 import scipy.io
+import paths
 
-base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
 '''
-the following are commented out to prevent the accidently overwriting 
+the following is commented out to prevent the accidently overwriting 
 of the train/test split if this script is run in error
 '''
-#structured_path = base_path + 'structured/'
-#split_path = structured_path + 'split.mat'
-models_list = base_path + 'databaseFull/fields/models.txt'
+#split_path = paths.split_path
 total_number = 1600
 
 # setting up the options for creating the split
@@ -40,7 +38,7 @@ test_binary = np.zeros((total_number), dtype=bool)
 test_binary[test_idxs] = True
 
 # creating the train and test names...
-f = open(models_list, 'r')
+f = open(paths.models_list, 'r')
 train_names = []
 test_names = []
 for idx, line in enumerate(f):

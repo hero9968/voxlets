@@ -9,19 +9,22 @@ import cPickle as pickle
 import scipy.io
 from sklearn.metrics import roc_curve, auc
 import yaml
+import paths
 
 # setting paths
-base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
-combined_features_path = base_path + 'structured/combined_features/test_small.mat'
-results_folder = "./data/results_small/"
-rf_folder_path = "./data/models/"
+small_dataset = True
 
-model_config_filepath = './data/models_config.yaml'
+if small_dataset:
+	combined_features_path = paths.combined_test_features
+	results_folder = paths.results_folder
+else:
+	combined_features_path = paths.combined_test_features_small
+	results_folder = paths.results_folder_small
 
 # setting options for the per-voxel ROC curves
 # NOTE: Currently the ROC is being computed on the depth-diff measurements, including the max depth
 voxel_depth = 100  # how deep to consider the scene to be in voxels
-max_depth_to_consider = 0.5 # depths beyond this are ignored. <voxel_depth> pixels span the whole depth
+max_depth_to_consider = 0.3 # depths beyond this are ignored. <voxel_depth> pixels span the whole depth
 scale_factor = voxel_depth/max_depth_to_consider
 
 def predict_per_tree(random_forest, X):
@@ -42,14 +45,14 @@ test_data = scipy.io.loadmat(combined_features_path)
 Y_gt = np.array(test_data['Y'])
 
 # doing each model in turn
-all_models = yaml.load(open(model_config_filepath, 'r'))
+all_models = yaml.load(open(paths.model_config, 'r'))
 
 for modeloption in all_models:
 	
-	rfmodel_path = rf_folder_path + modeloption['name'] + '.pkl'
+	rfmodel_path = paths.rf_folder_path + modeloption['name'] + '.pkl'
 
 	if not os.path.isfile(rfmodel_path):
-		print "Cannot find model: " + rfmodel_path#modeloption['name']
+		print "Cannot find model: " + rfmodel_path
 		continue
 
 	# loading model

@@ -8,20 +8,21 @@ import yaml
 import scipy.io
 import matplotlib.pyplot as pl
 import os.path
-
-results_folder = "./data/results/"
-model_config_filepath = './data/models_config.yaml'
+import paths
 
 # loading all the model results
-all_models = yaml.load(open(model_config_filepath, 'r'))
+all_models = yaml.load(open(paths.model_config, 'r'))
 predictions = []
 
 for modeloption in all_models:
-	result_path = results_folder + modeloption['name'] + '.mat'
+	result_path = paths.results_folder + modeloption['name'] + '.mat'
 	if os.path.isfile(result_path):
+		print "Loading " + result_path
 		this_result = scipy.io.loadmat(result_path)
 		this_result['name'] = modeloption['name']
 		predictions.append(this_result)
+	else:
+		print "Skipping " + result_path
 
 print "In total there are : " + str(len(predictions))
 # Plot ROC curve for the models
