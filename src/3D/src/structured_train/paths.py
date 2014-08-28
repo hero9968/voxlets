@@ -24,6 +24,9 @@ model_config = './data/models_config.yaml'
 rf_folder_path = "./data/models/"
 rf_folder_path_small = "./data/models_small/"
 
-# paths for the results
-results_folder = "./data/results_small/"
+# paths for the sparse results
+results_folder = "./data/results/"
 results_folder_small = "./data/results_small/"
+
+# paths for the dense predictions
+#dense_predictions = base_path + 

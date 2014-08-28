@@ -80,7 +80,7 @@ for modeloption in all_models:
 	# training the forest
 	print "Training forest..."
 	tic = timeit.default_timer()
-	clf = RandomForestRegressor(n_estimators=number_trees,n_jobs=-1,random_state=1)
+	clf = RandomForestRegressor(n_estimators=number_trees,n_jobs=3,random_state=1,max_depth=20)
 	clf.fit(X,Y)
 
 	print "Saving to disk..."

@@ -94,26 +94,28 @@ class depth_feature_engine(object):
 
 		#border size is the width at the edge of the mask from which we are not allowed to sample
 		self.indices = np.array(np.nonzero(self.mask))
+		
 		if self.indices.shape[1]:
 			scipy.io.savemat('mask.mat', dict(mask=self.mask))
 
 		# removing indices which are too near the border
 		# Should use np.logical_or.reduce(...) instead of this...
+		#print self.indices
 		to_remove = np.logical_or(np.logical_or(self.indices[0] < border_size, 
 												self.indices[1] < border_size),
 								np.logical_or(self.indices[0] > self.mask.shape[0]-border_size,
 												self.indices[1] > self.mask.shape[1]-border_size))
 		self.indices = np.delete(self.indices, np.nonzero(to_remove), 1).transpose()
 
-	
 		# doing the sampling
+		#print self.indices
 		if self.samples_per_image == -1:
 			pass # do nothing - keep all indices
 		elif np.any(self.indices): # downsample indices
-			self.indices = self.indices[np.random.randint(0, self.indices.shape[1], self.samples_per_image), :]
+			samples = np.random.randint(0, self.indices.shape[0], self.samples_per_image)
+			self.indices = self.indices[samples, :]
 		else: # no indices - just repeat centre point
 			self.indices = np.tile(np.array(self.mask.shape)/2, (samples_per_image, 1))
-			
 		return self.indices
 
 	def depth_difference(self, index):
@@ -207,9 +209,9 @@ class depth_feature_engine(object):
 		'''
 		plot the front render and the sampled pairs
 		'''
-		plt.imshow(frontrender)
+		plt.imshow(self.frontrender)
 		plt.hold(True)
-		plt.plot(indices[:, 1], indices[:, 0], '.')
+		plt.plot(self.indices[:, 1], self.indices[:, 0], '.')
 		plt.hold(False)
 		if filename:
 			plt.savefig(filename)
@@ -299,6 +301,7 @@ if __name__ == '__main__':
 		scipy.io.savemat(fileout, fulldict)
 
 		print 'Done ' + str(idx) + ' in ' + str(timeit.default_timer() - tic)
+		#break
 		
 	f.close()
 

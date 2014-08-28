@@ -103,6 +103,7 @@ for modeloption in all_models:
 				all_pred_voxels=all_pred_voxels)
 
 	result_savepath = results_folder + modeloption['name'] + '.mat'
+	print "Saving to: " + result_savepath
 	scipy.io.savemat(result_savepath, result)
 
 	print "Area under the ROC curve : %f" % roc_auc

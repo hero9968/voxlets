@@ -75,12 +75,15 @@ class scene_voxels:
 		self.vol = vol
 		#return vol
 
-	def extract_slice(self, slice_idx):
+	def extract_slice(self, slice_idx, axis=0):
 		''' 
 		returns a horizontal slice from the voxels
 		(todo - also allow for vertical slices)
 		'''
-		volume_slice = self.vol[slice_idx, :, :].transpose()
+		if axis==0:
+			volume_slice = self.vol[slice_idx, :, :].transpose()
+		elif axis==1:
+			volume_slice = self.vol[:, slice_idx, :].transpose()
 		return volume_slice
 
 	def extract_warped_slice(self, slice_idx, output_image_height=500, maxdepth=-1):

@@ -5,6 +5,7 @@ This script just loads them and plots them
 '''
 
 import yaml
+import numpy as np
 import scipy.io
 import matplotlib.pyplot as pl
 import os.path
@@ -25,9 +26,17 @@ for modeloption in all_models:
 		print "Skipping " + result_path
 
 print "In total there are : " + str(len(predictions))
+
+# sorting by their auc
+all_auc = [pred['roc_auc'] for pred in predictions]
+print "AUC = " + str(np.array(all_auc).flatten())
+sort_index = np.argsort(np.array(all_auc).flatten())
+print "Sorted = " + str(sort_index)
+
 # Plot ROC curve for the models
 pl.clf()
-for pred in predictions:
+for idx in sort_index[::-1]:
+	pred = predictions[idx]
 	label = pred['name'] + ' (area = %0.2f)' % pred['roc_auc']
 	pl.plot(pred['fpr'].flatten(), pred['tpr'].flatten(), label=label)
 	
@@ -36,7 +45,6 @@ pl.xlim([0.0, 1.0])
 pl.ylim([0.0, 1.0])
 pl.xlabel('False Positive Rate')
 pl.ylabel('True Positive Rate')
-pl.title('Receiver operating characteristic example')
 pl.legend(loc="lower right") 
 #pl.show()
 pl.savefig('plots/roc.eps')
