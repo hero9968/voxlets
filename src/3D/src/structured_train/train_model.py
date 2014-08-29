@@ -6,13 +6,15 @@ import os
 import numpy as np
 import scipy.io
 from sklearn.ensemble import RandomForestRegressor
+from sklearn import neighbors
 import cPickle as pickle
 import timeit
 import yaml
 import paths
 
-small_model = True # if true, then only load a few of the models (v quick, good for testing)
+small_model = False # if true, then only load a few of the models (v quick, good for testing)
 overwrite = True  # if true, then overwrite models if they already exist
+nan_replacement_value = -10
 
 if small_model:
 	print "Warning - using small dataset (don't use for final model training)"
@@ -55,8 +57,8 @@ for modeloption in all_models:
 	
 	print "Training model " + modeloption['name']
 
-	number_trees = modeloption['trees']
 	num_samples = modeloption['number_samples']
+	n_estimators = modeloption['n_estimators']
 
 	if small_model and num_samples > 10000:
 		print "On small model option, so skipping models with many features"
@@ -64,6 +66,7 @@ for modeloption in all_models:
 
 	X = [train_data[feature] for feature in modeloption['features']]
 	X = np.concatenate(X, axis=1)
+	X[np.isnan(X)] = nan_replacement_value
 	Y = train_data['Y'].flatten()
 
 	print "Before resampling..."
@@ -77,12 +80,18 @@ for modeloption in all_models:
 	print "X shape is " + str(X.shape)
 	print "Y shape is " + str(Y.shape)
 
-	# training the forest
-	print "Training forest..."
+	# training the model
+	print "Training model... of type " + modeloption['type']
 	tic = timeit.default_timer()
-	clf = RandomForestRegressor(n_estimators=number_trees,n_jobs=3,random_state=1,max_depth=20)
-	clf.fit(X,Y)
+	if modeloption['type']=='forest':
+		model = RandomForestRegressor(n_estimators=n_estimators,n_jobs=3,random_state=1,max_depth=20)
+		model.fit(X,Y)
+	elif modeloption['type']=='nn':
+		model = neighbors.KNeighborsClassifier(n_estimators, weights='uniform')
+		model.fit(X, Y)
+	else:
+		raise Exception("Unknown model type: " + modeloption['type'])
 
 	print "Saving to disk..."
-	pickle.dump(clf, open(rfmodel_path, "wb") )
+	pickle.dump(model, open(rfmodel_path, "wb") )
 	print 'Done training in ' + str(timeit.default_timer() - tic)

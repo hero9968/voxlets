@@ -163,7 +163,7 @@ class depth_feature_engine(object):
 		spider = [findfirst(vec) for vec in compass]
 		return spider
 
-	def compute_features_and_depths(self):
+	def compute_features_and_depths(self, verbose=False):
 
 		#load_frontrender(modelname, view_idx)
 		#load_backrender(modelname, view_idx)
@@ -173,7 +173,8 @@ class depth_feature_engine(object):
 
 		# getting the mask from the points
 		self.edge_image = self.compute_depth_edges(0.1)
- 		print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
+		if verbose:
+ 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
 
 		#assert np.all(mask==extract_mask(backrender))
 		if not self.indices.shape:
