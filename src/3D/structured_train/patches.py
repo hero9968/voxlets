@@ -7,19 +7,33 @@ Patches should be able to vary to be constant-size in real-world coordinates
 '''
 
 import numpy as np
+import scipy.stats
 import cv2
+from numbers import Number
+
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib as mpl
 
 class PatchEngine(object):
 
-	def __init__(self, depth_image, output_patch_hww, patch_size, focal_length):
-		self.depth_image = depth_image
-		self.output_patch_hww = output_patch_hww # the hww of the OUTPUT patches
-		self.patch_size = patch_size # size of patch in real world 3D coordinates
-		self.focal_length = focal_length # used for extracting constant-size patches
+	def __init__(self, output_patch_hww, patch_size, fixed_patch_size=True, interp_method=cv2.INTER_NEAREST):
+
+		# the hww of the OUTPUT patches
+		self.output_patch_hww = output_patch_hww 
+
+		# dimension of side of patch in real world 3D coordinates
+		self.patch_size = patch_size 
+
+		# if fixed_patch_size is True:
+		#	patch is always patch_sizexpatch_size in input image pixels
+		# else:
+		# 	patch size varies linearly with depth. patch_size is the size of patch at depth of 1.0 
+		self.fixed_patch_size = fixed_patch_size 
+		#self.focal_length = focal_length # used for extracting constant-size patches
 		
 		# some hard-coded constants
-		self.interp_method = cv2.INTER_NEAREST
+		self.interp_method = interp_method
 
 
 	def extract_aligned_patch(self, img_in, row, col, hww):
@@ -39,7 +53,7 @@ class PatchEngine(object):
 
 		'''Getting the initial patch'''
 		# total width of the output patch in input image pixels
-		p_w = 2*self.output_patch_hww+1  
+		p_w = 2*self.output_patch_hww+1
 
 		# hww of the initial patch to extract - must ensure it is big enough to be rotated then downsized
 		t_on_two = np.ceil(float(p_w)/np.sqrt(2.0)) + 2
@@ -55,7 +69,6 @@ class PatchEngine(object):
 		rotated_patch = cv2.warpAffine(temp_patch, M, temp_patch.shape, flags=self.interp_method)
 
 		'''Extracting the middle of this rotated patch'''
-		#hww = int(float(p_w)/2)
 		p_centre = int(float(temp_patch.shape[0]) / 2)
 		final_patch = self.extract_aligned_patch(rotated_patch, p_centre, p_centre, self.output_patch_hww)
 
@@ -69,8 +82,37 @@ class PatchEngine(object):
 			plt.imshow(rotated_patch, interpolation='none')
 			plt.subplot(2, 3, 3)
 			plt.imshow(final_patch, interpolation='none')
+			plt.show()
+
+		#print "Final patch: " + str(final_patch[self.output_patch_hww+1, self.output_patch_hww+1])
+		#print "Image pixel: " + str(self.image_to_extract[row, col])
+
+		#np.testing.assert_almost_equal(final_patch[self.output_patch_hww+1, self.output_patch_hww+1], 
+	#								   self.image_to_extract[row, col],
+	#								   decimal=1)
 
 		return final_patch
+
+	def fill_in_nans(self, image_to_repair, desired_mask):
+		'''
+		Fills in nans in the image_to_repair, with an aim of getting its non-nan values
+		to take the shape of the desired_mask. Is only possible to fill in a nan
+		if it borders (8-neighbourhood) a non-nan values.
+		Otherwise, an error is thrown
+		'''
+		nans_to_fill = np.logical_and(np.isnan(image_to_repair), desired_mask)
+
+		# replace each nan value with the nanmedian value of its neighbours 
+		for row, col in np.array(np.nonzero(nans_to_fill)).T:
+			bordering_vals = self.extract_aligned_patch(image_to_repair, row, col, 1)
+			image_to_repair[row, col] = scipy.stats.nanmedian(bordering_vals.flatten())
+
+		# ensure we have filled the mask completely 
+		# (TODO - may instead fill in remaining values with some shitty other value)
+		np.testing.assert_equal(~np.isnan(image_to_repair), desired_mask)
+
+		return image_to_repair
+
 
 	def compute_angles_image(self, depth_image):
 		'''
@@ -81,7 +123,16 @@ class PatchEngine(object):
 		'''
 		Ix = cv2.Sobel(depth_image, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
 		Iy = cv2.Sobel(depth_image, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
+
+		# here recover values for Ix and Iy, so they have same non-nan locations as depth image
+		mask = ~np.isnan(depth_image)
+		Ix = self.fill_in_nans(Ix, mask)
+		Iy = self.fill_in_nans(Iy, mask)
+
 		self.angles = np.rad2deg(np.arctan2(Iy, Ix))
+		np.testing.assert_equal(mask, ~np.isnan(self.angles))
+		self.depth_image = depth_image
+
 		return self.angles
 
 	def set_angles_to_zero(self):
@@ -89,7 +140,6 @@ class PatchEngine(object):
 		Specifies an angles image which is all zero 
 		'''
 		self.angles = -1
-
 
 	def extract_patches(self, image, indices):
 		'''
@@ -105,7 +155,7 @@ class PatchEngine(object):
 		# setting the image to extract from
 		self.image_to_extract = image
 
-		if self.angles == -1:
+		if isinstance(self.angles, Number) and self.angles == -1:
 			self.angles = np.zeros(image.shape)
 
 		# extracting all the patches
@@ -136,18 +186,20 @@ class PatchPlot(object):
 		'''
 		row, col = index
 		bottom_left = (col - width/2, row - width/2)
+		angle_rad = np.deg2rad(angle)
 
 		# creating patch
-		p_handle = patches.Rectangle(bottom_left, width, width, color="blue", alpha=0.0)
-		transform = mpl.transforms.Affine2D().rotate_deg(angle) + plt.gca().transData
+		#print bottom_left, width, angle
+		p_handle = patches.Rectangle(bottom_left, width, width, color="red", alpha=1.0, edgecolor='r', fill=None)
+		transform = mpl.transforms.Affine2D().rotate_around(col, row, angle_rad) + plt.gca().transData
 		p_handle.set_transform(transform)
 
 		# adding to current plot
 		plt.gca().add_patch(p_handle)
 
 		# plotting line from centre to the edge
-		plt.plot([col, col + width * np.cos(angle)], 
-				 [row, row + width * np.sin(angle)], 'ro')
+		plt.plot([col, col + width * np.cos(angle_rad)], 
+				 [row, row + width * np.sin(angle_rad)], 'r-')
 
 
 	def plot_patches(self, indices, angles, scales):
@@ -155,12 +207,16 @@ class PatchPlot(object):
 		plots the patches on the image
 		'''
 
+		if ~isinstance(scales, Number):
+			scales = [scales for index in indices]
+
 		plt.hold(True)
+
 		for index, angle, scale in zip(indices, angles, scales):
-			plot_patch(index, angle, scale)
+			self.plot_patch(index, angle, scale)
 
 		plt.hold(False)
-
+		plt.show()
 
 
 
@@ -170,14 +226,40 @@ class PatchPlot(object):
 
 if __name__ == '__main__':
 
-	def remove_nans(inputs):
-		return [a for a in inputs if ~np.isnan(a)]
+	'''testing the plotting'''
 
-	print np.nansum(np.array(angles_nearest) - np.array(angles_cubic))
-	plt.subplot(121)
-	plt.hist(remove_nans(angles_nearest), 50)
-	plt.subplot(122)
-	plt.hist(remove_nans(angles_cubic), 50)
-	plt.show()
+	# loading the frontrender
+	import loadsave
+	obj_list = loadsave.load_object_names('all')
+	modelname = obj_list[3]
+	view_idx = 17
+	frontrender = loadsave.load_frontrender(modelname, view_idx)
+
+	# setting up patch engine for computation of angles
+	patch_engine = PatchEngine(frontrender, 6, -1, -1)
+	patch_engine.compute_angles_image(frontrender)
+
+	# sampling indices from the image
+	indices = np.array(np.nonzero(~np.isnan(frontrender))).transpose()
+	samples = np.random.randint(0, indices.shape[0], 100)
+	indices = indices[samples, :]
+
+	angles = [patch_engine.angles[index[0], index[1]] for index in indices]
+
+	# 
+	patch_plotter = PatchPlot()
+	patch_plotter.set_image(frontrender)
+	patch_plotter.plot_patches(indices, angles, scales=10)
+
+
+	# def remove_nans(inputs):
+	# 	return [a for a in inputs if ~np.isnan(a)]
+
+	# print np.nansum(np.array(angles_nearest) - np.array(angles_cubic))
+	# plt.subplot(121)
+	# plt.hist(remove_nans(angles_nearest), 50)
+	# plt.subplot(122)
+	# plt.hist(remove_nans(angles_cubic), 50)
+	# plt.show()
 
 
