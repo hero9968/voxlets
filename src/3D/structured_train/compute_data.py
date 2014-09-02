@@ -95,8 +95,8 @@ class depth_feature_engine(object):
 		#border size is the width at the edge of the mask from which we are not allowed to sample
 		self.indices = np.array(np.nonzero(self.mask))
 		
-		if self.indices.shape[1]:
-			scipy.io.savemat('mask.mat', dict(mask=self.mask))
+		#if self.indices.shape[1]:
+			#scipy.io.savemat('mask.mat', dict(mask=self.mask))
 
 		# removing indices which are too near the border
 		# Should use np.logical_or.reduce(...) instead of this...

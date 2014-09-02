@@ -43,8 +43,21 @@ def load_normals(modelname, view_idx):
 	'''
 	view idx in [1, 42]
 	'''
-	combined_path = paths.base_path + 'combined_renders/' + modelname + '.mat'
-	print "Loading from " + combined_path
-	temp = scipy.io.loadmat(combined_path)
-	print len(temp['renders']['normals'])
-	return temp['renders'][view_idx-1]['normals']
+	normals_path = paths.base_path + 'normals/' + modelname + '/norms_' + str(view_idx) + '.mat'
+	temp = scipy.io.loadmat(normals_path)
+	return temp['normals']
+
+def load_frontrender(modelname, view_idx):
+	fullpath = paths.base_path + 'renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
+	frontrender = scipy.io.loadmat(fullpath)['depth']
+	return frontrender
+
+def load_backrender(modelname, view_idx):
+	fullpath = paths.base_path + 'render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
+	backrender = scipy.io.loadmat(fullpath)['depth']
+
+	# hacking the backrender to insert nans...
+	t = np.nonzero(np.abs(backrender-0.1) < 0.0001)
+	backrender[t[0], t[1]] = np.nan
+
+	return backrender
