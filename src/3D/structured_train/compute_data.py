@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from multiprocessing import Pool
 import itertools
 import timeit
+import patches
 
 number_views = 42 # how many rendered views there are of each object
 base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
@@ -23,7 +24,7 @@ def findfirst(array):
 		return np.nan
 
 
-class depth_feature_engine(object):
+class DepthFeatureEngine(object):
 	'''
 	A class for computing features (and objective depths) from a front and a back
 	depth image.
@@ -54,6 +55,9 @@ class depth_feature_engine(object):
 		#self.samples_per_image = 1000
 		self.hww = 7
 		self.indices = []
+
+		self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, patch_size=7)
+		self.patch_extractor.compute_angles_image(self.frontrender)
 
 	def load_frontrender(self, modelname, view_idx):
 		fullpath = base_path + 'renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
@@ -186,7 +190,9 @@ class depth_feature_engine(object):
 		#print "S"
 
 		self.spider_features = [self.calc_spider_features(index) for index in self.indices]
-		self.patch_features = [self.calc_patch_feature(self.frontrender, index) for index in self.indices]
+		#self.patch_features = [self.calc_patch_feature(self.frontrender, index) for index in self.indices]
+		self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
+		#[self.calc_patch_feature(self.frontrender, index) for index in self.indices]
 		self.depth_diffs = [self.depth_difference(index) for index in self.indices]
 		self.depths = [self.frontrender[index[0], index[1]] for index in self.indices]
 		self.views = [self.view_idx for index in self.indices]

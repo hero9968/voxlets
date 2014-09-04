@@ -17,7 +17,7 @@ import matplotlib as mpl
 
 class PatchEngine(object):
 
-	def __init__(self, output_patch_hww, patch_size, fixed_patch_size=True, interp_method=cv2.INTER_NEAREST):
+	def __init__(self, output_patch_hww, patch_size, fixed_patch_size=True, interp_method=cv2.INTER_CUBIC):
 
 		# the hww of the OUTPUT patches
 		self.output_patch_hww = output_patch_hww 
@@ -32,52 +32,60 @@ class PatchEngine(object):
 		self.fixed_patch_size = fixed_patch_size 
 		#self.focal_length = focal_length # used for extracting constant-size patches
 		
-		# some hard-coded constants
+		# how does the interpolation get done when rotating patch
 		self.interp_method = interp_method
 
 
 	def extract_aligned_patch(self, img_in, row, col, hww):
+		row = int(row)
+		col = int(col)
+		hww = int(hww)
 		return np.copy(img_in[row-hww:row+hww+1,col-hww:col+hww+1])
+
 
 	def extract_rotated_patch(self, index, angle=-1):
 		'''
-		p_w  - size of extracted patch in input image pixels
+		output_patch_width  - size of extracted patch in input image pixels
 		d    - size of extracted patch in output pixels
 		angle - rotation angle for the patchs
 		'''
 		row,col = index
+		assert(~np.isnan(self.image_to_extract[row, col]))
 
 		if angle == -1:
 			angle = self.angles[row, col]
 		assert(~np.isnan(angle))
+		depth = self.depth_image[row, col]
 
-		'''Getting the initial patch'''
+		'''Getting the oversized patch'''
 		# total width of the output patch in input image pixels
-		p_w = 2*self.output_patch_hww+1
+		output_patch_width = 2*self.output_patch_hww+1
 
 		# hww of the initial patch to extract - must ensure it is big enough to be rotated then downsized
-		t_on_two = np.ceil(float(p_w)/np.sqrt(2.0)) + 2
-		temp_patch = self.extract_aligned_patch(self.image_to_extract, row, col, t_on_two)
+		oversized_hww = np.ceil(float(output_patch_width)/np.sqrt(2.0)) + 2
+		oversized_patch = self.extract_aligned_patch(self.image_to_extract, row, col, oversized_hww)
 
-		'''Rotating the subpatch'''
+		'''Rotating the oversized patch'''
 		
-		# this is half the size of the patch
-		patch_centre = (float(t_on_two) + 0.5, float(t_on_two) + 0.5)
+		# this is the centre coordinates of the patch
+		oversized_patch_centre = (float(oversized_hww) + 0.5, float(oversized_hww) + 0.5)
 
 		scale_factor = 1
-		M = cv2.getRotationMatrix2D(patch_centre, angle, scale_factor)
-		rotated_patch = cv2.warpAffine(temp_patch, M, temp_patch.shape, flags=self.interp_method)
+		M = cv2.getRotationMatrix2D(oversized_patch_centre, angle, scale_factor)
+		rotated_patch = cv2.warpAffine(oversized_patch, M, oversized_patch.shape, flags=self.interp_method)
 
 		'''Extracting the middle of this rotated patch'''
-		p_centre = int(float(temp_patch.shape[0]) / 2)
-		final_patch = self.extract_aligned_patch(rotated_patch, p_centre, p_centre, self.output_patch_hww)
+		final_patch = self.extract_aligned_patch(rotated_patch, oversized_hww, oversized_hww, self.output_patch_hww)
 
-		assert(final_patch.shape[0] == p_w)
-		assert(final_patch.shape[1] == p_w)
+		assert(final_patch.shape[0] == output_patch_width)
+		assert(final_patch.shape[1] == output_patch_width)
+
+		final_patch -= final_patch[self.output_patch_hww, self.output_patch_hww]
+		#print final_patch[self.output_patch_hww, self.output_patch_hww]
 
 		if False:
 			plt.subplot(2, 3, 1)
-			plt.imshow(temp_patch, interpolation='none')
+			plt.imshow(oversized_patch, interpolation='none')
 			plt.subplot(2, 3, 2)
 			plt.imshow(rotated_patch, interpolation='none')
 			plt.subplot(2, 3, 3)
@@ -104,12 +112,12 @@ class PatchEngine(object):
 
 		# replace each nan value with the nanmedian value of its neighbours 
 		for row, col in np.array(np.nonzero(nans_to_fill)).T:
-			bordering_vals = self.extract_aligned_patch(image_to_repair, row, col, 1)
+			bordering_vals = self.extract_aligned_patch(image_to_repair, row, col, 2)
 			image_to_repair[row, col] = scipy.stats.nanmedian(bordering_vals.flatten())
 
-		# ensure we have filled the mask completely 
-		# (TODO - may instead fill in remaining values with some shitty other value)
-		np.testing.assert_equal(~np.isnan(image_to_repair), desired_mask)
+		# values may be remaining. These will be filled in with zeros
+		remaining_nans_to_fill = np.logical_and(np.isnan(image_to_repair), desired_mask)
+		image_to_repair[remaining_nans_to_fill] = 0
 
 		return image_to_repair
 
@@ -161,9 +169,12 @@ class PatchEngine(object):
 		# extracting all the patches
 		patches = [self.extract_rotated_patch(index) for index in indices]
 
+		# subtracting the middle pixel
+		#patches = [patch - patch[self.output_patch_hww+1, self.output_patch_hww+1] for patch in patches]
+
 		# need to do some kind of flattening here and conversion to numpy
 		patch_array = np.array(patches).reshape((len(patches), -1))
-		print "Patch array is size : " + str(patch_array.shape)
+		#print "Patch array is size : " + str(patch_array.shape)
 		return patch_array
 
 
