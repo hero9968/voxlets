@@ -198,6 +198,7 @@ Depth images are a more complex beast than meshes and 2D images, and RGBD datase
 \paragraph{Super-resolution}
 Similar to mesh completion is super-resolution, \eg \cite{macaodha-eccv-2012}. 
 This, like our problem, is ill-posed and relies on the repeatability and predictability of the world in order to find suitable matches.
+A seminal paper in this field is \cite{freeman-ijcv-2000}, patches from generic training images are used in super-resolution for coarse-grained images. They use Bayesian belief propagation to find the maximum posterior probability over a Markov network defined over the image.
 
 \cite{chang-tor-2007} complete a robot's map of an environment using parts of the already observed world to  `patch in' missing areas of the current map.
 
@@ -265,6 +266,9 @@ Big issue with ground truth. Most papers don't have proper ground truth and ther
 \paragraph{Scene relighting}
 \cite{ikeda-acpr-2013} use an RGBD image to do scene relighting from a single image.
 On the other hand, \cite{xiao-cvpr-2014} use the RGBD information to automatically \textit{remove} hard and soft shadows from a single image.
+
+\paragraph{Training for scene completion}
+Long history of using training scenes to try to complete and upsample
 
 \paragraph{To add to related work:}
 \begin{itemize}
