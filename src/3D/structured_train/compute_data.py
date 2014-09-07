@@ -56,8 +56,12 @@ class DepthFeatureEngine(object):
 		self.hww = 7
 		self.indices = []
 
-		self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, patch_size=7)
+		self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
 		self.patch_extractor.compute_angles_image(self.frontrender)
+
+		self.spider_engine = patches.SpiderEngine(self.frontrender)
+		self.spider_engine.focal_length = 240.0/(np.tan(np.rad2deg(43.0/2.0))) / 2.0
+		self.spider_engine.angles_image = self.patch_extractor.angles
 
 	def load_frontrender(self, modelname, view_idx):
 		fullpath = base_path + 'renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
@@ -189,7 +193,8 @@ class DepthFeatureEngine(object):
 		#print "SI = " + str(self.indices.shape)
 		#print "S"
 
-		self.spider_features = [self.calc_spider_features(index) for index in self.indices]
+		#self.spider_features = [self.calc_spider_features(index) for index in self.indices]
+		self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
 		#self.patch_features = [self.calc_patch_feature(self.frontrender, index) for index in self.indices]
 		self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
 		#[self.calc_patch_feature(self.frontrender, index) for index in self.indices]
@@ -322,10 +327,7 @@ if __name__ == '__main__':
 # depths = np.array(depths).reshape(number_views*samples_per_image, 1)
 # indices = np.array(indices).reshape(number_views*samples_per_image, 2)
 
-
-
 # # now write the fulldict to a suitable mat file...
 #fileout = base_path + 'features/' + modelname + '.mat'
 #scipy.io.savemat('temp.mat', dict(features=features, depths=depths, indices=indices))
 #scipy.io.savemat('temp.mat', fulldict)
-

@@ -17,13 +17,13 @@ import matplotlib as mpl
 
 class PatchEngine(object):
 
-	def __init__(self, output_patch_hww, patch_size, fixed_patch_size=True, interp_method=cv2.INTER_CUBIC):
+	def __init__(self, output_patch_hww, input_patch_hww, fixed_patch_size=True, interp_method=cv2.INTER_CUBIC):
 
 		# the hww of the OUTPUT patches
 		self.output_patch_hww = output_patch_hww 
 
 		# dimension of side of patch in real world 3D coordinates
-		self.patch_size = patch_size 
+		self.input_patch_hww = input_patch_hww
 
 		# if fixed_patch_size is True:
 		#	patch is always patch_sizexpatch_size in input image pixels
@@ -35,12 +35,34 @@ class PatchEngine(object):
 		# how does the interpolation get done when rotating patch
 		self.interp_method = interp_method
 
+	def negative_part(self, num_in):
+		return [0 if num_in >= 0 else np.abs(num_in)]
 
-	def extract_aligned_patch(self, img_in, row, col, hww):
-		row = int(row)
-		col = int(col)
-		hww = int(hww)
-		return np.copy(img_in[row-hww:row+hww+1,col-hww:col+hww+1])
+	def extract_aligned_patch(self, img_in, row, col, hww, pad_value=[]):
+		top = int(row - hww)
+		bottom = int(row + hww + 1)
+		left = int(col - hww)
+		right = int(col + hww + 1)
+
+		im_patch = img_in[top:bottom, left:right]
+
+		if top < 0 or left < 0 or bottom >= img_in.shape[0] or right >= img_in.shape[1]:
+
+			if not pad_value:
+				raise Exception("Patch out of range and no pad value specified")
+
+			pad_left = self.negative_part(left)
+			pad_top = self.negative_part(top)
+			pad_right = self.negative_part(img_in.shape[1] - right)
+			pad_bottom = self.negative_part(img_in.shape[0] - bottom)
+
+			im_patch = np.pad(im_patch, ((pad_top, pad_bottom), (pad_left, pad_right)),
+								mode='constant', constant_values=pad_value)
+
+		assert(im_patch.shape[0] == 2*hww+1)
+		assert(im_patch.shape[1] == 2*hww+1)
+
+		return np.copy(im_patch)
 
 
 	def extract_rotated_patch(self, index, angle=-1):
@@ -57,28 +79,46 @@ class PatchEngine(object):
 		assert(~np.isnan(angle))
 		depth = self.depth_image[row, col]
 
+		if self.fixed_patch_size:
+			input_patch_hww = self.input_patch_hww
+		else:
+			input_patch_hww = int(float(self.input_patch_hww) * depth)
+			#print depth, self.input_patch_hww, input_patch_hww
+
+
+		# scale factor is how much to stretch the input patch by 
+		scale_factor = float(self.output_patch_hww) / float(input_patch_hww)
+
 		'''Getting the oversized patch'''
-		# total width of the output patch in input image pixels
-		output_patch_width = 2*self.output_patch_hww+1
 
 		# hww of the initial patch to extract - must ensure it is big enough to be rotated then downsized
-		oversized_hww = np.ceil(float(output_patch_width)/np.sqrt(2.0)) + 2
-		oversized_patch = self.extract_aligned_patch(self.image_to_extract, row, col, oversized_hww)
+		oversized_hww = int(np.sqrt(2.0) * input_patch_hww + 3)
+		oversized_patch = self.extract_aligned_patch(self.image_to_extract, row, col, oversized_hww, pad_value=np.nan)
+		#print oversized_patch.shape
 
 		'''Rotating the oversized patch'''
 		
 		# this is the centre coordinates of the patch
 		oversized_patch_centre = (float(oversized_hww) + 0.5, float(oversized_hww) + 0.5)
 
-		scale_factor = 1
 		M = cv2.getRotationMatrix2D(oversized_patch_centre, angle, scale_factor)
-		rotated_patch = cv2.warpAffine(oversized_patch, M, oversized_patch.shape, flags=self.interp_method)
+		try:
+			rotated_patch = cv2.warpAffine(oversized_patch, M, oversized_patch.shape, flags=self.interp_method)
+		except:
+			print "o_hww = " + str(oversized_hww)
+			print "depth = " + str(depth)
+			print row,col
+			print self.image_to_extract[row, col]
+			print oversized_patch
+			print M
+			print oversized_patch.shape
+			raise Exception("Cannot do the rotation")			
 
 		'''Extracting the middle of this rotated patch'''
 		final_patch = self.extract_aligned_patch(rotated_patch, oversized_hww, oversized_hww, self.output_patch_hww)
 
-		assert(final_patch.shape[0] == output_patch_width)
-		assert(final_patch.shape[1] == output_patch_width)
+		assert(final_patch.shape[0] == 2*self.output_patch_hww+1)
+		assert(final_patch.shape[1] == 2*self.output_patch_hww+1)
 
 		final_patch -= final_patch[self.output_patch_hww, self.output_patch_hww]
 		#print final_patch[self.output_patch_hww, self.output_patch_hww]
@@ -218,8 +258,8 @@ class PatchPlot(object):
 		plots the patches on the image
 		'''
 
-		if ~isinstance(scales, Number):
-			scales = [scales for index in indices]
+		if isinstance(scales, Number):
+			scales = [scales * self.image[index[0], index[1]] for index in indices]
 
 		plt.hold(True)
 
@@ -228,6 +268,204 @@ class PatchPlot(object):
 
 		plt.hold(False)
 		plt.show()
+
+
+
+
+class SpiderEngine(object):
+	'''
+	Engine for computing the spider (compass) features
+	'''
+
+	def __init__(self, depthimage, edge_threshold=5, distance_measure='geodesic'):
+
+		self.edge_threshold = edge_threshold
+
+		self.dilation_parameter = 1
+		self.set_depth_image(depthimage)
+
+		# this should be 'geodesic', 'perpendicular' or 'pixels'
+		self.distance_measure = distance_measure
+
+
+	def set_depth_image(self, depthimage):
+		'''
+		saves the depth image, also comptues the edges and sets up
+		the dictionary
+		'''
+		self.depthimage = depthimage
+		self.compute_depth_edges()
+		self.dilate_depth_edges(self.dilation_parameter)
+
+	def dilate_depth_edges(self, dilation_size):
+		'''
+		Dilates the depth image.
+		This is important to ensure the spider lines definitely 
+		touch the edge
+		'''
+		kernel = np.ones((dilation_size, dilation_size),np.uint8)
+		self.depthimage = cv2.dilate(self.depthimage, kernel, iterations=1)
+
+	def compute_depth_edges(self):
+		'''
+		sets and returns the edges of a depth image. 
+		Not good for noisy images!
+		'''
+		# convert nans to 0
+		local_depthimage = np.copy(self.depthimage)
+		local_depthimage[np.isnan(local_depthimage)] = 0
+
+		# get the gradient and threshold
+		dx,dy = np.gradient(local_depthimage, 1)
+		self.edge_image = np.array(np.sqrt(dx**2 + dy**2) > 0.1)
+
+		return self.edge_image
+
+	def line(self, start_point, angle):
+		'''
+		Bresenham's line algorithm
+		(Adapted from the internet)
+		Uses Yield for efficiency, as we probably don't need to generate 
+		all the points along the line!
+		Additionally returns the stepsize between the previous and current
+		point. This is useful for computing a geodesic distance
+		'''
+		MAX_POINT = 10000 # to prevent infinite loops...
+
+		x0, y0 = start_point
+		x, y = x0, y0
+		stepsize = 0 # squared size of step between previous point and current point
+
+		dx = int(abs(1000 * np.cos(angle)))
+		dy = int(abs(1000 * np.sin(angle)))
+
+		sx = -1 if np.cos(angle) < 0 else 1
+		sy = -1 if np.sin(angle) < 0 else 1
+
+		if dx > dy:
+			err = dx / 2 # changed 2.0 to 2
+			while abs(x) != MAX_POINT:
+				yield (x, y)
+				err -= dy
+				if err < 0:
+					y += sy
+					err += dx
+				x += sx
+			else:
+				raise Exception("Exceeded maximum point...")
+
+		else:
+			err = dy / 2 # changes 2.0 to 2
+			while abs(y) != MAX_POINT:
+				yield (x, y)
+				err -= dx
+				if err < 0:
+					x += sx
+					err += dy
+				y += sy
+			else:
+				raise Exception("Exceeded maximum point...")
+
+		yield (x, y)
+		
+
+	def distance_2d(self, p1, p2):
+		'''
+		Euclidean distance between two points in 2d
+		'''
+		return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+
+	def distance_3d(self, p1, p2):
+		'''
+		Euclidean distance between two points in 2d
+		'''
+		return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
+
+
+	def in_range(self, point_2d):
+		'''
+		returns true if point_2d (col, row) is inside the depth image, false Otherwise
+		'''
+		return point_2d[0] >= 0 and \
+				point_2d[1] >= 0 and \
+				point_2d[0] <= self.depthimage.shape[1] and \
+				point_2d[1] <= self.depthimage.shape[0]
+
+	def get_spider_distance(self, start_point, angle_deg):
+		'''
+		returns the distance to the nearest depth edge 
+		along the line with specified angle, starting at start_point
+
+		TODO - deal with edges of image - return some kind of -1 or nan...
+		'''
+		# get generator for all the points on the line
+		angle = np.deg2rad(angle_deg%360)
+		#print
+		line_points = self.line(start_point, angle)
+		
+		if self.distance_measure == 'pixels' or self.distance_measure == 'perpendicular':
+
+			# traverse line until we hit a point which is actually on the depth image
+			for idx,line_point in enumerate(line_points):
+				self.blank_im[line_point[1], line_point[0]] = 1
+				if self.edge_image[line_point[1], line_point[0]]:# or not self.in_range(line_point):
+					break
+
+			distance = self.distance_2d(start_point, line_point)
+
+			#if self.distance_measure == 'perpendicular':
+				#distance *= self.depthimage[line_point[1], line_point[0]]
+
+		elif self.distance_measure == 'geodesic':
+
+			# loop until we hit a point which is actually on the depth image
+			position_depths = [] # stores the x,y position and the depths of points along curve
+			for idx, line_point in enumerate(line_points):
+
+				#print "Doing pixel " + str(idx) + str(line_point)
+				self.blank_im[line_point[1], line_point[0]] = 1
+				end_of_line = self.edge_image[line_point[1], line_point[0]] or not self.in_range(line_point)
+
+				if (idx % 10) == 0 or end_of_line:
+					current_depth = self.depthimage[line_point[1], line_point[0]]
+					position_depths.append((line_point, current_depth))
+
+				if end_of_line:
+					break
+
+			# adding up the geodesic distance for all the points
+			distance = 0
+			p1 = self.project_3d_point(position_depths[0][0], position_depths[0][1])
+			for pos, depth in position_depths[1:]:
+				p0 = p1
+				p1 = self.project_3d_point(pos, depth)
+				distance += self.distance_3d(p0, p1)
+
+		return distance
+
+	def project_3d_point(self, position, depth):
+		'''
+		returns the 3d point at (x, y) point 'position' and
+		at depth 'depth'
+		'''
+		return [(position[0] - self.depthimage.shape[1]) * depth / self.focal_length,
+				(position[1] - self.depthimage.shape[0]) * depth / self.focal_length,
+				depth]
+
+	def compute_spider_feature(self, index):
+		'''
+		computes the spider feature for a given point with a given starting angle
+		'''
+
+		row, col = index
+		start_point = (col, row)
+		start_angle = self.angles_image[row, col]
+		self.blank_im = self.depthimage / 10.0
+		#self.blank_im[self.blank_im==0] = np.nan
+	
+		return [self.get_spider_distance(start_point,  start_angle + offset_angle)
+				for offset_angle in range(0, 360, 45)]
+
 
 
 
