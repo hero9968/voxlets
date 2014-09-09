@@ -12,6 +12,8 @@ CMakeLists.txt.user
 /src/3D/src/voxelisation/vdb_convert/vdb_convert.*
 /src/3D/src/voxelisation/vdb_convert/txt2vdb
 /src/3D/src/voxelisation/vdb_convert/vdb2txt
+/src/3D/structured_train/tests/
+/src/3D/structured_train/.ipynb_checkpoints/
 /src/tools/openvdb_tests/hellomake
 /src/tools/openvdb_tests/create
 /src/tools/openvdb_tests/yaml

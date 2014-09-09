@@ -182,7 +182,7 @@ class DepthFeatureEngine(object):
 		# getting the mask from the points
 		self.edge_image = self.compute_depth_edges(0.1)
 		if verbose:
- 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
+			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
 
 		#assert np.all(mask==extract_mask(backrender))
 		if not self.indices.shape:
@@ -262,13 +262,13 @@ def list_of_dicts_to_dict(list_of_dicts):
 	http://stackoverflow.com/questions/11450575/
 	how-do-i-convert-a-list-of-dictionaries-to-a-dictionary-of-lists-in-python
 	'''
- 	result = collections.defaultdict(list)
+	result = collections.defaultdict(list)
 
- 	for d in list_of_dicts:
- 		for k, v in d.items():
- 			result[k].append(v)
+	for d in list_of_dicts:
+		for k, v in d.items():
+			result[k].append(v)
 
- 	return result
+	return result
 
 
 
@@ -297,8 +297,8 @@ if __name__ == '__main__':
 		try:
 			dict_list = pool.map(compute_features, zipped_arguments)
 		except:
-		 	print "Failed!!"
-		 	continue
+			print "Failed!!"
+			continue
 		#dict_list = [compute_features(tt) for tt in zipped_arguments]
 
 		fulldict = list_of_dicts_to_dict(dict_list)
