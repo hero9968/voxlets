@@ -36,7 +36,7 @@ class PatchEngine(object):
 		self.interp_method = interp_method
 
 	def negative_part(self, num_in):
-		return [0 if num_in >= 0 else np.abs(num_in)]
+		return 0 if num_in >= 0 else int(np.abs(num_in))
 
 	def extract_aligned_patch(self, img_in, row, col, hww, pad_value=[]):
 		top = int(row - hww)
@@ -51,16 +51,28 @@ class PatchEngine(object):
 			if not pad_value:
 				raise Exception("Patch out of range and no pad value specified")
 
-			pad_left = self.negative_part(left)
-			pad_top = self.negative_part(top)
-			pad_right = self.negative_part(img_in.shape[1] - right)
-			pad_bottom = self.negative_part(img_in.shape[0] - bottom)
+			pad_left = int(self.negative_part(left))
+			pad_top = int(self.negative_part(top))
+			pad_right = int(self.negative_part(img_in.shape[1] - right))
+			pad_bottom = int(self.negative_part(img_in.shape[0] - bottom))
+			#print "1: " + str(im_patch.shape)
 
 			im_patch = np.pad(im_patch, ((pad_top, pad_bottom), (pad_left, pad_right)),
-								mode='constant', constant_values=pad_value)
+								mode='constant', constant_values=100)
+			#print "2: " + str(im_patch.shape)
+			im_patch[im_patch==100.0] =pad_value # hack as apparently can't use np.nan as constant value
 
-		assert(im_patch.shape[0] == 2*hww+1)
-		assert(im_patch.shape[1] == 2*hww+1)
+		if not (im_patch.shape[0] == 2*hww+1):
+			print im_patch.shape
+			print pad_left, pad_top, pad_right, pad_bottom
+			print left, top, right, bottom
+			im_patch = np.zeros((2*hww+1, 2*hww+1))
+		if not (im_patch.shape[1] == 2*hww+1):
+			print im_patch.shape
+			print pad_left, pad_top, pad_right, pad_bottom
+			print left, top, right, bottom
+			im_patch = np.zeros((2*hww+1, 2*hww+1))
+			#raise Exception("Bad shape!")
 
 		return np.copy(im_patch)
 
@@ -271,13 +283,73 @@ class PatchPlot(object):
 
 
 
+def bresenham_line(start_point, angle, distance):
+	'''
+	Bresenham's line algorithm
+	(Adapted from the internet)
+	Uses Yield for efficiency, as we probably don't need to generate 
+	all the points along the line!
+	Additionally returns the stepsize between the previous and current
+	point. This is useful for computing a geodesic distance
+	'''
+
+	x0, y0 = start_point
+	x, y = x0, y0
+	
+	dx = int(abs(1000 * np.cos(angle)))
+	dy = int(abs(1000 * np.sin(angle)))
+
+	sx = -1 if np.cos(angle) < 0 else 1
+	sy = -1 if np.sin(angle) < 0 else 1
+
+	line_points = []
+
+	if dx > dy:
+		err = dx / 2 # changed 2.0 to 2
+		while abs(x) != distance:
+			line_points.append((x, y))
+			err -= dy
+			if err < 0:
+				y += sy
+				err += dx
+			x += sx
+		#else:
+		#	raise Exception("Exceeded maximum point...")
+
+	else:
+		err = dy / 2 # changes 2.0 to 2
+		while abs(y) != distance:
+			line_points.append((x, y))
+			err -= dx
+			if err < 0:
+				x += sx
+				err += dy
+			y += sy
+		#else:
+	#		raise Exception("Exceeded maximum point...")
+
+	line_points.append((x, y))
+	return np.array(line_points)
+	
+
+'''
+computing all the pixels along all the angles
+'''
+max_point = 500
+all_angles = [bresenham_line((0, 0), angle, max_point)
+				for angle in range(360)]
+
+#print "All angles is len " + str(len(all_angles))
+print "All angles[0] is shape " + str(all_angles[0].shape)
+
+
 
 class SpiderEngine(object):
 	'''
 	Engine for computing the spider (compass) features
 	'''
 
-	def __init__(self, depthimage, edge_threshold=5, distance_measure='geodesic'):
+	def __init__(self, depthimage, edge_threshold=5, distance_measure='pixels'):
 
 		self.edge_threshold = edge_threshold
 
@@ -331,10 +403,9 @@ class SpiderEngine(object):
 		point. This is useful for computing a geodesic distance
 		'''
 		MAX_POINT = 10000 # to prevent infinite loops...
-
+		
 		x0, y0 = start_point
 		x, y = x0, y0
-		stepsize = 0 # squared size of step between previous point and current point
 
 		dx = int(abs(1000 * np.cos(angle)))
 		dy = int(abs(1000 * np.sin(angle)))
@@ -440,6 +511,9 @@ class SpiderEngine(object):
 				p0 = p1
 				p1 = self.project_3d_point(pos, depth)
 				distance += self.distance_3d(p0, p1)
+		else:
+			print "Unknown distance measure: " + self.distance_measure
+			raise Exception("No!")
 
 		return distance
 
@@ -464,8 +538,211 @@ class SpiderEngine(object):
 		#self.blank_im[self.blank_im==0] = np.nan
 	
 		return [self.get_spider_distance(start_point,  start_angle + offset_angle)
-				for offset_angle in range(0, 360, 45)]
+				for offset_angle in range(360, 0, -45)]
 
+
+
+
+class FastSpiderEngine(object):
+	'''
+	Engine for computing the spider (compass) features
+	'''
+
+	def __init__(self, depthimage, edge_threshold=5, distance_measure='geodesic'):
+
+		self.edge_threshold = edge_threshold
+
+		self.dilation_parameter = 2
+		self.set_depth_image(depthimage)
+
+		# this should be 'geodesic', 'perpendicular' or 'pixels'
+		self.distance_measure = distance_measure
+
+		self.rotate_depth_edges(angles=range(0, 45, 5))		
+
+
+	def set_depth_image(self, depthimage):
+		'''
+		saves the depth image, also comptues the edges and sets up
+		the dictionary
+		'''
+		self.depthimage = depthimage
+		self.compute_depth_edges()
+		self.dilate_depth_edges(self.dilation_parameter)
+
+	def dilate_depth_edges(self, dilation_size):
+		'''
+		Dilates the depth image.
+		This is important to ensure the spider lines definitely 
+		touch the edge
+		'''
+		kernel = np.ones((dilation_size, dilation_size),np.uint8)
+		self.edge_image = cv2.dilate(self.edge_image.astype(np.uint8), kernel, iterations=1)
+
+	def compute_depth_edges(self):
+		'''
+		sets and returns the edges of a depth image. 
+		Not good for noisy images!
+		'''
+		# convert nans to 0
+		local_depthimage = np.copy(self.depthimage)
+		local_depthimage[np.isnan(local_depthimage)] = 0
+
+		# get the gradient and threshold
+		dx,dy = np.gradient(local_depthimage, 1)
+		self.edge_image = np.array(np.sqrt(dx**2 + dy**2) > 0.1)
+
+		return self.edge_image
+
+
+	def rotate_depth_edges(self, angles):
+		'''rotates the computed depth image to the specified range of angles'''
+		im_centre = (float(self.depthimage.shape[1])/2, float(self.depthimage.shape[0])/2)
+		self.rotated_edges = []
+		self.transforms = []
+		for angle in angles:
+			M = cv2.getRotationMatrix2D(im_centre, angle, 1.0)
+			#print angle
+			#print M
+			out_shape = (self.edge_image.shape[1], self.edge_image.shape[0])
+			this_im = cv2.warpAffine(self.edge_image.astype(float), M, out_shape, flags=cv2.INTER_NEAREST)
+			self.rotated_edges.append(this_im)# - self.edge_image.astype(float)) 
+			self.transforms.append(M)
+		#self.rotated_images = rotated_images
+		self.angles = angles
+
+
+	def get_image_for_angle(self, angle_deg):
+		'''
+		returns the depth edges rotated to appropriate angle
+		'''
+
+
+		spiders = self.orthogonal_spider_features(transformed_image, )
+
+
+	def findfirst(self, array):
+		'''
+		Returns index of first non-zero element in numpy array
+		TODO - speed this up! Look on the internet for better
+		'''
+		#T = np.where(array>0)
+		T = array.nonzero()
+		if T[0].any():
+			return T[0][0]
+		else:
+			return np.nan
+
+	def orthogonal_spider_features(self, start_point, image):
+		'''
+		Computes the distance to the nearest non-zero edge in each compass direction
+		'''
+		# extracting vectors along each compass direction
+		index = [start_point[1], start_point[0]]
+		compass = []
+
+		compass.append(image[index[0], index[1]+1:]) # E
+		compass.append(np.diag(np.flipud(image[:index[0]+1, index[1]+1:]))) # NE
+		compass.append(image[index[0]:0:-1, index[1]]) # N 
+		compass.append(np.diag(np.flipud(np.fliplr(image[:index[0], :index[1]])))) # NW
+		compass.append(image[index[0], index[1]:0:-1]) # W
+		compass.append(np.diag(np.fliplr(image[index[0]+1:, :index[1]]))) # SW
+		compass.append(image[index[0]+1:, index[1]]) # S
+		compass.append(np.diag(image[index[0]+1:, index[1]+1:])) # SE
+
+		spider = [self.findfirst(vec) for vec in compass]
+
+		# diagnonals need extending...
+		sqrt_2 = np.sqrt(2.0)
+		for idx in [1, 3, 5, 7]:
+			spider[idx] *= sqrt_2
+
+		return spider, compass
+
+
+	def distance_3d(self, p1, p2):
+		'''
+		Euclidean distance between two points in 2d
+		'''
+		return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
+
+	def project_3d_point(self, position, depth):
+		'''
+		returns the 3d point at (x, y) point 'position' and
+		at depth 'depth'
+		'''
+		return [(position[0] - self.depthimage.shape[1]) * depth / self.focal_length,
+				(position[1] - self.depthimage.shape[0]) * depth / self.focal_length,
+				depth]
+
+	def compute_spider_feature(self, index):
+		'''
+		computes the spider feature for a given point with a given starting angle
+		'''
+		'''
+		So: 
+		multiple_of_45 is just the amount to circular shift the spider feature
+		image_angle_idx is the image to extract the spider feature from
+		error is to be ignored. This is just the difference between this and the 'true' spider feature
+		'''
+		row, col = index
+		start_point = [col, row]
+		start_angle = self.angles_image[row, col] % 360
+		self.blank_im = self.depthimage / 10.0
+		#self.blank_im[self.blank_im==0] = np.nan
+
+		# start angle is composed of multiple_of_45 * 45 + image_angle + error
+		multiple_of_45 = int(start_angle) / 45
+		image_angle = start_angle - multiple_of_45 * 45
+		image_angle_idx = int(image_angle / 5)
+		error = start_angle - multiple_of_45 * 45 - image_angle_idx * 5
+		#print start_angle, multiple_of_45, image_angle, image_angle_idx, error
+
+		# select the appropriately roated image and the associated transform
+		this_edge_image = self.rotated_edges[image_angle_idx]
+		this_transform = self.transforms[image_angle_idx]
+
+		# rotate the index point to the appropriate place on this image
+		start_point.append(1)
+		rot_start = np.dot(this_transform, np.array(start_point).T)
+		rot_start = rot_start.astype(int)
+
+		# compute the compass features from this image
+		spider, compass = self.orthogonal_spider_features(rot_start, this_edge_image)
+
+		if False:
+			# here construct the image 
+			self.im_orth = np.copy(self.edge_image)
+			self.im_orth[row, col] = 1
+
+			self.im_rot = np.copy(this_edge_image)
+			self.im_rot[rot_start[1], rot_start[0]] = 1
+
+			plt.subplot(121)
+			plt.imshow(self.im_rot)
+			plt.hold(True)
+			count = 8
+			for spid, angle_deg in zip(spider, range(0, 360, 45)):
+				colo = 'g-' if multiple_of_45==count else 'r-'
+				#print colo
+				count-=1
+				plt.plot((rot_start[0], rot_start[0] + np.cos(np.deg2rad(-angle_deg)) * float(spid)),
+						 (rot_start[1], rot_start[1] + np.sin(np.deg2rad(-angle_deg)) * float(spid)), colo)
+			plt.hold(False)
+
+			plt.subplot(122)
+			plt.imshow(self.im_orth)
+			plt.hold(True)
+			plt.plot((col, col + 50.0*np.cos(np.deg2rad(start_angle))),
+					(row, row + 50.0*np.sin(np.deg2rad(start_angle))),'r-')
+			plt.hold(False)
+
+			plt.show()
+
+		# circularly rotate the spider features
+		spider = np.roll(spider, multiple_of_45)
+		#print spider
+		return spider
 
 
 
@@ -481,7 +758,7 @@ if __name__ == '__main__':
 	import loadsave
 	obj_list = loadsave.load_object_names('all')
 	modelname = obj_list[3]
-	view_idx = 17
+	view_idx = 2
 	frontrender = loadsave.load_frontrender(modelname, view_idx)
 
 	# setting up patch engine for computation of angles
@@ -490,15 +767,20 @@ if __name__ == '__main__':
 
 	# sampling indices from the image
 	indices = np.array(np.nonzero(~np.isnan(frontrender))).transpose()
-	samples = np.random.randint(0, indices.shape[0], 100)
+	samples = np.random.randint(0, indices.shape[0], 20)
 	indices = indices[samples, :]
 
 	angles = [patch_engine.angles[index[0], index[1]] for index in indices]
+	depths = [patch_engine.depth_image[index[0], index[1]] for index in indices]
+	print depths
+
+	scales = (10*np.array(depths)).astype(int)
+	print scales
 
 	# 
 	patch_plotter = PatchPlot()
 	patch_plotter.set_image(frontrender)
-	patch_plotter.plot_patches(indices, angles, scales=10)
+	patch_plotter.plot_patches(indices, angles, scales=scales)
 
 
 	# def remove_nans(inputs):
