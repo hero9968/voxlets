@@ -11,7 +11,14 @@ import patches
 import socket
 
 number_views = 42 # how many rendered views there are of each object
-base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
+
+# in an ideal world we wouldn't have this hardcoded path, but life is too short to do it properly
+host_name = socket.gethostname()
+if host_name == 'mfirman.cs.ucl.ac.uk':
+	base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
+elif host_name == 'troll':
+	base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
+
 models_list = base_path + 'databaseFull/fields/models.txt'
 
 
@@ -34,12 +41,6 @@ class DepthFeatureEngine(object):
 	# modelname = [] # the name of this movel
 	# view_idx = [] # integer view idx
 
-	# in an ideal world we wouldn't have this hardcoded path, but life is too short to do it properly
-	host_name = socket.gethostname()
-	if host_name == 'mfirman.cs.ucl.ac.uk':
-		base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
-	elif host_name == 'troll':
-		base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
 
 	def __init__(self, modelname, view_idx):
 		self.modelname = modelname
