@@ -8,8 +8,10 @@ Patches should be able to vary to be constant-size in real-world coordinates
 
 import numpy as np
 import scipy.stats
+import scipy.io
 import cv2
 from numbers import Number
+
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -164,7 +166,7 @@ class PatchEngine(object):
 
 		# replace each nan value with the nanmedian value of its neighbours 
 		for row, col in np.array(np.nonzero(nans_to_fill)).T:
-			bordering_vals = self.extract_aligned_patch(image_to_repair, row, col, 2)
+			bordering_vals = self.extract_aligned_patch(image_to_repair, row, col, 2, np.nan)
 			image_to_repair[row, col] = scipy.stats.nanmedian(bordering_vals.flatten())
 
 		# values may be remaining. These will be filled in with zeros
@@ -183,21 +185,31 @@ class PatchEngine(object):
 		'''
 		Ix = cv2.Sobel(depth_image, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
 		Iy = cv2.Sobel(depth_image, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
+		#Ix1 = np.copy(Ix)
+		#Iy1 = np.copy(Iy)
 
 		# here recover values for Ix and Iy, so they have same non-nan locations as depth image
-		mask = ~np.isnan(depth_image)
+		mask = 1-np.isnan(depth_image).astype(int)
+		#scipy.io.savemat("output2.mat", dict(mask=mask, render=depth_image))
+		#raise Exception("Break")
 
 		Ix = self.fill_in_nans(Ix, mask)
 		Iy = self.fill_in_nans(Iy, mask)
 
 		self.angles = np.rad2deg(np.arctan2(Iy, Ix))
+
 		mask_angles = np.logical_and(mask, np.isnan(self.angles))
 		self.angles[mask_angles] = 0
-		
+		self.angles[mask==0] = np.nan
+
+		angle_notnan = (~np.isnan(self.angles)).astype(int)
+
 		try:
-			np.testing.assert_equal(mask, ~np.isnan(self.angles))
+			np.testing.assert_equal(mask, angle_notnan)
 		except:
 			print np.sum(mask - ~np.isnan(self.angles))
+			#import pdb; pdb.set_trace()
+			#scipy.io.savemat("output.mat", dict(mask=mask, angles=self.angles, render=depth_image, Ix=Ix1, Iy=Iy1))
 
 		self.depth_image = depth_image
 
