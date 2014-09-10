@@ -55,7 +55,7 @@ class DepthFeatureEngine(object):
 		self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
 		self.patch_extractor.compute_angles_image(self.frontrender)
 
-		self.spider_engine = patches.FastSpiderEngine(self.frontrender)
+		self.spider_engine = patches.SpiderEngine(self.frontrender, distance_measure='geodesic')
 		self.spider_engine.focal_length = 240.0/(np.tan(np.rad2deg(43.0/2.0))) / 2.0
 		self.spider_engine.angles_image = self.patch_extractor.angles
 
@@ -190,54 +190,72 @@ def list_of_dicts_to_dict(list_of_dicts):
 
 	return result
 
-
+host_name = socket.gethostname()
+if host_name == 'troll':
+	saving = True
+	redo_if_exist = False # i.e. overwrite
+	just_one = False
+	multicore = True
+elif hostname == 'mfirman.cs.ucl.ac.uk':
+	saving = False
+	redo_if_exist = True # i.e. overwrite
+	just_one = True
+	multicore = False
 
 if __name__ == '__main__':
 
-	host_name = socket.gethostname()
-	if host_name == 'mfirman.cs.ucl.ac.uk':
-		pool = Pool(processes=2)
-	elif host_name == 'troll':
-		pool = Pool(processes=8)
+	if multicore:
+		
+		if host_name == 'mfirman.cs.ucl.ac.uk':
+			pool = Pool(processes=2)
+		elif host_name == 'troll':
+			pool = Pool(processes=8)
 
 	f = open(models_list, 'r')
 
 	for idx, line in enumerate(f):
 
-		modelname = line.strip()
+		modelname = '25dd6051429b804430a87f4918e4b66'#line.strip()
 		fileout = base_path + 'structured/features/' + modelname + '.mat'
 
-		if os.path.isfile(fileout): 
-			temp = scipy.io.loadmat(fileout)['depths']
-			if len(temp) == number_views * samples_per_image:
-				print "Continuing model " + modelname
-				continue
+		if not redo_if_exist:
+			if os.path.isfile(fileout): 
+				temp = scipy.io.loadmat(fileout)['depths']
+				if len(temp) == number_views * samples_per_image:
+					print "Continuing model " + modelname
+					continue
 
 		print "Doing model " + modelname
 
 		tic = timeit.default_timer()
 
 		zipped_arguments = itertools.izip(itertools.repeat(modelname), range(number_views))
-		try:
-			dict_list = pool.map(compute_features, zipped_arguments)
-			#dict_list = [compute_features(tt) for tt in zipped_arguments]
-		except:
-			print "Failed!!"
-			continue
+
+		if multicore:
+			try:
+				dict_list = pool.map(compute_features, zipped_arguments)
+			except:
+				print "Failed!!"
+				continue
+		else:
+			dict_list = [compute_features(tt) for tt in zipped_arguments]
 
 		fulldict = list_of_dicts_to_dict(dict_list)
 
 		# reshaping the outputs to the corrct size
 		for k, v in fulldict.items():
-			#print np.array(v).shape
 			fulldict[k] = np.array(v).reshape(number_views*samples_per_image, -1)
 
 		# saving to file
-		
-		scipy.io.savemat(fileout, fulldict)
+		if saving:
+			scipy.io.savemat(fileout, fulldict)
+		else:
+			print "WARNING: Not saving"
 
 		print 'Done ' + str(idx) + ' in ' + str(timeit.default_timer() - tic)
-		#break
+
+		if just_one:
+			break
 		
 	f.close()
 

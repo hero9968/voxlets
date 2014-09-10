@@ -369,7 +369,7 @@ class SpiderEngine(object):
 	Engine for computing the spider (compass) features
 	'''
 
-	def __init__(self, depthimage, edge_threshold=5, distance_measure='pixels'):
+	def __init__(self, depthimage, edge_threshold=5, distance_measure='geodesic'):
 
 		self.edge_threshold = edge_threshold
 
