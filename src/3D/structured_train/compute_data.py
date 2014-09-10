@@ -215,7 +215,7 @@ if __name__ == '__main__':
 
 	for idx, line in enumerate(f):
 
-		modelname = '25dd6051429b804430a87f4918e4b66'#line.strip()
+		modelname = line.strip()
 		fileout = base_path + 'structured/features/' + modelname + '.mat'
 
 		if not redo_if_exist:
