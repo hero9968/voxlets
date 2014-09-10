@@ -8,20 +8,11 @@ from multiprocessing import Pool
 import itertools
 import timeit
 import patches
+import socket
 
 number_views = 42 # how many rendered views there are of each object
 base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
 models_list = base_path + 'databaseFull/fields/models.txt'
-
-def findfirst(array):
-	'''
-	Returns index of first non-zero element in numpy array
-	'''
-	T = np.where(array>0)
-	if T[0].any():
-		return T[0][0]
-	else:
-		return np.nan
 
 
 class DepthFeatureEngine(object):
@@ -44,7 +35,11 @@ class DepthFeatureEngine(object):
 	# view_idx = [] # integer view idx
 
 	# in an ideal world we wouldn't have this hardcoded path, but life is too short to do it properly
-	base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
+	host_name = socket.gethostname()
+	if host_name == 'mfirman.cs.ucl.ac.uk':
+		base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
+	elif host_name == 'troll':
+		base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
 
 	def __init__(self, modelname, view_idx):
 		self.modelname = modelname
@@ -59,7 +54,7 @@ class DepthFeatureEngine(object):
 		self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
 		self.patch_extractor.compute_angles_image(self.frontrender)
 
-		self.spider_engine = patches.SpiderEngine(self.frontrender)
+		self.spider_engine = patches.FastSpiderEngine(self.frontrender)
 		self.spider_engine.focal_length = 240.0/(np.tan(np.rad2deg(43.0/2.0))) / 2.0
 		self.spider_engine.angles_image = self.patch_extractor.angles
 
@@ -71,21 +66,7 @@ class DepthFeatureEngine(object):
 	def load_backrender(self, modelname, view_idx):
 		fullpath = base_path + 'render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
 		backrender = scipy.io.loadmat(fullpath)['depth']
-
-		# hacking the backrender to insert nans...
-		t = np.nonzero(np.abs(backrender-0.1) < 0.0001)
-		backrender[t[0], t[1]] = np.nan
-
 		return backrender
-
-	def extract_patch(self, image, x, y, hww):
-		return np.copy(image[x-hww:x+hww+1,y-hww:y+hww+1])
-
-	def calc_patch_feature(self, depth_image, index):
-		patch = self.extract_patch(depth_image, index[0], index[1], self.hww)
-		patch_feature = (patch - depth_image[index[0], index[1]]).flatten()
-		# feature = np.concatenate(patch, spider)
-		return patch_feature
 
 	def extract_mask(self, render):
 		mask = ~np.isnan(render)
@@ -133,54 +114,10 @@ class DepthFeatureEngine(object):
 		'''
 		return self.backrender[index[0], index[1]] - self.frontrender[index[0], index[1]]
 
-	def compute_depth_edges(self, threshold):
-		'''
-		Finds the edges of a depth image. Not for noisy images!
-		'''
-		# convert nans to 0
-		local_depthimage = np.copy(self.frontrender)
-		#print self.frontrender
-		t = np.nonzero(np.isnan(local_depthimage))
-		#print t
-		local_depthimage[t[0], t[1]] = 0
-
-		# get the gradient and threshold
-		dx,dy = np.gradient(local_depthimage, 1)
-		edge_image = np.array(np.sqrt(dx**2 + dy**2) > 0.1)
-
-		#plt.imshow(edge_image)
-		#plt.show() # actually, don't show, just save to foo.png
-		return edge_image
-
-
-	def calc_spider_features(self, index):
-		'''
-		Computes the distance to the nearest non-zero edge in each compass direction
-		'''
-		# extracting vectors along each compass direction
-		compass = []
-		compass.append(self.edge_image[index[0]:0:-1, index[1]]) # N
-		compass.append(self.edge_image[index[0]+1:, index[1]]) # S
-		compass.append(self.edge_image[index[0], index[1]+1:]) # E
-		compass.append(self.edge_image[index[0], index[1]:0:-1]) # W
-		compass.append(np.diag(np.flipud(self.edge_image[:index[0]+1, index[1]+1:]))) # NE
-		compass.append(np.diag(self.edge_image[index[0]+1:, index[1]+1:])) # SE
-		compass.append(np.diag(np.fliplr(self.edge_image[index[0]+1:, :index[1]]))) # SW
-		compass.append(np.diag(np.flipud(np.fliplr(self.edge_image[:index[0], :index[1]])))) # NW
-
-		spider = [findfirst(vec) for vec in compass]
-		return spider
 
 	def compute_features_and_depths(self, verbose=False):
 
-		#load_frontrender(modelname, view_idx)
-		#load_backrender(modelname, view_idx)
-
-		#compute_depth_edges(0.1)
-		#scipy.io.savemat('de.mat', dict(edgeimage=edgeimage))
-
 		# getting the mask from the points
-		self.edge_image = self.compute_depth_edges(0.1)
 		if verbose:
 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
 
@@ -189,15 +126,8 @@ class DepthFeatureEngine(object):
 			raise Exception("No indices have been set - cannot compute features!")
 
 		# sample pairs of coordinates
-		#indices = self.sample_from_mask(self.samples_per_image, self.hww)
-		#print "SI = " + str(self.indices.shape)
-		#print "S"
-
-		#self.spider_features = [self.calc_spider_features(index) for index in self.indices]
 		self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
-		#self.patch_features = [self.calc_patch_feature(self.frontrender, index) for index in self.indices]
 		self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
-		#[self.calc_patch_feature(self.frontrender, index) for index in self.indices]
 		self.depth_diffs = [self.depth_difference(index) for index in self.indices]
 		self.depths = [self.frontrender[index[0], index[1]] for index in self.indices]
 		self.views = [self.view_idx for index in self.indices]
@@ -230,17 +160,6 @@ class DepthFeatureEngine(object):
 		else:
 			plt.show()
 
-	def plot_edges(self, filename=[]):
-		'''
-		plot the edge image and the index point to a file
-		(Probably remove this function pretty soon, it doens't really do anything...)
-		'''
-		plt.imshow(edgeimage)
-		if filename:
-			plt.savefig(filename)
-		else:
-			plt.show()
-
 
 #features, depths, indices = zip(*(features_and_depths(modelname, view+1) 
 						#for view in range(number_views)))
@@ -251,7 +170,7 @@ def compute_features(modelname_and_view):
 	'''
 	helper function to deal with the two-way problem
 	'''
-	engine = depth_feature_engine(modelname_and_view[0], modelname_and_view[1]+1)
+	engine = DepthFeatureEngine(modelname_and_view[0], modelname_and_view[1]+1)
 	engine.sample_from_mask(samples_per_image)
 	engine.compute_features_and_depths()
 	return engine.features_and_depths_as_dict()
@@ -274,7 +193,11 @@ def list_of_dicts_to_dict(list_of_dicts):
 
 if __name__ == '__main__':
 
-	pool = Pool(processes=4)              # start 4 worker processes
+	host_name = socket.gethostname()
+	if host_name == 'mfirman.cs.ucl.ac.uk':
+		pool = Pool(processes=2)
+	elif host_name == 'troll':
+		pool = Pool(processes=8)
 
 	f = open(models_list, 'r')
 
@@ -284,10 +207,10 @@ if __name__ == '__main__':
 		fileout = base_path + 'structured/features/' + modelname + '.mat'
 
 		if os.path.isfile(fileout): 
-			#temp = scipy.io.loadmat(fileout)['depths']
-			#if len(temp) == number_views * samples_per_image:
-			print "Continuing model " + modelname
-			continue
+			temp = scipy.io.loadmat(fileout)['depths']
+			if len(temp) == number_views * samples_per_image:
+				print "Continuing model " + modelname
+				continue
 
 		print "Doing model " + modelname
 
@@ -296,16 +219,16 @@ if __name__ == '__main__':
 		zipped_arguments = itertools.izip(itertools.repeat(modelname), range(number_views))
 		try:
 			dict_list = pool.map(compute_features, zipped_arguments)
+			#dict_list = [compute_features(tt) for tt in zipped_arguments]
 		except:
 			print "Failed!!"
 			continue
-		#dict_list = [compute_features(tt) for tt in zipped_arguments]
 
 		fulldict = list_of_dicts_to_dict(dict_list)
 
 		# reshaping the outputs to the corrct size
 		for k, v in fulldict.items():
-			print np.array(v).shape
+			#print np.array(v).shape
 			fulldict[k] = np.array(v).reshape(number_views*samples_per_image, -1)
 
 		# saving to file

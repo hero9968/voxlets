@@ -186,11 +186,19 @@ class PatchEngine(object):
 
 		# here recover values for Ix and Iy, so they have same non-nan locations as depth image
 		mask = ~np.isnan(depth_image)
+
 		Ix = self.fill_in_nans(Ix, mask)
 		Iy = self.fill_in_nans(Iy, mask)
 
 		self.angles = np.rad2deg(np.arctan2(Iy, Ix))
-		np.testing.assert_equal(mask, ~np.isnan(self.angles))
+		mask_angles = np.logical_and(mask, np.isnan(self.angles))
+		self.angles[mask_angles] = 0
+		
+		try:
+			np.testing.assert_equal(mask, ~np.isnan(self.angles))
+		except:
+			print np.sum(mask - ~np.isnan(self.angles))
+
 		self.depth_image = depth_image
 
 		return self.angles
@@ -335,12 +343,12 @@ def bresenham_line(start_point, angle, distance):
 '''
 computing all the pixels along all the angles
 '''
-max_point = 500
-all_angles = [bresenham_line((0, 0), angle, max_point)
-				for angle in range(360)]
+#max_point = 500
+#all_angles = [bresenham_line((0, 0), angle, max_point)
+#				for angle in range(360)]
 
 #print "All angles is len " + str(len(all_angles))
-print "All angles[0] is shape " + str(all_angles[0].shape)
+#print "All angles[0] is shape " + str(all_angles[0].shape)
 
 
 
@@ -484,8 +492,8 @@ class SpiderEngine(object):
 
 			distance = self.distance_2d(start_point, line_point)
 
-			#if self.distance_measure == 'perpendicular':
-				#distance *= self.depthimage[line_point[1], line_point[0]]
+			if self.distance_measure == 'perpendicular':
+				distance *= self.depthimage[line_point[1], line_point[0]]
 
 		elif self.distance_measure == 'geodesic':
 
@@ -548,7 +556,7 @@ class FastSpiderEngine(object):
 	Engine for computing the spider (compass) features
 	'''
 
-	def __init__(self, depthimage, edge_threshold=5, distance_measure='geodesic'):
+	def __init__(self, depthimage, edge_threshold=5, distance_measure='perpendicular'):
 
 		self.edge_threshold = edge_threshold
 
@@ -568,15 +576,15 @@ class FastSpiderEngine(object):
 		'''
 		self.depthimage = depthimage
 		self.compute_depth_edges()
-		self.dilate_depth_edges(self.dilation_parameter)
+		self.dilate_depth_edges()
 
-	def dilate_depth_edges(self, dilation_size):
+	def dilate_depth_edges(self):
 		'''
 		Dilates the depth image.
 		This is important to ensure the spider lines definitely 
 		touch the edge
 		'''
-		kernel = np.ones((dilation_size, dilation_size),np.uint8)
+		kernel = np.ones((self.dilation_parameter, self.dilation_parameter),np.uint8)
 		self.edge_image = cv2.dilate(self.edge_image.astype(np.uint8), kernel, iterations=1)
 
 	def compute_depth_edges(self):
@@ -611,16 +619,6 @@ class FastSpiderEngine(object):
 		#self.rotated_images = rotated_images
 		self.angles = angles
 
-
-	def get_image_for_angle(self, angle_deg):
-		'''
-		returns the depth edges rotated to appropriate angle
-		'''
-
-
-		spiders = self.orthogonal_spider_features(transformed_image, )
-
-
 	def findfirst(self, array):
 		'''
 		Returns index of first non-zero element in numpy array
@@ -650,14 +648,41 @@ class FastSpiderEngine(object):
 		compass.append(image[index[0]+1:, index[1]]) # S
 		compass.append(np.diag(image[index[0]+1:, index[1]+1:])) # SE
 
-		spider = [self.findfirst(vec) for vec in compass]
+		distances = [self.findfirst(vec) for vec in compass]
 
 		# diagnonals need extending...
 		sqrt_2 = np.sqrt(2.0)
 		for idx in [1, 3, 5, 7]:
-			spider[idx] *= sqrt_2
+			distances[idx] *= sqrt_2
+
+		if self.distance_measure == 'pixels':
+
+			spider = distances
+
+		elif self.distance_measure == 'perpendicular':
+
+			depth = self.depthimage[start_point[1], start_point[0]]
+			spider = [dist * depth for dist in distances]
+
+		elif self.distance_measure == 'geodesic':
+
+			raise Exception("Don't know how to do geodesic measure yet...")
+			#depth_rows = []
+			#depth_rows.append(self.depthimage[])
+
+			#spider = [self.geodesic_dists(com, dist) for com, dist in zip(compass, spider)]
+
+		else:
+
+			raise Exception("Unknown distance measure: " + self.distance_measure)
 
 		return spider, compass
+
+	def geodesic_dists(self, compass, distance):
+		''
+		''
+		subvect = compass[:distance:10]
+
 
 
 	def distance_3d(self, p1, p2):
