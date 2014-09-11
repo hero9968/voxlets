@@ -11,7 +11,7 @@ import scipy.stats
 import scipy.io
 import cv2
 from numbers import Number
-import arraypad # future function from numpy...
+#import arraypad # future function from numpy...
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -40,6 +40,22 @@ class PatchEngine(object):
 	def negative_part(self, num_in):
 		return 0 if num_in >= 0 else int(np.abs(num_in))
 
+	def pad(self, patch, topbottom, leftright, constant_values):
+		height, width = patch.shape
+
+		above = constant_values * np.ones((topbottom[0], width))
+		below = constant_values * np.ones((topbottom[1], width))
+		#print above.shape, below.shape, patch.shape
+		patch = np.concatenate((above, patch, below), axis=0)
+
+		height, width = patch.shape
+		left = constant_values * np.ones((height, leftright[0]))
+		right = constant_values * np.ones((height, leftright[1]))
+		#print left.shape, right.shape, patch.shape
+		patch = np.concatenate((left, patch, right), axis=1)
+		return patch
+
+
 	def extract_aligned_patch(self, img_in, row, col, hww, pad_value=[]):
 		top = int(row - hww)
 		bottom = int(row + hww + 1)
@@ -59,8 +75,8 @@ class PatchEngine(object):
 			pad_bottom = int(self.negative_part(img_in.shape[0] - bottom))
 			#print "1: " + str(im_patch.shape)
 
-			im_patch = arraypad.pad(im_patch, ((pad_top, pad_bottom), (pad_left, pad_right)),
-								mode='constant', constant_values=100)
+			im_patch = self.pad(im_patch, (pad_top, pad_bottom), (pad_left, pad_right),
+								constant_values=100)
 			#print "2: " + str(im_patch.shape)
 			im_patch[im_patch==100.0] =pad_value # hack as apparently can't use np.nan as constant value
 
