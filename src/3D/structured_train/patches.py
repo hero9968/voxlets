@@ -102,12 +102,24 @@ class PatchEngine(object):
 		angle - rotation angle for the patchs
 		'''
 		row,col = index
-		assert(~np.isnan(self.image_to_extract[row, col]))
 
 		if angle == -1:
 			angle = self.angles[row, col]
-		assert(~np.isnan(angle))
 		depth = self.depth_image[row, col]
+
+		if np.isnan(depth):
+			#print "Nan depth!"
+			plt.imshow(self.depth_image)
+			plt.hold(True)
+			plt.plot(col, row, '.')
+			plt.hold(False)
+			plt.show()
+			import pdb; pdb.set_trace()
+
+			return np.zeros((2*self.output_patch_hww+1, 2*self.output_patch_hww+1))
+		elif np.isnan(angle):
+			print "Nan start angle!"
+			return np.zeros((2*self.output_patch_hww+1, 2*self.output_patch_hww+1))
 
 		if self.fixed_patch_size:
 			input_patch_hww = self.input_patch_hww
@@ -426,6 +438,7 @@ class SpiderEngine(object):
 		# get the gradient and threshold
 		dx,dy = np.gradient(local_depthimage, 1)
 		self.edge_image = np.array(np.sqrt(dx**2 + dy**2) > 0.1)
+		self.angles_image = np.rad2deg(np.arctan2(dy, dx))
 
 		return self.edge_image
 
@@ -442,6 +455,10 @@ class SpiderEngine(object):
 		
 		x0, y0 = start_point
 		x, y = x0, y0
+
+		if np.isnan(angle):
+			angle = 0
+			print "Warning! Angle was nan in line extraction"
 
 		dx = int(abs(1000 * np.cos(angle)))
 		dy = int(abs(1000 * np.sin(angle)))
@@ -489,14 +506,14 @@ class SpiderEngine(object):
 		return np.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
 
 
-	def in_range(self, point_2d):
+	def in_range(self, point_2d, border=0):
 		'''
 		returns true if point_2d (col, row) is inside the depth image, false Otherwise
 		'''
-		return point_2d[0] >= 0 and \
-				point_2d[1] >= 0 and \
-				point_2d[0] <= self.depthimage.shape[1] and \
-				point_2d[1] <= self.depthimage.shape[0]
+		return point_2d[0] >= border and \
+				point_2d[1] >= border and \
+				point_2d[0] < (self.depthimage.shape[1]-border) and \
+				point_2d[1] < (self.depthimage.shape[0]-border)
 
 	def get_spider_distance(self, start_point, angle_deg):
 		'''
@@ -527,11 +544,12 @@ class SpiderEngine(object):
 
 			# loop until we hit a point which is actually on the depth image
 			position_depths = [] # stores the x,y position and the depths of points along curve
+			#last_point = start_point
 			for idx, line_point in enumerate(line_points):
 
 				#print "Doing pixel " + str(idx) + str(line_point)
-				self.blank_im[line_point[1], line_point[0]] = 1
-				end_of_line = self.edge_image[line_point[1], line_point[0]] or not self.in_range(line_point)
+				#self.blank_im[line_point[1], line_point[0]] = 1
+				end_of_line = not self.in_range(line_point, border=1) or self.edge_image[line_point[1], line_point[0]]
 
 				if (idx % 10) == 0 or end_of_line:
 					current_depth = self.depthimage[line_point[1], line_point[0]]
@@ -572,6 +590,15 @@ class SpiderEngine(object):
 		start_angle = self.angles_image[row, col]
 		self.blank_im = self.depthimage / 10.0
 		#self.blank_im[self.blank_im==0] = np.nan
+
+		# nip nans in the bud here!
+		if np.isnan(self.depthimage[row, col]):
+			#raise Exception("Nan depth!")
+			print "Nan depth!"
+			return [0 for i in range(8)]
+		elif np.isnan(start_angle):
+			print "Nan start angle!"
+			return [0 for i in range(8)]
 	
 		return [self.get_spider_distance(start_point,  start_angle + offset_angle)
 				for offset_angle in range(360, 0, -45)]

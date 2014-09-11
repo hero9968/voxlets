@@ -75,7 +75,7 @@ class DepthFeatureEngine(object):
 		mask = ~np.isnan(render)
 		return mask
 
-	def sample_from_mask(self, num_samples=1200):
+	def sample_from_mask(self, num_samples=500):
 		'''
 		Samples 2D locations from the 2D binary mask.
 		If num_samples == -1, returns all valid locations from mask, otherwise returns random sample.
@@ -106,8 +106,8 @@ class DepthFeatureEngine(object):
 		elif np.any(self.indices): # downsample indices
 			samples = np.random.randint(0, self.indices.shape[0], self.samples_per_image)
 			self.indices = self.indices[samples, :]
-		else: # no indices - just repeat centre point
-			self.indices = np.tile(np.array(self.mask.shape)/2, (samples_per_image, 1))
+		else: # no indices - return empty list
+			self.indices = []#np.tile(np.array(self.mask.shape)/2, (samples_per_image, 1))
 		return self.indices
 
 	def depth_difference(self, index):
@@ -125,16 +125,21 @@ class DepthFeatureEngine(object):
 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
 
 		#assert np.all(mask==extract_mask(backrender))
-		if not self.indices.shape:
-			raise Exception("No indices have been set - cannot compute features!")
+		if np.any(self.indices):
+			self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
+			self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
+			self.depth_diffs = [self.depth_difference(index) for index in self.indices]
+			self.depths = [self.frontrender[index[0], index[1]] for index in self.indices]
+			#raise Exception("No indices have been set - cannot compute features!")
+		else:
+			self.spider_features = [-np.ones((1, 8)) for i in range(self.samples_per_image)]
+			self.patch_features = -np.ones((self.samples_per_image, 2*self.patch_extractor.output_patch_hww))
+			self.depth_diffs = [-1 for i in range(self.samples_per_image)]
+			self.depths = [-1 for i in range(self.samples_per_image)]
 
-		# sample pairs of coordinates
-		self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
-		self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
-		self.depth_diffs = [self.depth_difference(index) for index in self.indices]
-		self.depths = [self.frontrender[index[0], index[1]] for index in self.indices]
-		self.views = [self.view_idx for index in self.indices]
-		self.modelnames = [self.modelname for index in self.indices]
+		self.views = [self.view_idx for i in range(self.samples_per_image)]
+		self.modelnames = [self.modelname for i in range(self.samples_per_image)]
+		self.indices = [(-1, -1) for i in range(self.samples_per_image)]
 
 	def features_and_depths_as_dict(self):
 		'''
@@ -167,7 +172,7 @@ class DepthFeatureEngine(object):
 #features, depths, indices = zip(*(features_and_depths(modelname, view+1) 
 						#for view in range(number_views)))
 
-samples_per_image = 100
+samples_per_image = 500
 
 def compute_features(modelname_and_view):
 	'''
@@ -218,6 +223,9 @@ if __name__ == '__main__':
 	for idx, line in enumerate(f):
 
 		modelname = line.strip()
+		if not host_name == 'troll':
+			modelname = '12bfa757452ae83d4c5341ee07f41676'
+
 		fileout = base_path + 'structured/features/' + modelname + '.mat'
 
 		if not redo_if_exist:
@@ -249,6 +257,7 @@ if __name__ == '__main__':
 
 		# reshaping the outputs to the corrct size
 		for k, v in fulldict.items():
+			#print k, np.array(v).shape
 			fulldict[k] = np.array(v).reshape(number_views*samples_per_image, -1)
 
 		# saving to file
