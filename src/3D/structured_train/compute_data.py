@@ -202,7 +202,7 @@ else:
 	saving = False
 	redo_if_exist = True # i.e. overwrite
 	just_one = True
-	multicore = True
+	multicore = False
 
 if __name__ == '__main__':
 
@@ -217,7 +217,7 @@ if __name__ == '__main__':
 
 	for idx, line in enumerate(f):
 
-		modelname = '1a43be52de26834898d5fc0473d00a1c'#line.strip()
+		modelname = line.strip()
 		fileout = base_path + 'structured/features/' + modelname + '.mat'
 
 		if not redo_if_exist:
