@@ -9,15 +9,17 @@ import itertools
 import timeit
 import patches
 import socket
+import traceback
+import sys
 
 number_views = 42 # how many rendered views there are of each object
 
 # in an ideal world we wouldn't have this hardcoded path, but life is too short to do it properly
 host_name = socket.gethostname()
-if host_name == 'mfirman.cs.ucl.ac.uk':
-	base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
-elif host_name == 'troll':
+if host_name == 'troll':
 	base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
+else:
+	base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
 
 models_list = base_path + 'databaseFull/fields/models.txt'
 
@@ -196,26 +198,26 @@ if host_name == 'troll':
 	redo_if_exist = False # i.e. overwrite
 	just_one = False
 	multicore = True
-elif hostname == 'mfirman.cs.ucl.ac.uk':
+else:
 	saving = False
 	redo_if_exist = True # i.e. overwrite
 	just_one = True
-	multicore = False
+	multicore = True
 
 if __name__ == '__main__':
 
 	if multicore:
 		
-		if host_name == 'mfirman.cs.ucl.ac.uk':
-			pool = Pool(processes=2)
-		elif host_name == 'troll':
+		if host_name == 'troll':
 			pool = Pool(processes=8)
+		else:
+			pool = Pool(processes=2)
 
 	f = open(models_list, 'r')
 
 	for idx, line in enumerate(f):
 
-		modelname = line.strip()
+		modelname = '1a43be52de26834898d5fc0473d00a1c'#line.strip()
 		fileout = base_path + 'structured/features/' + modelname + '.mat'
 
 		if not redo_if_exist:
@@ -236,6 +238,9 @@ if __name__ == '__main__':
 				dict_list = pool.map(compute_features, zipped_arguments)
 			except:
 				print "Failed!!"
+				print '-'*60
+				traceback.print_exc(file=sys.stdout)
+				print '-'*60
 				continue
 		else:
 			dict_list = [compute_features(tt) for tt in zipped_arguments]
