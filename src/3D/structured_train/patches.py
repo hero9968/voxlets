@@ -11,7 +11,7 @@ import scipy.stats
 import scipy.io
 import cv2
 from numbers import Number
-
+import arraypad # future function from numpy...
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -59,7 +59,7 @@ class PatchEngine(object):
 			pad_bottom = int(self.negative_part(img_in.shape[0] - bottom))
 			#print "1: " + str(im_patch.shape)
 
-			im_patch = np.pad(im_patch, ((pad_top, pad_bottom), (pad_left, pad_right)),
+			im_patch = arraypad.pad(im_patch, ((pad_top, pad_bottom), (pad_left, pad_right)),
 								mode='constant', constant_values=100)
 			#print "2: " + str(im_patch.shape)
 			im_patch[im_patch==100.0] =pad_value # hack as apparently can't use np.nan as constant value
