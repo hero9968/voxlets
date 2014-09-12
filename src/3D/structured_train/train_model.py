@@ -11,8 +11,9 @@ import cPickle as pickle
 import timeit
 import yaml
 import paths
+import socket
 
-small_model = False # if true, then only load a few of the models (v quick, good for testing)
+small_model = True # if true, then only load a few of the models (v quick, good for testing)
 overwrite = True  # if true, then overwrite models if they already exist
 nan_replacement_value = -10
 
@@ -44,6 +45,12 @@ def resample_inputs(X, Y, num_samples):
 
 # loading the data
 train_data = scipy.io.loadmat(combined_features_path)
+
+host_name = socket.gethostname()
+if host_name == 'troll':
+	number_jobs = 10
+else:
+	number_jobs = 3
 
 # looping over each model from the config file
 all_models = yaml.load(open(paths.model_config, 'r'))
@@ -84,7 +91,7 @@ for modeloption in all_models:
 	print "Training model... of type " + modeloption['type']
 	tic = timeit.default_timer()
 	if modeloption['type']=='forest':
-		model = RandomForestRegressor(n_estimators=n_estimators,n_jobs=3,random_state=1,max_depth=20)
+		model = RandomForestRegressor(n_estimators=n_estimators,n_jobs=number_jobs,random_state=1,max_depth=20)
 		model.fit(X,Y)
 	elif modeloption['type']=='nn':
 		model = neighbors.KNeighborsClassifier(n_estimators, weights='uniform')

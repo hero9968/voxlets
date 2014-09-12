@@ -7,35 +7,49 @@ import os
 import numpy as np
 import scipy.io
 import paths
+from sklearn.cross_validation import train_test_split
 
 '''
 the following is commented out to prevent the accidently overwriting 
 of the train/test split if this script is run in error
 '''
-#split_path = paths.split_path
+split_path = paths.split_path
 total_number = 1600
 
-# setting up the options for creating the split
-to_use = np.array(range(0, total_number))
-test_fraction = 0.2
-train_fraction = 0.5
+# doing a very simple split. Hashes should give a random distribution.
+test_idxs = range(0, 300)
+train_idxs = range(300, 1100)
 
-assert test_fraction + train_fraction <= 1
+# # setting up the options for creating the split
+# to_use = np.array(range(0, total_number))
+# total_test_fraction = 0.2
+# train_fraction = 0.5
 
-# making the assignments
-num_to_use = len(to_use)
-number_test = int(test_fraction * num_to_use)
-number_train = int(train_fraction * num_to_use)
+# # first 20 objects must be test, for regularity.
+# num_fixed_test = 25
+# random_test_fraction = total_test_fraction - (num_fixed_test / total_number)
+# random_train_fraction = total_test_fraction - (num_fixed_test / total_number)
+# fixed_test = np.array(range(num_fixed_test))
 
-sorted_list = np.random.permutation(num_to_use)
-train_idxs = to_use[sorted_list[:number_train]]
-test_idxs = to_use[sorted_list[number_train:(number_train+number_test)]]
+# assert total_test_fraction + train_fraction <= 1
+
+# # making the assignments
+# all_idxs = range(num_fixed_test, total_number)
+# train_idxs, random_test_idxs = train_test_split(all_idxs, test_size=random_test_fraction, train_size=train_fraction, random_state=42)
+# test_idxs = np.concatenate((fixed_test, random_test_idxs))
+
 
 # now doing as boolean arrays
 train_binary = np.zeros((total_number), dtype=bool)
 train_binary[train_idxs] = True
 test_binary = np.zeros((total_number), dtype=bool)
 test_binary[test_idxs] = True
+
+# assert no overlap
+mistakes = np.sum(np.logical_and(train_binary, test_binary))
+print "There are " + str(mistakes) + " mistakes"
+assert(mistakes==0)
+
 
 # creating the train and test names...
 f = open(paths.models_list, 'r')
@@ -48,6 +62,7 @@ for idx, line in enumerate(f):
 		train_names.append(line.strip())
 f.close()
 
+print test_names[:10]
 #print test_names
 print len(train_names)
 print len(test_names)

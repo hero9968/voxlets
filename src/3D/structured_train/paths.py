@@ -26,9 +26,9 @@ combined_train_features = combined_features_path + 'train.mat'
 combined_train_features_small = combined_features_path + 'train_small.mat'
 
 # paths for the random forest models
-model_config = './data/models_config.yaml'
-rf_folder_path = "./data/models/"
-rf_folder_path_small = "./data/models_small/"
+model_config = '.models_config.yaml'
+rf_folder_path = base_path + "rf_models/"
+rf_folder_path_small = base_path + "rf_models_small/"
 
 # paths for the sparse results
 results_folder = "./data/results/"
