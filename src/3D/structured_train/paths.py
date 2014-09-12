@@ -20,13 +20,13 @@ split_path = base_path + 'structured/split.mat'
 
 # locations of the combined features
 combined_features_path = base_path + 'structured/combined_features/'
-combined_test_features = combined_features_path + 'test.mat'
-combined_test_features_small = combined_features_path + 'test_small.mat'
-combined_train_features = combined_features_path + 'train.mat'
-combined_train_features_small = combined_features_path + 'train_small.mat'
+combined_test_features = combined_features_path + 'test.pkl'
+combined_test_features_small = combined_features_path + 'test_small.pkl'
+combined_train_features = combined_features_path + 'train.pkl'
+combined_train_features_small = combined_features_path + 'train_small.pkl'
 
 # paths for the random forest models
-model_config = '.models_config.yaml'
+model_config = base_path + 'models_config.yaml'
 rf_folder_path = base_path + "rf_models/"
 rf_folder_path_small = base_path + "rf_models_small/"
 

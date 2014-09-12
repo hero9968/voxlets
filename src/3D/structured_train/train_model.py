@@ -4,7 +4,7 @@ This script brings together all the structured data and trains a RF on them
 
 import os
 import numpy as np
-import scipy.io
+#import scipy.io
 from sklearn.ensemble import RandomForestRegressor
 from sklearn import neighbors
 import cPickle as pickle
@@ -44,7 +44,9 @@ def resample_inputs(X, Y, num_samples):
 
 
 # loading the data
-train_data = scipy.io.loadmat(combined_features_path)
+f = open(combined_features_path, 'rb')
+train_data = pickle.load(f)
+f.close()
 
 host_name = socket.gethostname()
 if host_name == 'troll':
