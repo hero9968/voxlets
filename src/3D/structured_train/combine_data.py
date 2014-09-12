@@ -9,6 +9,7 @@ import collections
 import scipy.stats as stats
 import paths
 import cPickle as pickle
+import random
 # User options
 
 
@@ -49,8 +50,7 @@ def replace_nans_with_col_means(X):
 	X[inds]=np.take(col_mean,inds[1])
 	return X
 
-samples_per_image = 500
-num_views = 42
+features_to_sample_per_object = 1000
 
  # small model has very few features, just used for testing algorithms...
 for small_model in [True, False]:
@@ -74,14 +74,18 @@ for small_model in [True, False]:
 			print "Loading " + str(idx) + ": " + line
 			temp = load_modeldata(line.strip())
 
+			all_idxs = xrange(temp['depth_diffs'].shape[0])
+			to_use = random.sample(all_idxs, features_to_sample_per_object)
+
 			if idx == 0:
-				patch_features_nan = np.array(temp['patch_features'])
-				spider_features = np.array(temp['spider_features'])
-				Y = np.array(temp['depth_diffs'])
+				patch_features_nan = np.array(temp['patch_features'][to_use, :])
+				spider_features = np.array(temp['spider_features'][to_use, :])
+				Y = np.array(temp['depth_diffs'][to_use, :])
+
 			elif temp:
-				patch_features_nan = np.append(patch_features_nan, temp['patch_features'], axis=0)
-				spider_features = np.append(spider_features, temp['spider_features'], axis=0)
-				Y = np.append(Y, temp['depth_diffs'], axis=0)
+				patch_features_nan = np.append(patch_features_nan, temp['patch_features'][to_use, :], axis=0)
+				spider_features = np.append(spider_features, temp['spider_features'][to_use, :], axis=0)
+				Y = np.append(Y, temp['depth_diffs'][to_use, :], axis=0)
 
 			if small_model and idx > 5:
 				break
@@ -90,10 +94,11 @@ for small_model in [True, False]:
 		Y = nan_to_value(Y, 0)
 
 		print "Converting patch features... size is " + str(patch_features_nan.shape)
-		patch_features = nan_to_value(patch_features_nan, 0)
+		patch_features = nan_to_value(patch_features_nan, 0).astype(np.float16)
+
 
 		print "Converting spider features... size is " + str(spider_features.shape)
-		spider_features = replace_nans_with_col_means(spider_features)
+		spider_features = replace_nans_with_col_means(spider_features).astype(np.float16)
 		print "Nan count: " + str(np.sum(np.isnan(spider_features)))
 
 		print "Size of Y is " + str(Y.shape)
