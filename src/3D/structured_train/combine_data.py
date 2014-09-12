@@ -8,17 +8,9 @@ import scipy.io
 import collections
 import scipy.stats as stats
 import paths
-
 # User options
-small_model = False # small model has very few features, just used for testing algorithms...
-category = 'train'  # options are test and train - are we doing test or train data?
 
-# setting paths
-combined_features_save_path = paths.base_path + 'structured/combined_features/'
 
-combined_features_save_path += category  # should be 'test' or 'train'
-if small_model:	combined_features_save_path += '_small'
-combined_features_save_path += '.mat'
 
 def load_modeldata(modelname):
 	modelpath = paths.model_features + modelname + '.mat'
@@ -56,42 +48,54 @@ def replace_nans_with_col_means(X):
 	X[inds]=np.take(col_mean,inds[1])
 	return X
 
+ # small model has very few features, just used for testing algorithms...
+for small_model in [True, False]:
+	for category in ['train', 'test']:  # options are test and train - are we doing test or train data?
 
-# loading the data
-# For now, am only going to use one file to train on...
-object_names = scipy.io.loadmat(paths.split_path)[category + '_names']
-rawdata = []
-print "There are " + str(len(object_names)) + " objects"
-for idx, line in enumerate(object_names):
-	print "Loading " + str(idx)
-	temp = load_modeldata(line.strip())
-	if temp:
-		rawdata.append(temp)
-	if small_model and idx > 5:
-		break
+		# setting paths
+		combined_features_save_path = paths.base_path + 'structured/combined_features/'
 
-data = list_of_dicts_to_dict(rawdata)
-print "Spider is " + str(np.array(data['spider_features']).shape)
+		combined_features_save_path += category  # should be 'test' or 'train'
+		if small_model:	combined_features_save_path += '_small'
+		combined_features_save_path += '.mat'
 
-# constructing the X and Y variables
-Y = np.array(data['depth_diffs']).ravel()
-Y = nan_to_value(Y, 0)
+		# loading the data
+		# For now, am only going to use one file to train on...
+		object_names = scipy.io.loadmat(paths.split_path)[category + '_names']
+		rawdata = []
+		print "There are " + str(len(object_names)) + " objects"
+		for idx, line in enumerate(object_names):
+			print "Loading " + str(idx)
+			temp = load_modeldata(line.strip())
+			if temp:
+				rawdata.append(temp)
+			if small_model and idx > 5:
+				break
 
-print "Extracting patch features..."
-patch_feature_dimension = data['patch_features'][0].shape[1]
-patch_feature_nan = np.array(data['patch_features']).reshape(-1, patch_feature_dimension)
-patch_features = nan_to_value(patch_feature_nan, 0)
+		data = list_of_dicts_to_dict(rawdata)
+		print "Spider is " + str(np.array(data['spider_features']).shape)
 
-print "Extracting spider features..."
-spider_feature_dimension = data['spider_features'][0].shape[1]
-spider_features = np.array(data['spider_features'])
-spider_features = spider_features.reshape(-1, spider_feature_dimension)
-spider_features = replace_nans_with_col_means(spider_features)
-print "Nan count: " + str(np.sum(np.isnan(spider_features)))
+		# constructing the X and Y variables
+		Y = np.array(data['depth_diffs']).ravel()
+		Y = nan_to_value(Y, 0)
 
-print "Saving to file..."
-d = dict(spider_features=spider_features,
-		 patch_features=patch_features,
-		 Y=Y)
-scipy.io.savemat(combined_features_save_path, d)
+		print "Extracting patch features..."
+		patch_feature_dimension = data['patch_features'][0].shape[1]
+		patch_feature_nan = np.array(data['patch_features']).reshape(-1, patch_feature_dimension)
+		patch_features = nan_to_value(patch_feature_nan, 0)
 
+		print "Extracting spider features..."
+		spider_feature_dimension = data['spider_features'][0].shape[1]
+		spider_features = np.array(data['spider_features'])
+		spider_features = spider_features.reshape(-1, spider_feature_dimension)
+		spider_features = replace_nans_with_col_means(spider_features)
+		print "Nan count: " + str(np.sum(np.isnan(spider_features)))
+
+		print "Saving to file..."
+		d = dict(spider_features=spider_features,
+				 patch_features=patch_features,
+				 Y=Y)
+		scipy.io.savemat(combined_features_save_path, d)
+		print "Done..."
+
+print "Done all!"

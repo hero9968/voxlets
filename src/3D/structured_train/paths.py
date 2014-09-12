@@ -3,9 +3,15 @@ This module is purely here to store the paths to the data associated with all th
 '''
 
 import os
+import socket
 
 # per-view data paths
-base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
+host_name = socket.gethostname()
+if host_name == 'troll':
+    base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
+else:
+    base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
+
 model_features = base_path + 'structured/features/'
 
 # paths to do with the dataset as a whole
