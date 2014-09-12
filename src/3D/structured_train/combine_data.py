@@ -8,6 +8,7 @@ import scipy.io
 import collections
 import scipy.stats as stats
 import paths
+import cPickle as pickle
 # User options
 
 
@@ -60,7 +61,7 @@ for small_model in [True, False]:
 
 		combined_features_save_path += category  # should be 'test' or 'train'
 		if small_model:	combined_features_save_path += '_small'
-		combined_features_save_path += '.mat'
+		combined_features_save_path += '.pkl'
 
 		# loading the data
 		# For now, am only going to use one file to train on...
@@ -70,14 +71,14 @@ for small_model in [True, False]:
 
 		for idx, line in enumerate(object_names):
 
-			print "Loading " + str(idx)
+			print "Loading " + str(idx) + ": " + line
 			temp = load_modeldata(line.strip())
 
 			if idx == 0:
 				patch_features_nan = np.array(temp['patch_features'])
 				spider_features = np.array(temp['spider_features'])
 				Y = np.array(temp['depth_diffs'])
-			else:
+			elif temp:
 				patch_features_nan = np.append(patch_features_nan, temp['patch_features'], axis=0)
 				spider_features = np.append(spider_features, temp['spider_features'], axis=0)
 				Y = np.append(Y, temp['depth_diffs'], axis=0)
@@ -101,7 +102,11 @@ for small_model in [True, False]:
 		d = dict(spider_features=spider_features,
 				 patch_features=patch_features,
 				 Y=Y)
-		scipy.io.savemat(combined_features_save_path, d)
+		f = open(combined_features_save_path,'wb')
+		pickle.dump(d,f)
+		f.close()
+		#scipy.io.savemat(combined_features_save_path, d)
+
 		print "Done..."
 
 print "Done all!"
