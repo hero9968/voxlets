@@ -48,6 +48,9 @@ def replace_nans_with_col_means(X):
 	X[inds]=np.take(col_mean,inds[1])
 	return X
 
+samples_per_image = 500
+num_views = 42
+
  # small model has very few features, just used for testing algorithms...
 for small_model in [True, False]:
 	for category in ['train', 'test']:  # options are test and train - are we doing test or train data?
@@ -62,34 +65,37 @@ for small_model in [True, False]:
 		# loading the data
 		# For now, am only going to use one file to train on...
 		object_names = scipy.io.loadmat(paths.split_path)[category + '_names']
-		rawdata = []
+
 		print "There are " + str(len(object_names)) + " objects"
+
 		for idx, line in enumerate(object_names):
+
 			print "Loading " + str(idx)
 			temp = load_modeldata(line.strip())
-			if temp:
-				rawdata.append(temp)
+
+			if idx == 0:
+				patch_features_nan = np.array(temp['patch_features'])
+				spider_features = np.array(temp['spider_features'])
+				Y = np.array(temp['depth_diffs'])
+			else:
+				patch_features_nan = np.append(patch_features_nan, temp['patch_features'], axis=0)
+				spider_features = np.append(spider_features, temp['spider_features'], axis=0)
+				Y = np.append(Y, temp['depth_diffs'], axis=0)
+
 			if small_model and idx > 5:
 				break
-
-		data = list_of_dicts_to_dict(rawdata)
-		print "Spider is " + str(np.array(data['spider_features']).shape)
-
+		
 		# constructing the X and Y variables
-		Y = np.array(data['depth_diffs']).ravel()
 		Y = nan_to_value(Y, 0)
 
-		print "Extracting patch features..."
-		patch_feature_dimension = data['patch_features'][0].shape[1]
-		patch_feature_nan = np.array(data['patch_features']).reshape(-1, patch_feature_dimension)
-		patch_features = nan_to_value(patch_feature_nan, 0)
+		print "Converting patch features... size is " + str(patch_features_nan.shape)
+		patch_features = nan_to_value(patch_features_nan, 0)
 
-		print "Extracting spider features..."
-		spider_feature_dimension = data['spider_features'][0].shape[1]
-		spider_features = np.array(data['spider_features'])
-		spider_features = spider_features.reshape(-1, spider_feature_dimension)
+		print "Converting spider features... size is " + str(spider_features.shape)
 		spider_features = replace_nans_with_col_means(spider_features)
 		print "Nan count: " + str(np.sum(np.isnan(spider_features)))
+
+		print "Size of Y is " + str(Y.shape)
 
 		print "Saving to file..."
 		d = dict(spider_features=spider_features,
