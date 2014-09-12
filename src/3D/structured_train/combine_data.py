@@ -74,8 +74,9 @@ for small_model in [True, False]:
 			print "Loading " + str(idx) + ": " + line
 			temp = load_modeldata(line.strip())
 
-			all_idxs = xrange(temp['depth_diffs'].shape[0])
-			to_use = random.sample(all_idxs, features_to_sample_per_object)
+			if idx==0 or temp:
+				all_idxs = xrange(temp['depth_diffs'].shape[0])
+				to_use = random.sample(all_idxs, features_to_sample_per_object)
 
 			if idx == 0:
 				patch_features_nan = np.array(temp['patch_features'][to_use, :])
