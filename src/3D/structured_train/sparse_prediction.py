@@ -12,14 +12,14 @@ import yaml
 import paths
 
 # setting paths
-small_dataset = True
+small_dataset = False
 
 if small_dataset:
-	combined_features_path = paths.combined_test_features
-	results_folder = paths.results_folder
-else:
 	combined_features_path = paths.combined_test_features_small
 	results_folder = paths.results_folder_small
+else:
+	combined_features_path = paths.combined_test_features
+	results_folder = paths.results_folder
 
 # setting options for the per-voxel ROC curves
 # NOTE: Currently the ROC is being computed on the depth-diff measurements, including the max depth
@@ -41,7 +41,9 @@ def populate_voxels(prediction_values, voxel_depth):
 	return pixel_space / len(prediction_values)
 
 # loading test data
-test_data = scipy.io.loadmat(combined_features_path)
+f = open(combined_features_path, 'rb')
+test_data = pickle.load(f)
+f.close()
 Y_gt = np.array(test_data['Y'])
 
 # doing each model in turn

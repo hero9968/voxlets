@@ -31,8 +31,8 @@ rf_folder_path = base_path + "rf_models/"
 rf_folder_path_small = base_path + "rf_models_small/"
 
 # paths for the sparse results
-results_folder = "./data/results/"
-results_folder_small = "./data/results_small/"
+results_folder = base_path + "results/"
+results_folder_small = base_path + "results_small/"
 
 # paths for the dense predictions
 #dense_predictions = base_path + 
