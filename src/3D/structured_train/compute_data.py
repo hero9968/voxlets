@@ -214,7 +214,7 @@ if __name__ == '__main__':
 	if multicore:
 		
 		if host_name == 'troll':
-			pool = Pool(processes=8)
+			pool = Pool(processes=10)
 		else:
 			pool = Pool(processes=2)
 

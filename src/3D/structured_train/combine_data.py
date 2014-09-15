@@ -50,7 +50,7 @@ def replace_nans_with_col_means(X):
 	X[inds]=np.take(col_mean,inds[1])
 	return X
 
-features_to_sample_per_object = 1000
+features_to_sample_per_object = 2000
 
  # small model has very few features, just used for testing algorithms...
 for small_model in [True, False]:
