@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib as mpl
 
+
+
 class PatchEngine(object):
 
 	def __init__(self, output_patch_hww, input_patch_hww, fixed_patch_size=True, interp_method=cv2.INTER_CUBIC):
@@ -64,8 +66,7 @@ class PatchEngine(object):
 
 		im_patch = img_in[top:bottom, left:right]
 
-		if top < 0 or left < 0 or bottom >= img_in.shape[0] or right >= img_in.shape[1]:
-
+		if top < 0 or left < 0 or bottom > img_in.shape[0] or right > img_in.shape[1]:
 			if not pad_value:
 				raise Exception("Patch out of range and no pad value specified")
 
@@ -124,7 +125,7 @@ class PatchEngine(object):
 		if self.fixed_patch_size:
 			input_patch_hww = self.input_patch_hww
 		else:
-			input_patch_hww = int(float(self.input_patch_hww) * depth)
+			input_patch_hww = int(float(self.input_patch_hww) / float(depth))
 			#print depth, self.input_patch_hww, input_patch_hww
 
 
@@ -134,7 +135,7 @@ class PatchEngine(object):
 		'''Getting the oversized patch'''
 
 		# hww of the initial patch to extract - must ensure it is big enough to be rotated then downsized
-		oversized_hww = int(np.sqrt(2.0) * input_patch_hww + 3)
+		oversized_hww = int(np.sqrt(2.0) * float(input_patch_hww) + 3.0)
 		oversized_patch = self.extract_aligned_patch(self.image_to_extract, row, col, oversized_hww, pad_value=np.nan)
 		#print oversized_patch.shape
 
