@@ -54,7 +54,8 @@ class DepthFeatureEngine(object):
 		self.hww = 7
 		self.indices = []
 
-		self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
+		#self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
+		self.patch_extractor = patches.LocalSpiderEngine(t=7, fixed_patch_size=False)
 		self.patch_extractor.compute_angles_image(self.frontrender)
 
 		self.spider_engine = patches.SpiderEngine(self.frontrender, distance_measure='geodesic')
@@ -126,14 +127,14 @@ class DepthFeatureEngine(object):
 
 		#assert np.all(mask==extract_mask(backrender))
 		if np.any(self.indices):
-			self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
 			self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
+			self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
 			self.depth_diffs = [self.depth_difference(index) for index in self.indices]
 			self.depths = [self.frontrender[index[0], index[1]] for index in self.indices]
 			#raise Exception("No indices have been set - cannot compute features!")
 		else:
-			self.spider_features = [-np.ones((1, 8)) for i in range(self.samples_per_image)]
 			self.patch_features = -np.ones((self.samples_per_image, 2*self.patch_extractor.output_patch_hww))
+			self.spider_features = [-np.ones((1, 8)) for i in range(self.samples_per_image)]
 			self.depth_diffs = [-1 for i in range(self.samples_per_image)]
 			self.depths = [-1 for i in range(self.samples_per_image)]
 			self.indices = [(-1, -1) for i in range(self.samples_per_image)]
@@ -226,7 +227,7 @@ if __name__ == '__main__':
 		if not host_name == 'troll':
 			modelname = '12bfa757452ae83d4c5341ee07f41676'
 
-		fileout = base_path + 'structured/features/' + modelname + '.mat'
+		fileout = base_path + 'structured/features_nopatch/' + modelname + '.mat'
 
 		if not redo_if_exist:
 			if os.path.isfile(fileout): 

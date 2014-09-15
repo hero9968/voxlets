@@ -18,6 +18,179 @@ import matplotlib.patches as patches
 import matplotlib as mpl
 
 
+class LocalSpiderEngine(object):
+	'''
+	A different type of patch engine, only looking at points in the compass directions
+	'''
+
+	def __init__(self, t, fixed_patch_size=False):
+
+		# the stepsize at a depth of 1 m
+		self.t = float(t)
+
+		# dimension of side of patch in real world 3D coordinates
+		#self.input_patch_hww = input_patch_hww
+
+		# if fixed_patch_size is True:
+		#   step is always t in input image pixels
+		# else:
+		#   step varies linearly with depth. t is the size of step at depth of 1.0 
+		self.fixed_patch_size = fixed_patch_size 
+
+	def set_depth_image(self, depth_image):
+
+		self.depth_image = depth_image
+		self.compute_angles_image(depth_image)
+
+	def get_offset_depth(self, start_row, start_col, angle_rad, offset):
+
+		end_row = int(start_row - offset * np.sin(angle_rad))
+		end_col = int(start_col + offset * np.cos(angle_rad))
+
+		if end_row < 0 or end_col < 0 or \
+			end_row >= self.depth_image.shape[0] or end_col >= self.depth_image.shape[1]:
+			return np.nan
+		else:
+			return self.depth_image[end_row, end_col]
+
+	def get_spider(self, index):
+		'''
+		'''
+		row, col = index
+		
+		start_angle = self.angles[row, col]
+		start_depth = self.depth_image[row, col]
+
+		row = float(row)
+		col = float(col)
+
+		if self.fixed_patch_size:
+			offset_dist = self.t
+		else:
+			offset_dist = self.t / start_depth
+
+		spider = []
+		for multiplier in [1, 2, 3, 4]:
+			for offset_angle in range(0, 360, 45):
+				offset_depth = self.get_offset_depth(row, col, np.deg2rad(start_angle + offset_angle), 
+													offset_dist * multiplier)
+				spider.append(offset_depth-start_depth)
+
+		return spider
+
+	def extract_patches(self, depth_image, indices):
+
+		self.depth_image = depth_image
+		print indices.shape
+
+		return [self.get_spider(index) for index in indices]
+
+
+	def fill_in_nans(self, image_to_repair, desired_mask):
+		'''
+		Fills in nans in the image_to_repair, with an aim of getting its non-nan values
+		to take the shape of the desired_mask. Is only possible to fill in a nan
+		if it borders (8-neighbourhood) a non-nan values.
+		Otherwise, an error is thrown
+		'''
+		nans_to_fill = np.logical_and(np.isnan(image_to_repair), desired_mask)
+
+		# replace each nan value with the nanmedian value of its neighbours 
+		for row, col in np.array(np.nonzero(nans_to_fill)).T:
+			bordering_vals = self.extract_aligned_patch(image_to_repair, row, col, 2, np.nan)
+			image_to_repair[row, col] = scipy.stats.nanmedian(bordering_vals.flatten())
+
+		# values may be remaining. These will be filled in with zeros
+		remaining_nans_to_fill = np.logical_and(np.isnan(image_to_repair), desired_mask)
+		image_to_repair[remaining_nans_to_fill] = 0
+
+		return image_to_repair
+
+
+	def compute_angles_image(self, depth_image):
+		'''
+		Computes the angle of orientation at each pixel on the input depth image.
+		The depth image is specified explicitly when calling this function
+		in case one wants to extract patches from a different image to the one
+		which the angles are computed from
+		'''
+		Ix = cv2.Sobel(depth_image, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
+		Iy = cv2.Sobel(depth_image, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
+		#Ix1 = np.copy(Ix)
+		#Iy1 = np.copy(Iy)
+
+		# here recover values for Ix and Iy, so they have same non-nan locations as depth image
+		mask = 1-np.isnan(depth_image).astype(int)
+		#scipy.io.savemat("output2.mat", dict(mask=mask, render=depth_image))
+		#raise Exception("Break")
+
+		Ix = self.fill_in_nans(Ix, mask)
+		Iy = self.fill_in_nans(Iy, mask)
+
+		self.angles = np.rad2deg(np.arctan2(Iy, Ix))
+
+		mask_angles = np.logical_and(mask, np.isnan(self.angles))
+		self.angles[mask_angles] = 0
+		self.angles[mask==0] = np.nan
+
+		angle_notnan = (~np.isnan(self.angles)).astype(int)
+
+		try:
+			np.testing.assert_equal(mask, angle_notnan)
+		except:
+			print np.sum(mask - ~np.isnan(self.angles))
+			#import pdb; pdb.set_trace()
+			#scipy.io.savemat("output.mat", dict(mask=mask, angles=self.angles, render=depth_image, Ix=Ix1, Iy=Iy1))
+
+		self.depth_image = depth_image
+
+		return self.angles
+
+	def set_angles_to_zero(self):
+		'''
+		Specifies an angles image which is all zero 
+		'''
+		self.angles = -1
+
+
+	def extract_aligned_patch(self, img_in, row, col, hww, pad_value=[]):
+		top = int(row - hww)
+		bottom = int(row + hww + 1)
+		left = int(col - hww)
+		right = int(col + hww + 1)
+
+		im_patch = img_in[top:bottom, left:right]
+
+		if top < 0 or left < 0 or bottom > img_in.shape[0] or right > img_in.shape[1]:
+			if not pad_value:
+				raise Exception("Patch out of range and no pad value specified")
+
+			pad_left = int(self.negative_part(left))
+			pad_top = int(self.negative_part(top))
+			pad_right = int(self.negative_part(img_in.shape[1] - right))
+			pad_bottom = int(self.negative_part(img_in.shape[0] - bottom))
+			#print "1: " + str(im_patch.shape)
+
+			im_patch = self.pad(im_patch, (pad_top, pad_bottom), (pad_left, pad_right),
+								constant_values=100)
+			#print "2: " + str(im_patch.shape)
+			im_patch[im_patch==100.0] =pad_value # hack as apparently can't use np.nan as constant value
+
+		if not (im_patch.shape[0] == 2*hww+1):
+			print im_patch.shape
+			print pad_left, pad_top, pad_right, pad_bottom
+			print left, top, right, bottom
+			im_patch = np.zeros((2*hww+1, 2*hww+1))
+		if not (im_patch.shape[1] == 2*hww+1):
+			print im_patch.shape
+			print pad_left, pad_top, pad_right, pad_bottom
+			print left, top, right, bottom
+			im_patch = np.zeros((2*hww+1, 2*hww+1))
+			#raise Exception("Bad shape!")
+
+		return np.copy(im_patch)
+
+
 
 class PatchEngine(object):
 
