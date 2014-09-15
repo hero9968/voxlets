@@ -45,74 +45,75 @@ def replace_nans_with_col_means(X):
 	http://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
 	'''
 	col_mean = stats.nanmean(X,axis=0)
-	col_mean = nan_to_value(col_mean, 0)
+	#col_mean = nan_to_value(col_mean, 0)
 	inds = np.where(np.isnan(X))
 	X[inds]=np.take(col_mean,inds[1])
 	return X
 
 features_to_sample_per_object = 1000
 
- # small model has very few features, just used for testing algorithms...
-for small_model in [True, False]:
-	for category in ['train', 'test']:  # options are test and train - are we doing test or train data?
 
-		# setting paths
-		combined_features_save_path = paths.base_path + 'structured/combined_features/'
+if __name__ == '__main__':
+	 # small model has very few features, just used for testing algorithms...
+	for small_model in [True, False]:
+		for category in ['train', 'test']:  # options are test and train - are we doing test or train data?
 
-		combined_features_save_path += category  # should be 'test' or 'train'
-		if small_model:	combined_features_save_path += '_small'
-		combined_features_save_path += '.pkl'
+			# setting paths
+			combined_features_save_path = paths.base_path + 'structured/combined_features/'
 
-		# loading the data
-		# For now, am only going to use one file to train on...
-		object_names = scipy.io.loadmat(paths.split_path)[category + '_names']
+			combined_features_save_path += category  # should be 'test' or 'train'
+			if small_model:	combined_features_save_path += '_small'
+			combined_features_save_path += '.pkl'
 
-		print "There are " + str(len(object_names)) + " objects"
+			# loading the data
+			# For now, am only going to use one file to train on...
+			object_names = scipy.io.loadmat(paths.split_path)[category + '_names']
 
-		for idx, line in enumerate(object_names):
+			print "There are " + str(len(object_names)) + " objects"
 
-			print "Loading " + str(idx) + ": " + line
-			temp = load_modeldata(line.strip())
+			for idx, line in enumerate(object_names):
 
-			if idx==0 or temp:
-				all_idxs = xrange(temp['depth_diffs'].shape[0])
-				to_use = random.sample(all_idxs, features_to_sample_per_object)
+				print "Loading " + str(idx) + ": " + line
+				temp = load_modeldata(line.strip())
 
-			if idx == 0:
-				patch_features_nan = np.array(temp['patch_features'][to_use, :])
-				spider_features = np.array(temp['spider_features'][to_use, :])
-				Y = np.array(temp['depth_diffs'][to_use, :])
+				if idx==0 or temp:
+					all_idxs = xrange(temp['depth_diffs'].shape[0])
+					to_use = random.sample(all_idxs, features_to_sample_per_object)
 
-			elif temp:
-				patch_features_nan = np.append(patch_features_nan, temp['patch_features'][to_use, :], axis=0)
-				spider_features = np.append(spider_features, temp['spider_features'][to_use, :], axis=0)
-				Y = np.append(Y, temp['depth_diffs'][to_use, :], axis=0)
+				if idx == 0:
+					patch_features_nan = np.array(temp['patch_features'][to_use, :])
+					spider_features = np.array(temp['spider_features'][to_use, :])
+					Y = np.array(temp['depth_diffs'][to_use, :])
 
-			if small_model and idx > 5:
-				break
-		
-		# constructing the X and Y variables
-		Y = nan_to_value(Y, 0)
+				elif temp:
+					patch_features_nan = np.append(patch_features_nan, temp['patch_features'][to_use, :], axis=0)
+					spider_features = np.append(spider_features, temp['spider_features'][to_use, :], axis=0)
+					Y = np.append(Y, temp['depth_diffs'][to_use, :], axis=0)
 
-		print "Converting patch features... size is " + str(patch_features_nan.shape)
-		patch_features = nan_to_value(patch_features_nan, 0).astype(np.float16)
+				if small_model and idx > 5:
+					break
+			
+			# constructing the X and Y variables
+			Y = nan_to_value(Y, 0)
 
+			print "Converting patch features... size is " + str(patch_features_nan.shape)
+			patch_features = nan_to_value(patch_features_nan, 5).astype(np.float16)
 
-		print "Converting spider features... size is " + str(spider_features.shape)
-		spider_features = replace_nans_with_col_means(spider_features).astype(np.float16)
-		print "Nan count: " + str(np.sum(np.isnan(spider_features)))
+			print "Converting spider features... size is " + str(spider_features.shape)
+			spider_features = replace_nans_with_col_means(spider_features).astype(np.float16)
+			print "Nan count: " + str(np.sum(np.isnan(spider_features)))
 
-		print "Size of Y is " + str(Y.shape)
+			print "Size of Y is " + str(Y.shape)
 
-		print "Saving to file..."
-		d = dict(spider_features=spider_features,
-				 patch_features=patch_features,
-				 Y=Y)
-		f = open(combined_features_save_path,'wb')
-		pickle.dump(d,f)
-		f.close()
-		#scipy.io.savemat(combined_features_save_path, d)
+			print "Saving to file..."
+			d = dict(spider_features=spider_features,
+					 patch_features=patch_features,
+					 Y=Y)
+			f = open(combined_features_save_path,'wb')
+			pickle.dump(d,f)
+			f.close()
+			#scipy.io.savemat(combined_features_save_path, d)
 
-		print "Done..."
+			print "Done..."
 
-print "Done all!"
+	print "Done all!"

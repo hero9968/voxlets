@@ -136,10 +136,10 @@ class DepthFeatureEngine(object):
 			self.patch_features = -np.ones((self.samples_per_image, 2*self.patch_extractor.output_patch_hww))
 			self.depth_diffs = [-1 for i in range(self.samples_per_image)]
 			self.depths = [-1 for i in range(self.samples_per_image)]
+			self.indices = [(-1, -1) for i in range(self.samples_per_image)]
 
 		self.views = [self.view_idx for i in range(self.samples_per_image)]
 		self.modelnames = [self.modelname for i in range(self.samples_per_image)]
-		self.indices = [(-1, -1) for i in range(self.samples_per_image)]
 
 	def features_and_depths_as_dict(self):
 		'''
