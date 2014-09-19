@@ -76,19 +76,21 @@ if __name__ == '__main__':
 				print "Loading " + str(idx) + ": " + line
 				temp = load_modeldata(line.strip())
 
-				if idx==0 or temp:
+				if idx==0 or temp: # most loops, unless 
 					all_idxs = xrange(temp['depth_diffs'].shape[0])
 					to_use = random.sample(all_idxs, features_to_sample_per_object)
 
-				if idx == 0:
+				if idx == 0: # first loop 
 					patch_features_nan = np.array(temp['patch_features'][to_use, :])
 					spider_features = np.array(temp['spider_features'][to_use, :])
 					Y = np.array(temp['depth_diffs'][to_use, :])
+					Y_class = np.array(temp['modelnames'][to_use, :])
 
-				elif temp:
+				elif temp: # all the other loops
 					patch_features_nan = np.append(patch_features_nan, temp['patch_features'][to_use, :], axis=0)
 					spider_features = np.append(spider_features, temp['spider_features'][to_use, :], axis=0)
 					Y = np.append(Y, temp['depth_diffs'][to_use, :], axis=0)
+					Y_class = np.append(Y, temp['modelnames'][to_use, :], axis=0)
 
 				if small_model and idx > 5:
 					break
@@ -108,7 +110,8 @@ if __name__ == '__main__':
 			print "Saving to file..."
 			d = dict(spider_features=spider_features,
 					 patch_features=patch_features,
-					 Y=Y)
+					 Y=Y,
+					 Y_class=Y_class)
 			f = open(combined_features_save_path,'wb')
 			pickle.dump(d,f)
 			f.close()
