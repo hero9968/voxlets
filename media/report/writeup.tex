@@ -1,27 +1,39 @@
-\documentclass[10pt,a4paper, twocolumn]{article}
-\usepackage[latin1]{inputenc}
+%\documentclass[10pt,a4paper, twocolumn]{article}
+\documentclass[10pt,twocolumn,letterpaper]{article}
+%\usepackage[latin1]{inputenc}
+
 
 % layout
-\setlength{\columnsep}{0.75cm}
-\usepackage[margin=2.0cm]{geometry}
+%#\setlength{\columnsep}{0.75cm}
+%\usepackage[margin=2.0cm]{geometry}
 
 %\usepackage{url}
 %\usepackage{booktabs}
 
-\usepackage{amsmath}
-\usepackage{amsfonts}
-\usepackage{amssymb}
-\usepackage{subfigure}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
 \usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsmath}
+%\usepackage{amsfonts}
+\usepackage{subfigure}
 \usepackage{nonfloat}
 \usepackage{url}
 \graphicspath{{imgs/}}
 
 \usepackage{xspace}
-\newcommand*{\eg}{e.g.\@\xspace}
-\newcommand*{\ie}{i.e.\@\xspace}
+%\newcommand*{\eg}{e.g.\@\xspace}
+%\newcommand*{\ie}{i.e.\@\xspace}
 \newcommand*{\ea}{et al.\@\xspace}
 %\renewcommand{\arraystretch}{1.5}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+
 
 \newcommand{\prob}{Pr}
 \newcommand{\rgbdimage}{\mathbf{I}}
@@ -33,14 +45,16 @@
 \newcommand{\normal}{\mathbf{n}}
 \newcommand{\ray}{\mathbf{R}}
 
+
+\begin{document}
 \title{Predicting Voxel Occupancy From a Single RGBD Image}
 
 \author{Michael Firman, Gabriel Brostow and Simon Julier}
 
-\begin{document}
+
 \maketitle
 
-\abstract{
+\begin{abstract}
 	Gaining a representation of the geometry of a scene is an essential task for many applications including robotic navigation, scene re-lighting and object manipulation. 
 	Most existing works to recover the scene geometry rely on combining multiple views of the scene captured from many different directions or use of \emph{a priori} information about the expected semantic make-up of the scene.
 
@@ -51,7 +65,7 @@
 	First, we propose CAD models which match regions in our input scene, and estimate a suitable transformation into the scene. 
 	Next we classify each proposal as being `good' or `bad', using a random forest trained on scenes with known geometry.
 	Finally we combine the voxel predictions of all the proposals, taking into account the output of the per-proposal classifier.
-}
+\end{abstract}
 
 \begin{figure*}
 	\centering% 
@@ -488,7 +502,6 @@ Also don't have the TSDF etc. Lots of problems
 \item \cite{fisher-siggraphasia-2012}, use their synthetic scenes (great for a first pass!)
 \end{itemize}
 
-
 \begin{figure}
 	\centering% 
 	\includegraphics[width=1.0\columnwidth]{synth_scene.png}% 
@@ -496,10 +509,21 @@ Also don't have the TSDF etc. Lots of problems
 	\label{fig:fisher_scene}% 
 \end{figure}
 
+% \section{Acknowledgements}
+% Peter Gehler
+% Oisin
+% Prism group
+% Malcolm
+
 
 %\bibliographystyle{plain}
+%\bibliographystyle{apalike}
+%\bibliography{bibtex/strings.bib,bibtex/main.bib,bibtex/crossrefs.bib}
+
+{\small
 \bibliographystyle{apalike}
 \bibliography{bibtex/strings.bib,bibtex/main.bib,bibtex/crossrefs.bib}
+}
 
 %\end{multicols}
 \end{document}

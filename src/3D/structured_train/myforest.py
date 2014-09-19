@@ -25,9 +25,11 @@ class ClassSampledForest(object):
         # sample (with replacement) the classes we want to use in our sample
         classes_to_use = np.random.choice(unique_classes, size=number_to_sample, replace=True)
         print "Classes to use are: " + str(classes_to_use)
+        final_choice = [True if t in classes_to_use else False for t in all_class_labels]
+        print "Using " + str(np.sum(final_choice)) + " items, out of " + str(len(final_choice))
         
         # find which of our original vector is in the selected sample
-        return [True if t in classes_to_use else False for t in all_class_labels]
+        return final_choice
 
 
     def fit(self, X, Y, class_Y):
@@ -42,9 +44,17 @@ class ClassSampledForest(object):
         for i in range(self.n_estimators):
 
             # sample from the data
+            print "Before sampling:"
+            print "X is " + str(X.shape)
+            print "Y is " + str(Y.shape)
+
             to_use = self.sample_classes(class_Y, 0.66)
             temp_X = X[to_use, :]
             temp_Y = Y[to_use]
+
+            print "After sampling:"
+            print "temp_X is " + str(temp_X.shape)
+            print "temp_Y is " + str(temp_Y.shape)
 
             tree = RandomForestRegressor(n_estimators=1, n_jobs=self.n_jobs, max_depth=self.max_depth)
             tree.fit(temp_X, temp_Y)
