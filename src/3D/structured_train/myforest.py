@@ -48,7 +48,7 @@ class ClassSampledForest(object):
 
             tree = RandomForestRegressor(n_estimators=1, n_jobs=self.n_jobs, max_depth=self.max_depth)
             tree.fit(temp_X, temp_Y)
-            self.estimators_.append(model)
+            self.estimators_.append(tree)
 
     def predict(self, X, aggregator='median'):
         '''
