@@ -14,7 +14,13 @@ import socket
 import paths
 import myforest
 
-small_model = True # if true, then only load a few of the models (v quick, good for testing)
+host_name = socket.gethostname()
+
+if host_name == 'troll':
+	small_model = False # if true, then only load a few of the models (v quick, good for testing)
+else:
+	small_model = True 
+
 overwrite = True  # if true, then overwrite models if they already exist
 nan_replacement_value = -10
 
@@ -54,7 +60,6 @@ if __name__ == '__main__':
 	train_data = pickle.load(f)
 	f.close()
 
-	host_name = socket.gethostname()
 	if host_name == 'troll':
 		number_jobs = 10
 	else:
