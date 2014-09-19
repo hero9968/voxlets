@@ -5,6 +5,7 @@ import scipy.io
 import matplotlib.pyplot as plt
 #from skimage import filter
 from multiprocessing import Pool
+from multiprocessing import cpu_count
 import itertools
 import timeit
 import patches
@@ -49,7 +50,7 @@ class DepthFeatureEngine(object):
 		self.view_idx = view_idx
 		self.frontrender = self.load_frontrender(modelname, view_idx)
 		self.backrender = self.load_backrender(modelname, view_idx)
-		self.mask = self.extract_mask(self.frontrender)
+		
 		#self.samples_per_image = 1000
 		self.hww = 7
 		self.indices = []
@@ -65,6 +66,7 @@ class DepthFeatureEngine(object):
 	def load_frontrender(self, modelname, view_idx):
 		fullpath = base_path + 'renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
 		frontrender = scipy.io.loadmat(fullpath)['depth']
+		self.mask = self.extract_mask(frontrender)
 		return frontrender
 
 	def load_backrender(self, modelname, view_idx):
@@ -119,25 +121,36 @@ class DepthFeatureEngine(object):
 		return self.backrender[index[0], index[1]] - self.frontrender[index[0], index[1]]
 
 
-	def compute_features_and_depths(self, verbose=False):
+	def compute_features_and_depths(self, verbose=False, jobs=1):
 
 		# getting the mask from the points
 		if verbose:
 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
 
-		#assert np.all(mask==extract_mask(backrender))
-		if np.any(self.indices):
-			self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
-			self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
-			self.depth_diffs = [self.depth_difference(index) for index in self.indices]
-			self.depths = [self.frontrender[index[0], index[1]] for index in self.indices]
-			#raise Exception("No indices have been set - cannot compute features!")
-		else:
+		if not np.any(self.indices):
 			self.patch_features = -np.ones((self.samples_per_image, 2*self.patch_extractor.output_patch_hww))
 			self.spider_features = [-np.ones((1, 8)) for i in range(self.samples_per_image)]
 			self.depth_diffs = [-1 for i in range(self.samples_per_image)]
 			self.depths = [-1 for i in range(self.samples_per_image)]
 			self.indices = [(-1, -1) for i in range(self.samples_per_image)]
+
+		else:
+			self.depths = [self.frontrender[index[0], index[1]] for index in self.indices]
+			self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
+
+			if jobs==1:
+				#assert np.all(mask==extract_mask(backrender))
+				self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
+				self.depth_diffs = [self.depth_difference(index) for index in self.indices]
+
+			else:
+				if jobs==-1: jobs = cpu_count()
+				print "Multicore..." + str(jobs)
+				pool = Pool(processes=jobs)
+				self.spider_features = pool.map(self.spider_engine.compute_spider_feature, self.indices)
+				self.depth_diffs = pool.map(self.depth_difference, self.indices)
+				print "Done multicore..."
+
 
 		self.views = [self.view_idx for i in range(self.samples_per_image)]
 		self.modelnames = [self.modelname for i in range(self.samples_per_image)]
