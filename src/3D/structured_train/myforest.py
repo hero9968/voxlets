@@ -27,9 +27,10 @@ class ClassSampledForest(object):
         classes_to_use = np.random.choice(unique_class_idxs, size=number_to_sample, replace=True)
         print "Classes to use are: " + str(classes_to_use)
 
-        boolean_arrays = np.array([class_idxs == this_class for this_class in classes_to_use])
-        print "Boolean is size: " + str(boolean_arrays.shape)
-        final_choice = np.any(boolean_arrays, axis=0)
+        final_choice = np.zeros(class_idxs.shape)
+        for idx, this_class in enumerate(classes_to_use)
+            final_choice = np.boolean_or(class_idxs == this_class, final_choice)
+        
         print "Final choice is " + str(final_choice.shape)
         #final_choice = [True if t in classes_to_use else False for t in all_class_labels]
 
