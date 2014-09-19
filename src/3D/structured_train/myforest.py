@@ -17,15 +17,22 @@ class ClassSampledForest(object):
     def sample_classes(self, all_class_labels, fraction_to_sample):
 
         # get vector of unique class labels
-        unique_classes = np.unique(all_class_labels)
+        unique_class_labels, class_idxs = np.unique(all_class_labels, return_inverse=True)
+        unique_class_idxs = np.unique(class_idxs)
         
         # choose how many class labels we want to sample
-        number_to_sample = int(fraction_to_sample * len(unique_classes))
+        number_to_sample = int(fraction_to_sample * len(unique_class_labels))
         
         # sample (with replacement) the classes we want to use in our sample
-        classes_to_use = np.random.choice(unique_classes, size=number_to_sample, replace=True)
+        classes_to_use = np.random.choice(unique_class_idxs, size=number_to_sample, replace=True)
         print "Classes to use are: " + str(classes_to_use)
-        final_choice = [True if t in classes_to_use else False for t in all_class_labels]
+
+        boolean_arrays = np.array([class_idxs == this_class for this_class in classes_to_use])
+        print "Boolean is size: " + str(boolean_arrays.shape)
+        final_choice = np.any(boolean_arrays, axis=0)
+        print "Final choice is " + str(final_choice.shape)
+        #final_choice = [True if t in classes_to_use else False for t in all_class_labels]
+
         print "Using " + str(np.sum(final_choice)) + " items, out of " + str(len(final_choice))
         
         # find which of our original vector is in the selected sample
