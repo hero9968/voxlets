@@ -328,8 +328,38 @@ This has the effect of making our features invariant to rotations of objects in 
 
 %We avoid using region-level features
 
-We use two novel features, which we describe in detail here.
+We use two novel features, which we describe in detail here. See also figure \ref{fig:features}.
 %The first, the cobweb feature, captures 
+
+
+\newcommand{\subwidth}{0.32\columnwidth}
+\begin{figure*}
+    \centering 
+    \subfigure[$\theta$ at each point]{%
+        \includegraphics[width=\subwidth]{01_angles}}
+        \hfill
+    \subfigure[Spider feature]{%
+        \includegraphics[width=\subwidth]{02_spider}}
+        \hfill
+    \subfigure[Rotation invariance]{%
+        \includegraphics[width=0.4\columnwidth]{03_spider_rot}}
+        \hfill
+    \subfigure[Occluded spider]{%
+        \includegraphics[width=\subwidth]{04_spider_occ}}
+        \hfill
+    \subfigure[Cobweb feature]{%
+        \includegraphics[width=\subwidth]{05_cobweb}}
+        \hfill
+    \caption{
+    (a) Each point on a depth image has an angle $\theta$ associated, which represents the direction of gradient of the depth. 
+    (b) The spider features measure the distance between $\point$ and the edge points $e_{1, \cdots, 7}$.
+    (c) Because the spider features are computed relative to $\theta$, the resultant feature vector is invariant to object rotations in the camera plane.
+    (d) Where the spider line emitted from $\point$ first hits an occluded edge, the true extent is unknown --- this case is denoted as \texttt{?} in this figure.
+    (e) The cobweb feature measures the difference in depth between $\point$ and a set of points in the near vicinity of $\point$, arranged in a cobweb shape.
+    The cobweb feature is also computed relative to $\theta$.}%
+    \label{fig:features}
+\end{figure*}
+
 
 \subsubsection{Cobweb feature}
 The cobweb feature captures the surface shape in the immediate vicinity of $\point$. 
@@ -365,12 +395,14 @@ The spider feature is therefore 16-dimensional.
 We explicitly handle occlusion in the spider features. Where the spider feature first hits an occluded edge rather than an occluding edge, the true size of the object in that dimension is unknown (see figure \ref{fig:occluded_spider}).
 We explicitly encode this unknown value --- in practice with \texttt{NaN} --- and the Random Forest can then make a sensible decision about what to do with it.
 
-\begin{figure}
-    \centering% 
-    \includegraphics[width=0.7\columnwidth]{occlusion_spider.png}% 
-    \figcaption{The spider feature extends lines from $\point$ to the first occluding edge found along the path. Internal edges (e.g. those found in RGB space) are ignored. Where the line first hits an occluded edge, the true extent is unknown --- this case is denoted as \texttt{?} in this figure.}% 
-    \label{fig:occluded_spider}% 
-\end{figure}
+% \begin{figure}
+%     \centering% 
+%     \includegraphics[width=0.7\columnwidth]{occlusion_spider.png}% 
+%     \figcaption{The spider feature extends lines from $\point$ to the first occluding edge found along the path. Internal edges (e.g. those found in RGB space) are ignored. Where the line first hits an occluded edge, the true extent is unknown --- this case is denoted as \texttt{?} in this figure.}% 
+%     \label{fig:occluded_spider}% 
+% \end{figure}
+
+
 
 
 %\subsubsection{}
