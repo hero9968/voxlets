@@ -148,8 +148,9 @@ class DepthFeatureEngine(object):
 				print "Done multicore..."
 
 
-		self.views = [self.view_idx for i in range(self.samples_per_image)]
-		self.modelnames = [self.modelname for i in range(self.samples_per_image)]
+		num_samples = self.indices.shape[0]
+		self.views = [self.view_idx for i in range(num_samples)]
+		self.modelnames = [self.modelname for i in range(num_samples)]
 
 	def features_and_depths_as_dict(self):
 		'''
