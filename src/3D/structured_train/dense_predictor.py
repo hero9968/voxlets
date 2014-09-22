@@ -32,14 +32,14 @@ import displaying as disp
 
 class DensePredictor(object):
 
-    def __init__(self, forest_name):
+    def __init__(self, forest):
 
         self.nan_replacement_value = 5.0
 
 
         # load the forest to use
         #self.load_forest(forest_to_use)
-        self.forest = forest_name
+        self.forest = forest
 
 
     def load_renders(self, modelname, view_idx):
@@ -130,13 +130,13 @@ if __name__ == '__main__':
     #'2566f8400d964be69c3cb90632bf17f3' #
     #modelname = '109d55a137c042f5760315ac3bf2c13e'
 
-    savefolder = paths.base_path + "dense_predictions/"
+    savefolder = paths.base_path + "structured/dense_predictions/"
 
     # prediction object - its job is to do the prediction!
 
     object_names = [l.strip() for l in scipy.io.loadmat(paths.split_path)['train_names']]
     
-    for idx, modelname in enumerate(object_names[:10]):
+    for idx, modelname in enumerate(object_names[:3]):
 
         print "Processing " + modelname + ", number: " + str(idx)
 
@@ -165,6 +165,7 @@ if __name__ == '__main__':
         scipy.io.savemat(savepath, d)
 
         print "Creating image"
+        plt.clf()
         plt.imshow(pred.prediction_gt_image())
         plt.savefig(imgsavepath)
 

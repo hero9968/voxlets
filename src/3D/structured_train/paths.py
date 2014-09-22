@@ -10,7 +10,7 @@ host_name = socket.gethostname()
 if host_name == 'troll':
     base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
 else:
-    base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
+    base_path = os.path.expanduser("~/projects/shape_sharing/data/")
 
 model_features = base_path + 'structured/features/'
 
@@ -27,12 +27,12 @@ combined_train_features_small = combined_features_path + 'train_small.pkl'
 
 # paths for the random forest models
 model_config = base_path + 'models_config.yaml'
-rf_folder_path = base_path + "rf_models/"
-rf_folder_path_small = base_path + "rf_models_small/"
+rf_folder_path = base_path + "structured/rf_models_new_spider/"
+rf_folder_path_small = base_path + "structured/rf_models_small/"
 
 # paths for the sparse results
-results_folder = base_path + "results/"
-results_folder_small = base_path + "results_small/"
+results_folder = base_path + "structured/results/"
+results_folder_small = base_path + "structured/results_small/"
 
 # paths for the dense predictions
 #dense_predictions = base_path + 

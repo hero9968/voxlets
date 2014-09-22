@@ -48,8 +48,6 @@ def resample_inputs(inputs, num_samples):
 		# sample without replacment
 		idxs = np.random.permutation(N)[0:num_samples]
 
-		input[idxs]
-
 	return [item[idxs] for item in inputs]
 	#X[idxs,:], Y[idxs]]
 
