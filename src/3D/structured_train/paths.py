@@ -15,7 +15,7 @@ else:
 model_features = base_path + 'structured/features/'
 
 # paths to do with the dataset as a whole
-models_list = base_path + 'databaseFull/fields/models.txt'
+models_list = base_path + 'basis_models/databaseFull/fields/models.txt'
 split_path = base_path + 'structured/split.mat'
 
 # locations of the combined features
@@ -36,3 +36,15 @@ results_folder_small = base_path + "structured/results_small/"
 
 # paths for the dense predictions
 #dense_predictions = base_path + 
+
+# create a dictionary of all the model names
+f = open(models_list, 'r')
+modelname_to_idx = dict()
+modelnames = []
+for idx, line in enumerate(f):
+    modelname = line.strip()
+    modelname_to_idx[modelname] = idx
+    modelnames.append(modelname)
+
+#print modelnames
+#print d['12bfa757452ae83d4c5341ee07f41676']
