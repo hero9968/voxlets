@@ -68,9 +68,10 @@ for modeloption in all_models:
 	# rf prediction
 	Y_pred = predict_per_tree(clf, X)
 	Y_avg = np.median(Y_pred, axis=0)
+	print Y_pred.shape, Y_avg.shape, Y_gt.shape
 
 	# evaluation of result
-	per_pixel_squared_error = np.square(Y_gt - Y_avg)
+	per_pixel_squared_error = np.square(Y_gt.flatten() - Y_avg.flatten())
 	mean_ssd = np.mean(per_pixel_squared_error)
 
 	print "Max GT depth is " + str(np.max(Y_gt))

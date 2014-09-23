@@ -7,6 +7,8 @@ This script just loads them and plots them
 import yaml
 import numpy as np
 import scipy.io
+import matplotlib
+matplotlib.use('pdf')
 import matplotlib.pyplot as pl
 import os.path
 import paths
@@ -16,7 +18,7 @@ all_models = yaml.load(open(paths.model_config, 'r'))
 predictions = []
 
 for modeloption in all_models:
-	result_path = paths.base_path + 'results_new_spider/' + modeloption['name'] + '.mat'
+	result_path = paths.results_folder + modeloption['name'] + '.mat'
 	if os.path.isfile(result_path):
 		print "Loading " + result_path
 		this_result = scipy.io.loadmat(result_path)
@@ -47,4 +49,4 @@ pl.xlabel('False Positive Rate')
 pl.ylabel('True Positive Rate')
 pl.legend(loc="lower right") 
 #pl.show()
-pl.savefig('plots/roc.eps')
+pl.savefig('plots/roc.pdf')

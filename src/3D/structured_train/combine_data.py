@@ -50,7 +50,7 @@ def replace_nans_with_col_means(X):
 	X[inds]=np.take(col_mean,inds[1])
 	return X
 
-features_to_sample_per_object = 1000
+features_to_sample_per_object = 2000
 
 
 if __name__ == '__main__':
@@ -119,4 +119,8 @@ if __name__ == '__main__':
 
 			print "Done..."
 
+
+
+
 	print "Done all!"
+
