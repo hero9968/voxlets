@@ -22,7 +22,7 @@ else:
 	small_model = True 
 
 overwrite = True  # if true, then overwrite models if they already exist
-nan_replacement_value = -10
+nan_replacement_value = 5
 
 if small_model:
 	print "Warning - using small dataset (don't use for final model training)"

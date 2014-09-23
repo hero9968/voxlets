@@ -45,7 +45,7 @@ def replace_nans_with_col_means(X):
 	http://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
 	'''
 	col_mean = stats.nanmean(X,axis=0)
-	#col_mean = nan_to_value(col_mean, 0)
+	col_mean[np.isnan(col_mean)] = 0
 	inds = np.where(np.isnan(X))
 	X[inds]=np.take(col_mean,inds[1])
 	return X

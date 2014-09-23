@@ -32,7 +32,7 @@ import displaying as disp
 
 import voxel_data
 
-class DensePredictor(object):
+class SlicePredictor(object):
 
     def __init__(self, forest):
 
@@ -63,8 +63,8 @@ class DensePredictor(object):
         #idxs = [all_idxs[0], all_idxs[1] if all_idxs[0] == slice_idx]
         idxs = np.array([[t0, t1] for t0, t1 in all_idxs if t0==slice_idx])
         self.feature_engine.indices = idxs
-        print "Shape: " + str(idxs.shape)
-        print all_idxs
+        #print "Shape: " + str(idxs.shape)
+        #print all_idxs
         self.feature_engine.samples_per_image = idxs.shape[0]
         self.idxs_used = idxs
 
@@ -89,26 +89,37 @@ class DensePredictor(object):
 
         ''' classifying'''
         self.tree_predictions = self.predict_per_tree(self.forest, X)
+        print "Tree predict size is " + str(self.tree_predictions.shape)
         self.Y_pred = np.median(self.tree_predictions, axis=0)
         #self.Y_pred_rf = rf.predict(X)
 
         ''' reconstructing the image'''
         test_idxs = np.array(self.all_features['indices']).T
 
-        print self.Y_pred.shape
-
+        '''reconstructing the gt image'''
         self.Y_gt = np.array(self.all_features['depth_diffs'])
         self.GT_image = disp.reconstruct_image(test_idxs, np.array(self.Y_gt), (240, 320))
-
+        self.GT_slice = self.GT_image[self.slice_idx, :]
+        #print self.Y_pred.shape
 
         print "Sizes are " + str(self.idxs_used.shape) + " " + str(self.Y_pred.shape)
+
+        '''reconstructing the prediction'''
         slice_idxs = np.copy(self.idxs_used).T
         slice_idxs[0, :] = 0
-        print slice_idxs
+        #print slice_idxs
         self.prediction_slice = disp.reconstruct_image(slice_idxs, self.Y_pred, (1, 320))
 
+        '''reshaping the tree predictions to be the full size of the slice'''
+        self.predictions = []
+        for tree in self.tree_predictions:
+            tree_slice = disp.reconstruct_image(slice_idxs, tree, (1, 320))
+            self.predictions.append(tree_slice)
+        self.predictions = np.array(self.predictions)
+
         self.Y_gt = np.array(self.all_features['depth_diffs'])
-        self.GT_slice = self.GT_image[self.slice_idx, :]
+
+        self.front_slice = self.feature_engine.frontrender[self.slice_idx, :]
 
         print "Created slice of size " + str(self.prediction_slice.shape)
         print "Created slice of size " + str(self.GT_slice.shape)
@@ -119,13 +130,15 @@ class DensePredictor(object):
         return disp.crop_concatenate((self.GT_image, self.prediction_image), 10)
 
 
-    def fill_slice(self, slice_idx):
+    def fill_slice(self):
         '''
         populates a 2D slice through the voxel volume 
         '''
-        filler = voxel_data.SliceFiller(front_slice, back_slice_predictions, focal_length)
-        return filler.fill_slice(0, 2)
 
+        filler = voxel_data.SliceFiller(self.front_slice, self.predictions, 570.0/2)
+        print "Min is " + str(np.nanmin(self.front_slice))
+        print "Max is " + str(np.nanmax(self.predictions))
+        return filler.extract_warped_slice(1.0, 2.0, gt=self.GT_slice)
 
 
     def predictions_as_dict(self):
@@ -135,88 +148,79 @@ class DensePredictor(object):
                     Y_pred=pred.Y_pred,
                     tree_predictions=self.tree_predictions)            
 
-    # def plot_prediction_by_GT(self):
 
-
-    # def plot_prediction(self):
-
-
-
-    # def reconstruct_volume(self):
-
-
-    # def plot_slice(self):
-
-overwrite = True
-
+overwrite = False
 
 if __name__ == '__main__':
 
     # loading the saved forest
     print "Loading forest..."
-    rf = pickle.load( open(paths.rf_folder_path + "patch_spider_5k_10trees.pkl", "r") )
+    rf = pickle.load( open(paths.rf_folder_path + "patch_spider_1M_10trees.pkl", "r") )
 
     #'2566f8400d964be69c3cb90632bf17f3' #
     #modelname = '109d55a137c042f5760315ac3bf2c13e'
 
-    savefolder = paths.base_path + "structured/dense_predictions/"
+    savefolder = paths.base_path + "slice_predictions/"
 
     # prediction object - its job is to do the prediction!
 
-    object_names = [l.strip() for l in scipy.io.loadmat(paths.split_path)['train_names']]
-    
-    for idx, modelname in enumerate(object_names[:3]):
+    object_names = [l.strip() for l in scipy.io.loadmat(paths.split_path)['test_names']]
+    print "First is " + object_names[0]
+
+    for idx, modelname in enumerate(object_names[1:100]):
+        if idx < 21: continue
 
         print "Processing " + modelname + ", number: " + str(idx)
 
-        modelsavefolder = savefolder + modelname + "/"
-        if not os.path.exists(modelsavefolder):
-            os.makedirs(modelsavefolder)
+        view_idx = np.random.choice([5, 12, 15, 20])
 
-        view_idx = 12
+        imgsavepath = savefolder + modelname + "_" + str(view_idx) + '_slices.pdf'
 
-        savepath = modelsavefolder + str(view_idx) + '_slices.mat'
-        imgsavepath = modelsavefolder + str(view_idx) + '_slices.pdf'
-
-        if os.path.exists(savepath) and not overwrite:
+        if os.path.exists(imgsavepath) and not overwrite:
             print "Skipping " + modelname + " " + str(view_idx)
 
         print "Computing features"
-        pred = DensePredictor(rf)
+        pred = SlicePredictor(rf)
         pred.load_renders(modelname, view_idx)
 
-        plt.subplot(2, 2, 1)
-        plt.imshow(pred.feature_engine.frontrender)
+        print "Choosing the slices "
+        this_frontrender = np.copy(pred.feature_engine.frontrender)
+        locs = np.nonzero(np.any(~np.isnan(this_frontrender), axis=1))
 
-        for idx, slice_idx in enumerate([130, 120, 180]):
+        object_top = np.min(locs)
+        object_bottom = np.max(locs)
+        object_height = object_bottom - object_top
+        print object_top, object_bottom
+        slices = (object_top + object_height * np.array([0.25, 0.5, 0.75])).astype(int)
+        print slices
+
+        plt.clf()
+        for idx, slice_idx in enumerate(slices):
             print "Computing and classifying all points in slice" + str(slice_idx)
             pred.compute_features(slice_idx)
             pred.classify_features()
 
             print "Creating slice"
-            slice_image = pred.fill_slice(slice_idx)
-
+            slice_image = pred.fill_slice()
+            print slice_image.shape
 
             print "Adding to plot"
-            plt.subplot(2, 2, idx+1)
+            plt.subplot(2, 2, idx+2)
             plt.imshow(slice_image)
+            plt.gca().invert_yaxis()
 
-        plt.show()
-        
-        #plt.savefig(imgsavepath)
+            this_frontrender[slice_idx, :] = 0
+
+        plt.subplot(2, 2, 1)
+        plt.imshow(this_frontrender)
+        plt.title(modelname + " : " + str(view_idx))
+
+        #plt.show()      
+        plt.savefig(imgsavepath)
+        #plt.savefig('./')
 
         print "Done..."
-
-        print "Breaking"
-        break
+        #print "Breaking"
+        #break
 
     print "Done all"
-
-
-        #plt.imshow(pred.prediction_image)
-
-
-
-
-
-

@@ -52,7 +52,7 @@ class DepthFeatureEngine(object):
 		self.indices = []
 
 		#self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
-		self.patch_extractor = patches.LocalSpiderEngine(t=7, fixed_patch_size=False)
+		self.patch_extractor = patches.CobwebEngine(t=7, fixed_patch_size=False)
 		self.patch_extractor.compute_angles_image(self.frontrender)
 
 		self.spider_engine = patches.SpiderEngine(self.frontrender, distance_measure='geodesic')
@@ -124,6 +124,7 @@ class DepthFeatureEngine(object):
 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
 
 		if not np.any(self.indices):
+			raise Exception("output_patch_hww no longer exists")
 			self.patch_features = -np.ones((self.samples_per_image, 2*self.patch_extractor.output_patch_hww))
 			self.spider_features = [-np.ones((1, 8)) for i in range(self.samples_per_image)]
 			self.depth_diffs = [-1 for i in range(self.samples_per_image)]

@@ -18,7 +18,7 @@ import matplotlib.patches as patches
 import matplotlib as mpl
 
 
-class LocalSpiderEngine(object):
+class CobwebEngine(object):
 	'''
 	A different type of patch engine, only looking at points in the compass directions
 	'''
@@ -234,7 +234,7 @@ class PatchPlot(object):
 		'''
 
 		if isinstance(scales, Number):
-			scales = [scales * self.image[index[0], index[1]] for index in indices]
+			scales = [scales / self.image[index[0], index[1]] for index in indices]
 
 		plt.hold(True)
 
@@ -475,7 +475,8 @@ if __name__ == '__main__':
 	frontrender = loadsave.load_frontrender(modelname, view_idx)
 
 	# setting up patch engine for computation of angles
-	patch_engine = PatchEngine(frontrender, 6, -1, -1)
+	patch_engine = CobwebEngine(10)
+	patch_engine.set_depth_image(frontrender)
 	patch_engine.compute_angles_image(frontrender)
 
 	# sampling indices from the image
