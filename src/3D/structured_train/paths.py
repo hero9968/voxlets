@@ -15,7 +15,7 @@ else:
 model_features = base_path + 'structured/features/'
 
 # paths to do with the dataset as a whole
-models_list = base_path + 'basis_models/databaseFull/fields/models.txt'
+models_list = base_path + 'databaseFull/fields/models.txt'
 split_path = base_path + 'structured/split.mat'
 
 # locations of the combined features
@@ -27,7 +27,7 @@ combined_train_features_small = combined_features_path + 'train_small.pkl'
 
 # paths for the random forest models
 model_config = base_path + 'models_config.yaml'
-rf_folder_path = base_path + "structured/rf_models_new_spider/"
+rf_folder_path = base_path + "structured/rf_models/"
 rf_folder_path_small = base_path + "structured/rf_models_small/"
 
 # paths for the sparse results
