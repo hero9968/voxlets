@@ -8,7 +8,7 @@ from multiprocessing import Pool
 from multiprocessing import cpu_count
 import itertools
 import timeit
-import patches
+import features
 import socket
 import traceback
 import sys
@@ -51,11 +51,11 @@ class DepthFeatureEngine(object):
 		self.hww = 7
 		self.indices = []
 
-		#self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
-		self.patch_extractor = patches.CobwebEngine(t=7, fixed_patch_size=False)
+		#self.patch_extractor = features.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
+		self.patch_extractor = features.CobwebEngine(t=7, fixed_patch_size=False)
 		self.patch_extractor.compute_angles_image(self.frontrender)
 
-		self.spider_engine = patches.SpiderEngine(self.frontrender, distance_measure='geodesic')
+		self.spider_engine = features.SpiderEngine(self.frontrender, distance_measure='geodesic')
 		self.spider_engine.focal_length = 240.0/(np.tan(np.rad2deg(43.0/2.0))) / 2.0
 		self.spider_engine.angles_image = self.patch_extractor.angles
 
