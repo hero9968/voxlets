@@ -114,7 +114,7 @@ if __name__ == '__main__':
 			model = neighbors.KNeighborsClassifier(n_estimators, weights='uniform')
 			model.fit(X, Y)
 		elif modeloption['type']=='myforest':
-			model = myforest.ClassSampledForest(n_estimators=n_estimators, n_jobs=n_jobs, max_depth=20)
+			model = myforest.ClassSampledForest(n_estimators=n_estimators, n_jobs=number_jobs, max_depth=20)
 			model.fit(X, Y, class_Y)
 
 		else:
