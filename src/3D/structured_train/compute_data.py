@@ -2,7 +2,7 @@ import os
 import collections
 import numpy as np
 import scipy.io
-import matplotlib.pyplot as plt
+
 #from skimage import filter
 from multiprocessing import Pool
 from multiprocessing import cpu_count
@@ -13,16 +13,12 @@ import socket
 import traceback
 import sys
 
+import paths
+
 number_views = 42 # how many rendered views there are of each object
 
 # in an ideal world we wouldn't have this hardcoded path, but life is too short to do it properly
 host_name = socket.gethostname()
-if host_name == 'troll':
-	base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
-else:
-	base_path = os.path.expanduser("~/projects/shape_sharing/data/3D/basis_models/")
-
-models_list = base_path + 'databaseFull/fields/models.txt'
 
 
 class DepthFeatureEngine(object):
@@ -56,7 +52,7 @@ class DepthFeatureEngine(object):
 		self.indices = []
 
 		#self.patch_extractor = patches.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
-		self.patch_extractor = patches.LocalSpiderEngine(t=7, fixed_patch_size=False)
+		self.patch_extractor = patches.CobwebEngine(t=7, fixed_patch_size=False)
 		self.patch_extractor.compute_angles_image(self.frontrender)
 
 		self.spider_engine = patches.SpiderEngine(self.frontrender, distance_measure='geodesic')
@@ -64,13 +60,13 @@ class DepthFeatureEngine(object):
 		self.spider_engine.angles_image = self.patch_extractor.angles
 
 	def load_frontrender(self, modelname, view_idx):
-		fullpath = base_path + 'renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
+		fullpath = paths.base_path + 'basis_models/renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
 		frontrender = scipy.io.loadmat(fullpath)['depth']
 		self.mask = self.extract_mask(frontrender)
 		return frontrender
 
 	def load_backrender(self, modelname, view_idx):
-		fullpath = base_path + 'render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
+		fullpath = paths.base_path + 'basis_models/render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
 		backrender = scipy.io.loadmat(fullpath)['depth']
 		return backrender
 
@@ -128,6 +124,7 @@ class DepthFeatureEngine(object):
 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
 
 		if not np.any(self.indices):
+			raise Exception("output_patch_hww no longer exists")
 			self.patch_features = -np.ones((self.samples_per_image, 2*self.patch_extractor.output_patch_hww))
 			self.spider_features = [-np.ones((1, 8)) for i in range(self.samples_per_image)]
 			self.depth_diffs = [-1 for i in range(self.samples_per_image)]
@@ -152,8 +149,9 @@ class DepthFeatureEngine(object):
 				print "Done multicore..."
 
 
-		self.views = [self.view_idx for i in range(self.samples_per_image)]
-		self.modelnames = [self.modelname for i in range(self.samples_per_image)]
+		num_samples = self.indices.shape[0]
+		self.views = [self.view_idx for i in range(num_samples)]
+		self.modelnames = [self.modelname for i in range(num_samples)]
 
 	def features_and_depths_as_dict(self):
 		'''
@@ -173,6 +171,7 @@ class DepthFeatureEngine(object):
 		'''
 		plot the front render and the sampled pairs
 		'''
+		import matplotlib.pyplot as plt
 		plt.imshow(self.frontrender)
 		plt.hold(True)
 		plt.plot(self.indices[:, 1], self.indices[:, 0], '.')
@@ -211,7 +210,6 @@ def list_of_dicts_to_dict(list_of_dicts):
 
 	return result
 
-host_name = socket.gethostname()
 if host_name == 'troll':
 	saving = True
 	redo_if_exist = False # i.e. overwrite
@@ -232,13 +230,13 @@ if __name__ == '__main__':
 		else:
 			pool = Pool(processes=2)
 
-	f = open(models_list, 'r')
+	f = open(paths.models_list, 'r')
 
 	for idx, line in enumerate(f):
 
 		modelname = line.strip()
-		if not host_name == 'troll':
-			modelname = '12bfa757452ae83d4c5341ee07f41676'
+		#if not host_name == 'troll':
+			#modelname = '12bfa757452ae83d4c5341ee07f41676'
 
 		fileout = base_path + 'structured/features_nopatch/' + modelname + '.mat'
 

@@ -1,11 +1,5 @@
-%\documentclass[10pt,a4paper, twocolumn]{article}
 \documentclass[10pt,twocolumn,letterpaper]{article}
 %\usepackage[latin1]{inputenc}
-
-
-% layout
-%#\setlength{\columnsep}{0.75cm}
-%\usepackage[margin=2.0cm]{geometry}
 
 %\usepackage{url}
 %\usepackage{booktabs}
@@ -17,7 +11,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsmath}
-%\usepackage{amsfonts}
+\usepackage{amsfonts}
 \usepackage{subfigure}
 \usepackage{nonfloat}
 \usepackage{url}
@@ -34,7 +28,6 @@
 \def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
 \def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
 
-
 \newcommand{\prob}{Pr}
 \newcommand{\rgbdimage}{\mathbf{I}}
 \newcommand{\imregion}{\mathcal{R}}
@@ -44,12 +37,13 @@
 \newcommand{\point}{\mathbf{p}}
 \newcommand{\normal}{\mathbf{n}}
 \newcommand{\ray}{\mathbf{R}}
+\newcommand{\degree}{^{\circ}}
 
-
-\begin{document}
 \title{Predicting Voxel Occupancy From a Single RGBD Image}
 
-\author{Michael Firman, Gabriel Brostow and Simon Julier}
+\author{Michael Firman, Gabriel Brostow, Simon Julier \ea}
+
+\begin{document}
 
 
 \maketitle
@@ -61,28 +55,12 @@
 	We present a method to predict whether or not each voxel in a scene is occupied given just a single RGBD image.
 	We argue that objects of dissimilar semantic classes often share similar shapes; this allows for a limited dataset of CAD objects to model the shape of a wide range of objects and hence estimate the hidden geometry of arbitrary scenes.
 
-	Our method comprises of three main stages. 
-	First, we propose CAD models which match regions in our input scene, and estimate a suitable transformation into the scene. 
-	Next we classify each proposal as being `good' or `bad', using a random forest trained on scenes with known geometry.
-	Finally we combine the voxel predictions of all the proposals, taking into account the output of the per-proposal classifier.
+	Our method comprises of three main components:
+	1) For each pixel in an RGBD image, we compute local and regional features and use these to predict the thickness of the object at that point, using a Random Forest trained on multiple CAD models.
+	2) To extend occluded surfaces
+	3) Finally we combine and regularise the thickness predictions and occluded surface continuations to form a full probablistic distribution of occupancy for each voxel in the scene.
 \end{abstract}
 
-\begin{figure*}
-	\centering% 
-	\includegraphics[width=0.9\linewidth]{pipeline_hor}% 
-	\figcaption{The pipeline --- a work in progress! This will ultimately show a much more challenging image, together with the basis shapes that are matched in and a visualisation of the final voxel occupancy.}% 
-	\label{fig:input.eps}% 
-\end{figure*}
-
-%\begin{minipage}{\linewidth} 
-%\begin{figure*}[b]
-%       \centering 
-%       \includegraphics[width=0.6\columnwidth]{pipeline_hor}
-%       \caption{The pipeline used --- work in progress!}
-%       \label{fig:pipeline}
-%\end{figure*}
-
-%\begin{multicols}{2}
 
 \section{Introduction}
 Given a single image of a scene, humans can usually get a good overview of the scene and what the geometry is, even in the many areas which are not directly observable. 
@@ -90,8 +68,6 @@ We are able to do this using a manner of different tools at our disposal.
 We can use symmetry, hypothesising that unobserved regions match the parts we can see under a transform.
 In many occasions we exploit semantic knowledge: by recognising specific objects and relating them to objects in our memory, we form an idea of their shape.
 In many cases, however, we use a more generic, higher level knowledge about shape in order to hypothesise the missing regions.
-
-%However, a single image only sees a small subset of the actual visible surfaces in the scene, and can only directly infer a very small number of occupied voxels.
 
 
 \paragraph{Application areas}
@@ -101,14 +77,14 @@ It can be very useful for a computer system to know the geometry of hidden areas
 \item \textbf{Robotics} --- Helping a robot to plan a path around objects given only a single view of a scene, e.g. from a doorway. Also to help a robot plan grasping position on objects it can only see partial views of.
 \item \textbf{Scene relighting} --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
 \item \textbf{Object repositioning} --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
-\item \textbf{Re-rendering scene from a new viewpoint}
+\item \textbf{Multi-view reconstruction} --- An intial estimate for voxel occuapncy can be used as a prior during online multi-view reconstruction algorithms. This prior prediction would be overwritten with observed data as more footage is captured.
 \end{itemize}
 
 \paragraph{Aim of the system and overview}
 Given a single RGBD image, the aim of our system is to predict whether each voxel in the scene is occupied or not - in effect, we want to predict the voxelised occupancy grid of KinectFusion \cite{izadi-uist-2011}, but having been given only a single view of the scene instead of multiple views.
 
-We [plan to] achieve this by matching regions from the input image to renders of objects in a training database.
-The voxel occupancy of these objects can then be combined together to give a prediction for each of the voxels in the scene. 
+We [plan to] achieve this by matching each region from the input image to a similar region of an object in a training database.
+The thickness of the object is then used.
 Because we care about voxel occupancy, and not semantic understanding, we are free to use training objects which differ in scale and semantic labelling from the objects being modelled in the scene. 
 This is key to our approach --- we are not reasoning about semantics of objects, but instead about object shape.
 In effect we are hypothesising that any two objects that have a similar shape from one angle are likely to share similarities in shape in the unobserved regions of the scene.
@@ -140,13 +116,13 @@ With tools such as OpenVDB\footnote{\url{www.openvdb.org}}, voxelised representa
 
 
 % \begin{figure}
-% 	\centering 
-% 	\subfigure[Example input image]{%
-% 		\includegraphics[width=0.4\columnwidth]{kinfu1.jpg}}
-% 		\hfill
-% 	\subfigure[Ground truth output]{%
-% 		\includegraphics[width=0.4\columnwidth]{kinfu2.jpg}} \\
-% 	\caption{Given a single RGBD image (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
+%   \centering 
+%   \subfigure[Example input image]{%
+%       \includegraphics[width=0.4\columnwidth]{kinfu1.jpg}}
+%       \hfill
+%   \subfigure[Ground truth output]{%
+%       \includegraphics[width=0.4\columnwidth]{kinfu2.jpg}} \\
+%   \caption{Given a single RGBD image (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
 % \end{figure}
 
 \paragraph{Motivation from other areas}
@@ -154,9 +130,8 @@ Shape sharing...
 
 \subsubsection{Contributions}
 \begin{itemize}
-\item A scale-\emph{variant} mechanism for 6DOF hypothesis proposals, which is robust to local changes in geometrical appearance.
-\item A classifier for verifying 6DOF hypotheses, trained on [synthetic/real] scenes
-\item A probablistic method for combining together the per-voxel predictions of multiple hypotheses.
+\item A novel feature representation for a point which captures both local and region-level shape, while respecting occlusions.
+\item A regularisation system for combining depth and surface predictions
 \end{itemize}
 
 \subsubsection{Problem statement}
@@ -187,6 +162,7 @@ For training, they use manually labelled top-down views of the scene.
 Their prediction of occupancy, however, is really just a Gaussian model. 
 Final labellings found from graph cuts over the CRF. 
 They make the observation that the observed values from a Kinect sensor can be very bad, and may need cleaning up.
+%Silberman \ea \cite{silberman-eccv-2014} complete holes in partial KinectFusion meshes of indoor scenes.
 
 Fouhey \ea \cite{fouhey-iccv-2013} use the NYU dataset of RGBD images to learn how to predict the normal orientations for each pixel of an input RGB image. 
 In our case we are tackling a similar problem at a higher level --- we take RGBD as input, and aim to predict the full geometry of the scene.
@@ -201,7 +177,7 @@ A good overview of such mesh completion algorithms are given in \cite{ju-cst-200
 
 \cite{silberman-eccv-2014} complete meshes from partial KinFU reconstructions, \eg behind items of furniture.
 They use this for augmeted realist situations, \eg allowing balls to bounce off floor in unseen areas.
-(Not exactly sure of the method they use for completion!)
+They detect planes in the voxelised representation of the scene, and complete their contours in 2D using a novel CRF method.
 
 Image completion, such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}, typically has the aim of getting a good visually plausible output irrespective of the accuracy compared to ground truth. 
 The results can be very impressive. 
@@ -278,11 +254,11 @@ One key motivation is Shape Sharing \cite{kim-eccv-2012}, where silhouettes of o
 Big issue with ground truth. Most papers don't have proper ground truth and therefore can only really do qualitative results, \eg \cite{all the papers...}.
 
 \paragraph{Scene relighting}
-\cite{ikeda-acpr-2013} use an RGBD image to do scene relighting from a single image.
+\cite{ikeda-acpr-2013} perform scene relighting from a single RGBD image, but cannot recover shadows cast by objects in the scene.
 On the other hand, \cite{xiao-cvpr-2014} use the RGBD information to automatically \textit{remove} hard and soft shadows from a single image.
 
 \paragraph{Training for scene completion}
-Long history of using training scenes to try to complete and upsample
+Long history of using training scenes to try to complete and upsample.
 
 \paragraph{To add to related work:}
 \begin{itemize}
@@ -296,6 +272,8 @@ The problem with this is it gives incredibly coarse occupation information.
 \section{Approach}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+Our approach is somewhat inspired by patch-based methods used for superresolution or similar of depth images. 
+
 % Overview of the method --- Figure \ref{fig:pipeline}.
 
 
@@ -304,174 +282,140 @@ The problem with this is it gives incredibly coarse occupation information.
 % We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
 
 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Methodology}
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Thickness prediction}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Requirements of the matching schema:
+The aim of our thickness prediction function is to map a point $\point$ in the image to a scalar thickness $t$.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Edges in depth images}
+Describe here:
 \begin{itemize}
-\item Not looking to match the exact shapes --- instead want to match shapes that might only be somewhat similar
-\item For this reason, want to be robust to local differences between the two regions, but capture the overall shape
-\item Want the matching to be scale \emph{variant} --- should be able to match regions of the same shape regardless of their scale 
-\item We therefore ultimately look for a 7DOF transformation
+\item Types of edges (depth, colour, occluding etc)
+\item Our method for depth edges
+\item motivation - why do we care about occlusions?
 \end{itemize}
 
-\paragraph{Scale variance}
-We ensure we can match regions of the same shape but of different scales by rescaling each region by a scale factor $s$, where $s$ is the 95th percentile of the pairwise distances in the region. 
-By using the 95th percentile instead of the maximum distance between pairs of points we become robust to outlying points.
+We reason that discontinuities in depth images can be assigned a direction: one side of each edge is the occluder, the other is the occludee. 
+We can compute the gradient of the depth edges using PCA on the edge pixels in image space.
+We ensure that the final gradient at each edge pixel points in the direction of the occluded side.
 
-\subsection{Predicting voxel occupancy}
-The ultimate aim is to predict, for each voxel $v_k$ in the scene, the probably of the event $\occ_k$, \ie the probability that it is occupied or not. 
-We therefore want $\prob(\occ_k | \rgbdimage)$ for each voxel.
-$$
-\prob(\occ_k | \rgbdimage) = \sum_{i,j} \prob(\occ_k|\basisshape_i)\prob(\basisshape_i|\imregion_j)\prob(\imregion_j|\rgbdimage)
-$$
+We can then use the occlusion information in our feature computations --- see for example figure \ref{fig:occluded_region}.
 
-\begin{itemize}
-\item $\prob(\occ_k|\basisshape_i)$ ---
-This is $1$ if the voxel is inside the transformed basis shape mesh, and $0$ otherwise.
-\item $\prob(\basisshape_i|\imregion_j)$ ---
-This is the probability that basis shape $\basisshape_i$ is a correct match for region $\imregion_j$. 
-We approximate this based on how well the region $\imregion_j$ matches the visible part of the $\basisshape_i$.
-\item $\prob(\imregion_j|\rgbdimage)$ ---
-This is the probability that the region of the image $\imregion_j$ is a correct segmentation of image $\rgbdimage$.
-\end{itemize}
 
-\subsection{Predicting voxel occupancy --- alternative}
-The ultimate aim is to predict, for each voxel $v_k$ in the scene, the probably of the event $\occ_k$, \ie the probability that it is occupied or not. 
-We therefore want $\prob(\occ_k)$ for each voxel.
-$$
-\prob(\occ_k ) = \sum_{i,j} \prob(\occ_k|\basisshape_i)\prob(\basisshape_i|\ray_j)
-$$
+\begin{figure}
+    \centering 
+    \subfigure[]{%
+        \includegraphics[width=0.45\columnwidth]{occlusion_a}}
+        \hfill
+    \subfigure[]{%
+        \includegraphics[width=0.45\columnwidth]{occlusion_b}} \\
+    \caption{Where edges occur as a result of occlusion boundaries, the direction of the edge is important. The edge bounding region A can be divided into an \emph{occluding} portion (solid green) and an \emph{occluded} portion (dashed red).
+    We can make a reasonable assumption that region A may extend behind object B past the occluded edge --- however, region A cannot continue sideways beyond its occluding edge.}
+    \label{fig:occluded_region}
+\end{figure}
 
-\begin{itemize}
-\item $\prob(\occ_k|\basisshape_i)$ ---
-This is $1$ if the voxel is inside the transformed basis shape mesh, and $0$ otherwise.
-\item $\prob(\basisshape_i|\ray_j)$ ---
-This is the probability of the event that $\basisshape_i$ is the correct shape to explain the shape of the object along ray $\ray_j$.
-\end{itemize}
 
-The only reason that voxel $k$ can be viewed or not is because of objects which may or may not be lying on the path in the direction of the voxel.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Features}
+Our method is to use local and regional featues extracted from the image around $\point$ to predict the thickness of the object at that point.
+At each pixel on the dpeth image we compute an angle $\theta$, which represents the direction of the gradient of the depth in the image plane.
+Each of the features are computed with respect to the local reference frame defined by $\theta$.
+This has the effect of making our features invariant to rotations of objects in the camera plane --- computing our features at the same point on an object which has undergone an in-camera-plane rotation should give the same feature.
+
+%We avoid using region-level features
+
+We use two novel features, which we describe in detail here. See also figure \ref{fig:features}.
+%The first, the cobweb feature, captures 
+
+
+\newcommand{\subwidth}{0.32\columnwidth}
+\begin{figure*}
+    \centering 
+    \subfigure[$\theta$ at each point]{%
+        \includegraphics[width=\subwidth]{01_angles}}
+        \hfill
+    \subfigure[Spider feature]{%
+        \includegraphics[width=\subwidth]{02_spider}}
+        \hfill
+    \subfigure[Rotation invariance]{%
+        \includegraphics[width=0.4\columnwidth]{03_spider_rot}}
+        \hfill
+    \subfigure[Occluded spider]{%
+        \includegraphics[width=\subwidth]{04_spider_occ}}
+        \hfill
+    \subfigure[Cobweb feature]{%
+        \includegraphics[width=\subwidth]{05_cobweb}}
+        \hfill
+    \caption{
+    (a) Each point on a depth image has an angle $\theta$ associated, which represents the direction of gradient of the depth. 
+    (b) The spider features measure the distance between $\point$ and the edge points $e_{1, \cdots, 7}$.
+    (c) Because the spider features are computed relative to $\theta$, the resultant feature vector is invariant to object rotations in the camera plane.
+    (d) Where the spider line emitted from $\point$ first hits an occluded edge, the true extent is unknown --- this case is denoted as \texttt{?} in this figure.
+    (e) The cobweb feature measures the difference in depth between $\point$ and a set of points in the near vicinity of $\point$, arranged in a cobweb shape.
+    The cobweb feature is also computed relative to $\theta$.}%
+    \label{fig:features}
+\end{figure*}
+
+
+\subsubsection{Cobweb feature}
+The cobweb feature captures the surface shape in the immediate vicinity of $\point$. 
+It captures very similar data to a patch of the depth image; however, an image patch maintains a constant resolution across the selected region, while the cobweb feature becomes more coarse the further from $\point$ it is.
+%This property helps to reflect the 
+\begin{align}
+f(i, j, \psi, t) &= \rgbdimage_{ij} - \rgbdimage_{ab} \\
+a &= \lfloor i + tm\sin(\theta_{ij}+\psi)\rceil \\
+b &= \lfloor j + tm\cos(\theta_{ij}+\psi)\rceil \\
+m &= \frac{df}{\rgbdimage_{ij}},
+\end{align}
+where $f$ is the focal length of the camera and $d$ is a fixed constant in real-world coordinates. For our experiements we set $d=0.02m$ and we compute the cobweb feature for $\psi = [0\degree, 45\degree, \ldots, 315\degree]$, and $t = [1, 2, 3]$. 
+The final cobweb feature is therefore 24-dimensional.
+
+% Dealing with depth discontinuities?
+
+
+
+
+\subsubsection{Spider features}
+The spider feature captures the size and shape of the region in which $\point$ resides. 
+Rather than explicitly computing region-level features, however, which may suffer from poor segmentations (and the problem with occlusion), we compute these features capturing the region's shape at the point level. 
+We first compute an edge map for the image.
+We again consider the set of angles $\phi$. Starting from $\point$, we cast a Bresenham line along the depth image until it hits an edge. 
+We denote the point at which the edge was hit as $\point_{e}$.
+
+For each line cast, we store 
+a) the geodesic distance between $\point$ and $\point_{e}$ along the depth surface, and 
+b) the 3D distance between $\point$ and $\point_{e}$ along the direction of the normal at $\point$. (In practice, we take the point 95\% of the way between $\point$ and $\point_{e}$ in image space, as this helps to prevent problems with poor quality edge data).
+
+The spider feature is therefore 16-dimensional.
+
+We explicitly handle occlusion in the spider features. Where the spider feature first hits an occluded edge rather than an occluding edge, the true size of the object in that dimension is unknown (see figure \ref{fig:occluded_spider}).
+We explicitly encode this unknown value --- in practice with \texttt{NaN} --- and the Random Forest can then make a sensible decision about what to do with it.
+
+% \begin{figure}
+%     \centering% 
+%     \includegraphics[width=0.7\columnwidth]{occlusion_spider.png}% 
+%     \figcaption{The spider feature extends lines from $\point$ to the first occluding edge found along the path. Internal edges (e.g. those found in RGB space) are ignored. Where the line first hits an occluded edge, the true extent is unknown --- this case is denoted as \texttt{?} in this figure.}% 
+%     \label{fig:occluded_spider}% 
+% \end{figure}
+
+
+
+
+%\subsubsection{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Learning}
+
+We train a Random Forest using a total of 1,000,000 training examples extracted from 1,600 CAD models, each rendered from 42 different angles.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Pre-processing}
-We assume we know the up direction of the scene.
-We find the largest plane with normals in this direction at the base of the scene, and segment out the areas above this.
-We assume this plane is the tabletop or floor at the base of the image.
-
-
+\section{Datasets used}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{A soup of segments}
-
-Our motivation for using a soup of segments together with class matching across class boundaries is like this.
-Imagine we had a chair in our test set.
-If in our training set we had a similar chair then we would like to use this, as it would hopefully be a good match.
-However, if we didn't have a chair in our training set then it is very unlikely that we would be able to find a suitable match.
-In this case, we would like to break up the chair into segments, each of which could have a similarly shaped object matched to it.
-
-
-\begin{figure}
-	\centering% 
-	\includegraphics[width=1.0\linewidth]{voxel_coordinates}% 
-	\figcaption{The interplay between the coordinate systems of the voxel grid, the camera the CAD model and the render for the synthetic rendered objects.}% 
-	\label{fig:voxel_coordinates}% 
-\end{figure}
-
-\begin{figure}
-	\centering% 
-	\includegraphics[width=1.0\linewidth]{relational}% 
-	\figcaption{The relationship between the various elements of the scene.
-	Each region in the image supports many fitted objects, while each fitted object (comprising of a CAD model and a transformation) is supported by just one image region.
-	Each fitted object explains many voxels.
-	Many camera rays can go through each region, and similarly each camera ray can be associated with many segments due to the soup.}% 
-	\label{fig:relational}% 
-\end{figure}
-
-
-
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Mesh voxelisation}
-
-While lots of mesh voxelisation algorithms exist, these are not suitable for our use for two reasons.
-Firstly, the meshes may be poorly constructed or non-watertight; this causes most voxelisation algorithms to fail completely.
-Secondly, the interior of user-created meshes doesn't necessarily accurately reflect the exemplar KinectFusion output.
-We use voxel carving instead, using out multiple rendered depth images.
-This gives more consistent results regardless of the mesh construction (figure \ref{fig:mesh_voxelisation_options}).
-The only downside with voxel carving is that some smaller details, and self-occluded regions, can lose information.
-
-\begin{figure}
-	\centering% 
-	\includegraphics[width=1.0\linewidth]{mesh_voxelisation_options}% 
-	\figcaption{Depending on its construction, a CAD model (such as that of a box, top) may be voxelised in many different ways (top row).
-	By using voxel carving (bottom row), we maintain consistency regardless of how the mesh is constructed, and the output is analogous to KinFU output.}%
-	\label{fig:mesh_voxelisation_options}% 
-\end{figure}
-
-
-
-% \subsection{Finding matches for each region}
-
-% Find the $n$ nearest neighbours in $\chi^2$ distance space.
-
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% \subsubsection{Features}
-
-% Simple pairwise features very popular in RGBD image understanding, e.g. Drost, Shotton, Microsoft 7-scenes, FPFH, KinFu... 
-% We use variants on the shape distribution \cite{osada-csma-2001} to form our FV. 
-% Given a point cloud $\pcloud = \{\point_1, \hdots, \point_N\}$ with associated normals $\{\normal_1, \hdots, \normal_N\}$ we select random pairs of 
-% $$
-% \mathbf{f}_{i,j} = \left(|\point_i, \point_j|_2, \angle(\normal_i, \normal_j)\right),
-% $$
-% where $\angle(\normal_i,\normal_j)$ denotes the angle in radians between the normal vectors $\normal_i$ and $\normal_j$.
-% We use the bag-of-words approach to aggregate the features for an entire region, into a feature vector. We use a dictionary with 75 words, formed using k-means.
-
-% We don't necessarily have an exact match for each region or object in the database. We therefore allow for there to be 
-
-% \subsection{Finding matches for each region}
-
-
-% \subsection{Combining matches together}
-
-
-
-% \subsection{For single object, single segmentation.}
-
-% Image is $\rgbdimage$, event of occupancy is $o$. Basis shape is $\basisshape$.
-% $$
-% \prob(\occ | \rgbdimage) = \sum_i \prob(\occ | \basisshape) \prob(\basisshape | \rgbdimage)
-% $$ 
-% We know that $\prob(\occ|\basisshape)$ is just 1 within the shape, and 0 outside. 
-% $\prob(\basisshape|\rgbdimage)$ is harder but could be based on some kind of heuristic based on number of inliers and how well the shape matches in etc.
-
-% In particular:
-% $$ 
-% \sum_i \prob(\basisshape|\rgbdimage) = 1
-% $$
-
-% \subsection{For multiple segmentations.}
-
-% Now we have to introduce the concept of segmentations. 
-% The image $\rgbdimage$ will be segmented into a number of different regions $R$, where these regions may (but need not) overlap and the union of the regions need not cover the whole image.
-
-% We can then perform the fitting as before, but this time on a per-region basis. The regions are then marginalised out:
-% $$
-% \prob(\occ | \rgbdimage) = \sum_{i,j} \prob(\occ|\basisshape)\prob(\basisshape|\imregion_j)\prob(\imregion_j|\rgbdimage)
-% $$
-
-% Similar to before,
-% $$
-% \sum_i \prob(\basisshape|\imregion) = 1
-% $$
-
-% However, there is no obligation for $\sum_j \prob(\imregion_j | \rgbdimage) = 1$, as the regions may be non-overlapping.
-
-% The only thing left to compute is the probability of a specific region given the image, i.e. $\prob(\imregion_j|\rgbdimage)$. 
-
-% $$
-% \prob(\imregion_j | \rgbdimage) = \sum_{k} \prob(\imregion_j|S_k)\prob(S_k|\rgbdimage)
-% $$
-% $\prob(\imregion_j | S_k)$ is just the probability 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -480,11 +424,11 @@ The only downside with voxel carving is that some smaller details, and self-occl
 
 
 \begin{figure}
-	\centering% 
-	\includegraphics[width=1.0\columnwidth]{guo.png}% 
-	\figcaption{Representation of objects in the NYU dataset, provided from \cite{guo-iccv-2013}.
-	Not a perfect representation but perhaps reasonable to some extents.}% 
-	\label{fig:guo_labels}% 
+    \centering% 
+    \includegraphics[width=1.0\columnwidth]{guo.png}% 
+    \figcaption{Representation of objects in the NYU dataset, provided from \cite{guo-iccv-2013}.
+    Not a perfect representation but perhaps reasonable to some extents.}% 
+    \label{fig:guo_labels}% 
 \end{figure}
 
 
@@ -503,10 +447,10 @@ Also don't have the TSDF etc. Lots of problems
 \end{itemize}
 
 \begin{figure}
-	\centering% 
-	\includegraphics[width=1.0\columnwidth]{synth_scene.png}% 
-	\figcaption{One of the user-created synthetic scenes from \cite{fisher-siggraphasia-2012}.}% 
-	\label{fig:fisher_scene}% 
+    \centering% 
+    \includegraphics[width=1.0\columnwidth]{synth_scene.png}% 
+    \figcaption{One of the user-created synthetic scenes from \cite{fisher-siggraphasia-2012}.}% 
+    \label{fig:fisher_scene}% 
 \end{figure}
 
 % \section{Acknowledgements}
@@ -520,10 +464,11 @@ Also don't have the TSDF etc. Lots of problems
 %\bibliographystyle{apalike}
 %\bibliography{bibtex/strings.bib,bibtex/main.bib,bibtex/crossrefs.bib}
 
+
 {\small
 \bibliographystyle{apalike}
 \bibliography{bibtex/strings.bib,bibtex/main.bib,bibtex/crossrefs.bib}
 }
 
-%\end{multicols}
+
 \end{document}

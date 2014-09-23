@@ -48,12 +48,12 @@ def load_normals(modelname, view_idx):
 	return temp['normals']
 
 def load_frontrender(modelname, view_idx):
-	fullpath = paths.base_path + 'renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
+	fullpath = paths.base_path + 'basis_models/renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
 	frontrender = scipy.io.loadmat(fullpath)['depth']
 	return frontrender
 
 def load_backrender(modelname, view_idx):
-	fullpath = paths.base_path + 'render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
+	fullpath = paths.base_path + 'basis_models/render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
 	backrender = scipy.io.loadmat(fullpath)['depth']
 
 	# hacking the backrender to insert nans...

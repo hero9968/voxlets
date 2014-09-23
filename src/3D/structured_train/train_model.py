@@ -22,7 +22,7 @@ else:
 	small_model = True 
 
 overwrite = True  # if true, then overwrite models if they already exist
-nan_replacement_value = -10
+nan_replacement_value = 5
 
 if small_model:
 	print "Warning - using small dataset (don't use for final model training)"
@@ -47,8 +47,6 @@ def resample_inputs(inputs, num_samples):
 	else:
 		# sample without replacment
 		idxs = np.random.permutation(N)[0:num_samples]
-
-		input[idxs]
 
 	return [item[idxs] for item in inputs]
 	#X[idxs,:], Y[idxs]]
@@ -116,7 +114,7 @@ if __name__ == '__main__':
 			model = neighbors.KNeighborsClassifier(n_estimators, weights='uniform')
 			model.fit(X, Y)
 		elif modeloption['type']=='myforest':
-			model = myforest.ClassSampledForest(n_estimators=n_estimators, n_jobs=n_jobs, max_depth=20)
+			model = myforest.ClassSampledForest(n_estimators=n_estimators, n_jobs=number_jobs, max_depth=20)
 			model.fit(X, Y, class_Y)
 
 		else:

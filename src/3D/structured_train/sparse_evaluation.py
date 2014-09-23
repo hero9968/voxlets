@@ -16,7 +16,7 @@ all_models = yaml.load(open(paths.model_config, 'r'))
 predictions = []
 
 for modeloption in all_models:
-	result_path = paths.results_folder + modeloption['name'] + '.mat'
+	result_path = paths.base_path + 'results_new_spider/' + modeloption['name'] + '.mat'
 	if os.path.isfile(result_path):
 		print "Loading " + result_path
 		this_result = scipy.io.loadmat(result_path)
