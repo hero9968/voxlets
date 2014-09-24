@@ -15,7 +15,7 @@ else:
 model_features = base_path + 'structured/features/'
 
 # paths to do with the dataset as a whole
-models_list = base_path + 'databaseFull/fields/models.txt'
+models_list = base_path + 'basis_models/databaseFull/fields/models.txt'
 split_path = base_path + 'structured/split.mat'
 
 # locations of the combined features
