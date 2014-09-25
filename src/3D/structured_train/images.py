@@ -86,7 +86,7 @@ class RGBDImage(object):
             self.gradient = np.rad2deg(np.arctan2(dy, dx))
 
 
-class TurntableRGBD(RGBDImage):
+class MaskedRGBD(RGBDImage):
     '''
     for objects which have been viewed on a turntable
     especially good for bigbird etc.
@@ -99,22 +99,18 @@ class TurntableRGBD(RGBDImage):
 
         print "Loaded mask of size " + str(self.mask.shape)
 
-    def bits(self, f):
-        bytes = (ord(b) for b in f)#.read())
-        for b in bytes:
-            for i in xrange(8):
-                yield (b >> i) & 1
-
     def read_pbm(self, fname):
+        '''
+        reads a pbm image. not tested in the general case but works on the masks
+        '''
         with open(fname) as f:
             data = [x for x in f if not x.startswith('#')] #remove comments
+
         header = data.pop(0).split()
         dimensions = [int(header[2]), int(header[1])]
 
-        #print self.bits(data.pop(0))
-        arr = [c for c in self.bits(data.pop(0))]
-        print len(arr)
-        return np.array(arr).reshape(dimensions)
+        arr = np.fromstring(data.pop(0), dtype=np.uint8)
+        return np.unpackbits(arr).reshape(dimensions)
 
 
     def disp_channels(self):
@@ -135,22 +131,22 @@ class TurntableRGBD(RGBDImage):
 #image_path = '/Users/Michael/data/rgbd_scenes2/rgbd-scenes-v2/imgs/scene_01/'
 #image_name = '00401'
 
+def loadim():
+    image_path = "/Users/Michael/projects/shape_sharing/data/bigbird/coffee_mate_french_vanilla/"
+    image_name = "NP1_150"
 
-image_path = "/Users/Michael/projects/shape_sharing/data/bigbird/coffee_mate_french_vanilla/"
-image_name = "NP1_150"
+    rgb_path = image_path + image_name + '.jpg'
+    depth_path = image_path + image_name + '.h5'
+    mask_path = image_path + "masks/" + image_name + '_mask.pbm'
 
-rgb_path = image_path + image_name + '.jpg'
-depth_path = image_path + image_name + '.h5'
-mask_path = image_path + "masks/" + image_name + '_mask.pbm'
+    im = MaskedRGBD()
+    im.load_depth_from_h5(depth_path)
+    im.load_rgb_from_img(rgb_path, (480, 640))
+    im.load_mask_from_pbm(mask_path, (480, 640))
+    im.print_info()
+    im.disp_channels()
 
-im = TurntableRGBD()
-im.load_depth_from_h5(depth_path)
-im.load_rgb_from_img(rgb_path, (480, 640))
-im.load_mask_from_pbm(mask_path)#, (480, 640))
-im.print_info()
-im.disp_channels()
-
-
+loadim()
 
 #for b in bits(open(mask_path, 'r')):
  #   print b
