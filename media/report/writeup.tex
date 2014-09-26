@@ -225,7 +225,11 @@ The hypotheses are chosen by evaluating their geometric cost, which is manually 
 They cite a lot of papers which do scene reasoning from a single image, but they argue that the problem is ill-posed (which it is). 
 
 Using a single image, many people fit bounding boxes and try to estimate the layout using high-level info about gravity, typical scene arrangements etc. 
-For example \cite{choi-cvpr-2013}.
+For example \cite{choi-cvpr-2013, shao-siggraphasia-2014}.
+The high-level reasoning gives a great opportunity to gain a quality scene reconstruction.
+The problem with these methods is that they gives incredibly coarse occupation information; only a small subset of objects have a nice cuboid shape.
+In addition, these methods do not degrade gracefully.
+A small error in cuboid fitting can lead to a very large misclassification of volume.
 
 \cite{lee-nips-2010} are another paper using a single image to estimate the layout of a room. 
 Similarly, \cite{zhang-iccv-2013} infer the clutter and layout and support and segmentation and labelling from an RGBD image (using the NYU dataset).
@@ -272,8 +276,6 @@ Long history of using training scenes to try to complete and upsample.
 
 \paragraph{To add to related work:}
 \begin{itemize}
-\item Box world --- predicting object locations and extents (and hence unseen completion) through bounding boxes. 
-The problem with this is it gives incredibly coarse occupation information.
 \item Teaching 3D Geometry to Deformable Part Models
 \item Things which cited voxel CRF...
 %http://scholar.google.co.uk/scholar?safe=off&espv=2&bav=on.2,or.r_cp.r_qf.&bvm=bv.75775273,d.ZWU,pv.xjs.s.en.CtdJ7drbKko.O&ion=1&biw=1164&bih=816&um=1&ie=UTF-8&lr=&cites=16286130882256685425
@@ -495,8 +497,9 @@ Also don't have the TSDF etc. Lots of problems
 % \section{Acknowledgements}
 % Peter Gehler
 % Oisin
-% Prism group
 % Malcolm
+% Neill
+% Prism group
 
 {\small
 \bibliographystyle{plain}
