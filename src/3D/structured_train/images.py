@@ -4,9 +4,13 @@ classes etc for dealing with depth images
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.misc
+import scipy.io
 import h5py
 import struct
 from bitarray import bitarray
+import cv2
+
+from thickness import paths
 
 class RGBDImage(object):
 
@@ -45,7 +49,6 @@ class RGBDImage(object):
 
     def disp_channels(self):
         '''plots both the depth and rgb next to each other'''
-
         plt.clf()
         plt.subplot(121)
         plt.imshow(self.rgb)
@@ -71,19 +74,25 @@ class RGBDImage(object):
 
         print "Focal length is " + str(self.focal_length)
 
-    def compute_edges(self, method='simple'):
-        ''' computes edges in some manner... using some method...'''
+    def compute_edges_and_angles(self):
+        ''' 
+        computes edges in some manner...
+        uses a simple method. Real images should overwrite this function
+        to use a more complex edge and angle detection
+        '''
+        temp_depth = np.copy(self.depth)
+        temp_depth[np.isnan(temp_depth)] = 10.0
 
-        if method=='simple':
+        Ix = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
+        Iy = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
 
-            local_depth = np.copy(self.depth)
-            local_depth[np.isnan(local_depth)] = 0
+        self.angles = np.rad2deg(np.arctan2(Iy, Ix))
+        self.angles[np.isnan(self.depth)] = np.nan
 
-            # get the gradient and threshold
-            dx,dy = np.gradient(local_depth, 1)
-            self.grad_mag = np.sqrt(dx**2 + dy**2)
-            self.edges = np.array(np.sqrt(dx**2 + dy**2) > 500.1)
-            self.gradient = np.rad2deg(np.arctan2(dy, dx))
+        self.edges = np.array(Ix**2 + Iy**2 > 0.5)
+
+    def set_angles_to_zero(self):
+        self.angles = -1
 
 
 class MaskedRGBD(RGBDImage):
@@ -127,6 +136,37 @@ class MaskedRGBD(RGBDImage):
 
 
 
+class CADRender(RGBDImage):
+    '''
+    class representing a CAD render model
+    perhaps this should inherit from a base rgbd/image class... perhaps not
+    '''
+
+    def __init__(self):
+        RGBDImage.__init__(self)
+        self.backdepth = np.array([])
+
+    def load_from_cad_set(self, modelname, view_idx):
+        '''loads models from the cad training set'''
+        self.modelname = modelname
+        self.view_idx = view_idx
+
+        self.depth = self.load_frontrender(modelname, view_idx)
+        self.backdepth = self.load_backrender(modelname, view_idx)
+        #self.mask = self.extract_mask(frontrender)
+
+        self.focal_length = 240.0/(np.tan(np.rad2deg(43.0/2.0))) / 2.0
+
+    def load_frontrender(self, modelname, view_idx):
+        fullpath = paths.base_path + 'basis_models/renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
+        return scipy.io.loadmat(fullpath)['depth']
+
+    def load_backrender(self, modelname, view_idx):
+        fullpath = paths.base_path + 'basis_models/render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
+        return scipy.io.loadmat(fullpath)['depth']
+
+
+
 
 #image_path = '/Users/Michael/data/rgbd_scenes2/rgbd-scenes-v2/imgs/scene_01/'
 #image_name = '00401'
@@ -146,22 +186,24 @@ def loadim():
     im.print_info()
     im.disp_channels()
 
-loadim()
+def loadcadim():
+    im = CADRender()
+    im.load_from_cad_set(paths.modelnames[30], 30)
+    im.compute_edges_and_angles()
 
-#for b in bits(open(mask_path, 'r')):
- #   print b
+    plt.clf()
+    plt.subplot(121)
+    plt.imshow(im.angles, interpolation='nearest')
+    plt.colorbar()
+    plt.subplot(122)
+    plt.imshow(im.edges.astype(int) - np.isnan(im.depth).astype(int), interpolation='nearest')
+    plt.colorbar()
 
-#im.load_depth_from_img(depth_path)
-#im.compute_edges()
-#plt.imshow(im.edges)
-#plt.colorbar()
-#plt.show()
+    plt.show()
+    im.print_info()
 
+loadcadim()
 
-
-        #self.edges = compute_edges()
-
-
-
+#loadim()
 
 
