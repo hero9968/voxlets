@@ -14,11 +14,13 @@ import traceback
 import sys
 
 import paths
+import images
 
 number_views = 42 # how many rendered views there are of each object
 
 # in an ideal world we wouldn't have this hardcoded path, but life is too short to do it properly
 host_name = socket.gethostname()
+
 
 
 class DepthFeatureEngine(object):
@@ -31,127 +33,82 @@ class DepthFeatureEngine(object):
 	Doesn't do any forest training or prediction
 	'''
 
-	#samples_per_image = 1000  # how many random samples to take
-	#hww = 7	 # half window width for the extracted patch size
-	#frontrender = [] # the front depth render
-	# backrender = [] # the back depth render
-	# edge_image = [] # the edge image of the thing
-	# mask = [] # which pixels are occupied by something and which are empty?
-	# modelname = [] # the name of this movel
-	# view_idx = [] # integer view idx
-
-
-	def __init__(self, modelname, view_idx):
-		self.modelname = modelname
-		self.view_idx = view_idx
-		self.frontrender = self.load_frontrender(modelname, view_idx)
-		self.backrender = self.load_backrender(modelname, view_idx)
-		
-		#self.samples_per_image = 1000
+	def __init__(self):
 		self.hww = 7
 		self.indices = []
-
-		#self.patch_extractor = features.PatchEngine(output_patch_hww=self.hww, input_patch_hww=self.hww, fixed_patch_size=False)
+		self.im = []
 		self.patch_extractor = features.CobwebEngine(t=7, fixed_patch_size=False)
-		self.patch_extractor.compute_angles_image(self.frontrender)
+		self.spider_engine = features.SpiderEngine(distance_measure='geodesic')
 
-		self.spider_engine = features.SpiderEngine(self.frontrender, distance_measure='geodesic')
-		self.spider_engine.focal_length = 240.0/(np.tan(np.rad2deg(43.0/2.0))) / 2.0
-		self.spider_engine.angles_image = self.patch_extractor.angles
-
-	def load_frontrender(self, modelname, view_idx):
-		fullpath = paths.base_path + 'basis_models/renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
-		frontrender = scipy.io.loadmat(fullpath)['depth']
-		self.mask = self.extract_mask(frontrender)
-		return frontrender
-
-	def load_backrender(self, modelname, view_idx):
-		fullpath = paths.base_path + 'basis_models/render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
-		backrender = scipy.io.loadmat(fullpath)['depth']
-		return backrender
-
-	def extract_mask(self, render):
-		mask = ~np.isnan(render)
-		return mask
-
-	def sample_from_mask(self, num_samples=500):
-		'''
-		Samples 2D locations from the 2D binary mask.
-		If num_samples == -1, returns all valid locations from mask, otherwise returns random sample.
-		Does not return any points within border_size of edge of mask
-		'''
-		self.samples_per_image = num_samples
-		border_size = self.hww
-
+	def random_sample_from_mask(self, num_samples=500):
+		'''sample random points from the mask'''
+		self.num_samples = num_samples
 		#border size is the width at the edge of the mask from which we are not allowed to sample
-		self.indices = np.array(np.nonzero(self.mask))
-		
-		#if self.indices.shape[1]:
-			#scipy.io.savemat('mask.mat', dict(mask=self.mask))
+		self.indices = np.array(np.nonzero(self.im.mask)).T
 
-		# removing indices which are too near the border
-		# Should use np.logical_or.reduce(...) instead of this...
-		#print self.indices
-		to_remove = np.logical_or(np.logical_or(self.indices[0] < border_size, 
-												self.indices[1] < border_size),
-								np.logical_or(self.indices[0] > self.mask.shape[0]-border_size,
-												self.indices[1] > self.mask.shape[1]-border_size))
-		self.indices = np.delete(self.indices, np.nonzero(to_remove), 1).transpose()
-
-		# doing the sampling
-		#print self.indices
-		if self.samples_per_image == -1:
-			pass # do nothing - keep all indices
-		elif np.any(self.indices): # downsample indices
-			samples = np.random.randint(0, self.indices.shape[0], self.samples_per_image)
+		if np.any(self.indices): # downsample indices
+			samples = np.random.randint(0, self.indices.shape[0], self.num_samples)
 			self.indices = self.indices[samples, :]
 		else: # no indices - return empty list
-			self.indices = []#np.tile(np.array(self.mask.shape)/2, (samples_per_image, 1))
+			self.indices = []
+
+		print "Idx shape is " + str(self.indices.shape)
 		return self.indices
 
-	def depth_difference(self, index):
-		''' 
-		returns the difference in depth between the front and the back
-		renders at the specified (i, j) index
-		'''
-		return self.backrender[index[0], index[1]] - self.frontrender[index[0], index[1]]
+	def dense_sample_from_mask(self):
+		'''samples all points from mask'''
+		self.indices = np.array(np.nonzero(self.im.mask)).T
 
+		self.num_samples = self.indices.shape[0]
+		return self.indices
+
+	def sample_numbered_slice_from_mask(self, slice_idx):
+		'''samples the specified slice from the mask'''
+		all_idxs = np.nonzero(self.im.mask).T
+		self.indices = np.array([[t0, t1] for t0, t1 in all_idxs if t0==slice_idx]).T
+
+		self.num_samples = self.indices.shape[0]
+		return self.indices
+
+	def set_image(self, im):
+		self.im = im
 
 	def compute_features_and_depths(self, verbose=False, jobs=1):
+		'''sets up the feature engines and computes the features'''
 
-		# getting the mask from the points
+		self.patch_extractor.set_image(self.im)
+		self.spider_engine.set_image(self.im)
+
 		if verbose:
-			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.mask - self.extract_mask(self.backrender))))
+			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.im.mask - self.extract_mask(self.backrender))))
 
 		if not np.any(self.indices):
 			raise Exception("output_patch_hww no longer exists")
-			self.patch_features = -np.ones((self.samples_per_image, 2*self.patch_extractor.output_patch_hww))
-			self.spider_features = [-np.ones((1, 8)) for i in range(self.samples_per_image)]
-			self.depth_diffs = [-1 for i in range(self.samples_per_image)]
-			self.depths = [-1 for i in range(self.samples_per_image)]
-			self.indices = [(-1, -1) for i in range(self.samples_per_image)]
+			self.patch_features = -np.ones((self.num_samples, 2*self.patch_extractor.output_patch_hww))
+			self.spider_features = [-np.ones((1, 8)) for i in range(self.num_samples)]
+			self.depth_diffs = [-1 for i in range(self.num_samples)]
+			self.depths = [-1 for i in range(self.num_samples)]
+			self.indices = [(-1, -1) for i in range(self.num_samples)]
 
 		else:
-			self.depths = [self.frontrender[index[0], index[1]] for index in self.indices]
-			self.patch_features = self.patch_extractor.extract_patches(self.frontrender, self.indices)
+			self.depths = [self.im.depth[index[0], index[1]] for index in self.indices]
+			self.patch_features = self.patch_extractor.extract_patches(self.indices)
+			self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
+			self.depth_diffs = [self.im.depth_difference(index) for index in self.indices]
 
-			if jobs==1:
+			# if jobs==1:
 				#assert np.all(mask==extract_mask(backrender))
-				self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
-				self.depth_diffs = [self.depth_difference(index) for index in self.indices]
 
-			else:
-				if jobs==-1: jobs = cpu_count()
-				print "Multicore..." + str(jobs)
-				pool = Pool(processes=jobs)
-				self.spider_features = pool.map(self.spider_engine.compute_spider_feature, self.indices)
-				self.depth_diffs = pool.map(self.depth_difference, self.indices)
-				print "Done multicore..."
-
+			# else:
+			# 	if jobs==-1: jobs = cpu_count()
+			# 	print "Multicore..." + str(jobs)
+			# 	pool = Pool(processes=jobs)
+			# 	self.spider_features = pool.map(self.spider_engine.compute_spider_feature, self.indices)
+			# 	print "Done multicore..."
 
 		num_samples = self.indices.shape[0]
-		self.views = [self.view_idx for i in range(num_samples)]
-		self.modelnames = [self.modelname for i in range(num_samples)]
+		self.views = [self.im.view_idx for i in range(self.num_samples)]
+		self.modelnames = [self.im.modelname for i in range(self.num_samples)]
 
 	def features_and_depths_as_dict(self):
 		'''
@@ -172,7 +129,7 @@ class DepthFeatureEngine(object):
 		plot the front render and the sampled pairs
 		'''
 		import matplotlib.pyplot as plt
-		plt.imshow(self.frontrender)
+		plt.imshow(self.im.depth)
 		plt.hold(True)
 		plt.plot(self.indices[:, 1], self.indices[:, 0], '.')
 		plt.hold(False)
@@ -191,8 +148,12 @@ def compute_features(modelname_and_view):
 	'''
 	helper function to deal with the two-way problem
 	'''
-	engine = DepthFeatureEngine(modelname_and_view[0], modelname_and_view[1]+1)
-	engine.sample_from_mask(samples_per_image)
+	im = images.CADRender()
+	im.load_from_cad_set(modelname_and_view[0], modelname_and_view[1]+1)
+
+	engine = DepthFeatureEngine()
+	engine.set_image(im)
+	engine.random_sample_from_mask(samples_per_image)
 	engine.compute_features_and_depths()
 	return engine.features_and_depths_as_dict()
 
@@ -285,17 +246,3 @@ if __name__ == '__main__':
 		
 	f.close()
 
-#dict_list = []
-#tic = timeit.default_timer()
-#for view in range(number_views):
-#	dict_list.append(features_and_depths(modelname, view+1))
-#	print "Done view " + str(view)
-
-# features = np.array(features).reshape(number_views*samples_per_image, -1)
-# depths = np.array(depths).reshape(number_views*samples_per_image, 1)
-# indices = np.array(indices).reshape(number_views*samples_per_image, 2)
-
-# # now write the fulldict to a suitable mat file...
-#fileout = base_path + 'features/' + modelname + '.mat'
-#scipy.io.savemat('temp.mat', dict(features=features, depths=depths, indices=indices))
-#scipy.io.savemat('temp.mat', fulldict)

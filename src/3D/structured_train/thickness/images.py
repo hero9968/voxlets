@@ -10,7 +10,7 @@ import struct
 from bitarray import bitarray
 import cv2
 
-from thickness import paths
+import paths
 
 class RGBDImage(object):
 
@@ -92,7 +92,7 @@ class RGBDImage(object):
         self.edges = np.array(Ix**2 + Iy**2 > 0.5)
 
     def set_angles_to_zero(self):
-        self.angles = -1
+        self.angles *= 0
 
 
 class MaskedRGBD(RGBDImage):
@@ -143,6 +143,7 @@ class CADRender(RGBDImage):
     '''
 
     def __init__(self):
+        '''init with the parent class, but also add the backdepth'''
         RGBDImage.__init__(self)
         self.backdepth = np.array([])
 
@@ -153,6 +154,7 @@ class CADRender(RGBDImage):
 
         self.depth = self.load_frontrender(modelname, view_idx)
         self.backdepth = self.load_backrender(modelname, view_idx)
+        self.mask = ~np.isnan(self.depth)
         #self.mask = self.extract_mask(frontrender)
 
         self.focal_length = 240.0/(np.tan(np.rad2deg(43.0/2.0))) / 2.0
@@ -164,6 +166,13 @@ class CADRender(RGBDImage):
     def load_backrender(self, modelname, view_idx):
         fullpath = paths.base_path + 'basis_models/render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
         return scipy.io.loadmat(fullpath)['depth']
+
+    def depth_difference(self, index):
+        ''' 
+        returns the difference in depth between the front and the back
+        renders at the specified (i, j) index
+        '''
+        return self.backdepth[index[0], index[1]] - self.depth[index[0], index[1]]
 
 
 
@@ -196,13 +205,13 @@ def loadcadim():
     plt.imshow(im.angles, interpolation='nearest')
     plt.colorbar()
     plt.subplot(122)
-    plt.imshow(im.edges.astype(int) - np.isnan(im.depth).astype(int), interpolation='nearest')
+    plt.imshow(np.isnan(im.angles).astype(int) - np.isnan(im.depth).astype(int), interpolation='nearest')
     plt.colorbar()
 
     plt.show()
     im.print_info()
 
-loadcadim()
+#loadcadim()
 
 #loadim()
 

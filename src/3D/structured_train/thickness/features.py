@@ -11,7 +11,6 @@ import scipy.stats
 import scipy.io
 import cv2
 from numbers import Number
-#import arraypad # future function from numpy...
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -37,10 +36,8 @@ class CobwebEngine(object):
 		#   step varies linearly with depth. t is the size of step at depth of 1.0 
 		self.fixed_patch_size = fixed_patch_size 
 
-	def set_depth_image(self, depth_image):
-
-		self.depth_image = depth_image
-		self.compute_angles_image(depth_image)
+	def set_image(self, im):
+		self.im = im
 
 	def get_offset_depth(self, start_row, start_col, angle_rad, offset):
 
@@ -48,18 +45,17 @@ class CobwebEngine(object):
 		end_col = int(start_col + offset * np.cos(angle_rad))
 
 		if end_row < 0 or end_col < 0 or \
-			end_row >= self.depth_image.shape[0] or end_col >= self.depth_image.shape[1]:
+			end_row >= self.im.depth.shape[0] or end_col >= self.im.depth.shape[1]:
 			return np.nan
 		else:
-			return self.depth_image[end_row, end_col]
+			return self.im.depth[end_row, end_col]
 
 	def get_spider(self, index):
-		'''
-		'''
+		'''extracts cobweb for a single index point'''
 		row, col = index
 		
-		start_angle = self.angles[row, col]
-		start_depth = self.depth_image[row, col]
+		start_angle = self.im.angles[row, col]
+		start_depth = self.im.depth[row, col]
 
 		row = float(row)
 		col = float(col)
@@ -78,171 +74,9 @@ class CobwebEngine(object):
 
 		return spider
 
-	def extract_patches(self, depth_image, indices):
-
-		self.depth_image = depth_image
-		print indices.shape
-
+	def extract_patches(self, indices):
 		return [self.get_spider(index) for index in indices]
 
-
-	def fill_in_nans(self, image_to_repair, desired_mask):
-		'''
-		Fills in nans in the image_to_repair, with an aim of getting its non-nan values
-		to take the shape of the desired_mask. Is only possible to fill in a nan
-		if it borders (8-neighbourhood) a non-nan values.
-		Otherwise, an error is thrown
-		'''
-		nans_to_fill = np.logical_and(np.isnan(image_to_repair), desired_mask)
-
-		# replace each nan value with the nanmedian value of its neighbours 
-		for row, col in np.array(np.nonzero(nans_to_fill)).T:
-			bordering_vals = self.extract_aligned_patch(image_to_repair, row, col, 2, np.nan)
-			image_to_repair[row, col] = scipy.stats.nanmedian(bordering_vals.flatten())
-
-		# values may be remaining. These will be filled in with zeros
-		remaining_nans_to_fill = np.logical_and(np.isnan(image_to_repair), desired_mask)
-		image_to_repair[remaining_nans_to_fill] = 0
-
-		return image_to_repair
-
-
-	def compute_angles_image(self, depth_image):
-		'''
-		Computes the angle of orientation at each pixel on the input depth image.
-		The depth image is specified explicitly when calling this function
-		in case one wants to extract patches from a different image to the one
-		which the angles are computed from
-		'''
-		Ix = cv2.Sobel(depth_image, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
-		Iy = cv2.Sobel(depth_image, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
-		#Ix1 = np.copy(Ix)
-		#Iy1 = np.copy(Iy)
-
-		# here recover values for Ix and Iy, so they have same non-nan locations as depth image
-		mask = 1-np.isnan(depth_image).astype(int)
-		#scipy.io.savemat("output2.mat", dict(mask=mask, render=depth_image))
-		#raise Exception("Break")
-
-		Ix = self.fill_in_nans(Ix, mask)
-		Iy = self.fill_in_nans(Iy, mask)
-
-		self.angles = np.rad2deg(np.arctan2(Iy, Ix))
-
-		mask_angles = np.logical_and(mask, np.isnan(self.angles))
-		self.angles[mask_angles] = 0
-		self.angles[mask==0] = np.nan
-
-		angle_notnan = (~np.isnan(self.angles)).astype(int)
-
-		try:
-			np.testing.assert_equal(mask, angle_notnan)
-		except:
-			print np.sum(mask - ~np.isnan(self.angles))
-			#import pdb; pdb.set_trace()
-			#scipy.io.savemat("output.mat", dict(mask=mask, angles=self.angles, render=depth_image, Ix=Ix1, Iy=Iy1))
-
-		self.depth_image = depth_image
-
-		return self.angles
-
-	def set_angles_to_zero(self):
-		'''
-		Specifies an angles image which is all zero 
-		'''
-		self.angles = -1
-
-
-	def extract_aligned_patch(self, img_in, row, col, hww, pad_value=[]):
-		top = int(row - hww)
-		bottom = int(row + hww + 1)
-		left = int(col - hww)
-		right = int(col + hww + 1)
-
-		im_patch = img_in[top:bottom, left:right]
-
-		if top < 0 or left < 0 or bottom > img_in.shape[0] or right > img_in.shape[1]:
-			if not pad_value:
-				raise Exception("Patch out of range and no pad value specified")
-
-			pad_left = int(self.negative_part(left))
-			pad_top = int(self.negative_part(top))
-			pad_right = int(self.negative_part(img_in.shape[1] - right))
-			pad_bottom = int(self.negative_part(img_in.shape[0] - bottom))
-			#print "1: " + str(im_patch.shape)
-
-			im_patch = self.pad(im_patch, (pad_top, pad_bottom), (pad_left, pad_right),
-								constant_values=100)
-			#print "2: " + str(im_patch.shape)
-			im_patch[im_patch==100.0] =pad_value # hack as apparently can't use np.nan as constant value
-
-		if not (im_patch.shape[0] == 2*hww+1):
-			print im_patch.shape
-			print pad_left, pad_top, pad_right, pad_bottom
-			print left, top, right, bottom
-			im_patch = np.zeros((2*hww+1, 2*hww+1))
-		if not (im_patch.shape[1] == 2*hww+1):
-			print im_patch.shape
-			print pad_left, pad_top, pad_right, pad_bottom
-			print left, top, right, bottom
-			im_patch = np.zeros((2*hww+1, 2*hww+1))
-			#raise Exception("Bad shape!")
-
-		return np.copy(im_patch)
-
-
-
-
-class PatchPlot(object):
-	'''
-	Aim of this class is to plot boxes at specified locations, scales and orientations
-	on a background image
-	'''
-
-	def __init__(self):
-		pass
-
-	def set_image(self, image):
-		self.image = image
-		plt.imshow(image)
-
-	def plot_patch(self, index, angle, width):
-		'''
-		plots single patch
-		'''
-		row, col = index
-		bottom_left = (col - width/2, row - width/2)
-		angle_rad = np.deg2rad(angle)
-
-		# creating patch
-		#print bottom_left, width, angle
-		p_handle = patches.Rectangle(bottom_left, width, width, color="red", alpha=1.0, edgecolor='r', fill=None)
-		transform = mpl.transforms.Affine2D().rotate_around(col, row, angle_rad) + plt.gca().transData
-		p_handle.set_transform(transform)
-
-		# adding to current plot
-		plt.gca().add_patch(p_handle)
-
-		# plotting line from centre to the edge
-		plt.plot([col, col + width * np.cos(angle_rad)], 
-				 [row, row + width * np.sin(angle_rad)], 'r-')
-
-
-	def plot_patches(self, indices, angles, scales):
-		'''
-		plots the patches on the image
-		'''
-
-		if isinstance(scales, Number):
-			scales = [scales / self.image[index[0], index[1]] for index in indices]
-
-		plt.hold(True)
-
-		for index, angle, scale in zip(indices, angles, scales):
-			self.plot_patch(index, angle, scale)
-
-		plt.hold(False)
-		plt.show()
 
 
 
@@ -251,50 +85,15 @@ class SpiderEngine(object):
 	Engine for computing the spider (compass) features
 	'''
 
-	def __init__(self, depthimage, edge_threshold=5, distance_measure='geodesic'):
-
-		self.edge_threshold = edge_threshold
-
-		self.dilation_parameter = 1
-		self.set_depth_image(depthimage)
+	def __init__(self, distance_measure='geodesic'):
 
 		# this should be 'geodesic', 'perpendicular' or 'pixels'
 		self.distance_measure = distance_measure
 
 
-	def set_depth_image(self, depthimage):
-		'''
-		saves the depth image, also comptues the edges and sets up
-		the dictionary
-		'''
-		self.depthimage = depthimage
-		self.compute_depth_edges()
-		self.dilate_depth_edges(self.dilation_parameter)
-
-	def dilate_depth_edges(self, dilation_size):
-		'''
-		Dilates the depth image.
-		This is important to ensure the spider lines definitely 
-		touch the edge
-		'''
-		kernel = np.ones((dilation_size, dilation_size),np.uint8)
-		self.depthimage = cv2.dilate(self.depthimage, kernel, iterations=1)
-
-	def compute_depth_edges(self):
-		'''
-		sets and returns the edges of a depth image. 
-		Not good for noisy images!
-		'''
-		# convert nans to 0
-		local_depthimage = np.copy(self.depthimage)
-		local_depthimage[np.isnan(local_depthimage)] = 0
-
-		# get the gradient and threshold
-		dx,dy = np.gradient(local_depthimage, 1)
-		self.edge_image = np.array(np.sqrt(dx**2 + dy**2) > 0.1)
-		self.angles_image = np.rad2deg(np.arctan2(dy, dx))
-
-		return self.edge_image
+	def set_image(self, im):
+		'''sets the depth image'''
+		self.im = im
 
 	def line(self, start_point, angle):
 		'''
@@ -366,8 +165,8 @@ class SpiderEngine(object):
 		'''
 		return point_2d[0] >= border and \
 				point_2d[1] >= border and \
-				point_2d[0] < (self.depthimage.shape[1]-border) and \
-				point_2d[1] < (self.depthimage.shape[0]-border)
+				point_2d[0] < (self.im.depth.shape[1]-border) and \
+				point_2d[1] < (self.im.depth.shape[0]-border)
 
 	def get_spider_distance(self, start_point, angle_deg):
 		'''
@@ -391,7 +190,7 @@ class SpiderEngine(object):
 			distance = self.distance_2d(start_point, line_point)
 
 			if self.distance_measure == 'perpendicular':
-				distance *= self.depthimage[line_point[1], line_point[0]]
+				distance *= self.im.depth[line_point[1], line_point[0]]
 
 		elif self.distance_measure == 'geodesic':
 
@@ -402,11 +201,11 @@ class SpiderEngine(object):
 
 				#print "Doing pixel " + str(idx) + str(line_point)
 				#self.blank_im[line_point[1], line_point[0]] = 1 # debugging
-				end_of_line = not self.in_range(line_point, border=1) or self.edge_image[line_point[1], line_point[0]]
+				end_of_line = not self.in_range(line_point, border=1) or self.im.edges[line_point[1], line_point[0]]
 
 				# only look at every 10th point, for efficiency & noise robustness
 				if (idx % 10) == 0 or end_of_line:
-					current_depth = self.depthimage[line_point[1], line_point[0]]
+					current_depth = self.im.depth[line_point[1], line_point[0]]
 					position_depths.append((line_point, current_depth))
 
 				if end_of_line:
@@ -430,23 +229,21 @@ class SpiderEngine(object):
 		returns the 3d point at (x, y) point 'position' and
 		at depth 'depth'
 		'''
-		return [(position[0] - self.depthimage.shape[1]) * depth / self.focal_length,
-				(position[1] - self.depthimage.shape[0]) * depth / self.focal_length,
+		return [(position[0] - self.im.depth.shape[1]) * depth / self.im.focal_length,
+				(position[1] - self.im.depth.shape[0]) * depth / self.im.focal_length,
 				depth]
 
 	def compute_spider_feature(self, index):
 		'''
 		computes the spider feature for a given point with a given starting angle
 		'''
-
 		row, col = index
 		start_point = (col, row)
-		start_angle = self.angles_image[row, col]
-		self.blank_im = self.depthimage / 10.0
-		#self.blank_im[self.blank_im==0] = np.nan
+		start_angle = self.im.angles[row, col]
+		self.blank_im = self.im.depth / 10.0
 
 		# nip nans in the bud here!
-		if np.isnan(self.depthimage[row, col]):
+		if np.isnan(self.im.depth[row, col]):
 			#raise Exception("Nan depth!")
 			print "Nan depth!"
 			return [0 for i in range(8)]
@@ -459,6 +256,56 @@ class SpiderEngine(object):
 
 
 
+
+class PatchPlot(object):
+	'''
+	Aim of this class is to plot boxes at specified locations, scales and orientations
+	on a background image
+	'''
+
+	def __init__(self):
+		pass
+
+	def set_image(self, image):
+		self.im = im
+		plt.imshow(im.depth)
+
+	def plot_patch(self, index, angle, width):
+		'''plots a single patch'''
+		row, col = index
+		bottom_left = (col - width/2, row - width/2)
+		angle_rad = np.deg2rad(angle)
+
+		# creating patch
+		#print bottom_left, width, angle
+		p_handle = patches.Rectangle(bottom_left, width, width, color="red", alpha=1.0, edgecolor='r', fill=None)
+		transform = mpl.transforms.Affine2D().rotate_around(col, row, angle_rad) + plt.gca().transData
+		p_handle.set_transform(transform)
+
+		# adding to current plot
+		plt.gca().add_patch(p_handle)
+
+		# plotting line from centre to the edge
+		plt.plot([col, col + width * np.cos(angle_rad)], 
+				 [row, row + width * np.sin(angle_rad)], 'r-')
+
+
+	def plot_patches(self, indices, scale_factor):
+		'''plots the patches on the image'''
+		
+		scales = [scale_factor * self.im.depth[index[0], index[1]] for index in indices]
+		
+		angles = [self.im.angles[index[0], index[1]] for index in indices]
+
+		plt.hold(True)
+
+		for index, angle, scale in zip(indices, angles, scales):
+			self.plot_patch(index, angle, scale)
+
+		plt.hold(False)
+		plt.show()
+
+
 # here should probably write some kind of testing routine
 # where an image is loaded, rotated patches are extracted and the gradient of the rotated patches
 # is shown to be all mostly close to zero
@@ -467,42 +314,21 @@ if __name__ == '__main__':
 
 	'''testing the plotting'''
 
-	# loading the frontrender
-	import loadsave
-	obj_list = loadsave.load_object_names('all')
-	modelname = obj_list[3]
-	view_idx = 2
-	frontrender = loadsave.load_frontrender(modelname, view_idx)
+	import images
+	import paths
 
-	# setting up patch engine for computation of angles
-	patch_engine = CobwebEngine(10)
-	patch_engine.set_depth_image(frontrender)
-	patch_engine.compute_angles_image(frontrender)
+	# loading the render
+	im = images.CADRender()
+	im.load_from_cad_set(paths.modelnames[30], 30)
+	im.compute_edges_and_angles()
 
 	# sampling indices from the image
-	indices = np.array(np.nonzero(~np.isnan(frontrender))).transpose()
+	indices = np.array(np.nonzero(~np.isnan(im.depth))).transpose()
 	samples = np.random.randint(0, indices.shape[0], 20)
 	indices = indices[samples, :]
 
-	angles = [patch_engine.angles[index[0], index[1]] for index in indices]
-	depths = [patch_engine.depth_image[index[0], index[1]] for index in indices]
-	print depths
-
-	scales = (10*np.array(depths)).astype(int)
-	print scales
-
-	# 
+	# plotting patch
 	patch_plotter = PatchPlot()
-	patch_plotter.set_image(frontrender)
-	patch_plotter.plot_patches(indices, angles, scales=scales)
+	patch_plotter.set_image(im.depth)
+	patch_plotter.plot_patches(indices, scale_factor=10)
 
-
-	# def remove_nans(inputs):
-	# 	return [a for a in inputs if ~np.isnan(a)]
-
-	# print np.nansum(np.array(angles_nearest) - np.array(angles_cubic))
-	# plt.subplot(121)
-	# plt.hist(remove_nans(angles_nearest), 50)
-	# plt.subplot(122)
-	# plt.hist(remove_nans(angles_cubic), 50)
-	# plt.show()
