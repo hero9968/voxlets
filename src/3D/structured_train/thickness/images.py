@@ -35,7 +35,8 @@ class RGBDImage(object):
     def load_depth_from_h5(self, depth_path):
 
         f = h5py.File(depth_path, 'r') 
-        self.depth = np.array(f['depth'])
+        self.depth = np.array(f['depth']).astype(np.float32) / 1000
+        self.depth[self.depth==0] = np.nan
         self.assert_depth_rgb_equal()
 
     def assert_depth_rgb_equal(self):
@@ -74,7 +75,7 @@ class RGBDImage(object):
 
         print "Focal length is " + str(self.focal_length)
 
-    def compute_edges_and_angles(self):
+    def compute_edges_and_angles(self, edge_threshold=0.5):
         ''' 
         computes edges in some manner...
         uses a simple method. Real images should overwrite this function
@@ -82,6 +83,7 @@ class RGBDImage(object):
         '''
         temp_depth = np.copy(self.depth)
         temp_depth[np.isnan(temp_depth)] = 10.0
+        #import pdb; pdb.set_trace()
 
         Ix = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
         Iy = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
@@ -89,7 +91,7 @@ class RGBDImage(object):
         self.angles = np.rad2deg(np.arctan2(Iy, Ix))
         self.angles[np.isnan(self.depth)] = np.nan
 
-        self.edges = np.array(Ix**2 + Iy**2 > 0.5)
+        self.edges = np.array((Ix**2 + Iy**2) > edge_threshold**2)
 
     def set_angles_to_zero(self):
         self.angles *= 0
@@ -101,12 +103,31 @@ class MaskedRGBD(RGBDImage):
     especially good for bigbird etc.
     '''
 
+    def load_bigbird(self, modelname, viewname):
+        image_path = "/Users/Michael/projects/shape_sharing/data/bigbird/" + modelname + "/"
+
+        rgb_path = image_path + viewname + '.jpg'
+        depth_path = image_path + viewname + '.h5'
+        mask_path = image_path + "masks/" + viewname + '_mask.pbm'
+
+        self.load_depth_from_h5(depth_path)
+        self.load_rgb_from_img(rgb_path, (480, 640))
+        self.load_mask_from_pbm(mask_path, (480, 640))
+
+        # here I should remove points from the mask which are nan
+        self.mask[np.isnan(self.depth)] = 0
+
+        self.view_idx = viewname
+        self.modelname = modelname
+
+        self.set_focal_length(240.0/(np.tan(np.rad2deg(43.0/2.0))))
+
     def load_mask_from_pbm(self, mask_path, scale_factor=[]):
         self.mask = self.read_pbm(mask_path)
         if scale_factor:
             self.mask = scipy.misc.imresize(self.mask, scale_factor)
 
-        print "Loaded mask of size " + str(self.mask.shape)
+        #print "Loaded mask of size " + str(self.mask.shape)
 
     def read_pbm(self, fname):
         '''
@@ -126,13 +147,19 @@ class MaskedRGBD(RGBDImage):
         '''plots both the depth and rgb and mask next to each other'''
 
         plt.clf()
-        plt.subplot(131)
+        plt.subplot(221)
         plt.imshow(self.rgb)
-        plt.subplot(132) 
+        plt.subplot(222) 
         plt.imshow(self.depth)
-        plt.subplot(133) 
+        plt.subplot(223) 
         plt.imshow(self.mask)
+        plt.subplot(224) 
+        plt.imshow(self.edges)
         plt.show()
+
+    def depth_difference(self, index):
+        '''no back render so will just return a nan for this...'''
+        return np.nan
 
 
 
@@ -177,6 +204,7 @@ class CADRender(RGBDImage):
 
 
 
+
 #image_path = '/Users/Michael/data/rgbd_scenes2/rgbd-scenes-v2/imgs/scene_01/'
 #image_name = '00401'
 
@@ -212,6 +240,12 @@ def loadcadim():
     im.print_info()
 
 #loadcadim()
+
+#im = MaskedRGBD()
+#im.load_bigbird("coffee_mate_french_vanilla", "NP1_150")
+#im.disp_channels()
+#plt.show()
+
 
 #loadim()
 
