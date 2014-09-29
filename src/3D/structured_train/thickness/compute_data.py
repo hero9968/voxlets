@@ -34,7 +34,6 @@ class DepthFeatureEngine(object):
 	'''
 
 	def __init__(self):
-		self.hww = 7
 		self.indices = []
 		self.im = []
 		self.patch_extractor = features.CobwebEngine(t=7, fixed_patch_size=False)
@@ -52,7 +51,6 @@ class DepthFeatureEngine(object):
 		else: # no indices - return empty list
 			self.indices = []
 
-		print "Idx shape is " + str(self.indices.shape)
 		return self.indices
 
 	def dense_sample_from_mask(self):
@@ -73,7 +71,7 @@ class DepthFeatureEngine(object):
 	def set_image(self, im):
 		self.im = im
 
-	def compute_features_and_depths(self, verbose=False, jobs=1):
+	def compute_features_and_depths(self, verbose=False, jobs=1, features='all'):
 		'''sets up the feature engines and computes the features'''
 
 		self.patch_extractor.set_image(self.im)
@@ -82,18 +80,27 @@ class DepthFeatureEngine(object):
 		if verbose:
 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.im.mask - self.extract_mask(self.backrender))))
 
+		# todo - move this rubbish into the feature engines...
 		if not np.any(self.indices):
 			raise Exception("output_patch_hww no longer exists")
-			self.patch_features = -np.ones((self.num_samples, 2*self.patch_extractor.output_patch_hww))
-			self.spider_features = [-np.ones((1, 8)) for i in range(self.num_samples)]
+			if features=='all' or 'cobweb' in features:
+				self.patch_features = -np.ones((self.num_samples, 2*self.patch_extractor.output_patch_hww))
+			if features=='all' or 'spider' in features:
+				self.spider_features = [-np.ones((1, 8)) for i in range(self.num_samples)]
 			self.depth_diffs = [-1 for i in range(self.num_samples)]
 			self.depths = [-1 for i in range(self.num_samples)]
 			self.indices = [(-1, -1) for i in range(self.num_samples)]
 
 		else:
 			self.depths = [self.im.depth[index[0], index[1]] for index in self.indices]
-			self.patch_features = self.patch_extractor.extract_patches(self.indices)
-			self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
+			if features=='all' or 'cobweb' in features:
+				self.patch_features = self.patch_extractor.extract_patches(self.indices)
+			else:
+				self.patch_features =[]
+			if features=='all' or 'spider' in features:
+				self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
+			else:
+				self.spider_features =[]
 			self.depth_diffs = [self.im.depth_difference(index) for index in self.indices]
 
 			# if jobs==1:

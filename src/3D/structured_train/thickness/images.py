@@ -35,7 +35,7 @@ class RGBDImage(object):
     def load_depth_from_h5(self, depth_path):
 
         f = h5py.File(depth_path, 'r') 
-        self.depth = np.array(f['depth']).astype(np.float32) / 1000
+        self.depth = np.array(f['depth']).astype(np.float32) / 10000
         self.depth[self.depth==0] = np.nan
         self.assert_depth_rgb_equal()
 
@@ -160,7 +160,6 @@ class MaskedRGBD(RGBDImage):
     def depth_difference(self, index):
         '''no back render so will just return a nan for this...'''
         return np.nan
-
 
 
 class CADRender(RGBDImage):
