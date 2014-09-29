@@ -34,6 +34,11 @@ rf_folder_path_small = base_path + "structured/rf_models_small/"
 results_folder = base_path + "structured/results/"
 results_folder_small = base_path + "structured/results_small/"
 
+bigbird_folder = base_path + 'bigbird/'
+bigbird_objects = ['coffee_mate_french_vanilla']
+
+
+
 # paths for the dense predictions
 #dense_predictions = base_path + 
 
