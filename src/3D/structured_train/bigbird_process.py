@@ -58,7 +58,7 @@ def is_decimated(objname):
 
 def exists(name):
     print "Looking for " + base_path + name
-    return os.path.isdir(tmp_dir + name + ".tgz")
+    return os.path.exists(tmp_dir + name + ".tgz")
 
 def download_rgbd(name):
     base_url = "http://rll.berkeley.edu/bigbird/aliases/863afb5e73/export/"
