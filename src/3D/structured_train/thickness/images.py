@@ -40,10 +40,10 @@ class RGBDImage(object):
         self.assert_depth_rgb_equal()
 
     def assert_depth_rgb_equal(self):
-
-        if self.depth.size > 0 and self.rgb.size > 0:
-            assert(self.rgb.shape[0] == self.depth.shape[0])
-            assert(self.rgb.shape[1] == self.depth.shape[1])
+        pass
+        #if self.depth.size > 0 and self.rgb.size > 0:
+        #    assert(self.rgb.shape[0] == self.depth.shape[0])
+        #    assert(self.rgb.shape[1] == self.depth.shape[1])
 
     def set_focal_length(self, focal_length):
         self.focal_length = focal_length
@@ -111,8 +111,8 @@ class MaskedRGBD(RGBDImage):
         mask_path = image_path + "masks/" + viewname + '_mask.pbm'
 
         self.load_depth_from_h5(depth_path)
-        self.load_rgb_from_img(rgb_path, (480, 640))
-        self.load_mask_from_pbm(mask_path, (480, 640))
+        self.load_rgb_from_img(rgb_path) 
+        self.load_mask_from_pbm(mask_path)
 
         # here I should remove points from the mask which are nan
         self.mask[np.isnan(self.depth)] = 0

@@ -62,8 +62,11 @@ class DepthFeatureEngine(object):
 
 	def sample_numbered_slice_from_mask(self, slice_idx):
 		'''samples the specified slice from the mask'''
-		all_idxs = np.nonzero(self.im.mask).T
-		self.indices = np.array([[t0, t1] for t0, t1 in all_idxs if t0==slice_idx]).T
+		print np.nonzero(self.im.mask)[0]
+		print np.nonzero(self.im.mask)[1]
+		all_idxs = np.array(np.nonzero(self.im.mask)).T
+		self.indices = np.array([[t0, t1] for t0, t1 in all_idxs if t0==slice_idx])
+		print self.indices.shape
 
 		self.num_samples = self.indices.shape[0]
 		return self.indices

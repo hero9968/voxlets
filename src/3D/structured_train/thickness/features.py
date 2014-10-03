@@ -17,75 +17,6 @@ import matplotlib.patches as patches
 import matplotlib as mpl
 
 
-class SlowerCobwebEngine(object):
-	'''
-	A different type of patch engine, only looking at points in the compass directions
-	'''
-
-	def __init__(self, t, fixed_patch_size=False):
-
-		# the stepsize at a depth of 1 m
-		self.t = float(t)
-
-		# dimension of side of patch in real world 3D coordinates
-		#self.input_patch_hww = input_patch_hww
-
-		# if fixed_patch_size is True:
-		#   step is always t in input image pixels
-		# else:
-		#   step varies linearly with depth. t is the size of step at depth of 1.0 
-		self.fixed_patch_size = fixed_patch_size 
-
-	def set_image(self, im):
-		self.im = im
-
-	def __get_offset_depth(self, start_row, start_col, angle_rad, offset):
-
-		try:
-			end_row = int(start_row - offset * np.sin(angle_rad))
-			end_col = int(start_col + offset * np.cos(angle_rad))
-		except:
-			print start_row
-			print offset
-			print angle_rad
-			raise Exception("DOne")
-
-		#print offset 
-		if end_row < 0 or end_col < 0 or \
-			end_row >= self.im.depth.shape[0] or end_col >= self.im.depth.shape[1]:
-			return np.nan
-		else:
-			return self.im.depth[end_row, end_col]
-
-	def get_cobweb(self, index):
-		'''extracts cobweb for a single index point'''
-		row, col = index
-		
-		start_angle = self.im.angles[row, col]
-		start_depth = self.im.depth[row, col]
-
-		row = float(row)
-		col = float(col)
-
-		if self.fixed_patch_size:
-			offset_dist = self.t
-		else:
-			offset_dist = self.t / start_depth
-
-		spider = []
-		for multiplier in [1, 2, 3, 4]:
-			for offset_angle in range(0, 360, 45):
-				offset_depth = self.__get_offset_depth(row, col, np.deg2rad(start_angle + offset_angle), 
-													offset_dist * multiplier)
-				spider.append(offset_depth-start_depth)
-
-		return spider
-
-	def extract_patches(self, indices):
-		return [self.get_cobweb(index) for index in indices]
-
-
-
 class CobwebEngine(object):
 	'''
 	A different type of patch engine, only looking at points in the compass directions
@@ -141,7 +72,6 @@ class CobwebEngine(object):
 		# computing the diff vals and slotting into the correct place in the cobweb feature
 		vals = self.im.depth[rows_to_take, cols_to_take] - self.im.depth[row, col]
 		cobweb[to_use] = vals
-
 		return np.copy(cobweb.flatten())
 
 	def extract_patches(self, indices):

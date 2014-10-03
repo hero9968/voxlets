@@ -12,7 +12,7 @@ import socket
 # per-view data paths
 host_name = socket.gethostname()
 if host_name == 'troll':
-    base_path = "/mnt/scratch/mfirman/data/bigbird"
+    base_path = "/mnt/scratch/mfirman/data/bigbird/"
     tmp_dir = "/mnt/scratch/mfirman/tmp/"
 else:
     base_path = "/Users/Michael/projects/shape_sharing/data/bigbird/"
