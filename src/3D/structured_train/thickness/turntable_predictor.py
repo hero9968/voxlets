@@ -25,6 +25,7 @@ import combine_data
 import compute_data
 import images
 import displaying as disp
+import voxel_data
 
 class TurntablePredictor(object):
 
@@ -43,19 +44,29 @@ class TurntablePredictor(object):
         self.forest = forest
 #pickle.load(open(paths.rf_folder_path + forest_name + '.pkl'))
 
-    def compute_features(self):
+    def compute_features(self, type='dense', slice_idx=[]):
         '''compute dense features across the whole image'''
-        self.feature_engine.dense_sample_from_mask()#1000)
+
+        if type=='dense':
+            self.feature_engine.dense_sample_from_mask()#1000)
+        elif type=='slice':
+            self.slice_idx = slice_idx
+            self.feature_engine.sample_numbered_slice_from_mask(slice_idx)
+            self.idxs_used = self.feature_engine.indices
+        else:
+            raise Exception("no idxs set...")
+
         #self.feature_engine.random_sample_from_mask(10)
         self.feature_engine.compute_features_and_depths(jobs=1)
         self.all_features = self.feature_engine.features_and_depths_as_dict()
+        #print self.all_features['spider_features']
 
     def predict_per_tree(self, random_forest, X):
         return np.array([tree.predict(X) for tree in random_forest.estimators_])
 
     def classify_features(self):
-
         ''' extracting the features'''
+
         patch = np.array(self.all_features['patch_features'])
         patch[np.isnan(patch)] = self.nan_replacement_value
         patch[patch > 0.1]  = self.nan_replacement_value
@@ -64,9 +75,6 @@ class TurntablePredictor(object):
         spider = combine_data.replace_nans_with_col_means(spider)
 
         #import pdb; pdb.set_trace()
-        print spider.shape
-        print patch.shape
-
         X = np.concatenate((patch, spider), axis=1)
 
         ''' classifying'''
@@ -76,15 +84,14 @@ class TurntablePredictor(object):
         #self.Y_pred_rf = rf.predict(X)
 
         ''' reconstructing the image'''
+
+    def reconstruct_image(self):
+
         test_idxs = np.array(self.all_features['indices']).T
-
         print self.Y_pred.shape
-
         self.prediction_image = disp.reconstruct_image(test_idxs, self.Y_pred, (480, 640))
 
-        # doing GT...
-        self.Y_gt = np.array(self.all_features['depth_diffs'])
-        self.GT_image = disp.reconstruct_image(test_idxs, np.array(self.Y_gt), (480, 640))
+        return self.prediction_image
 
 
     def prediction_gt_image(self):
@@ -94,6 +101,44 @@ class TurntablePredictor(object):
         return dict(pred_image=self.prediction_image,
                     Y_pred=self.Y_pred,
                     tree_predictions=self.tree_predictions)
+
+
+    def reconstruct_slice(self):
+
+        '''reconstructing the prediction'''
+        slice_idxs = np.copy(self.idxs_used).T
+        slice_idxs[0, :] = 0
+
+        '''reshaping the tree predictions to be the full size of the slice'''
+        self.predictions = []
+        for tree in self.tree_predictions:
+            tree_slice = disp.reconstruct_image(slice_idxs, tree, (1, 640))
+            self.predictions.append(tree_slice)
+        self.predictions = np.array(self.predictions)
+
+        print "nan is " + str(np.sum(np.isnan(self.predictions)))
+        self.front_slice = self.im.depth[self.slice_idx, :]
+        
+        return self.predictions
+        #print "Created slice of size " + str(self.GT_slice.shape)
+
+    def fill_slice(self):
+        '''
+        populates a 2D slice through the voxel volume 
+        '''
+        #print self.predictions
+        filler = voxel_data.SliceFiller(self.front_slice, self.predictions, 0.1*570.0)
+        print "Min is " + str(np.nanmin(self.front_slice))
+        print "Max is " + str(np.nanmax(self.predictions))
+        #maxdepth = 1.0
+        #mindepth = 0.6
+        #output_image_height = 500
+        #filler.fill_slice(scale_factor = output_image_height / (maxdepth - mindepth))
+        #volume_slice = filler.fill_slice(mindepth, maxdepth, gt))
+        filler.extract_warped_slice(0.6, 0.85)
+        #return filler.extract_warped_slice(0.5, 1.5)
+        return filler.volume_slice
+        #return filler.extract_slice(1, 2)
 
     # def plot_prediction_by_GT(self):
 
@@ -130,24 +175,57 @@ if __name__ == '__main__':
 
     # loading the saved forest
     print "Loading forest..."
-    rf = pickle.load( open(paths.rf_folder_path + "patch_spider_5k_10trees.pkl", "r") )
+    rf = pickle.load( open(paths.rf_folder_path + "patch_spider_1M_10trees.pkl", "r") )
 
     print "Creating predictor"
     pred = TurntablePredictor(rf)
     pred.set_image(im)
 
     print "Computing and classifying features"
-    pred.compute_features()
-    pred.classify_features()
-    plt.imshow(pred.prediction_image, interpolation='nearest')
-    plt.colorbar()
+    # pred.compute_features()
+    # pred.classify_features()
+    # plt.imshow(pred.prediction_image, interpolation='nearest')
+    # plt.colorbar()
+    # plt.show()
+
+    locs = np.nonzero(np.any(im.mask, axis=1))
+
+    object_top = np.min(locs)
+    object_bottom = np.max(locs)
+    object_height = object_bottom - object_top
+    print object_top, object_bottom
+
+    slices = (object_top + object_height * np.array([0.25, 0.5, 0.75])).astype(int)
+
+    print slices
+
+    plt.clf()
+
+    for idx, slice_idx in enumerate(slices):
+
+        print "Computing and classifying all points in slice" + str(slice_idx)
+        pred.compute_features(type='slice', slice_idx=slice_idx)
+        pred.classify_features()
+
+        print "Creating slice"
+        slice_preds = pred.reconstruct_slice().squeeze().T
+        slice_image = pred.fill_slice()
+        print slice_preds.shape
+
+        print "Adding to plot"
+        plt.subplot(2, 2, idx+2)
+        #plt.plot(slice_preds)
+        plt.imshow(slice_image)
+        plt.gca().invert_yaxis()
+
+        im.depth[slice_idx, :] = 0
+
+
+
+    plt.subplot(2, 2, 1)
+    plt.imshow(im.depth)
+    #plt.title(modelname + " : " + str(view_idx))
     plt.show()
-
-    #im.disp_channels()
-
-
-
-
 
 
 

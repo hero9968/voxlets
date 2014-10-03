@@ -187,7 +187,7 @@ class SliceFiller(object):
 		# finding the start and end depths...
 		#start_depth = self.get_start_depth()
 		#end_depth = self.get_end_depth()
-		scale_factor = (start_depth+end_depth) / (2 *self.focal_length)
+		scale_factor = (start_depth+end_depth) / (30 * self.focal_length)
 
 		# create the volume...
 		depth_in_voxels = int(np.ceil((end_depth - start_depth) / scale_factor))
@@ -217,11 +217,11 @@ class SliceFiller(object):
 
 				if ~np.isnan(front_val) and ~np.isnan(thickness):
 
-					back_vox_depth = round((thickness - start_depth) / scale_factor)
+					back_vox_depth = round((thickness) / scale_factor)
 					thisslice[int(front_vox_depth):int(front_vox_depth+back_vox_depth), colidx] += 1
 			
 			# adding gt
-			if any(gt):
+			if False:# any(gt):
 				thickness = gt[colidx]
 
 				if ~np.isnan(front_val) and ~np.isnan(thickness):
@@ -245,6 +245,7 @@ class SliceFiller(object):
 	#		maxdepth = self.get_end_depth()
 		scale_factor = output_image_height / (maxdepth - mindepth)
 		volume_slice = self.fill_slice(mindepth, maxdepth, gt)
+		self.volume_slice = volume_slice
 
 		# computing the perspective transform between voxel space and output image space
 		h = volume_slice.shape[0]
