@@ -320,16 +320,40 @@ class DistanceTransforms(object):
 		self.im = im
 
 
-	def e_dist_transform(self, edge_im, ray_image):
+	def straight_dist_transform(self, direction):
 		'''
 		axis aligned distance transform, going from left to the right
+		and top to bottom and vv
 		'''
+
+		if direction=='e':
+			edge_im = self.im.edges
+			ray_image = self.im.ray_image
+			depth_image = self.im.depth
+		elif direction=='w':
+			edge_im = np.fliplr(self.im.edges)
+			ray_image = np.fliplr(self.im.ray_image)
+			depth_image = np.fliplr(self.im.depth)
+		elif direction=='s':
+			edge_im = self.im.edges.T
+			ray_image = self.im.ray_image.T
+			depth_image = self.im.depth.T
+		elif direction=='n':
+			edge_im = np.fliplr(self.im.edges.T)
+			ray_image = np.fliplr(self.im.ray_image.T)
+			depth_image = np.fliplr(self.im.depth.T)
+
 		pixel_count_im = np.nan * np.copy(edge_im).astype(np.float)
 		geodesic_im = np.nan * np.copy(edge_im).astype(np.float)
+
+		u = np.arange(-edge_im.shape[1]/2, edge_im.shape[1]/2)
 
 		# loop over each row...
 		for row_idx, row in enumerate(edge_im):
 			if np.any(row):
+
+				dists = u*depth_image[row_idx]
+				dist_diffs = np.abs(np.insert(np.diff(dists), 0, 0))
 
 				pixel_count = np.nan
 				geo_dist = np.nan
@@ -342,13 +366,25 @@ class DistanceTransforms(object):
 						geo_dist = 0
 					else:
 						pixel_count += 1
-						geo_dist += np.abs(ray_image[row_idx, col_idx-1] - ray_image[row_idx, col_idx])
-						#geo_dist += depth_image[row_idx, col_idx] / self.im.K[0][0]
+						geo_dist += dist_diffs[col_idx]
 
 					pixel_count_im[row_idx, col_idx] = pixel_count
 					geodesic_im[row_idx, col_idx] = geo_dist
 
-		return np.dstack((pixel_count_im, geodesic_im))
+		out_stack = np.dstack((pixel_count_im, geodesic_im))
+
+		if direction=='w':
+			out_stack = np.fliplr(out_stack)
+		elif direction=='s':
+			out_stack = np.transpose(out_stack, axes=[1, 0, 2])
+		elif direction=='n':
+			out_stack = np.transpose(np.fliplr(out_stack), axes=[1, 0, 2])
+
+		return out_stack
+
+#	def row_dists(self, edges_row, depth_row):
+
+
 
 
 	def se_dist_transform(self, im):
@@ -382,20 +418,6 @@ class DistanceTransforms(object):
 		return np.dstack((out_im, out_im))
 
 
-	def w_dist_transform(self, im, ray_im):
-		trans = self.e_dist_transform(np.fliplr(im), np.fliplr(ray_im))
-		return np.fliplr(trans)
-
-
-	def s_dist_transform(self, im, ray_im):
-		temp = self.e_dist_transform(im.T, ray_im.T)
-		return np.transpose(temp, axes=(1, 0, 2))
-
-
-	def n_dist_transform(self, im, ray_im):
-		return np.transpose(self.w_dist_transform(im.T, ray_im.T), axes=(1, 0, 2))
-
-
 	def sw_dist_transform(self, im):
 		return self.se_dist_transform(np.fliplr(im))
 
@@ -411,14 +433,18 @@ class DistanceTransforms(object):
 
 
 	def get_compass_images(self):
-		return [self.e_dist_transform(self.im.edges, self.im.ray_image),
-				self.se_dist_transform(self.im.edges),
-				self.s_dist_transform(self.im.edges, self.im.ray_image),
-				self.sw_dist_transform(self.im.edges),
-				self.w_dist_transform(self.im.edges, self.im.ray_image),
-				self.nw_dist_transform(self.im.edges),
-				self.n_dist_transform(self.im.edges, self.im.ray_image),
-				self.ne_dist_transform(self.im.edges)]
+		return [self.straight_dist_transform('n'),
+				self.straight_dist_transform('e'),
+				self.straight_dist_transform('s'),
+				self.straight_dist_transform('w')]
+
+				# self.se_dist_transform(self.im.edges),
+				# self.s_dist_transform(self.im.edges, self.im.ray_image),
+				# self.sw_dist_transform(self.im.edges),
+				# self.w_dist_transform(self.im.edges, self.im.ray_image),
+				# self.nw_dist_transform(self.im.edges),
+				# self.n_dist_transform(self.im.edges, self.im.ray_image),
+				# self.ne_dist_transform(self.im.edges)]
 
 
 
