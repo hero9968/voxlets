@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.misc
 import scipy.io
+import scipy.ndimage
 import h5py
 import struct
 from bitarray import bitarray
@@ -92,9 +93,43 @@ class RGBDImage(object):
         self.angles[np.isnan(self.depth)] = np.nan
 
         self.edges = np.array((Ix**2 + Iy**2) > edge_threshold**2)
+        self.edges = scipy.ndimage.morphology.binary_dilation(self.edges)
 
     def set_angles_to_zero(self):
         self.angles *= 0
+
+
+    def reproject_3d(self):
+        '''
+        creates an (nxm)x3 matrix of all the 3D locations of the points.
+        '''
+        #assert self.inv_K
+        #assert self.depth
+
+        h, w = self.depth.shape
+        us, vs = np.meshgrid(np.arange(w), np.arange(h))
+        x = 1000*np.vstack((us.flatten()*self.depth.flatten(), vs.flatten()*self.depth.flatten(), self.depth.flatten()))
+
+        self.xyz = np.dot(self.inv_K, x)
+        return self.xyz
+
+
+    def compute_ray_image(self):
+        '''
+        the ray image is an image where the values represent the 
+        distance along the rays, as opposed to perpendicular
+        '''
+        self.reproject_3d()
+        dists = np.sqrt(np.sum(self.xyz**2, axis=0))
+
+        self.ray_image = np.reshape(dists, self.depth.shape)/1000
+        return self.ray_image
+
+    def set_intrinsics(self, K):
+        self.K = K
+        self.inv_K = np.linalg.inv(K)
+
+
 
 
 class MaskedRGBD(RGBDImage):
@@ -104,7 +139,7 @@ class MaskedRGBD(RGBDImage):
     '''
 
     def load_bigbird(self, modelname, viewname):
-        image_path = "/Users/Michael/projects/shape_sharing/data/bigbird/" + modelname + "/"
+        image_path = paths.bigbird_folder + modelname + "/"
 
         rgb_path = image_path + viewname + '.jpg'
         depth_path = image_path + viewname + '.h5'
@@ -121,6 +156,20 @@ class MaskedRGBD(RGBDImage):
         self.modelname = modelname
 
         self.set_focal_length(240.0/(np.tan(np.rad2deg(43.0/2.0))))
+
+        self.camera_id = self.view_idx.split('_')[0]
+        self.load_intrinsics()
+
+
+    def load_intrinsics(self):
+        '''
+        loads the intrinscis for this camera and this model from the h5 file
+        '''
+        calib_path = paths.bigbird_folder + self.modelname + "/calibration.h5"
+        calib = h5py.File(calib_path, 'r')
+
+        self.set_intrinsics(np.array(calib[self.camera_id +'_depth_K']))
+
 
     def load_mask_from_pbm(self, mask_path, scale_factor=[]):
         self.mask = self.read_pbm(mask_path)

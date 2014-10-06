@@ -312,100 +312,113 @@ class DistanceTransforms(object):
 	'''
 	like the spider feature but aligned with dimensions
 	'''
-	def __init__(self, edge_im=[], depth_im=[]):
-		self.edge_im = edge_im
-		self.depth_im = depth_im
+	def __init__(self, im=[]):
+		self.set_im(im)
 
 
-	def set_edge_im(self, edge_im):
-		self.edge_im = edge_im
+	def set_im(self, im):
+		self.im = im
 
 
-	def set_depth_im(self, depth_im):
-		self.depth_im = depth_im
-
-
-	def e_dist_transform(self, im):
+	def e_dist_transform(self, edge_im, ray_image):
 		'''
 		axis aligned distance transform, going from left to the right
 		'''
-	    pixel_count_im = np.nan * np.copy(im).astype(np.float)
+		pixel_count_im = np.nan * np.copy(edge_im).astype(np.float)
+		geodesic_im = np.nan * np.copy(edge_im).astype(np.float)
 
-	    # loop over each row...
-	    for row_idx, row in enumerate(im):
-	        if np.any(row):
-	            pixel_count = np.nan
-	            for col_idx, pix in enumerate(row):
-	                count = 0 if pix else count + 1
-	                pixel_count_im[row_idx, col_idx] = pixel_count
+		# loop over each row...
+		for row_idx, row in enumerate(edge_im):
+			if np.any(row):
 
-	    return pixel_count_im
+				pixel_count = np.nan
+				geo_dist = np.nan
+				previous_ray = 0
+
+				for col_idx, pix in enumerate(row):
+					
+					if pix:
+						pixel_count = 0
+						geo_dist = 0
+					else:
+						pixel_count += 1
+						geo_dist += np.abs(ray_image[row_idx, col_idx-1] - ray_image[row_idx, col_idx])
+						#geo_dist += depth_image[row_idx, col_idx] / self.im.K[0][0]
+
+					pixel_count_im[row_idx, col_idx] = pixel_count
+					geodesic_im[row_idx, col_idx] = geo_dist
+
+		return np.dstack((pixel_count_im, geodesic_im))
 
 
 	def se_dist_transform(self, im):
-	    # create the output image
-	    out_im = np.nan * np.copy(im).astype(np.float)
-	        
-	    # pixels below the diagonal - loop over each row
-	    for row_idx in range(im.shape[0]):
-	        
-	        count = np.nan # keeps count of pix since last edge
-	        num_to_count = min(im.shape[1], im.shape[0] - row_idx)
-	        
-	        # now speed down the diagonal
-	        for row_col_counter in range(num_to_count):
-	            pix = im[row_idx + row_col_counter, row_col_counter]
-	            count = 0 if pix else count + 1
-	            out_im[row_idx + row_col_counter, row_col_counter] = count
+		# create the output image
+		out_im = np.nan * np.copy(im).astype(np.float)
+			
+		# pixels below the diagonal - loop over each row
+		for row_idx in range(im.shape[0]):
+			
+			count = np.nan # keeps count of pix since last edge
+			num_to_count = min(im.shape[1], im.shape[0] - row_idx)
+			
+			# now speed down the diagonal
+			for row_col_counter in range(num_to_count):
+				pix = im[row_idx + row_col_counter, row_col_counter]
+				count = 0 if pix else count + 1
+				out_im[row_idx + row_col_counter, row_col_counter] = count
 
-	    # pixels above the diagonal - loop over each column
-	    for col_idx in range(im.shape[1]):
-	        
-	        count = np.nan # keeps count of pix since last edge
-	        num_to_count = min(im.shape[0], im.shape[1] - col_idx)
-	        
-	        # now speed down the diagonal
-	        for row_col_counter in range(num_to_count):
-	            pix = im[row_col_counter, col_idx + row_col_counter]
-	            count = 0 if pix else count + 1
-	            out_im[row_col_counter, col_idx + row_col_counter] = count
+		# pixels above the diagonal - loop over each column
+		for col_idx in range(im.shape[1]):
+			
+			count = np.nan # keeps count of pix since last edge
+			num_to_count = min(im.shape[0], im.shape[1] - col_idx)
+			
+			# now speed down the diagonal
+			for row_col_counter in range(num_to_count):
+				pix = im[row_col_counter, col_idx + row_col_counter]
+				count = 0 if pix else count + 1
+				out_im[row_col_counter, col_idx + row_col_counter] = count
 
-	    return out_im
-
-
-	def w_dist_transform(self, im):
-	    return np.fliplr(self.e_dist_transform(np.fliplr(im)))
+		return np.dstack((out_im, out_im))
 
 
-	def s_dist_transform(self, im):
-	    return self.e_dist_transform(im.T).T
+	def w_dist_transform(self, im, ray_im):
+		trans = self.e_dist_transform(np.fliplr(im), np.fliplr(ray_im))
+		return np.fliplr(trans)
 
 
-	def n_dist_transform(self, im):
-	    return self.w_dist_transform(im.T).T
+	def s_dist_transform(self, im, ray_im):
+		temp = self.e_dist_transform(im.T, ray_im.T)
+		return np.transpose(temp, axes=(1, 0, 2))
+
+
+	def n_dist_transform(self, im, ray_im):
+		return np.transpose(self.w_dist_transform(im.T, ray_im.T), axes=(1, 0, 2))
 
 
 	def sw_dist_transform(self, im):
-	    return np.fliplr(self.se_dist_transform(np.fliplr(im)))
+		return self.se_dist_transform(np.fliplr(im))
 
 
 	def nw_dist_transform(self, im):
-	    return np.fliplr(self.ne_dist_transform(np.fliplr(im)))
+		return np.fliplr(self.ne_dist_transform(np.fliplr(im)))
 
 
 	def ne_dist_transform(self, im):
-	    return self.sw_dist_transform(im.T).T
+		temp = self.sw_dist_transform(im.T)
+		print temp.shape
+		return np.transpose(temp, axes=(1, 0, 2))
 
 
 	def get_compass_images(self):
-		return [self.e_dist_transform(self.edge_im),
-				self.se_dist_transform(self.edge_im),
-				self.s_dist_transform(self.edge_im),
-				self.sw_dist_transform(self.edge_im),
-				self.w_dist_transform(self.edge_im),
-				self.nw_dist_transform(self.edge_im),
-				self.n_dist_transform(self.edge_im),
-				self.ne_dist_transform(self.edge_im)]
+		return [self.e_dist_transform(self.im.edges, self.im.ray_image),
+				self.se_dist_transform(self.im.edges),
+				self.s_dist_transform(self.im.edges, self.im.ray_image),
+				self.sw_dist_transform(self.im.edges),
+				self.w_dist_transform(self.im.edges, self.im.ray_image),
+				self.nw_dist_transform(self.im.edges),
+				self.n_dist_transform(self.im.edges, self.im.ray_image),
+				self.ne_dist_transform(self.im.edges)]
 
 
 
