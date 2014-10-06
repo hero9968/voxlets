@@ -315,7 +315,6 @@ class DistanceTransforms(object):
 	def __init__(self, im=[]):
 		self.set_im(im)
 
-
 	def set_im(self, im):
 		self.im = im
 
@@ -351,25 +350,9 @@ class DistanceTransforms(object):
 		# loop over each row...
 		for row_idx, row in enumerate(edge_im):
 			if np.any(row):
-
-				dists = u*depth_image[row_idx]
-				dist_diffs = np.abs(np.insert(np.diff(dists), 0, 0))
-
-				pixel_count = np.nan
-				geo_dist = np.nan
-				previous_ray = 0
-
-				for col_idx, pix in enumerate(row):
-					
-					if pix:
-						pixel_count = 0
-						geo_dist = 0
-					else:
-						pixel_count += 1
-						geo_dist += dist_diffs[col_idx]
-
-					pixel_count_im[row_idx, col_idx] = pixel_count
-					geodesic_im[row_idx, col_idx] = geo_dist
+				temp_pixel, temp_geo = self.row_dists(row, depth_image[row_idx, :], u)
+				pixel_count_im[row_idx, :] = temp_pixel
+				geodesic_im[row_idx, :] = temp_geo
 
 		out_stack = np.dstack((pixel_count_im, geodesic_im))
 
@@ -382,9 +365,30 @@ class DistanceTransforms(object):
 
 		return out_stack
 
-#	def row_dists(self, edges_row, depth_row):
+	def row_dists(self, edges_row, depth_row, u):
 
+		dists = u*depth_row
+		dist_diffs = np.abs(np.insert(np.diff(dists), 0, 0))
 
+		pixel_count = np.nan
+		geo_dist = np.nan
+
+		pixel_count_row = 0 * np.copy(edges_row).astype(float)
+		geodesic_row = 0 * np.copy(edges_row).astype(float)
+
+		for col_idx, pix in enumerate(edges_row):
+			
+			if pix:
+				pixel_count = 0
+				geo_dist = 0
+			else:
+				pixel_count += 1
+				geo_dist += dist_diffs[col_idx]
+
+			pixel_count_row[col_idx] = pixel_count
+			geodesic_row[col_idx] = geo_dist
+
+		return pixel_count_row, geodesic_row
 
 
 	def se_dist_transform(self, im):
