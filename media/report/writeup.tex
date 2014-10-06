@@ -50,7 +50,7 @@
 
 \title{Predicting Voxel Occupancy From a Single RGBD Image}
 
-\author{Michael Firman, Gabriel Brostow, Simon Julier \ea}
+%\author{Michael Firman, Gabriel Brostow, Simon Julier \ea}
 
 \begin{document}
 
@@ -77,6 +77,16 @@ We are able to do this using a manner of different tools at our disposal.
 We can use symmetry, hypothesising that unobserved regions match the parts we can see under a transform.
 In many occasions we exploit semantic knowledge: by recognising specific objects and relating them to objects in our memory, we form an idea of their shape.
 In many cases, however, we use a more generic, higher level knowledge about shape in order to hypothesise the missing regions.
+
+\begin{figure}
+  \centering 
+  \subfigure[Input depth image]{%
+      \includegraphics[width=0.9\columnwidth]{setup_ppt.png}}
+      \hfill
+  \subfigure[Ground truth output]{%
+      \includegraphics[width=0.9\columnwidth]{ground_truth_ppt.png}} \\
+  \caption{Given a depth image of a scene (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
+\end{figure}
 
 
 \paragraph{Application areas}
@@ -297,6 +307,12 @@ Our approach is somewhat inspired by patch-based methods used for superresolutio
 % Instead, want to find a collection of good matches in the training set which, when combined, will give a sensible prediction of the voxel occupancy.
 % We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
 
+
+\subsection{Definition of occupancy}
+
+We treat a voxel as occupied if you cannot view its state from a camera moving around the scene from its start position.
+So a voxel inside a closed cardboard box, while void of solid object, would be considered occupied.
+On the other hand, a voxel on the inside of a cardboard box open at the top would be considered unoccupied.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Thickness prediction}
