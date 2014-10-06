@@ -307,6 +307,109 @@ class PatchPlot(object):
 		plt.show()
 
 
+
+class DistanceTransforms(object):
+	'''
+	like the spider feature but aligned with dimensions
+	'''
+	def __init__(self, edge_im=[], depth_im=[]):
+		self.edge_im = edge_im
+		self.depth_im = depth_im
+
+
+	def set_edge_im(self, edge_im):
+		self.edge_im = edge_im
+
+
+	def set_depth_im(self, depth_im):
+		self.depth_im = depth_im
+
+
+	def e_dist_transform(self, im):
+		'''
+		axis aligned distance transform, going from left to the right
+		'''
+	    pixel_count_im = np.nan * np.copy(im).astype(np.float)
+
+	    # loop over each row...
+	    for row_idx, row in enumerate(im):
+	        if np.any(row):
+	            pixel_count = np.nan
+	            for col_idx, pix in enumerate(row):
+	                count = 0 if pix else count + 1
+	                pixel_count_im[row_idx, col_idx] = pixel_count
+
+	    return pixel_count_im
+
+
+	def se_dist_transform(self, im):
+	    # create the output image
+	    out_im = np.nan * np.copy(im).astype(np.float)
+	        
+	    # pixels below the diagonal - loop over each row
+	    for row_idx in range(im.shape[0]):
+	        
+	        count = np.nan # keeps count of pix since last edge
+	        num_to_count = min(im.shape[1], im.shape[0] - row_idx)
+	        
+	        # now speed down the diagonal
+	        for row_col_counter in range(num_to_count):
+	            pix = im[row_idx + row_col_counter, row_col_counter]
+	            count = 0 if pix else count + 1
+	            out_im[row_idx + row_col_counter, row_col_counter] = count
+
+	    # pixels above the diagonal - loop over each column
+	    for col_idx in range(im.shape[1]):
+	        
+	        count = np.nan # keeps count of pix since last edge
+	        num_to_count = min(im.shape[0], im.shape[1] - col_idx)
+	        
+	        # now speed down the diagonal
+	        for row_col_counter in range(num_to_count):
+	            pix = im[row_col_counter, col_idx + row_col_counter]
+	            count = 0 if pix else count + 1
+	            out_im[row_col_counter, col_idx + row_col_counter] = count
+
+	    return out_im
+
+
+	def w_dist_transform(self, im):
+	    return np.fliplr(self.e_dist_transform(np.fliplr(im)))
+
+
+	def s_dist_transform(self, im):
+	    return self.e_dist_transform(im.T).T
+
+
+	def n_dist_transform(self, im):
+	    return self.w_dist_transform(im.T).T
+
+
+	def sw_dist_transform(self, im):
+	    return np.fliplr(self.se_dist_transform(np.fliplr(im)))
+
+
+	def nw_dist_transform(self, im):
+	    return np.fliplr(self.ne_dist_transform(np.fliplr(im)))
+
+
+	def ne_dist_transform(self, im):
+	    return self.sw_dist_transform(im.T).T
+
+
+	def get_compass_images(self):
+		return [self.e_dist_transform(self.edge_im),
+				self.se_dist_transform(self.edge_im),
+				self.s_dist_transform(self.edge_im),
+				self.sw_dist_transform(self.edge_im),
+				self.w_dist_transform(self.edge_im),
+				self.nw_dist_transform(self.edge_im),
+				self.n_dist_transform(self.edge_im),
+				self.ne_dist_transform(self.edge_im)]
+
+
+
+
 # here should probably write some kind of testing routine
 # where an image is loaded, rotated patches are extracted and the gradient of the rotated patches
 # is shown to be all mostly close to zero
