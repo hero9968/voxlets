@@ -76,7 +76,6 @@ to_remove = projected_points(1, :) < 1 | projected_points(2, :) < 1 | ...
 
 new_projected_points = round(projected_points(:, ~to_remove));
 
-
 %%
 imgGrey = rgb2gray(imgRgb);
 idxs = sub2ind(size(imgGrey), new_projected_points(1, :), new_projected_points(2, :));
@@ -149,3 +148,70 @@ for ii = 1:size(imgDepthAbs, 1)
 end
 
 %%
+badly_filled_depth = fill_depth_cross_bf(imresize(imgRgb, size(imgDepthAbs)), imgDepthAbs);
+reproj_rgb = reproject_rgb_into_depth(imgRgb, badly_filled_depth, K1, K2, H1', H2');
+%%
+imagesc(rgb2gray(uint8(reproj_rgb)) + uint8(100*imgDepthAbs))
+axis image
+
+%%
+profile on
+better_filled_depth = fill_depth_colorization(reproj_rgb/255, imgDepthAbs);
+profile off viewer 
+
+%%
+subplot(231)
+imagesc(imgDepthAbs(100:end, 100:end))
+set(gca, 'clim', [0.5, 1.1])
+title('Original depth')
+axis image
+subplot(232)
+imagesc(badly_filled_depth(100:end, 100:end))
+set(gca, 'clim', [0.5, 1.1])
+title('Simple filling')
+axis image
+subplot(233)
+imagesc(better_filled_depth(100:end, 100:end))
+set(gca, 'clim', [0.5, 1.1])
+title('Colour filling')
+axis image
+
+subplot(234)
+imagesc(imgRgb);
+axis image
+%% plotting the different options
+figure
+slice_idx = 180
+orig_slice = imgDepthAbs(slice_idx, :)
+orig_slice(orig_slice==0) = 1.2;
+x_orig = [-319:320] .* orig_slice / 570
+
+filled_slice = badly_filled_depth(slice_idx, :);
+x_filled = [-319:320] .* filled_slice / 570
+
+filled_slice_col = better_filled_depth(slice_idx, :);
+x_filled_col = [-319:320] .* filled_slice_col / 570
+
+clf
+subplot(221)
+T = imgRgb;
+T(slice_idx:slice_idx+3, :, :) = 0;
+imagesc(T)
+axis image
+
+subplot(223)
+T = imgDepthAbs;
+T(slice_idx:slice_idx+3, :, :) = 0;
+imagesc(T)
+axis image
+
+subplot(2, 2, [2, 4])
+plot(x_orig, orig_slice, 'bs')
+hold on
+plot(x_filled, filled_slice, 'ro')
+plot(x_filled_col, filled_slice_col, 'g^')
+hold off
+axis image
+
+legend({'Original', 'Cross-bilateral', 'RGB cross bilateral'})
+
