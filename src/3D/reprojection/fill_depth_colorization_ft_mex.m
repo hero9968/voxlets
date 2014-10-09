@@ -10,7 +10,7 @@
 %   imgDepth - HxW matrix, the depth image for the current frame in
 %              absolute (meters) space.
 %   alpha - a penalty value between 0 and 1 for the current depth values.
-function denoisedDepthImg = fill_depth_colorization(imgRgb, imgDepth, alpha)
+function denoisedDepthImg = fill_depth_colorization(grayImg, imgDepth, alpha)
 error(nargchk(2, 3, nargin));
 if nargin < 3
     alpha = 1;
@@ -30,7 +30,7 @@ indsM = reshape(1:numPix, H, W);
 
 knownValMask = ~imgIsNoise;
 
-grayImg = rgb2gray(imgRgb);
+%grayImg = rgb2gray(imgRgb);
 
 winRad = 1;
 
