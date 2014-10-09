@@ -157,12 +157,14 @@ print("Loaded " + str(len(triangles)) + " triangles and " + str(len(verts)) + " 
 # A general OpenGL initialization function.  Sets all of the initial parameters.
 def InitGL(Width, Height):              # We call this right after our OpenGL window is created.
     glClearColor(0.0, 0.0, 0.0, 0.0)    # This Will Clear The Background Color To Black
-    glClearDepth(1.0)                   # Enables Clearing Of The Depth Buffer
-    glDepthFunc(GL_LESS)                # The Type Of Depth Test To Do
+    glClearDepth(0.0)                   # Enables Clearing Of The Depth Buffer
+    #glDepthFunc(GL_LESS)                # The Type Of Depth Test To Do
     glEnable(GL_DEPTH_TEST)             # Enables Depth Testing
     glDisable(GL_CULL_FACE)
     glShadeModel(GL_SMOOTH)                # Enables Smooth Color Shading
 
+    glDepthFunc(GL_GREATER)             # The Type Of Depth Test To Do
+    glDepthMask(GL_TRUE)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
   
@@ -216,7 +218,7 @@ def printDepth():
     dists = distPlane(plane[0], plane[1], verts)
     
     dico = dict(depth=depth, dists=dists)
-    scipy.io.savemat(savePath + "/" + poses[idx] + "_render.mat", dico)
+    scipy.io.savemat(savePath + "/" + poses[idx] + "_renderbackface.mat", dico)
     #scipy.io.savemat("test_out.mat", dico)
 
 

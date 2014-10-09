@@ -14,8 +14,8 @@ import timeit
 args = sys.argv
 
 if len(args) < 4:
-    print "Not enough args"
-    sys.exit()
+	print "Not enough args"
+	sys.exit()
 
 scene = args[1]
 radius = float(args[2])
@@ -49,33 +49,34 @@ def loadOBJ(filename):
 				# OBJ Files are 1-indexed so we must subtract 1 below
 				vertsOut.append(list(verts[int(w[0])-1]))
 				numVerts += 1
+
 	return vertsOut, verts
-    
-    
+	
+	
 def drawMesh():
 	global showallverts
 	glCallList(showallverts)
-    
+	
 def getPlane(mat):
-    n = mat[0:3, 2]
-    c = np.linalg.pinv(mat)[3,0:3]
-    return [n, c]
-    
+	n = mat[0:3, 2]
+	c = np.linalg.pinv(mat)[3,0:3]
+	return [n, c]
+	
 def distPlane(n,p,q):
-    return np.abs(np.dot(q-p,n))
-    
+	return np.abs(np.dot(q-p,n))
+	
 def loadXform():
-    global idx, transMatrix
-    
-    # loading the transform from disk
-    filename = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/halo/mat_" + str(idx) + ".csv"    
-    xform = np.genfromtxt(filename, delimiter=',')
+	global idx, transMatrix
+	
+	# loading the transform from disk
+	filename = "/Users/Michael/projects/shape_sharing/data/basis_models/halo/mat_" + str(idx) + ".csv"    
+	xform = np.genfromtxt(filename, delimiter=',')
 
-    # adjusting the radius according to user supplied arguments
-    xform[0:3,3] = radius * xform[0:3,3]
+	# adjusting the radius according to user supplied arguments
+	xform[0:3,3] = radius * xform[0:3,3]
 	
 	# taking the inverse
-    transMatrix = np.linalg.pinv(xform.T)
+	transMatrix = np.linalg.pinv(xform.T)
 
 zNear = 0.1
 zFar = 10.0 # I had this set to 2 * radius for a bit...
@@ -90,8 +91,8 @@ Width, Height = 320, 240
 # Number of the glut window.
 window = 0
 
-modelsPath = "/Users/Michael/projects/shape_sharing/data/3D/basis_models/centred/"
-savePath =   "/Users/Michael/projects/shape_sharing/data/3D/basis_models/renders_quicktest/"
+modelsPath = "/Users/Michael/projects/shape_sharing/data/basis_models/centred/"
+savePath =   "/Users/Michael/projects/shape_sharing/data/basis_models/renders_quicktest/"
 
 idx = startIdx
 
@@ -118,31 +119,31 @@ print("Loaded " + str(len(triangles)) + " triangles and " + str(len(verts)) + " 
 
 # A general OpenGL initialization function.  Sets all of the initial parameters.
 def InitGL(Width, Height):				# We call this right after our OpenGL window is created.
-    glClearColor(0.0, 0.0, 0.0, 0.0)	# This Will Clear The Background Color To Black
-    glClearDepth(1.0)					# Enables Clearing Of The Depth Buffer
-    glDepthFunc(GL_LESS)				# The Type Of Depth Test To Do
-    glEnable(GL_DEPTH_TEST)				# Enables Depth Testing
-    glShadeModel(GL_SMOOTH)				# Enables Smooth Color Shading
+	glClearColor(0.0, 0.0, 0.0, 0.0)	# This Will Clear The Background Color To Black
+	glClearDepth(1.0)					# Enables Clearing Of The Depth Buffer
+	glDepthFunc(GL_LESS)				# The Type Of Depth Test To Do
+	glEnable(GL_DEPTH_TEST)				# Enables Depth Testing
+	glShadeModel(GL_SMOOTH)				# Enables Smooth Color Shading
 
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
+	glMatrixMode(GL_MODELVIEW)
+	glLoadIdentity()
   
-    # Calculate The Aspect Ratio Of The Window
-    gluPerspective(43.0, float(Width)/float(Height), zNear, zFar)
+	# Calculate The Aspect Ratio Of The Window
+	gluPerspective(43.0, float(Width)/float(Height), zNear, zFar)
 
   #  glMatrixMode(GL_MODELVIEW)
-    glMatrixMode(GL_PROJECTION)
+	glMatrixMode(GL_PROJECTION)
 
 
 # The function called when our window is resized (which shouldn't happen if you enable fullscreen, below)
 def ReSizeGLScene(Width, Height):
 
-    glViewport(0, 0, Width, Height)		# Reset The Current Viewport And Perspective Transformation
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluPerspective(43.0, float(Width)/float(Height), zNear, zFar)
-    glMatrixMode(GL_MODELVIEW)
-    
+	glViewport(0, 0, Width, Height)		# Reset The Current Viewport And Perspective Transformation
+	glMatrixMode(GL_PROJECTION)
+	glLoadIdentity()
+	gluPerspective(43.0, float(Width)/float(Height), zNear, zFar)
+	glMatrixMode(GL_MODELVIEW)
+	
 # The main drawing function.
 def DrawGLScene():
 	global transMatrix
@@ -154,55 +155,55 @@ def DrawGLScene():
 	#gluLookAt()
 
 	drawMesh()
-    
+	
 	#  since this is double buffered, swap the buffers to display what just got drawn.
 	glutSwapBuffers()
-    
+	
 	return
-    
+	
 def printDepth():
-    global idx, transMatrix, verts
-    
-    tempdepth = glReadPixels(0, 0, Width, Height, GL_DEPTH_COMPONENT, GL_FLOAT)
-    depth = np.array(tempdepth, dtype=np.float32)
+	global idx, transMatrix, verts
+	
+	tempdepth = glReadPixels(0, 0, Width, Height, GL_DEPTH_COMPONENT, GL_FLOAT)
+	depth = np.array(tempdepth, dtype=np.float32)
 
-    depth.shape = Height, Width
-    depth = np.flipud(depth)
-    
-    #linearize depth, from: http://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer
-    depth = 2.0 * zNear * zFar / (zFar + zNear - (2.0*depth-1.0) * (zFar - zNear))
-    
-    #get the point to plane distances
-    plane = getPlane(transMatrix)
-    dists = distPlane(plane[0], plane[1], verts)
-    
-    dico = dict(depth=depth, dists=dists)
-    scipy.io.savemat(savePath + scene + "/depth_" + str(idx) + ".mat", dico)
+	depth.shape = Height, Width
+	depth = np.flipud(depth)
+	
+	#linearize depth, from: http://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer
+	depth = 2.0 * zNear * zFar / (zFar + zNear - (2.0*depth-1.0) * (zFar - zNear))
+	
+	#get the point to plane distances
+	plane = getPlane(transMatrix)
+	dists = distPlane(plane[0], plane[1], verts)
+	
+	dico = dict(depth=depth, dists=dists)
+	scipy.io.savemat(savePath + scene + "/depth_" + str(idx) + ".mat", dico)
 
 
 # The function called whenever a key is pressed. Note the use of Python tuples to pass in: (key, x, y)
 def keyPressed(*args):
 	# If escape is pressed, kill everything.
-    if args[0] == ESCAPE:
-        sys.exit()
-        
-    if args[0] == SPACE:
-        printDepth()
+	if args[0] == ESCAPE:
+		sys.exit()
+		
+	if args[0] == SPACE:
+		printDepth()
    
 def timerf(time):
-    global idx, meshmodel
-        
-    if idx <= endIdx:
-        tic = timeit.default_timer()
-        loadXform()
-        DrawGLScene()
-        printDepth()
-        idx += 1
-        glutTimerFunc(10, timerf, 0)
-    else:
-        sys.exit()
-        print "Done"
-        
+	global idx, meshmodel
+		
+	if idx <= endIdx:
+		tic = timeit.default_timer()
+		loadXform()
+		DrawGLScene()
+		printDepth()
+		idx += 1
+		glutTimerFunc(10, timerf, 0)
+	else:
+		sys.exit()
+		print "Done"
+		
 def main():
 	global window, idx, showallverts
 
@@ -227,7 +228,7 @@ def main():
 	# if it weren't for the global declaration at the start of main.
 	window = glutCreateWindow("Jeff Molofee's GL Code Tutorial ... NeHe '99")
 
-   	# Register the drawing function with glut, BUT in Python land, at least using PyOpenGL, we need to
+	# Register the drawing function with glut, BUT in Python land, at least using PyOpenGL, we need to
 	# set the function pointer and invoke a function to actually register the callback, otherwise it
 	# would be very much like the C version of the code.
 	glutDisplayFunc(DrawGLScene)
@@ -237,7 +238,7 @@ def main():
 
 	# When we are doing nothing, redraw the scene.
 	#glutIdleFunc(idleFunc)
-    
+	
 	glutTimerFunc(10, timerf, 0)
 
 	# Register the function called when our window is resized.
@@ -259,7 +260,7 @@ def main():
 
 	# Start Event Processing Engine
 	glutMainLoop()
-	    
+		
 	#printDepth()
 
 # Print message to console, and kick off the main to get it rolling.
