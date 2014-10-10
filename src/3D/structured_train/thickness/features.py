@@ -315,32 +315,35 @@ class DistanceTransforms(object):
 	def __init__(self, im=[]):
 		self.set_im(im)
 
+
 	def set_im(self, im):
 		self.im = im
 
+		# parameters for rotating and padding
+		self.H, self.W = im.depth.shape
+		r = 0.5 * np.sqrt(self.H**2 + self.W**2)
+		self.pad_top = (r - self.H/2 + 5).astype(int)
+		self.pad_left = (r - self.W/2 + 5).astype(int)
 
-	def straight_dist_transform(self, direction):
+
+	def straight_dist_transform(self, direction, edges, depth):
 		'''
 		axis aligned distance transform, going from left to the right
 		and top to bottom and vv
 		'''
 
 		if direction=='e':
-			edge_im = self.im.edges
-			ray_image = self.im.ray_image
-			depth_image = self.im.depth
+			edge_im = edges
+			depth_image = depth
 		elif direction=='w':
-			edge_im = np.fliplr(self.im.edges)
-			ray_image = np.fliplr(self.im.ray_image)
-			depth_image = np.fliplr(self.im.depth)
+			edge_im = np.fliplr(edges)
+			depth_image = np.fliplr(depth)
 		elif direction=='s':
-			edge_im = self.im.edges.T
-			ray_image = self.im.ray_image.T
-			depth_image = self.im.depth.T
+			edge_im = edges.T
+			depth_image = depth.T
 		elif direction=='n':
-			edge_im = np.fliplr(self.im.edges.T)
-			ray_image = np.fliplr(self.im.ray_image.T)
-			depth_image = np.fliplr(self.im.depth.T)
+			edge_im = np.fliplr(edges.T)
+			depth_image = np.fliplr(depth.T)
 
 		pixel_count_im = np.nan * np.copy(edge_im).astype(np.float)
 		geodesic_im = np.nan * np.copy(edge_im).astype(np.float)
@@ -350,22 +353,78 @@ class DistanceTransforms(object):
 		# loop over each row...
 		for row_idx, row in enumerate(edge_im):
 			if np.any(row):
-				temp_pixel, temp_geo = self.row_dists(row, depth_image[row_idx, :], u)
+				temp_pixel, temp_geo = self._row_dists(row, depth_image[row_idx, :], u)
 				pixel_count_im[row_idx, :] = temp_pixel
 				geodesic_im[row_idx, :] = temp_geo
 
-		out_stack = np.dstack((pixel_count_im, geodesic_im))
+		pixel_count_im[np.isnan(depth_image)] = np.nan
+		geodesic_im[np.isnan(depth_image)] = np.nan
+
+		out_stack = [pixel_count_im, geodesic_im]
 
 		if direction=='w':
-			out_stack = np.fliplr(out_stack)
+			out_stack = [np.fliplr(im) for im in out_stack]
 		elif direction=='s':
-			out_stack = np.transpose(out_stack, axes=[1, 0, 2])
+			out_stack = [im.T for im in out_stack]
 		elif direction=='n':
-			out_stack = np.transpose(np.fliplr(out_stack), axes=[1, 0, 2])
+			out_stack = [np.fliplr(im).T for im in out_stack]
 
 		return out_stack
 
-	def row_dists(self, edges_row, depth_row, u):
+	def enws_distance_transform(self, angle):
+		'''
+		returns the distance transform in each of the four compass directions,
+		offset by the specified angle
+		'''
+		# no need to pre-rotated
+		if angle==0:
+			return [self.straight_dist_transform(direction, self.im.edges, self.im.depth) 
+					for direction in 'enws']
+		else:
+			temp_edges = self._pad_and_rotate(self.im.edges, angle) > 0.1
+			temp_depth = self._pad_and_rotate(self.im.depth, angle)
+
+			temp_results = []
+			for direction in 'enws':
+				temp = self.straight_dist_transform(direction, temp_edges, temp_depth)
+				temp = [self._rotate_unpad(t, -angle) for t in temp]
+				temp_results.append(temp)
+
+			return temp_results
+
+
+	def _pad_and_rotate(self, image_in, angle):
+		'''
+		pads image by enough to ensure that when it is rotated 
+		it doesn't get cut off at all
+		'''
+
+		# padding
+		pad_amounts = ((self.pad_top, self.pad_top), (self.pad_left, self.pad_left))
+		padded = np.pad(image_in, pad_amounts, mode='constant', constant_values=0).astype(float)
+
+		# now doing the rotation
+		return scipy.ndimage.interpolation.rotate(padded, angle, reshape=False, order=1)
+
+
+	def _rotate_unpad(self, image_in, angle):
+		'''
+		rotates the image and unpads (crops)
+		'''
+		# rotating
+		rotated_im = scipy.ndimage.interpolation.rotate(image_in, angle, reshape=False, order=1)
+
+		# unpadding
+		return rotated_im[self.pad_top:(self.pad_top+self.H), 
+						  self.pad_left:(self.pad_left+self.W)]
+
+
+	def _row_dists(self, edges_row, depth_row, u):
+		'''
+		U is the left-right position on the image of each point
+		Really, I should also include the top-bottom position (ie 'v')
+		This should allow for the full reprojection I think.
+		'''
 
 		dists = u*depth_row
 		dist_diffs = np.abs(np.insert(np.diff(dists), 0, 0))
@@ -391,66 +450,17 @@ class DistanceTransforms(object):
 		return pixel_count_row, geodesic_row
 
 
-	def se_dist_transform(self, im):
-		# create the output image
-		out_im = np.nan * np.copy(im).astype(np.float)
-			
-		# pixels below the diagonal - loop over each row
-		for row_idx in range(im.shape[0]):
-			
-			count = np.nan # keeps count of pix since last edge
-			num_to_count = min(im.shape[1], im.shape[0] - row_idx)
-			
-			# now speed down the diagonal
-			for row_col_counter in range(num_to_count):
-				pix = im[row_idx + row_col_counter, row_col_counter]
-				count = 0 if pix else count + 1
-				out_im[row_idx + row_col_counter, row_col_counter] = count
-
-		# pixels above the diagonal - loop over each column
-		for col_idx in range(im.shape[1]):
-			
-			count = np.nan # keeps count of pix since last edge
-			num_to_count = min(im.shape[0], im.shape[1] - col_idx)
-			
-			# now speed down the diagonal
-			for row_col_counter in range(num_to_count):
-				pix = im[row_col_counter, col_idx + row_col_counter]
-				count = 0 if pix else count + 1
-				out_im[row_col_counter, col_idx + row_col_counter] = count
-
-		return np.dstack((out_im, out_im))
-
-
-	def sw_dist_transform(self, im):
-		return self.se_dist_transform(np.fliplr(im))
-
-
-	def nw_dist_transform(self, im):
-		return np.fliplr(self.ne_dist_transform(np.fliplr(im)))
-
-
-	def ne_dist_transform(self, im):
-		temp = self.sw_dist_transform(im.T)
-		print temp.shape
-		return np.transpose(temp, axes=(1, 0, 2))
-
-
 	def get_compass_images(self):
-		return [self.straight_dist_transform('n'),
-				self.straight_dist_transform('e'),
-				self.straight_dist_transform('s'),
-				self.straight_dist_transform('w')]
+		compass = []
+		for angle in [0, 45]:
+			compass.extend(list(self.enws_distance_transform(angle)))
 
-				# self.se_dist_transform(self.im.edges),
-				# self.s_dist_transform(self.im.edges, self.im.ray_image),
-				# self.sw_dist_transform(self.im.edges),
-				# self.w_dist_transform(self.im.edges, self.im.ray_image),
-				# self.nw_dist_transform(self.im.edges),
-				# self.n_dist_transform(self.im.edges, self.im.ray_image),
-				# self.ne_dist_transform(self.im.edges)]
+		# flatten the compass into one nice HxWx8 array
+		T = np.array(compass).reshape((-1, self.H, self.W))
+		print T.shape
 
-
+		return T
+		
 
 
 # here should probably write some kind of testing routine
