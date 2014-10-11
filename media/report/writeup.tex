@@ -262,6 +262,7 @@ All these methods so far assume that the item in the scene has the exact same ge
 \cite{cocias-cgvcv-2013} take an alternative approach, where they have a single primitive object for each class, which they fit to the scene and allow to deform to account for inter-class variation.
 \cite{prisacariu-iccv-2011} present a more developed version of this idea, where the latent axes of variation of the shape of the object being fitted are allowed to deform during the pose estimation. 
 These latent axes are found using Gaussian processes.
+This adaptive fitting of generic primitives to the specific instances seen in an image has seen practical application in the graphics community, where it has been used for an impressive interactive photo-editing application \cite{kholgade-siggraph-2014}.
 
 \paragraph{Robotics and path planning}
 Voxels or 2D occupancy grids are often used in robotics for path planning, and for maintaining a map of the environment. 
@@ -292,6 +293,14 @@ Long history of using training scenes to try to complete and upsample.
 \end{itemize}
 
 
+
+
+\begin{figure}
+  \centering 
+  \includegraphics[width=0.9\columnwidth]{patch_sizes.png}
+      
+  \caption{Local, patch-type features do not give enough information to accurately predict depth. Here, two pairs of patches are marked. Each item in these pairs have identical local appearance. However, the thickness of the object at each patch location is very different. We use this to motivate the spider feature.}
+\end{figure}
 
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -463,7 +472,7 @@ We train a Random Forest using a total of 1,000,000 training examples extracted 
     \centering% 
     \includegraphics[width=1.0\columnwidth]{dtam_voxels.png}% 
     \figcaption{The warped voxelisation we make of our scene.
-    The voxel space is a frustum, and each voxel is therefore a prismoidal hexahedron.
+    The voxel space is a frustum grid, and each voxel is therefore a prismoidal hexahedron.
     Image from \cite{newcombe-iccv-2011} --- I should probably make a similar one.}% 
     \label{fig:dtam_voxels}% 
 \end{figure}
