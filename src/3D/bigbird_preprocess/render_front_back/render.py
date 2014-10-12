@@ -12,8 +12,10 @@ from thickness import mesh
 from thickness import paths
 import scipy.io
 import socket
-from multiprocessing import Pool
-import itertools
+
+#from multiprocessing import Pool
+#import itertools
+#pool = Pool(processes=10)
 
 
 
@@ -25,7 +27,6 @@ savefolder = 'bigbird_renders/'
 
 rendered_shape = (1024, 1280)
 
-pool = Pool(processes=10)
 
 def render_images(vox_vertices, modelname, view):
     '''
@@ -92,11 +93,11 @@ for model_line in models_f:
     # do for all views
     views_f = open(views_path, 'r')
     all_views = [view_line.strip() for view_line in views_f]
-    #done = [render_and_save(vox_vertices, modelname, view) for view in all_views ]
-    zipped_arguments = itertools.izip(itertools.repeat(vox_vertices), 
-                                    itertools.repeat(modelname),
-                                    all_views)
-    pool.map(render_and_save, zipped_arguments)
+    done = [render_and_save((vox_vertices, modelname, view)) for view in all_views ]
+    #zipped_arguments = itertools.izip(itertools.repeat(vox_vertices), 
+#                                    itertools.repeat(modelname),
+ #                                   all_views)
+    #pool.map(render_and_save, zipped_arguments)
     
 
     print "Done model " + modelname
