@@ -7,11 +7,15 @@ import os
 from subprocess import call
 import numpy as np
 import sys
-sys.path.append(os.path.expanduser('~/shape_sharing/src/3D/structured_train/'))
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/3D/structured_train/'))
 from thickness import mesh
 from thickness import paths
 import scipy.io
 import socket
+from multiprocessing import Pool
+import itertools
+
+
 
 base_path = paths.base_path
 models_path = base_path + 'bigbird/models.txt'
@@ -20,6 +24,8 @@ views_path = base_path + "bigbird/poses_to_use.txt"
 savefolder = 'bigbird_renders/'
 
 rendered_shape = (1024, 1280)
+
+pool = Pool(processes=10)
 
 def render_images(vox_vertices, modelname, view):
     '''
@@ -50,6 +56,25 @@ def render_images(vox_vertices, modelname, view):
     return front_face, back_face
 
 
+def render_and_save(all_feats):
+
+    vox_vertices, modelname, view = all_feats
+
+    # setting up output paths
+    out_path = model_folder + view + '_renders.mat'
+    if os.path.exists(out_path):
+        print "Skipping " + out_path
+        return []
+
+    print "Rendering..."
+    front, back = render_images(vox_vertices, modelname, view)
+
+    print "Saving file " + out_path
+    d = dict(front=front, back=back)
+    scipy.io.savemat(out_path, d)
+
+
+
 # do for all models
 models_f = open(models_path, 'r')
 for model_line in models_f:
@@ -66,22 +91,13 @@ for model_line in models_f:
 
     # do for all views
     views_f = open(views_path, 'r')
-    for view_line in views_f:
-        view = view_line.strip()
-
-        # setting up output paths
-        out_path = model_folder + view + '_renders.mat'
-
-        # doing the rendering
-        print "Rendering..."
-        front_face, back_face = render_images(vox_vertices, modelname, view)
-
-        # saving to file
-        print "Saving file " + out_path
-        d = dict(front=front_face, back=back_face)
-        scipy.io.savemat(out_path, d)
-
-        #break
+    all_views = [view_line.strip() for view_line in views_f]
+    #done = [render_and_save(vox_vertices, modelname, view) for view in all_views ]
+    zipped_arguments = itertools.izip(itertools.repeat(vox_vertices), 
+                                    itertools.repeat(modelname),
+                                    all_views)
+    pool.map(render_and_save, zipped_arguments)
+    
 
     print "Done model " + modelname
 
