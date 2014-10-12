@@ -132,7 +132,7 @@ window = 0
 meshPath = "/Users/Michael/projects/shape_sharing/data/bigbird_meshes/" + modelname + "/meshes/poisson.obj"
 triangles, verts = loadOBJ(meshPath)
 
-savePath =   "/Users/Michael/projects/shape_sharing/data/bigbird_renders/renders/" + modelname + "/"
+savePath =   "/Users/Michael/projects/shape_sharing/data/bigbird_renders/render_backface/" + modelname + "/"
 
 idx = 0
 

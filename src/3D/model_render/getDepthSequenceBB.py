@@ -25,7 +25,7 @@ def load_all_poses():
     filename = bigbird_folder + "poses_to_use.txt"
     return [pose.strip() for pose in open(filename, 'r')]
 
-poses = load_all_poses()
+poses = ['NP3_24']#load_all_poses()
 endIdx = len(poses)
 
 global showallverts
@@ -86,13 +86,15 @@ def loadXform():
     # loading the transform from NP5 to the camera
     print "Loading " + mesh_folder + modelname + "/calibration.h5"
     calib_h5 = h5py.File(mesh_folder + modelname + "/calibration.h5", 'r')
-    H_CAM_ir_from_NP5 = np.array(calib_h5['H_' + cameraname + '_ir_from_NP5'])
+    H_CAM_ir_from_NP5 = np.array(calib_h5['H_' + cameraname + '_from_NP5'])
 
     # loading the transform from the mesh to np5
     np5_pose_filename = mesh_folder + modelname + "/poses/NP5_" + pose_angle + "_pose.h5"
     print "Loading " + np5_pose_filename
     pose_h5 = h5py.File(np5_pose_filename, 'r')
     mesh_to_np5 = np.linalg.pinv(np.array(pose_h5['H_table_from_reference_camera']))
+    print mesh_to_np5
+    #
 
     # the extrinsic matrix which works in the manual projection
     inv_extrinsic = H_CAM_ir_from_NP5.dot(mesh_to_np5)
@@ -100,9 +102,10 @@ def loadXform():
     #print inv_extrinsic
     #inv_extrinsic[:3, 3] = np.dot(inv_extrinsic[:3,:3], inv_extrinsic[:3, 3])
     # forming the final transformation
+    #xform = inv_extrinsic.T
     xform = inv_extrinsic.T
     xform[3, 2] = -xform[3, 2]
-
+    print np.linalg.det(xform)
     #print H_CAM_ir_from_NP5
     #print H_table_from_reference_camera
     #print xform.T
@@ -123,8 +126,9 @@ ESCAPE = '\033'
 SPACE = '\040'
 
 #Width, Height = 320, 240
-Width, Height = 640, 480
-y_angle = 43.0
+Width, Height = 1280, 1024
+y_angle = 45.65 # the y directionin opengl is apparently up down
+#y_angle = 58.52
 
 # Number of the glut window.
 window = 0
@@ -216,8 +220,8 @@ def printDepth():
     dists = distPlane(plane[0], plane[1], verts)
     
     dico = dict(depth=depth, dists=dists)
+    scipy.io.savemat("test_out.mat", dico)
     scipy.io.savemat(savePath + "/" + poses[idx] + "_render.mat", dico)
-    #scipy.io.savemat("test_out.mat", dico)
 
 
 # The function called whenever a key is pressed. Note the use of Python tuples to pass in: (key, x, y)

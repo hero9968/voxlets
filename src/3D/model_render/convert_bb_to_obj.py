@@ -52,6 +52,7 @@ for idx, line in enumerate(f):
     obj_file = base_path + "bigbird_meshes/" + modelname + '/meshes/poisson.obj'
 
     if os.path.exists(obj_file):
+        print "Skipping " + modelname
         continue
 
     vertices, faces = load_from_ply(ply_file)
