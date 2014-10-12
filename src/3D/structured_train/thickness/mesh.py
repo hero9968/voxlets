@@ -87,10 +87,10 @@ class Camera(object):
         pose = h5py.File(pose_path, 'r')
 
         # extracting extrinsic and intrinsic matrices
-        np5_to_this_camera = np.array(calib['H_' + cameraname + '_ir_from_NP5'])
+        np5_to_this_camera = np.array(calib['H_' + cameraname + '_from_NP5'])
         mesh_to_np5 = np.linalg.inv(np.array(pose['H_table_from_reference_camera']))
 
-        intrinsics = np.array(calib[cameraname +'_depth_K'])
+        intrinsics = np.array(calib[cameraname +'_rgb_K'])
 
         # applying to the camera
         self.set_extrinsics(np5_to_this_camera.dot(mesh_to_np5))
