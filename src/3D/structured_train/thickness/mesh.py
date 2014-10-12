@@ -1,5 +1,4 @@
 import numpy as np
-from plyfile import PlyData, PlyElement
 #https://github.com/dranjan/python-plyfile
 import paths
 import h5py
@@ -8,6 +7,7 @@ class Mesh(object):
     '''
     class for storing mesh data eg as read from a ply file
     '''
+    #from plyfile import PlyData, PlyElement
 
     def __init__(self):
         self.vertices = []
