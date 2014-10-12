@@ -42,14 +42,14 @@ bigbird_objects = ['coffee_mate_french_vanilla']
 # paths for the dense predictions
 #dense_predictions = base_path + 
 
-# create a dictionary of all the model names
-f = open(models_list, 'r')
-modelname_to_idx = dict()
-modelnames = []
-for idx, line in enumerate(f):
-    modelname = line.strip()
-    modelname_to_idx[modelname] = idx
-    modelnames.append(modelname)
+# create a dictionary of all the model names - for the synthetic models!
+#f = open(models_list, 'r')
+#modelname_to_idx = dict()
+#modelnames = []
+#for idx, line in enumerate(f):
+#    modelname = line.strip()
+#    modelname_to_idx[modelname] = idx
+#    modelnames.append(modelname)
 
 #print modelnames
 #print d['12bfa757452ae83d4c5341ee07f41676']
