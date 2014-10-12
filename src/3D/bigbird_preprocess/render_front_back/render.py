@@ -7,11 +7,13 @@ import os
 from subprocess import call
 import numpy as np
 import sys
-sys.path.append('/Users/Michael/projects/shape_sharing/src/3D/structured_train/')
+sys.path.append(os.path.expanduser('~/shape_sharing/src/3D/structured_train/'))
 from thickness import mesh
+from thickness import paths
 import scipy.io
+import socket
 
-base_path = '/Users/Michael/projects/shape_sharing/data/'
+base_path = paths.base_path
 models_path = base_path + 'bigbird/models.txt'
 views_path = base_path + "bigbird/poses_to_use.txt"
 
