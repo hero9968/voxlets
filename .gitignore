@@ -20,5 +20,6 @@ temp.*
 /src/preprocess/openvdb_tests/hellomake
 /src/preprocess/openvdb_tests/create
 /src/preprocess/openvdb_tests/yaml
+/src/preprocess/voxelisation/voxelcvml
 /src/preprocess/rendering/test/depth
 /src/pcl_pipeline/recogniser-build
