@@ -37,7 +37,7 @@ class DepthFeatureEngine(object):
 		self.indices = []
 		self.im = []
 		self.patch_extractor = features.CobwebEngine(t=7, fixed_patch_size=False)
-		self.spider_engine = features.SpiderEngine(distance_measure='geodesic')
+
 
 	def random_sample_from_mask(self, num_samples=500):
 		'''sample random points from the mask'''
@@ -53,12 +53,14 @@ class DepthFeatureEngine(object):
 
 		return self.indices
 
+
 	def dense_sample_from_mask(self):
 		'''samples all points from mask'''
 		self.indices = np.array(np.nonzero(self.im.mask)).T
 
 		self.num_samples = self.indices.shape[0]
 		return self.indices
+
 
 	def sample_numbered_slice_from_mask(self, slice_idx):
 		'''samples the specified slice from the mask'''
@@ -71,14 +73,17 @@ class DepthFeatureEngine(object):
 		self.num_samples = self.indices.shape[0]
 		return self.indices
 
+
 	def set_image(self, im):
 		self.im = im
 
+		# must update spider engine here as on initialisation it computes the distance transform
+		self.spider_engine = features.SpiderEngine(im)
+		self.patch_extractor.set_image(self.im)
+
+
 	def compute_features_and_depths(self, verbose=False, jobs=1, features='all'):
 		'''sets up the feature engines and computes the features'''
-
-		self.patch_extractor.set_image(self.im)
-		self.spider_engine.set_image(self.im)
 
 		if verbose:
 			print "View: " + str(self.view_idx) + " ... " + str(np.sum(np.sum(self.im.mask - self.extract_mask(self.backrender))))
@@ -101,7 +106,7 @@ class DepthFeatureEngine(object):
 			else:
 				self.patch_features =[]
 			if features=='all' or 'spider' in features:
-				self.spider_features = [self.spider_engine.compute_spider_feature(index) for index in self.indices]
+				self.spider_features = self.spider_engine.compute_spider_features(self.indices)
 			else:
 				self.spider_features =[]
 			self.depth_diffs = [self.im.depth_difference(index) for index in self.indices]
@@ -120,6 +125,7 @@ class DepthFeatureEngine(object):
 		self.views = [self.im.view_idx for i in range(self.num_samples)]
 		self.modelnames = [self.im.modelname for i in range(self.num_samples)]
 
+
 	def features_and_depths_as_dict(self):
 		'''
 		Returns all the features and all the depths as a dict.
@@ -133,6 +139,7 @@ class DepthFeatureEngine(object):
 					depths=self.depths, 
 					view_idxs=self.views, 
 					modelnames=self.modelnames)
+
 
 	def plot_index_samples(self, filename=[]):
 		'''
