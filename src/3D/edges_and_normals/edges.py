@@ -107,20 +107,6 @@ class SynthEdgeEngine(object):
 
 
 
-class DistTransform(object):
-    
-    '''
-    Computes the distance transforms for an edge image
-    '''
-    def __init__(self, arg):
-        
-        self.arg = arg
-
-    def set_edge_im(self, edge_im):
-        self.edge_im = edge_im
-
-    #def 
-        
 
 import paths
 import scipy.io
