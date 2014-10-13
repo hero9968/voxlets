@@ -30,3 +30,11 @@ bb.K_depth = h5read([obj_path, '/calibration.h5'], ['/' bb.cam_name '_depth_K'])
 bb.H_rgb = h5read([obj_path, '/calibration.h5'], ['/H_' bb.cam_name '_from_NP5']);
 bb.H_ir = h5read([obj_path, '/calibration.h5'], ['/H_' bb.cam_name '_ir_from_NP5']);
 %bb.H_mesh = h5read([obj_path, '/calibration.h5'], ['/H_' bb.cam_name '_ir_from_NP5']);
+
+% loading the front render and the back render
+temp = load([base_path, '/bigbird_renders/', modelname, '/', view, '_renders.mat'], 'front', 'back');
+bb.front_render = temp.front;
+%bb.front_render(abs(bb.front_render-10)<0.001) = nan;
+%temp = load([base_path, '/bigbird_renders/render_backface/', modelname, '/', view, '_renderbackface.mat'], 'depth');
+bb.back_render = temp.back;
+%bb.back_render(abs(bb.back_render-0.1)<0.001) = nan;
