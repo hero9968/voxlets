@@ -19,8 +19,8 @@
 \graphicspath{{imgs/}}
 
 \usepackage{xspace}
-%\newcommand*{\eg}{e.g.\@\xspace}
-%\newcommand*{\ie}{i.e.\@\xspace}
+\renewcommand*{\eg}{e.g.\@\xspace}
+\renewcommand*{\ie}{i.e.\@\xspace}
 \newcommand*{\ea}{et al.\@\xspace}
 %\renewcommand{\arraystretch}{1.5}
 
@@ -30,7 +30,6 @@
 \def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
 
 \newcommand{\prob}{Pr}
-\newcommand{\rgbdimage}{\mathbf{I}}
 \newcommand{\imregion}{\mathcal{R}}
 \newcommand{\occ}{o}
 \newcommand{\basisshape}{B}
@@ -39,6 +38,20 @@
 \newcommand{\normal}{\mathbf{n}}
 \newcommand{\ray}{\mathbf{R}}
 \newcommand{\degree}{^{\circ}}
+\newcommand{\rgbdimage}{\mathcal{D}}
+
+\definecolor{red}{rgb}{0.95,0.4,0.4}
+\definecolor{blue}{rgb}{0.4,0.4,0.95}
+\definecolor{darkred}{rgb}{0.8,0,0}
+\definecolor{darkgreen}{rgb}{0,0.5,0}
+
+\newcommand{\todo}[1]{\textcolor{red}{TODO: #1}}
+\newcommand{\note}[1]{\textcolor{blue}{NOTE: #1}}
+\newcommand{\status}[1]{\textcolor{blue}{Status: #1}}
+\newcommand{\add}[1]{\textcolor{darkgreen}{#1}}
+\newcommand{\remove}[1]{\textcolor{darkred}{#1}}
+
+
 
 %[citecounter=true, style=ieee]
 %\usepackage{biblatex}
@@ -78,14 +91,24 @@ We can use symmetry, hypothesising that unobserved regions match the parts we ca
 In many occasions we exploit semantic knowledge: by recognising specific objects and relating them to objects in our memory, we form an idea of their shape.
 In many cases, however, we use a more generic, higher level knowledge about shape in order to hypothesise the missing regions.
 
+Occlusions and occlusion boundaries are a natural result of this projection from world space into image space.
+While often ignored or treated as a `nuicence', recently works have made explicit use of occlusion boundaries \cite{hoiem occlusion boundaires, segmenting simple objects}.
+
+
+If we knew the exact class we would have a class-specific feature.
+In more complex scenes we can't do this.
+
+We take inspiration from recent work which has made
+
+
 \begin{figure}
   \centering 
   \subfigure[Input depth image]{%
-      \includegraphics[width=0.9\columnwidth]{setup_ppt.png}}
+      \includegraphics[width=0.8\columnwidth]{setup_ppt.png}}
       \hfill
   \subfigure[Ground truth output]{%
-      \includegraphics[width=0.9\columnwidth]{ground_truth_ppt.png}} \\
-  \caption{Given a depth image of a scene (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
+      \includegraphics[width=0.8\columnwidth]{ground_truth_ppt.png}} \\
+  \caption{Given a depth image of a scene, \eg as depicted in 2D in (a), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
 \end{figure}
 
 
@@ -95,18 +118,19 @@ It can be very useful for a computer system to know the geometry of hidden areas
 \begin{itemize}
 \item \textbf{Robotics} --- Helping a robot to plan a path around objects given only a single view of a scene, e.g. from a doorway. Also to help a robot plan grasping position on objects it can only see partial views of.
 \item \textbf{Scene relighting} --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
-\item \textbf{Object repositioning} --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
-\item \textbf{Multi-view reconstruction} --- An intial estimate for voxel occuapncy can be used as a prior during online multi-view reconstruction algorithms. This prior prediction would be overwritten with observed data as more footage is captured.
+%\item \textbf{Object repositioning} --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
+\item \textbf{Multi-view reconstruction} --- An intial estimate for voxel occuapncy can be used as a prior during online multi-view reconstruction algorithms. This prior prediction would be overwritten with observed data as more footage is captured. The prior can help to solve the next-best-view problem.
 \end{itemize}
 
 \paragraph{Aim of the system and overview}
-Given a single RGBD image, the aim of our system is to predict whether each voxel in the scene is occupied or not - in effect, we want to predict the voxelised occupancy grid of KinectFusion \cite{izadi-uist-2011}, but having been given only a single view of the scene instead of multiple views.
+Given a single RGBD image, our system predicts whether each voxel in the scene is occupied or not - in effect, we predict the voxelised occupancy grid of KinectFusion \cite{izadi-uist-2011}, but having been given only a single view of the scene instead of multiple views.
 
-We [plan to] achieve this by matching each region from the input image to a similar region of an object in a training database.
-The thickness of the object is then used.
-Because we care about voxel occupancy, and not semantic understanding, we are free to use training objects which differ in scale and semantic labelling from the objects being modelled in the scene. 
+We achieve this by learning a mapping from local and regional features to an object thickness, using a large collection of training objects and scenes.
+%matching each region from the input image to a similar region of an object in a training database.
+Because we care about shape and voxel occupancy rather than semantic understanding, we are free to use training objects which differ in scale and semantic labelling from the objects being modelled in the scene.
+In this respect we take inspiration from \cite{kim-eccv-2012}, where silhouettes from training objects are used to segment other objects from different classes.
 This is key to our approach --- we are not reasoning about semantics of objects, but instead about object shape.
-In effect we are hypothesising that any two objects that have a similar shape from one angle are likely to share similarities in shape in the unobserved regions of the scene.
+In effect we are hypothesising that any two rays that have a similar appearance from one angle are likely to share similarities in shape in the unobserved regions of the scene.
 
 Of course the problem is ill-posed; we therefore can only hope to make a reasonable guess of the occupancy and we rely on the predictability and repeatability of the world.
 
@@ -120,9 +144,9 @@ Of course the problem is ill-posed; we therefore can only hope to make a reasona
 
 \subsubsection{Motivation for using a voxelised world}
 
-Voxels can be expensive compared to point clouds and meshes. 
-However they are a very natural representation of our world, and have been shown to work well for reconstruction \eg KinFu and other voxel carving papers. 
-With tools such as OpenVDB\footnote{\url{www.openvdb.org}}, voxelised representations of objects can be stored and manipulated efficiently.
+Occupied voxels are a very natural representation of our world, more so than meshes or point clouds, which both make sense from a data storage or sensor data point of view, but do not actually represent the underlying geometry particularly well.
+Voxels have been shown to work well for reconstruction \eg KinFu and other voxel carving papers. 
+While they be expensive compared to point clouds and meshes, tools such as OpenVDB\footnote{\url{www.openvdb.org}} have allowed voxelised representations of objects to be stored and manipulated efficiently.
 
 % \begin{quote}
 % Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
@@ -144,9 +168,6 @@ With tools such as OpenVDB\footnote{\url{www.openvdb.org}}, voxelised representa
 %   \caption{Given a single RGBD image (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
 % \end{figure}
 
-\paragraph{Motivation from other areas}
-Shape sharing...
-
 \subsubsection{Contributions}
 \begin{itemize}
 \item A novel feature representation for a point which captures both local and region-level shape, while respecting occlusions.
@@ -155,7 +176,23 @@ Shape sharing...
 
 \subsubsection{Problem statement}
 
-Setting out the problem mathematically, introducing some notation etc.
+\note{Setting out the problem mathematically, introducing some notation etc.}
+
+
+We assume the world to be made up of a 3D grid $V$.
+Each voxel in $V$ is $v_\theta$, where $\theta=(i,j,k)$ is the index of the location in grid space.
+Each scene is then captured in a single static depth image $\rgbdimage$ by a cmera with extrinsics $H$ and intrinsics $K$. The location of all the voxels in the world in the coordinates of the camera are:
+$$
+\mathbf{v}_c = K H \mathbf{\theta},
+$$
+where $\mathbf{v}_c = [u, v, d]^{T}$ gives the position $(u,v)$ of the voxel in the image, and the  perpendicular distance $d$ from the camera centre to the voxel.
+Each pixel in the depth image $\rgbdimage$ is then given by the depth to the first occupied voxel along the camera ray:
+$$
+\rgbdimage_{u,v} = \min_d \left\{ v_c(d) : v_\theta = 1 \right\}.
+$$
+
+The aim of our algorithm is to recover $V$ given $\rgbdimage$.
+
 
 % What exactly do we mean by voxel occupancy?
 
@@ -168,6 +205,7 @@ Setting out the problem mathematically, introducing some notation etc.
 % \paragraph{Axes of variation of related works}
 % Using local information (\eg smoothing) $\leftrightarrow$ using global information (\eg patching from other images)
 
+\note{Just some notes at the moment, organised into similar areas. Not much discussion yet.}
 % Parametric models (Gaussian smoothing, CRFs) $\leftrightarrow$ non-parametric (patch-based)
 
 % Care about semantic matching $\leftrightarrow$ Don't care about semantics
@@ -276,7 +314,7 @@ The world is in boxes, with arrows pointing to the direction which should be tak
 More recently, \cite{plagemann-iros-2008} used Gaussian processes to fill in missing data in terrain models of environments, effectively treating terrain mapping as a regression problem.
 
 \paragraph{General motivation}
-One key motivation is Shape Sharing \cite{kim-eccv-2012}, where silhouettes of objects are used to segment other objects from different classes.
+
  \cite{nan-acm-2012}.
 
 Big issue with ground truth. Most papers don't have proper ground truth and therefore can only really do qualitative results, \eg \cite{all the papers...}.
@@ -406,6 +444,15 @@ We use two novel features, which we describe in detail here. See also figure \re
 \end{figure*}
 
 
+
+\begin{figure}
+    \centering 
+    \includegraphics[width=1.0\columnwidth]{compass_features}
+    \caption{We compute three flavours of compass features, which measure the distance between $\mathbb{p}$ and the edge point $\mathbb{e}$ in different ways. $c_1$ is the distance perpendicular to the camera direction; $c_2$ measures the depth of the object perpendicular to the normal at $\mathbb{p}$; while $c_3$ is the geodesic distance between $\mathbb{p}$ and $\mathbb{e}$.}
+    \label{fig:compass_features}
+\end{figure}
+
+
 \subsubsection{Cobweb feature}
 The cobweb feature captures the surface shape in the immediate vicinity of $\point$. 
 It captures very similar data to a patch of the depth image; however, an image patch maintains a constant resolution across the selected region, while the cobweb feature becomes more coarse the farther from $\point$ it is.
@@ -530,7 +577,8 @@ Also don't have the TSDF etc. Lots of problems
 % Prism group
 
 {\small
-\bibliographystyle{plain}
+%\bibliographystyle{plain}
+\bibliographystyle{ieee}
 \bibliography{bibtex/strings.bib,bibtex/main.bib,bibtex/crossrefs.bib}
 }
 
