@@ -74,6 +74,16 @@ class Camera(object):
     def set_extrinsics(self, H):
         self.H = H
 
+    def adjust_intrinsic_scale(self, scale):
+        '''
+        changes the scaling, effectivly resixing the output image size
+        '''
+        self.K[0, 0] *= scale 
+        self.K[1, 1] *= scale 
+        self.K[0, 2] *= scale 
+        self.K[1, 2] *= scale 
+
+
     def load_bigbird_matrices(self, modelname, imagename):
         '''
         loads the extrinsics and intrinsics for a bigbird camera
