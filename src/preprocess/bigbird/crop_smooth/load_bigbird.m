@@ -12,10 +12,10 @@ else
 end
 
 obj_path = [base_path, 'bigbird/', modelname];
-%depth_path = [base_path,
 
+% loading the images from bigbird
 bb.depth = h5read([obj_path, '/' , view, '.h5'], '/depth')';
-bb.depth = double(bb.depth) / 10000;
+bb.depth = single(bb.depth) / 10000;
 bb.mask = ~imread([obj_path, '/masks/' , view, '_mask.pbm']);
 bb.rgb =  imread([obj_path, '/' , view, '.jpg']);
 
@@ -26,15 +26,30 @@ bb.cam_name = temp{1};
 bb.K_rgb = h5read([obj_path, '/calibration.h5'], ['/' bb.cam_name '_rgb_K'])';
 bb.K_depth = h5read([obj_path, '/calibration.h5'], ['/' bb.cam_name '_depth_K'])';
 
-% loading the extrinsics
+% loading the extrinsics - this doesn't need to be scale
 bb.H_rgb = h5read([obj_path, '/calibration.h5'], ['/H_' bb.cam_name '_from_NP5']);
 bb.H_ir = h5read([obj_path, '/calibration.h5'], ['/H_' bb.cam_name '_ir_from_NP5']);
-%bb.H_mesh = h5read([obj_path, '/calibration.h5'], ['/H_' bb.cam_name '_ir_from_NP5']);
 
 % loading the front render and the back render
 temp = load([base_path, '/bigbird_renders/', modelname, '/', view, '_renders.mat'], 'front', 'back');
-bb.front_render = temp.front;
-%bb.front_render(abs(bb.front_render-10)<0.001) = nan;
-%temp = load([base_path, '/bigbird_renders/render_backface/', modelname, '/', view, '_renderbackface.mat'], 'depth');
-bb.back_render = temp.back;
-%bb.back_render(abs(bb.back_render-0.1)<0.001) = nan;
+bb.front_render = single(temp.front);
+bb.back_render = single(temp.back);
+
+% doing all the scaling here
+bb.scale_factor = 0.5; % this is the linear scale factor of how much smaller the RGB image will be
+
+bb.K_rgb_original = bb.K_rgb;
+bb.K_rgb(1, 1) = bb.K_rgb(1, 1) * bb.scale_factor;
+bb.K_rgb(2, 2) = bb.K_rgb(2, 2) * bb.scale_factor;
+bb.K_rgb(1, 3) = bb.K_rgb(1, 3) * bb.scale_factor;
+bb.K_rgb(2, 3) = bb.K_rgb(2, 3) * bb.scale_factor;
+
+bb.rgb = imresize(bb.rgb, bb.scale_factor);
+bb.mask = imresize(bb.mask, bb.scale_factor);
+bb.front_render = imresize(bb.front_render, bb.scale_factor);
+bb.back_render = imresize(bb.back_render, bb.scale_factor);
+
+bb
+assert(size(bb.rgb, 1)==size(bb.front_render, 1))
+assert(size(bb.rgb, 1)==size(bb.back_render, 1))
+assert(size(bb.rgb, 1)==size(bb.mask, 1))

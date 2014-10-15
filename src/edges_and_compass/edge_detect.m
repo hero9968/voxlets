@@ -20,7 +20,7 @@ subplot(133); imshow(repmat(uint8(canny_edge*255), [1, 1, 3])); axis image
 colormap(jet)
 
 %%
-image_path = '/Volumes/HDD/data/others_data/RGBD_datasets/rgbd_scenes2//rgbd-scenes-v2/imgs/scene_01/';
+image_path = '/Volumes/HDD/data/others_data/RGBD_datasets/rgbd_scenes2//rgbd-scenes-v2/imgs/scene_02/';
 image_name = '00401';
 rgb_path = [image_path, image_name, '-color.png'];
 depth_path = [image_path, image_name, '-depth.png'];
@@ -40,6 +40,9 @@ structured_edge = edgesDetect(stack, model);
 %structured_edge = structured_edge / max(structured_edge(:));
 canny_edge = depth_canny(structured_edge, C.smoothed_depth);
 
+TT = load('./data/modelNyuD.mat');
+structured_edge2 = edgesDetect(C.smoothed_depth, TT.model);
+canny_edge2 = depth_canny(structured_edge2, C.smoothed_depth);
 
 H1 = subplot(222); imagesc(C.smoothed_depth);  axis image
 subplot(221); imagesc(C.depth); axis image; set(gca, 'clim', get(H1, 'clim'))
@@ -51,8 +54,35 @@ close all
 imshow(repmat(uint8(canny_edge*255), [1, 1, 3])); axis image
 
 %%
+subplot(221)
+imagesc(structured_edge); axis image
+subplot(222)
+imagesc(structured_edge2); axis image
+subplot(223)
+imagesc(canny_edge); axis image
+subplot(224)
+imagesc(canny_edge2); axis image
+%%
 get(H1)
+
+%% want to get the angles of the edges...
+[dx, dy] = smoothGradient(C.smoothed_depth, sqrt(2));
+angle = mod(atan2(dy, dx), pi);
+subplot(121)
+imagesc(angle)
+axis image
+colorbar
+%%
+temp= double(canny_edge2);
+[dx, dy] = smoothGradient(temp, sqrt(2));
+[gmag, gdir] = imgradient(dx, dy);%temp, 'roberts');
+gdir(~canny_edge2) = nan;
+gdir = mod(gdir, 180);
+imagesc(gdir)
+axis image
 % turntable objects to start with
+
+%%
 
 % smooth output
 

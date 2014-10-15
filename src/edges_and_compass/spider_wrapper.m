@@ -7,7 +7,9 @@ norms_reshaped = reshape(norms, [size(edges), 3]);
 in_stack = cat(3, edges, xyz_reshaped, norms_reshaped);
 
 % running spider mex file
-sp = spider_angled(in_stack);
+sp1 = spider(in_stack);
+sp2 = spider_angled(in_stack);
+sp = cat(3, sp1, sp2);
 
 % converting nan points to nan
 for ii = 1:size(sp, 3)
