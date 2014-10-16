@@ -4,7 +4,7 @@ p = 2;
 q = 3;
 
 subplot(p, q, 1)
-imagesc(bb.grey)
+%imagesc(bb.grey)
 axis image
 
 subplot(p, q, 2)

@@ -1,16 +1,6 @@
 function bb = load_bigbird(modelname, view)
 
-[~, name] = system('hostname');
-name = strtrim(name);
-
-if strcmp(name, 'michaels-mbp.lan') || strcmp(name, 'mfirman.cs.ucl.ac.uk')
-    base_path = '/Users/Michael/projects/shape_sharing/data/';
-elseif strcmp(name, 'troll')
-    base_path = '/mnt/scratch/mfirman/data/';
-else
-    error('No host found')
-end
-
+base_path = get_base_path();
 obj_path = [base_path, 'bigbird/', modelname];
 
 % loading the images from bigbird
@@ -46,10 +36,8 @@ bb.K_rgb(2, 3) = bb.K_rgb(2, 3) * bb.scale_factor;
 
 bb.rgb = imresize(bb.rgb, bb.scale_factor);
 bb.mask = imresize(bb.mask, bb.scale_factor);
-bb.front_render = imresize(bb.front_render, bb.scale_factor);
-bb.back_render = imresize(bb.back_render, bb.scale_factor);
 
-bb
-assert(size(bb.rgb, 1)==size(bb.front_render, 1))
-assert(size(bb.rgb, 1)==size(bb.back_render, 1))
+%bb
+assert(size(bb.rgb, 2)==size(bb.front_render, 2))
+assert(size(bb.rgb, 2)==size(bb.back_render, 2))
 assert(size(bb.rgb, 1)==size(bb.mask, 1))
