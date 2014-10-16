@@ -83,6 +83,13 @@ models_f = open(models_path, 'r')
 for model_line in models_f:
     modelname = model_line.strip()
 
+    # see if the files exist before loading in the voxels
+    DIR = base_path + modelname
+    filecount = len([name for name in os.listdir(DIR) if os.path.isfile(os.path.join(DIR, name))])
+    if filecount >= 75:
+        print "Skipping " + modelname + " as appear to have at least 75 files"
+        continue
+
     # load in the voxels
     vox_vertices = np.loadtxt(base_path + '/bigbird_meshes/' + modelname + '/meshes/voxelised.txt')
     print "Loaded voxels from " + modelname + " of size " + str(vox_vertices.shape)
