@@ -94,7 +94,6 @@ for model_line in models_f:
     filecount = len([name for name in os.listdir(DIR) if os.path.isfile(os.path.join(DIR, name))])
     if filecount >= 75:
         print "Skipping " + modelname + " as appear to have at least 75 files"
-        continue
 
     # load in the voxels
     print "Loading from " + base_path + '/bigbird_meshes/' + modelname + '/meshes/voxelised.txt'

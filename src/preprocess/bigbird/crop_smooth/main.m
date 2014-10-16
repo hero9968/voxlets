@@ -5,7 +5,7 @@
 % Then save
 addpath('~/projects/shape_sharing/src/matlab/matlab_features')
 OVERWRITE = false;
-
+matlabpool(6)
 %%
 base_path = get_base_path();
 [views, modelnames] = get_views_models();
@@ -21,7 +21,7 @@ for model_idx = 1:length(modelnames)
         mkdir(model_folder)
     end
     
-    for view_idx = 1:length(views)
+    parfor view_idx = 1:length(views)
         
         view = views{view_idx};
         save_name = [model_folder, view, '.mat'];
@@ -33,13 +33,17 @@ for model_idx = 1:length(modelnames)
         end
         
         % loading, cropping
-        bb = load_bigbird(modelname, view);
-        bb_cropped = reproject_crop_and_smooth(bb);
-        %plot_bb(bb_cropped)
-        
-        % saving to disk
-        save(save_name, 'bb_cropped');
+        try
+            bb = load_bigbird(modelname, view);
+            bb_cropped = reproject_csrop_and_smooth(bb);
+            %plot_bb(bb_cropped)
 
+            % saving to disk
+            save_file(save_name, bb_cropped);
+            
+        catch err
+            disp(err.message)
+        end
         disp(num2str(view_idx))
       
     end
