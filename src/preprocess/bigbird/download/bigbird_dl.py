@@ -50,15 +50,17 @@ def is_decimated(objname):
     depth_file_count =  num_files(base_path + objname, '.h5') - 1
     rgb_file_count =  num_files(base_path + objname, '.jpg')
     mask_file_count =  num_files(base_path + objname + "/masks", '.pbm')
-    print depth_file_count, rgb_file_count, mask_file_count
+    #print depth_file_count, rgb_file_count, mask_file_count
 
     return depth_file_count == 75 \
         and rgb_file_count == 75 \
         and mask_file_count == 75
 
 def exists(name):
-    print "Looking for " + base_path + name
     return os.path.exists(tmp_dir + name + ".tgz")
+
+def calbibration_exists(name):
+    return os.path.exists(base_path + name "/calibration.h5")
 
 def download_rgbd(name):
     base_url = "http://rll.berkeley.edu/bigbird/aliases/863afb5e73/export/"
@@ -105,6 +107,10 @@ for idx, name in enumerate(names):
             print "Downloaded " + name
         else:
             print name + " already exists"
+
+        if not calbibration_exists(name):
+            unpack_rgbd(name)
+            print "Just unpacked " + name
 
         if not is_decimated(name):
             remove_unwanted_rgbd(name)

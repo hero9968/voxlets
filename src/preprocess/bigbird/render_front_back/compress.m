@@ -13,8 +13,10 @@ for model_idx = 1:length(modelnames)
         
         view = views{view_idx};
         this_path = [base_path, 'bigbird_renders/', modelname, '/', view, '_renders.mat'];
-        TT = load(this_path);
-        save(this_path, '-struct', 'TT')
         
+        if exist(this_path, 'file')
+            TT = load(this_path);
+            save(this_path, '-struct', 'TT')
+        end
     end
 end
