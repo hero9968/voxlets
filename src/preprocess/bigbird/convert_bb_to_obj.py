@@ -3,7 +3,7 @@ from subprocess import call
 from plyfile import PlyData, PlyElement
 
 base_path = os.path.expanduser("~/projects/shape_sharing/data/")
-models_list = base_path + 'bigbird/models.txt'
+models_list = base_path + 'bigbird/bb_to_use.txt'
 
 meshlabserver = "/Applications/meshlab.app/Contents/MacOS/meshlabserver"
 
