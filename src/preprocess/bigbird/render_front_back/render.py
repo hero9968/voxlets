@@ -16,7 +16,7 @@ import socket
 
 
 base_path = paths.base_path
-models_path = base_path + 'bigbird/models.txt'
+models_path = base_path + 'bigbird/bb_to_use.txt'
 views_path = base_path + "bigbird/poses_to_use.txt"
 
 savefolder = 'bigbird_renders/'
@@ -74,7 +74,7 @@ def render_and_save(all_feats):
 
 from multiprocessing import Pool
 import itertools
-pool = Pool(processes=8)
+pool = Pool(processes=5)
 
 
 
@@ -83,21 +83,23 @@ models_f = open(models_path, 'r')
 for model_line in models_f:
     modelname = model_line.strip()
 
+    # creating the file if it doesn't exist
+    model_folder = base_path + savefolder + modelname + '/'
+    if not os.path.exists(model_folder):
+        print "Creating folder for " + modelname
+        os.makedirs(model_folder)
+
     # see if the files exist before loading in the voxels
-    DIR = base_path + modelname
+    DIR = base_path + savefolder + modelname
     filecount = len([name for name in os.listdir(DIR) if os.path.isfile(os.path.join(DIR, name))])
     if filecount >= 75:
         print "Skipping " + modelname + " as appear to have at least 75 files"
         continue
 
     # load in the voxels
+    print "Loading from " + base_path + '/bigbird_meshes/' + modelname + '/meshes/voxelised.txt'
     vox_vertices = np.loadtxt(base_path + '/bigbird_meshes/' + modelname + '/meshes/voxelised.txt')
     print "Loaded voxels from " + modelname + " of size " + str(vox_vertices.shape)
-
-    model_folder = base_path + savefolder + modelname + '/'
-    if not os.path.exists(model_folder):
-        print "Creating folder for " + modelname
-        os.makedirs(model_folder)
 
     try:
         # do for all views
