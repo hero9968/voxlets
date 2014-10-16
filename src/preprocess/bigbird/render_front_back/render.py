@@ -64,7 +64,6 @@ def render_and_save(all_feats):
         print "Skipping " + out_path
         return []
 
-    print "Rendering..."
     front, back = render_images(vox_vertices, modelname, view)
 
     print "Saving file " + out_path
@@ -93,15 +92,18 @@ for model_line in models_f:
         print "Creating folder for " + modelname
         os.makedirs(model_folder)
 
-    # do for all views
-    views_f = open(views_path, 'r')
-    all_views = [view_line.strip() for view_line in views_f]
- #   done = [render_and_save((vox_vertices, modelname, view)) for view in all_views ]
-    zipped_arguments = itertools.izip(itertools.repeat(vox_vertices), 
-                                    itertools.repeat(modelname),
-                                    all_views)
-    pool.map(render_and_save, zipped_arguments)
-    
+    try:
+        # do for all views
+        views_f = open(views_path, 'r')
+        all_views = [view_line.strip() for view_line in views_f]
+     #   done = [render_and_save((vox_vertices, modelname, view)) for view in all_views ]
+        zipped_arguments = itertools.izip(itertools.repeat(vox_vertices), 
+                                        itertools.repeat(modelname),
+                                        all_views)
+        pool.map(render_and_save, zipped_arguments)
+    except Exception,e: 
+        print str(e)
+
 
     print "Done model " + modelname
 
