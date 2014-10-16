@@ -68,16 +68,21 @@ def download_rgbd(name):
     urllib.urlretrieve(full_url, filename=tmp_dir + "rgbd.tgz")
 
 def get_object_names():
-    '''getting all the object names from the web page'''
-    r = requests.get("http://rll.berkeley.edu/bigbird/aliases/863afb5e73/")
-    data = r.text
-    soup = BeautifulSoup(data)
+    '''getting all the object names from the list'''
+    f = open(base_path + 'bb_to_use.txt', 'r')
+    models = []
+    for line in f:
+        models.append(line.strip())
+    return models
+    # r = requests.get("http://rll.berkeley.edu/bigbird/aliases/863afb5e73/")
+    # data = r.text
+    # soup = BeautifulSoup(data)
 
-    names = []
-    for tdd in soup.find_all('td'):
-        if 'class' in tdd.attrs and tdd.attrs['class'][0] == 'name_cell':
-            names.append(tdd.contents[0].strip())
-    return names
+    # names = []
+    # for tdd in soup.find_all('td'):
+    #     if 'class' in tdd.attrs and tdd.attrs['class'][0] == 'name_cell':
+    #         names.append(tdd.contents[0].strip())
+    # return names
 
 def unpack_rgbd(name):
 
@@ -89,7 +94,7 @@ def unpack_rgbd(name):
     os.rename(tmp_dir + "rgbd.tgz", tmp_dir + name + ".tgz")
 
 names = get_object_names()
-#print names
+
 
 for idx, name in enumerate(names):
 
