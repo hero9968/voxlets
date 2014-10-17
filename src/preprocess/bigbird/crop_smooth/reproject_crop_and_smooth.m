@@ -48,11 +48,11 @@ cropped.T.H_ir = bb.H_ir;
 
 % doing the projection of smootheed data into 3d
 cropped.xyz = reproject_3d(cropped.depth, cropped.T.K_rgb, cropped.aabb([1, 3]));
-cropped.normals = normals_wrapper(cropped.xyz, 'knn', 100);
+%cropped.normals = normals_wrapper(cropped.xyz, 'knn', 100);
 
 % projecting mesh render into 3d and doing normals
 cropped.clean.xyz = reproject_3d(cropped.front_render, cropped.T.K_rgb, cropped.aabb([1, 3]));
-cropped.clean.normals = normals_wrapper(cropped.clean.xyz, 'knn', 100);
+%cropped.clean.normals = normals_wrapper(cropped.clean.xyz, 'knn', 100);
 
 % converting to single precision...
 cropped.depth = single(cropped.depth);
@@ -60,8 +60,8 @@ cropped.orig_d = single(cropped.orig_d);
 cropped.front_render = single(cropped.front_render);
 cropped.back_render = single(cropped.back_render);
 cropped.xyz = single(cropped.xyz);
-cropped.normals = single(cropped.normals);
+%cropped.normals = single(cropped.normals);
 
 cropped.clean.xyz = single(cropped.clean.xyz);
-cropped.clean.normals = single(cropped.clean.normals);
+%cropped.clean.normals = single(cropped.clean.normals);
 
