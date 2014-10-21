@@ -91,15 +91,15 @@ class SpiderEngine(object):
 		'''
 		sets the depth image and computes the distance transform
 		'''
-		dt = DistanceTransforms(im)
-		self.distance_transform = dt.get_compass_images()
+		self.im = im
+		#self.distance_transform = dt.get_compass_images()
 
 
 	def compute_spider_features(self, idxs):
 		'''
 		computes the spider feature for a given point
 		'''
-		return self.distance_transform[idxs[0], idxs[1]]
+		return self.im.spider_channels[idxs[:, 0], idxs[:, 1], :]
 
 
 

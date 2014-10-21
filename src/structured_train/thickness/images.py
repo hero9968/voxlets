@@ -95,6 +95,7 @@ class RGBDImage(object):
         self.edges = np.array((Ix**2 + Iy**2) > edge_threshold**2)
         self.edges = scipy.ndimage.morphology.binary_dilation(self.edges)
 
+
     def set_angles_to_zero(self):
         self.angles *= 0
 
@@ -103,9 +104,6 @@ class RGBDImage(object):
         '''
         creates an (nxm)x3 matrix of all the 3D locations of the points.
         '''
-        #assert self.inv_K
-        #assert self.depth
-
         h, w = self.depth.shape
         us, vs = np.meshgrid(np.arange(w), np.arange(h))
         x = 1000*np.vstack((us.flatten()*self.depth.flatten(), vs.flatten()*self.depth.flatten(), self.depth.flatten()))
@@ -125,10 +123,26 @@ class RGBDImage(object):
         self.ray_image = np.reshape(dists, self.depth.shape)/1000
         return self.ray_image
 
+
     def set_intrinsics(self, K):
         self.K = K
         self.inv_K = np.linalg.inv(K)
 
+
+    def disp_channels(self):
+        '''plots both the depth and rgb and mask next to each other'''
+
+        plt.clf()
+        plt.subplot(221)
+        plt.imshow(self.rgb)
+        plt.subplot(222) 
+        plt.imshow(self.depth)
+        plt.subplot(223) 
+        plt.imshow(self.mask)
+        plt.subplot(224) 
+        if self.edges:
+            plt.imshow(self.edges)
+            plt.show()
 
 
 
@@ -159,7 +173,6 @@ class MaskedRGBD(RGBDImage):
 
         self.camera_id = self.view_idx.split('_')[0]
         self.load_intrinsics()
-
 
     def load_intrinsics(self):
         '''
@@ -192,23 +205,49 @@ class MaskedRGBD(RGBDImage):
         return np.unpackbits(arr).reshape(dimensions)
 
 
-    def disp_channels(self):
-        '''plots both the depth and rgb and mask next to each other'''
-
-        plt.clf()
-        plt.subplot(221)
-        plt.imshow(self.rgb)
-        plt.subplot(222) 
-        plt.imshow(self.depth)
-        plt.subplot(223) 
-        plt.imshow(self.mask)
-        plt.subplot(224) 
-        plt.imshow(self.edges)
-        plt.show()
-
     def depth_difference(self, index):
         '''no back render so will just return a nan for this...'''
         return np.nan
+
+
+class CroppedRGBD(RGBDImage):
+    '''
+    rgbd image loaded from matlab mat file, which is already cropped
+    '''
+
+    def load_bigbird_from_mat(self, modelname, viewname):
+        '''
+        loads all the bigbird data from a mat file
+        '''
+        mat_path = paths.base_path + 'bigbird_cropped/' + modelname + '/' + viewname + '.mat'
+        D = scipy.io.loadmat(mat_path)
+        self.rgb = D['rgb']
+        self.depth = D['depth']     # this is the depth after smoothing
+        self.frontrender = D['front_render'] # rendered from the voxel data
+        self.backrender = D['back_render'] # rendered from the voxel data
+        self.aabb = D['aabb']  # can't remember the exact meaning of this...
+        self.K = D['T_K_rgb'] # as the depth has been reprojected into the RGB image, don't need the ir extrinsics or intrinscs
+        self.H = D['T_H_rgb'] 
+        self.mask = ~np.isnan(self.frontrender)#D['mask']
+
+        # loading the spider features
+        spider_path = paths.base_path + 'bigbird_cropped/' + modelname + '/' + viewname + '_spider.mat'
+        D = scipy.io.loadmat(spider_path)
+        self.spider_channels = D['spider']
+        self.normals = D['normals']
+
+        self.angles = 0*self.depth
+
+        self.view_idx = viewname
+        self.modelname = modelname
+
+    def depth_difference(self, index):
+        ''' 
+        returns the difference in depth between the front and the back
+        renders at the specified (i, j) index
+        '''
+        return self.backrender[index[0], index[1]] - self.frontrender[index[0], index[1]]
+
 
 
 class CADRender(RGBDImage):

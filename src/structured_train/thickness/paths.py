@@ -14,9 +14,7 @@ else:
 
 model_features = base_path + 'structured/features/'
 
-# paths to do with the dataset as a whole
-models_list = base_path + 'basis_models/databaseFull/fields/models.txt'
-split_path = base_path + 'structured/split.mat'
+
 
 # locations of the combined features
 combined_features_path = base_path + 'structured/combined_features/'
@@ -37,6 +35,25 @@ results_folder_small = base_path + "structured/results_small/"
 bigbird_folder = base_path + 'bigbird/'
 bigbird_objects = ['coffee_mate_french_vanilla']
 
+data_type = 'bigbird'
+
+
+if data_type=='bigbird':
+    # paths to do with the dataset as a whole
+    models_list = base_path + 'bigbird/bb_to_use.txt'
+    split_path = base_path + 'bigbird/split.mat'
+    feature_path = base_path + 'bigbird_features/'
+
+    f = open(base_path+'bigbird/poses_to_use.txt', 'r')
+    views = [line.strip() for line in f]
+
+elif data_type=='cad':
+    # paths to do with the dataset as a whole
+    models_list = base_path + 'basis_models/databaseFull/fields/models.txt'
+    split_path = base_path + 'structured/split.mat'
+    feature_path = base_path + 'structured/features_nopatch/'
+
+    views = list(range(42)) # how many rendered views there are of each object
 
 
 # paths for the dense predictions

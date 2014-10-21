@@ -8,7 +8,108 @@ I haven't thought about this yet though...
 import cv2
 import numpy as np
 
-class scene_voxels:
+
+class Voxels(object):
+	'''
+	voxel data base class - this will be parent of regular voxels and frustrum voxels
+	'''
+	def __init__(self, size, datatype):
+		'''initialise the numpy voxel grid to the correct size'''
+		assert np.prod(size) < 500e6 	# check to catch excess allocation
+		self.V = np.zeros(size, datatype)
+
+
+	def sum_positive(self):
+		return np.sum(self.V > 0)
+
+
+class FrustumGrid(Voxels):
+	'''
+	class for a frustum grid, such as that coming out of a camera
+	For now this is hard-coded as uint8
+	'''
+
+	def __init__(self, imagesize, d_front, d_back, focal_length	):
+		'''
+		sets up the voxel grid. Also computes the number of voxels along the depth direction
+		'''
+		self.d_front = d_front
+		self.d_back = d_back
+		self.focal_length = focal_length
+		self.imagesize = imagesize
+
+		# work out the optimal number of voxels to put along the length
+		self.m = 2 * focal_length * (d_back - d_front) / (d_front + d_back)
+
+		Voxels.__init__(imagesize.append(self.m), np.float32)
+
+
+	def depth_to_index(self, depth):
+		''' 
+		for a given real-world depth, computes the voxel index in the z direction, in {0,1,...,m}
+		if the depth is out of range, returns -1
+		'''
+		if depth > self.d_back or depth < self.d_front:
+			return -1
+		else:
+			scaled_depth = (depth - self.d_front) / (self.d_back - self.d_front)
+			index = int(scaled_depth * self.m)
+			assert index >= 0 and index < self.V.shape[2]
+			return index
+
+
+	def populate(self, frontrender, back_predictions):
+		'''
+		fills the frustum grid with the predictions from the forest output
+		could get this to redefine the d_back and d_front
+		'''
+		assert(frontrender.shape == self.imagesize.shape)
+		assert(back_predictions[0].shape == self.imagesize.shape)
+
+		# this is the addition to occupancy a vote from one tree makes
+		per_tree_contribution = 1/float(len(back_predictions))
+
+		# find the locations in frontrender which are non-nan
+		non_nans = np.nonzero(~np.isnan(frontrender))
+
+		# populate the voxel array
+		for tree in back_predictions:
+			for col, row in non_nans:
+				start_idx = self.depth_to_index(frontrender[row, col])
+				end_idx = self.depth_to_index(tree[row, col])
+
+				self.V[row, col, start_idx:end_idx] += per_tree_contribution
+
+
+	def extract_warped_slice(self, slice_idx, output_image_height=500, gt=None):
+		'''
+		returns a horizontal slice warped to resemble the real-world positions
+		maxdepth is the maximum distance to consider in the real-world coordinates
+		'''
+		# computing the perspective transform between voxel space and output image space
+		h, w, = self.imagesize
+		pts1 = np.float32([[0,0],[w,0],[0,h],[w,h]])
+
+		# change in scale between real-world and this output image
+		scale = output_image_height / (self.d_back - self.d_front)
+		output_image_width = scale * (w * self.d_back) / self.focal_length
+		frustum_front_width = scale * (w * self.d_front) / self.focal_length
+
+		pts2 = np.float32([[0,0], 
+						   [output_image_width,0], 
+						   [output_image_width/2 - frustum_front_width/2, output_image_height], 
+						   [output_image_width/2 + frustum_front_width/2, output_image_height]])
+
+		M = cv2.getPerspectiveTransform(pts1,pts2)
+
+		# extracting and warping slice
+		output_size = (int(output_image_width), int(output_image_height))
+
+		return cv2.warpPerspective(self.V[:, :, slice_idx], M, output_size, borderValue=1)
+
+
+
+class scene_voxels(object):
 
 	# attributes
 
