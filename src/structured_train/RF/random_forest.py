@@ -6,12 +6,13 @@ from joblib import Parallel, delayed
 
 class ForestParams:
     def __init__(self):
-        self.num_tests = 1000
+        self.num_tests = 200
         self.min_sample_cnt = 2
-        self.max_depth = 30.0
-        self.num_trees = 12
-        self.bag_size = 0.5
-        self.train_parallel = True
+        #self.max_depth = 30.0
+        self.max_depth = 10
+        self.num_trees = 20
+        self.bag_size = 0.1
+        self.train_parallel = False
 
 
 class Node:
@@ -52,7 +53,7 @@ class Tree:
         self.num_nodes = 0
 
     def build_tree(self, X, Y, node):
-        if (node.node_id < ((2**self.tree_params.max_depth)-1)) and (node.impurity > 0.0) \
+        if (node.node_id < ((2**self.tree_params.max_depth)-1))  \
                 and (self.optimize_node(np.take(X, node.exs_at_node, 0), np.take(Y, node.exs_at_node), node)):
                 self.num_nodes += 2
                 self.build_tree(X, Y, node.left_node)
@@ -71,7 +72,9 @@ class Tree:
                                             np.ones(1, dtype='float')*exs_at_node.shape[0])
 
         # create root
-        self.root = Node(0, exs_at_node, impurity, float(prob[1]))
+        #print np.take(Y, exs_at_node).shape
+        #print prob.shape
+        self.root = Node(0, exs_at_node, impurity, float(prob[0]))
         self.num_nodes = 1
 
         # build tree
@@ -95,30 +98,37 @@ class Tree:
     def calc_impurity(self, node_id, y_local, test_res, num_exs):
         # TODO currently num_exs is changed to deal with divide by zero, fix this
         # if don't want to divide by 0 so add a 1 to the numerator
+
+        number_tests = test_res.shape[1]
+
+        # MF - invalid if all data on one side
         invalid_inds = np.where(num_exs == 0.0)[0]
         num_exs[invalid_inds] = 1
 
-        # estimate probability
-        # just binary classification
-        node_test = test_res * (y_local[:, np.newaxis] == 1)
+        # means (serious use of broadcasting!)
+        node_test = test_res * (y_local[:, np.newaxis])
+        Y_col_sums = np.sum(node_test, axis=0)
+        means = Y_col_sums / num_exs
 
-        prob = np.zeros((2, test_res.shape[1]))
-        prob[1, :] = node_test.sum(axis=0) / num_exs
-        prob[0, :] = 1 - prob[1, :]
-        prob[:, invalid_inds] = 0.5  # 1/num_classes
-
-        # binary classification
-        #impurity = -np.sum(prob*np.log2(prob))  # entropy
-        impurity = 1-(prob*prob).sum(0)  # gini
-
-        num_exs[invalid_inds] = 0.0
-        return prob, impurity
+        # variance
+        deviation_from_mean = test_res * (y_local[:, np.newaxis] - means) # employs broadcasting
+        variances = np.sum(deviation_from_mean**2, axis=0) / num_exs
+        
+        counts = np.sum(test_res, axis=0)
+        
+        return means, variances
 
     def node_split(self, x_local):
         # left node is false, right is true
         # single dim test
+
+        # MF - choosing which... data to test on?
+        # number of rows = num data points, num cols = number tests
+        # x_local.shape[1]-1 --> dimension of data
         test_inds_1 = np.sort(np.random.random_integers(0, x_local.shape[1]-1, self.tree_params.num_tests))
         x_local_expand = x_local.take(test_inds_1, 1)
+
+        # MF - choosing a set of possible test thresholds, in [x_min, x_max]
         x_min = x_local_expand.min(0)
         x_max = x_local_expand.max(0)
         test_thresh = (x_max - x_min)*np.random.random_sample(self.tree_params.num_tests) + x_min
@@ -128,12 +138,16 @@ class Tree:
 
         return test_res, test_inds_1, test_thresh
 
+        # MF - on larger data could take random subset, or 
+
     def optimize_node(self, x_local, y_local, node):
         # TODO if num_tests is very large could loop over test_res in batches
         # TODO is the number of invalid splits is small it might be worth deleting the corresponding tests
         # %timeit rf.trees[0].optimize_node(X, Y, rf.trees[0].root)
+        # MF note - if unsuccessful split, this branch will be stopped! Watch out...
 
         # perform split at node
+        # MF - returns results (binary), features, thresholds
         test_res, test_inds1, test_thresh = self.node_split(x_local)
 
         # count examples left and right
@@ -144,6 +158,7 @@ class Tree:
         successful_split = False
         if valid_inds.sum() > 0:
             # child node impurity
+            # MF - for each different split!
             prob_l, impurity_l = self.calc_impurity(node.node_id, y_local, ~test_res, num_exs_l)
             prob_r, impurity_r = self.calc_impurity(node.node_id, y_local, test_res, num_exs_r)
 
@@ -151,19 +166,23 @@ class Tree:
             num_exs_l_norm = num_exs_l/node.num_exs
             num_exs_r_norm = num_exs_r/node.num_exs
             #info_gain = - node.impurity + (num_exs_r_norm*impurity_r) + (num_exs_l_norm*impurity_l)
-            info_gain = (num_exs_r_norm*impurity_r) + (num_exs_l_norm*impurity_l)
-
+            #temp, initial_imp = self.calc_impurity(node.node_id, y_local, 0*test_res+1, num_exs_r+num_exs_l)
+            info_gain = -((num_exs_r_norm*impurity_r) + (num_exs_l_norm*impurity_l))
+            
             # make sure we con only select from valid splits
-            info_gain[~valid_inds] = info_gain.max() + 10e-10  # plus small constant
-            best_split = info_gain.argmin()
+            info_gain[~valid_inds] = info_gain.min() - 10e-10  # plus small constant
+            #print info_gain
+            best_split = info_gain.argmax() # MF - index of test with best result
 
             # if the info gain is acceptable split the node
             # TODO is this the best way of checking info gain?
             #if info_gain[best_split] > self.tree_params.min_info_gain:
             # create new child nodes and update current node
+           
+
             node.update_node(test_inds1[best_split], test_thresh[best_split], info_gain[best_split])
-            node.create_children(test_res[:, best_split], impurity_l[best_split], prob_l[1, best_split],
-                                 impurity_r[best_split], prob_r[1, best_split])
+            node.create_children(test_res[:, best_split], impurity_l[best_split], prob_l[best_split],
+                                 impurity_r[best_split], prob_r[best_split])
             successful_split = True
 
         return successful_split
@@ -200,7 +219,7 @@ class Forest:
         else:
             #print 'Standard training'
             for t_id in range(self.params.num_trees):
-                print 'tree', t_id
+                #print 'tree', t_id
                 tree = Tree(t_id, self.params)
                 tree.train(X, Y)
                 self.trees.append(tree)
