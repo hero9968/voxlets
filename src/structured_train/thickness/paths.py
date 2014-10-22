@@ -12,21 +12,6 @@ if host_name == 'troll':
 else:
     base_path = os.path.expanduser("~/projects/shape_sharing/data/")
 
-model_features = base_path + 'structured/features/'
-
-
-
-# locations of the combined features
-combined_features_path = base_path + 'structured/combined_features/'
-combined_test_features = combined_features_path + 'test.pkl'
-combined_test_features_small = combined_features_path + 'test_small.pkl'
-combined_train_features = combined_features_path + 'train.pkl'
-combined_train_features_small = combined_features_path + 'train_small.pkl'
-
-# paths for the random forest models
-model_config = base_path + 'models_config.yaml'
-rf_folder_path = base_path + "structured/rf_models/"
-rf_folder_path_small = base_path + "structured/rf_models_small/"
 
 # paths for the sparse results
 results_folder = base_path + "structured/results/"
@@ -47,13 +32,41 @@ if data_type=='bigbird':
     f = open(base_path+'bigbird/poses_to_use.txt', 'r')
     views = [line.strip() for line in f]
 
+    model_features = base_path + 'bigbird_features/'
+
+    combined_features_path = base_path + "bigbird_combined/"
+
+    # paths for the random forest models
+    model_config = base_path + 'bigbird/models_config.yaml'
+    rf_folder_path = base_path + "bigbird_models/rf_models/"
+    rf_folder_path_small = base_path + "bigbird_models/rf_models_small/"
+
+
 elif data_type=='cad':
     # paths to do with the dataset as a whole
     models_list = base_path + 'basis_models/databaseFull/fields/models.txt'
     split_path = base_path + 'structured/split.mat'
     feature_path = base_path + 'structured/features_nopatch/'
 
+    model_features = base_path + 'structured/features/'
+
+    combined_features_path = base_path + 'structured/combined_features/'
+
     views = list(range(42)) # how many rendered views there are of each object
+
+    # paths for the random forest models
+    model_config = base_path + 'models_config.yaml'
+    rf_folder_path = base_path + "structured/rf_models/"
+    rf_folder_path_small = base_path + "structured/rf_models_small/"
+
+
+
+# locations of the combined features
+combined_test_features = combined_features_path + 'test.pkl'
+combined_test_features_small = combined_features_path + 'test_small.pkl'
+combined_train_features = combined_features_path + 'train.pkl'
+combined_train_features_small = combined_features_path + 'train_small.pkl'
+
 
 
 # paths for the dense predictions

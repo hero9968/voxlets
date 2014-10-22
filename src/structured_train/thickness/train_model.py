@@ -12,7 +12,6 @@ import timeit
 import yaml
 import socket
 import paths
-import myforest
 
 host_name = socket.gethostname()
 

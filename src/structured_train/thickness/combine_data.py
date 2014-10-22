@@ -50,7 +50,7 @@ def replace_nans_with_col_means(X):
 	X[inds]=np.take(col_mean,inds[1])
 	return X
 
-features_to_sample_per_object = 2000
+features_to_sample_per_object = 10000
 
 
 if __name__ == '__main__':
@@ -59,7 +59,8 @@ if __name__ == '__main__':
 		for category in ['train', 'test']:  # options are test and train - are we doing test or train data?
 
 			# setting paths
-			combined_features_save_path = paths.base_path + 'structured/combined_features/'
+			combined_features_save_path = paths.combined_features_path
+			assert(os.path.exists(combined_features_save_path))
 
 			combined_features_save_path += category  # should be 'test' or 'train'
 			if small_model:	combined_features_save_path += '_small'
@@ -67,7 +68,12 @@ if __name__ == '__main__':
 
 			# loading the data
 			# For now, am only going to use one file to train on...
-			object_names = scipy.io.loadmat(paths.split_path)[category + '_names']
+			# setting paths
+			if paths.data_type=='bigbird':
+				f = open(paths.base_path + "bigbird/bb_" + category + ".txt", 'r')
+				object_names = [line.strip() for line in f]
+			elif paths.data_type=='cad':
+				object_names = scipy.io.loadmat(paths.split_path)[category + '_names']
 
 			print "There are " + str(len(object_names)) + " objects"
 

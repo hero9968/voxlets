@@ -23,6 +23,42 @@ class Voxels(object):
 		return np.sum(self.V > 0)
 
 
+class KinFuVoxels(Voxels):
+	'''
+	voxels as computed and save by KinFu
+	'''
+	def __init__(self):
+		Voxels.__init__((512, 512, 512), np.float32)
+
+	def read_from_pcd(self, filename):
+		''' 
+		reads from an ascii pcd file
+		'''
+		fid = open(filename, 'r')
+
+		# throw out header - doesn't have any interest
+		for idx in range(11):
+			fid.readline()
+
+		# populate voxel grid
+		for line in fid:
+			t = line.split()
+			self.V[int(t[0]), int(t[1]), int(t[2])] = 1 - t[3]
+
+	def fill_full_grid(self):
+		'''
+		fills out the full voxel grid, given just a starting volume
+		'''
+		pass
+
+
+
+
+'''
+To think about - sparse voxel class?
+'''
+
+
 class FrustumGrid(Voxels):
 	'''
 	class for a frustum grid, such as that coming out of a camera
