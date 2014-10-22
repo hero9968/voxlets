@@ -3,6 +3,7 @@ build/
 data/
 tests/
 old/
+.ipynb_checkpoints/
 todo.md
 CMakeLists.txt.user
 temp.*

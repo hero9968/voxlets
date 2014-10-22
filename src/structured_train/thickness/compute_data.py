@@ -16,11 +16,8 @@ import sys
 import paths
 import images
 
-number_views = 42 # how many rendered views there are of each object
-
 # in an ideal world we wouldn't have this hardcoded path, but life is too short to do it properly
 host_name = socket.gethostname()
-
 
 
 class DepthFeatureEngine(object):
@@ -36,7 +33,7 @@ class DepthFeatureEngine(object):
 	def __init__(self):
 		self.indices = []
 		self.im = []
-		self.patch_extractor = features.CobwebEngine(t=7, fixed_patch_size=False)
+		self.patch_extractor = features.CobwebEngine(t=5, fixed_patch_size=False)
 
 
 	def random_sample_from_mask(self, num_samples=500):
@@ -165,13 +162,19 @@ def compute_features(modelname_and_view):
 	'''
 	helper function to deal with the two-way problem
 	'''
-	im = images.CADRender()
-	im.load_from_cad_set(modelname_and_view[0], modelname_and_view[1]+1)
+	if paths.data_type == 'cad':
+		im = images.CADRender()
+		im.load_from_cad_set(modelname_and_view[0], modelname_and_view[1]+1)
+	elif paths.data_type == 'bigbird':
+		im = images.CroppedRGBD()
+		im.load_bigbird_from_mat(modelname_and_view[0], modelname_and_view[1])
 
 	engine = DepthFeatureEngine()
 	engine.set_image(im)
 	engine.random_sample_from_mask(samples_per_image)
 	engine.compute_features_and_depths()
+
+	print "Done " + str(modelname_and_view[1])
 	return engine.features_and_depths_as_dict()
 
 
@@ -194,9 +197,9 @@ if host_name == 'troll':
 	just_one = False
 	multicore = True
 else:
-	saving = False
-	redo_if_exist = True # i.e. overwrite
-	just_one = True
+	saving = True
+	redo_if_exist = False # i.e. overwrite
+	just_one = False
 	multicore = False
 
 if __name__ == '__main__':
@@ -213,10 +216,11 @@ if __name__ == '__main__':
 	for idx, line in enumerate(f):
 
 		modelname = line.strip()
+		number_views = len(paths.views)
 		#if not host_name == 'troll':
 			#modelname = '12bfa757452ae83d4c5341ee07f41676'
 
-		fileout = base_path + 'structured/features_nopatch/' + modelname + '.mat'
+		fileout = paths.feature_path + modelname + '.mat'
 
 		if not redo_if_exist:
 			if os.path.isfile(fileout): 
@@ -229,7 +233,8 @@ if __name__ == '__main__':
 
 		tic = timeit.default_timer()
 
-		zipped_arguments = itertools.izip(itertools.repeat(modelname), range(number_views))
+		zipped_arguments = itertools.izip(itertools.repeat(modelname), 
+										  paths.views)
 
 		if multicore:
 			try:

@@ -5,7 +5,7 @@
 % Then save
 addpath('~/projects/shape_sharing/src/matlab/matlab_features')
 OVERWRITE = false;
-matlabpool(6)
+%matlabpool(6)
 %%
 base_path = get_base_path();
 [views, modelnames] = get_views_models();
@@ -21,7 +21,7 @@ for model_idx = 1:length(modelnames)
         mkdir(model_folder)
     end
     
-    parfor view_idx = 1:length(views)
+    for view_idx = 1:length(views)
         
         view = views{view_idx};
         save_name = [model_folder, view, '.mat'];

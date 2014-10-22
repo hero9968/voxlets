@@ -15,6 +15,7 @@
 \usepackage{subfigure}
 \usepackage{nonfloat}
 \usepackage{url}
+\usepackage{textcomp} % for textonehalf
 %\usepackage{subref}
 \graphicspath{{imgs/}}
 
@@ -44,12 +45,13 @@
 \definecolor{blue}{rgb}{0.4,0.4,0.95}
 \definecolor{darkred}{rgb}{0.8,0,0}
 \definecolor{darkgreen}{rgb}{0,0.5,0}
+\definecolor{grey}{rgb}{0.6,0.6,0.6}
 
 \newcommand{\todo}[1]{\textcolor{red}{TODO: #1}}
 \newcommand{\note}[1]{\textcolor{blue}{NOTE: #1}}
 \newcommand{\status}[1]{\textcolor{blue}{Status: #1}}
 \newcommand{\add}[1]{\textcolor{darkgreen}{#1}}
-\newcommand{\remove}[1]{\textcolor{darkred}{#1}}
+\newcommand{\remove}[1]{\textcolor{grey}{#1}}
 
 
 
@@ -75,98 +77,110 @@
 	Most existing works to recover the scene geometry rely on combining multiple views of the scene captured from many different directions or use of \emph{a priori} information about the expected semantic make-up of the scene.
 
 	We present a method to predict whether or not each voxel in a scene is occupied given just a single RGBD image.
-	We argue that objects of dissimilar semantic classes often share similar shapes; this allows for a limited dataset of CAD objects to model the shape of a wide range of objects and hence estimate the hidden geometry of arbitrary scenes.
+	We argue that objects of dissimilar semantic classes often share similar shapes; this allows for a limited training dataset to model the shape of a wide range of objects and hence estimate the hidden geometry of arbitrary scenes.
 
 	Our method comprises of three main components:
-	1) For each pixel in an RGBD image, we compute local and regional features and use these to predict the thickness of the object at that point, using a Random Forest trained on multiple CAD models.
-	2) To extend occluded surfaces
-	3) Finally we combine and regularise the thickness predictions and occluded surface continuations to form a full probablistic distribution of occupancy for each voxel in the scene.
+    1) For each pixel in an RGBD image, we compute local features together with a novel regional features and use these to predict the thickness of the object at that point, using a Random Forest trained on multiple CAD models.
+    2) To extend occluded surfaces
+    3) Finally we combine and regularise the thickness predictions and occluded surface continuations to form a full probablistic distribution of occupancy for each voxel in the scene.
 \end{abstract}
 
+% \begin{figure}
+%   \centering 
+%   \subfigure[Input depth image]{%
+%       \includegraphics[width=0.8\columnwidth]{setup_ppt.png}}
+%       \hfill
+%   \subfigure[Ground truth output]{%
+%       \includegraphics[width=0.8\columnwidth]{ground_truth_ppt.png}} \\
+%   \caption{Given a depth image of a scene, \eg as depicted in 2D in (a), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
+%   \label{fig:intro}
+% \end{figure}
 
 \section{Introduction}
-Given a single image of a scene, humans can usually get a good overview of the scene and what the geometry is, even in the many areas which are not directly observable. 
-We are able to do this using a manner of different tools at our disposal. 
-We can use symmetry, hypothesising that unobserved regions match the parts we can see under a transform.
-In many occasions we exploit semantic knowledge: by recognising specific objects and relating them to objects in our memory, we form an idea of their shape.
-In many cases, however, we use a more generic, higher level knowledge about shape in order to hypothesise the missing regions.
 
-Occlusions and occlusion boundaries are a natural result of this projection from world space into image space.
-While often ignored or treated as a `nuicence', recently works have made explicit use of occlusion boundaries \cite{hoiem occlusion boundaires, segmenting simple objects}.
+% --- even with the use of depth sensors to capture data (\eg \cite{izadi-uist-2011}).
+ % before these separate views are combined together.
+For a robot to navigate through a cluttered room, an idea of which areas of 3D space are vacantis essential to avoid obstacles.
+In order to acquire such a 3D occupancy model, however, a scene must be viewed from multiple angles.
+This poses a chicken-and-egg problem: To capture the occupancy model the robot must navigate through the room, while the robot requires an occupancy model to navigate.
+
+To solve this problem an initial estimate of the occupancy of each part of the scene can be made given an initial limited data set; as further observances are made this prior estimate can be overwritten by observed data.
+This problem of estimating the unseen areas of the scene is ill-posed and can be very challenging; this is the problem we tackle in this paper.
+%, it is possible to make sensible predictions about some areas.
+
+If prior knowledge is available about the objects present in the scene in the form of 3D models, then these models can be fitted to the scene \cite{hinterstoisser-accv-2012, drost-3dimpvt-2012, rusu-iros-2010}, allowing the missing parts of the scene to be inferred.
+This relies on having a detailed model of every item that could possibly be seen, which is infeasible for most practical situations.
+Similarly, if the class can be inferred then a more generic class-level model can be fitted to a part of the scene \cite{cocias-cgvcv-2013, prisacariu-iccv-2011}; however, this relies on availability of such a class-level model, and the accuracy of an object classifier.
+If we can accurately detect symmetry it is possible to make use of this to complete some types of objects (\eg \cite{law-cviu-2010, thrun-iccv-2005, kroemer-humanoids-2012}). 
+However, using symmetry for object completion is brittle --- an incorrectly guessed symmetrical transform can lead to a catastrophic mis-estimate of geometry --- and symmetry is only visible in a subset of objects in our world.
+
+%This allows the missing parts of objects to be reconstructed
 
 
-If we knew the exact class we would have a class-specific feature.
-In more complex scenes we can't do this.
+%\note{Address semantics - head-on? Could argue from the start that while people attempt to use semantics to reconstruct shape, semantics can fail, can be ambiguous and rely on slow classification.}
 
-We take inspiration from recent work which has made
+In this paper we take a data-driven approach to estimating the missing geometry of a scene.
+Unlike many papers which tackle this as a mesh completion problem \cite{schnabel-eurographics-2009, ju-cst-2009, maybsilberman-eccv-2014}, we directly tackle the problem by predicting voxel occupancy:
+The input to our algorithm is a single depth image, while the output is an estimate of the occupancy of every voxel within the camera frustum.
+Unlike previous work on voxel occupancy prediction \cite{kim-iccv-2013}, we do not require any semantic predictions, and our prediction of occupancy can be complex \note{Add more here...}.
 
 
-\begin{figure}
-  \centering 
-  \subfigure[Input depth image]{%
-      \includegraphics[width=0.8\columnwidth]{setup_ppt.png}}
-      \hfill
-  \subfigure[Ground truth output]{%
-      \includegraphics[width=0.8\columnwidth]{ground_truth_ppt.png}} \\
+\begin{figure}[!t]
+  \includegraphics[width=0.98\columnwidth]{setup_ppt.png}
   \caption{Given a depth image of a scene, \eg as depicted in 2D in (a), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
+  \label{fig:intro}
 \end{figure}
 
+%\subsection{Our algorithm}
 
-\paragraph{Application areas}
-It can be very useful for a computer system to know the geometry of hidden areas of a scene, for reasons such as:
+%\paragraph{Occlusions}
 
-\begin{itemize}
-\item \textbf{Robotics} --- Helping a robot to plan a path around objects given only a single view of a scene, e.g. from a doorway. Also to help a robot plan grasping position on objects it can only see partial views of.
-\item \textbf{Scene relighting} --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
-%\item \textbf{Object repositioning} --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
-\item \textbf{Multi-view reconstruction} --- An intial estimate for voxel occuapncy can be used as a prior during online multi-view reconstruction algorithms. This prior prediction would be overwritten with observed data as more footage is captured. The prior can help to solve the next-best-view problem.
-\end{itemize}
+We take inspiration from recent work which has segmented objects from images using silhouettes learned from different object classes \cite{kim-eccv-2012};
+Their work showed that shape transcends class boundaries, enabling shape predictions to be made regardless of the accuracy of semantic classifiers.
+Because we care about shape and voxel occupancy rather than semantic understanding, we are free to use training objects which differ in scale and semantic labelling from the objects being modelled in the scene.
+This is key to our approach --- we are not reasoning about semantics of objects, but instead about object shape.
 
 \paragraph{Aim of the system and overview}
 Given a single RGBD image, our system predicts whether each voxel in the scene is occupied or not - in effect, we predict the voxelised occupancy grid of KinectFusion \cite{izadi-uist-2011}, but having been given only a single view of the scene instead of multiple views.
 
-We achieve this by learning a mapping from local and regional features to an object thickness, using a large collection of training objects and scenes.
-%matching each region from the input image to a similar region of an object in a training database.
-Because we care about shape and voxel occupancy rather than semantic understanding, we are free to use training objects which differ in scale and semantic labelling from the objects being modelled in the scene.
-In this respect we take inspiration from \cite{kim-eccv-2012}, where silhouettes from training objects are used to segment other objects from different classes.
-This is key to our approach --- we are not reasoning about semantics of objects, but instead about object shape.
-In effect we are hypothesising that any two rays that have a similar appearance from one angle are likely to share similarities in shape in the unobserved regions of the scene.
-
-Of course the problem is ill-posed; we therefore can only hope to make a reasonable guess of the occupancy and we rely on the predictability and repeatability of the world.
-
-%In addition, our output can act as a prior for algorithms such as registration.
-
-% \subsubsection{What is our hypothesis?}
-
-% What is our overall hypotheses --- that the shape we can see from one angle is enough information to make a sensible prediction about the parts of the scene which are occluded?
-
-% We aren't making assumptions about class, unlike \eg shotton (people) or room modelling.
-
-\subsubsection{Motivation for using a voxelised world}
-
-Occupied voxels are a very natural representation of our world, more so than meshes or point clouds, which both make sense from a data storage or sensor data point of view, but do not actually represent the underlying geometry particularly well.
-Voxels have been shown to work well for reconstruction \eg KinFu and other voxel carving papers. 
-While they be expensive compared to point clouds and meshes, tools such as OpenVDB\footnote{\url{www.openvdb.org}} have allowed voxelised representations of objects to be stored and manipulated efficiently.
-
-% \begin{quote}
-% Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
-
-% \cite{snow-cvpr-2000}
-% \end{quote}
-
-% In addition, our world remains at the same resolution, while computers are becoming larger and more powerful. 
-% People have make work-arounds for efficiently using voxels in very large ares, \eg Kintinuous.
+We achieve this by learning a mapping from local and novel semi-regional features to an object thickness, using a large collection of training objects and scenes.
 
 
-% \begin{figure}
-%   \centering 
-%   \subfigure[Example input image]{%
-%       \includegraphics[width=0.4\columnwidth]{kinfu1.jpg}}
-%       \hfill
-%   \subfigure[Ground truth output]{%
-%       \includegraphics[width=0.4\columnwidth]{kinfu2.jpg}} \\
-%   \caption{Given a single RGBD image (\eg (a)), the aim is to predict the full, occupied volume of the scene (e.g. (b)).}
-% \end{figure}
+%In effect we are hypothesising that any two rays that have a similar appearance from one angle are likely to share similarities in shape in the unobserved regions of the scene.
+
+%In this respect we take inspiration from \cite{kim-eccv-2012}, where silhouettes from training objects are used to segment other objects from different classes.
+
+
+%Occlusions and occlusion boundaries are a natural result of this projection from world space into image space.
+%While often ignored or treated as a `nuicence', recently works have made explicit use of occlusion boundaries \cite{hoiem occlusion boundaires, segmenting simple objects}.
+
+%Going from 2\textonehalf D to a full 3D representation is a challenging problem.
+%Typically this has been approached by fusing together images from multiple viewpoints \cite{izadi-uist-2011}.
+
+%Our world is naturally fully three-dimensional: We can think of every point in space as either being `occupied' by impenetrable solid matter, or as being `vacant', \ie transparent.
+%A traditional camera image takes this 3D world and projects it onto a 2D plane.
+%A great deal of information is lost in the process, as objects are flattened and occlusions prevent points behind those immediately visible to the camera ray from being observed. %, losing a whole dimension in the process.
+
+%In recent years there have been great advances making affordable `3D' sensors available to capture a more complete representation of the world; these cameras, however, are still hampered by occlusions and technically only capture a 2\textonehalf D image.
+
+%In many applications of depth cameras, however, it is not possible to gain a full view of all areas of the scene.
+
+\paragraph{Other application areas}
+It can be very useful for a computer system to know the geometry of hidden areas of a scene, for reasons such as:
+\begin{itemize}
+\item A wheeled robot entering a doorway of a cluttered room it has never seen before may wish to navigate to a target object at the far side. However, the floor surface may be occluded for much of the route, by furniture and other clutter.
+\item If a single photo is captured from a mobile device with a depth camera attached, it could be useful to be able to relight the scene by digitally adding light sources. To cast realistic shadows, however, the full 3D geometry is required.
+\item In multi-view reconstruction problems it can be good to have a prior over the shape of the scene from the first few frames, which can be replaced as more footage comes in. The prior can be used to solve the next-best-view problem, deciding where the camera should be moved to capture the most informative next image of the scene.
+\end{itemize}
+
+In these cases, we might wish to make an estimate of the geometry of the world, even if we have not seen the data to confirm the real 3D shape (figure \ref{fig:intro}).
+
+%\begin{itemize}
+%\item \textbf{Robotics} --- Helping a robot to plan a path around objects given only a single view of a scene, e.g. from a doorway. Also to help a robot plan grasping position on objects it can only see partial views of.
+%\item \textbf{Scene relighting} --- Enabling realistic-looking shadows to be cast from a light moved to a new position in the image.
+%\item \textbf{Object repositioning} --- Interactive repositioning of objects in the scene. Knowing the voxel occupancy allows a constraint to be placed on where objects can be moved to. (\eg Zheng \ea, Interactive images)
+%\item \textbf{Multi-view reconstruction} --- An intial estimate for voxel occuapncy can be used as a prior during online multi-view reconstruction algorithms. This prior prediction would be overwritten with observed data as more footage is captured. The prior can help to solve the next-best-view problem.
+
 
 \subsubsection{Contributions}
 \begin{itemize}
@@ -174,29 +188,40 @@ While they be expensive compared to point clouds and meshes, tools such as OpenV
 \item A regularisation system for combining depth and surface predictions
 \end{itemize}
 
+% \begin{quote}
+% Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
+% \cite{snow-cvpr-2000}
+% \end{quote}
+
 \subsubsection{Problem statement}
 
-\note{Setting out the problem mathematically, introducing some notation etc.}
+\newcommand{\voxel}{\mathbf{v}}
+%\newcommand{\occ}{f}
 
+We assume the world to be made up of a regular 3D grid of voxels $V = \{\voxel_\gamma\}$, where $\voxel_\gamma = (i, j, k, \occ)$.
+$(i, j, k)$  denotes the 3D position of the voxel in world space.
+$\occ \in \{0, 1\}$ is a binary variable which takes the value $0$ if the voxel is vacant, and $1$ if it is occupied.
 
-We assume the world to be made up of a 3D grid $V$.
-Each voxel in $V$ is $v_\theta$, where $\theta=(i,j,k)$ is the index of the location in grid space.
-Each scene is then captured in a single static depth image $\rgbdimage$ by a cmera with extrinsics $H$ and intrinsics $K$. The location of all the voxels in the world in the coordinates of the camera are:
-$$
-\mathbf{v}_c = K H \mathbf{\theta},
-$$
-where $\mathbf{v}_c = [u, v, d]^{T}$ gives the position $(u,v)$ of the voxel in the image, and the  perpendicular distance $d$ from the camera centre to the voxel.
-Each pixel in the depth image $\rgbdimage$ is then given by the depth to the first occupied voxel along the camera ray:
-$$
-\rgbdimage_{u,v} = \min_d \left\{ v_c(d) : v_\theta = 1 \right\}.
-$$
+We treat a voxel as occupied if you cannot view its state from a camera moving around the scene from its start position.
+So a voxel inside a closed cardboard box, while void of solid object, would be considered occupied.
+On the other hand, a voxel on the inside of a cardboard box open at the top would be considered unoccupied.
 
+Each scene is then captured in a single static depth image $\rgbdimage$ by a camera with extrinsics $H$ and intrinsics $K$. 
+Assuming perspective projection, the location of each voxel projects into the camera to a position of:
+\begin{equation}
+[u, v, d]^T = K H [i, j, k]^T,
+\end{equation}
+where $(u,v)$ the position of the voxel in image coordinates, and $d$ is the  perpendicular distance from the camera centre to the voxel.
+Finally, the value of each pixel $(u^*, v^*)$ in the depth image $\rgbdimage$ is given by the depth to the first occupied voxel along the camera ray:
+\begin{equation}
+\rgbdimage_{u^*,v^*} = \min_\gamma \left\{ d_{\gamma} : v_{\gamma} = 1, \lfloor u_{\gamma} \rfloor = u^*, \lfloor v_{\gamma} \rfloor = v^* \right\}.
+\label{eqn:minimisation}
+\end{equation}
+%_{world \rightarrow camera} H_{grid \rightarrow world}
+
+The $\min_d$ in (\ref{eqn:minimisation}) is the manifestation of occlusion: Each ray from the camera stops at the first occupied voxel it reaches.
 The aim of our algorithm is to recover $V$ given $\rgbdimage$.
 
-
-% What exactly do we mean by voxel occupancy?
-
-% What is the scope of the work? 
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Related work}
@@ -205,30 +230,41 @@ The aim of our algorithm is to recover $V$ given $\rgbdimage$.
 % \paragraph{Axes of variation of related works}
 % Using local information (\eg smoothing) $\leftrightarrow$ using global information (\eg patching from other images)
 
-\note{Just some notes at the moment, organised into similar areas. Not much discussion yet.}
+%\note{Just some notes at the moment, organised into similar areas. Not much discussion yet.}
 % Parametric models (Gaussian smoothing, CRFs) $\leftrightarrow$ non-parametric (patch-based)
 
 % Care about semantic matching $\leftrightarrow$ Don't care about semantics
 
+\note{
+Previous works on completion can be categorised according to:
+\begin{itemize}
+\item their application domain, \ie mesh, 2D photo or voxel. 
+\item whether they aim for aesthetic or absolute accuracy.
+\item whether they take a data-driven approach or make use of heuristics.
+\item if data used for completion come from within the same scene (\eg symmetry), from other scenes (\eg data-driven) or using heuristics.
+\end{itemize}
+I want to try to make use of these (or other) axes of variation in this section.
+}
 
-\paragraph{Nearest neighbours}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Most similar in approach and aim to ours}
 \cite{shen-tog-2012} use an assembly of parts from a CAD database to complete the unseen parts of a model given an RGBD image. 
 While they demonstrate good results they assume they have semantic-specific models of the objects in the dataset.
 Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantical labelling of voxels from an RGBD image. 
 For training, they use manually labelled top-down views of the scene. 
 Their prediction of occupancy, however, is really just a Gaussian model. 
-Final labellings found from graph cuts over the CRF. 
-They make the observation that the observed values from a Kinect sensor can be very bad, and may need cleaning up.
+Their final labellings found from graph cuts over the CRF. 
+They make the observation that the noisy observed values from a Kinect sensor cannot be relied upon and may need cleaning up.
 %Silberman \ea \cite{silberman-eccv-2014} complete holes in partial KinectFusion meshes of indoor scenes.
 
-Fouhey \ea \cite{fouhey-iccv-2013} use the NYU dataset of RGBD images to learn how to predict the normal orientations for each pixel of an input RGB image. 
-In our case we are tackling a similar problem at a higher level --- we take RGBD as input, and aim to predict the full geometry of the scene.
+%Fouhey \ea \cite{fouhey-iccv-2013} use the NYU dataset of RGBD images to learn how to predict the normal orientations for each pixel of an input RGB image. 
+%In our case we are tackling a similar problem at a higher level --- we take RGBD as input, and aim to predict the full geometry of the scene.
 
-\cite{guo-iccv-2013} use a single RGBD image to estimate the location and extent of the \emph{support surfaces} (\eg tabletops) in the scene. They do this by processing and analsing the geometry, before finally fitting shapes to the hypothesised support regions. They provide user-annotated 3D reconstructions of the full 3D space of the NYU dataset images, which could become useful for our work.
+\cite{guo-iccv-2013} use a single RGBD image to estimate the location and extent of the \emph{support surfaces} (\eg tabletops) in the scene. They do this by processing and analysing the geometry, before finally fitting shapes to the hypothesised support regions. They provide user-annotated 3D reconstructions of the full 3D space of the NYU dataset images, which could become useful for our work.
 
-
-\paragraph{Mesh and image completion}
-In the graphics community, there is a lot of work looking at the completion of missing and occluded parts of 3D meshes and 2D images. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Filling holes in meshes}
+In the graphics community, there is a lot of work looking at the completion of missing and occluded parts of 3D meshes. 
 For example, \cite{podolak-esgp-2005} fill holes in a mesh by enforcing watertightness across an octree structure, while \cite{schnabel-eurographics-2009} complete meshes by using primitives extracted from the areas of the scan without missing detail. 
 A good overview of such mesh completion algorithms are given in \cite{ju-cst-2009}.
 
@@ -236,41 +272,42 @@ A good overview of such mesh completion algorithms are given in \cite{ju-cst-200
 They use this for augmeted realist situations, \eg allowing balls to bounce off floor in unseen areas.
 They detect planes in the voxelised representation of the scene, and complete their contours in 2D using a novel CRF method.
 
-Image completion, such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}, typically has the aim of getting a good visually plausible output irrespective of the accuracy compared to ground truth. 
-The results can be very impressive. 
-\cite{hays-siggraph-2007} look up possible completion regions in a large database of similar images, while \cite{criminisi-cvpr-2003} inpaint by selecting and combining multiple plausible patches from other regions of the input image.
-
-Depth images are a more complex beast than meshes and 2D images, and RGBD datasets on the order of millions of images do not yet exist, so we need to take a different approach.
-
-\paragraph{Super-resolution}
 Similar to mesh completion is super-resolution, \eg \cite{macaodha-eccv-2012}. 
 This, like our problem, is ill-posed and relies on the repeatability and predictability of the world in order to find suitable matches.
-A seminal paper in this field is \cite{freeman-ijcv-2000}, patches from generic training images are used in super-resolution for coarse-grained images. They use Bayesian belief propagation to find the maximum posterior probability over a Markov network defined over the image.
 
-\cite{chang-tor-2007} complete a robot's map of an environment using parts of the already observed world to  `patch in' missing areas of the current map.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Image completion}
+Image completion, such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}, typically has the aim of getting a good visually plausible output irrespective of the accuracy compared to ground truth. 
+The results can be very impressive.
+Image completion typically uses region-based data-driven approaches, as it is very difficult to form generative models of image appearance.
+For example, \cite{hays-siggraph-2007} look up possible completion regions in a large database of similar images, while \cite{criminisi-cvpr-2003} in-paint by selecting and combining multiple plausible patches from other regions of the input image.
 
+%Depth images are a more complex beast than meshes and 2D images, and RGBD datasets on the order of millions of images do not yet exist, so we need to take a different approach.
+
+%\paragraph{Super-resolution}
+%A seminal paper in this field is \cite{freeman-ijcv-2000}, patches from generic training images are used in super-resolution for coarse-grained images. They use Bayesian belief propagation to find the maximum posterior probability over a Markov network defined over the image.
+%\cite{chang-tor-2007} complete a robot's map of an environment using parts of the already observed world to  `patch in' missing areas of the current map.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Symmetry}
 Law and Aliaga \cite{law-cviu-2010} use symmetry to complete partial views. 
 They are limited to only completing partial views; they rely on all objects being symmetrical; and they need user input.
 Similarly, \cite{thrun-iccv-2005} and \cite{kroemer-humanoids-2012} use symmetry to complete models from a single depth view. 
 They both demonstrate results on isolated objects, but not on more complex or cluttered scenes. 
 The constraint of requiring axes of symmetry to both be present and accurately detected is a large limiting factor with these approaches.
+also: \url{http://publik.tuwien.ac.at/files/PubDat_198335.pdf}
 
-\paragraph{Indoor room semantic prediction}
-These works in general try to understand the semantic layout of a scene, \ie given an image infer what objects are in the scene and what their poses are.
-\cite{nan-acm-2012, minkim-siggraphasia-2012}
-This could be seen as finding one-to-many correspondences between models in a database and points in the scene.
-\cite{zhang-eccv-2014} do indoor 3D semantic bounding box prediction using a single 2D panoramic image. They make heavy use of context to drive their predictions.
-In our work, by not restricting ourselves to trying to find semantic correspondences, we are able to model the shape of a far greater range of test scenes without making any assumptions about their semantic makeup.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{3D from a single 2D image}
+Reconstructing PASCAL VOC - \cite{vicente-cvpr-2014}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Indoor room occupied space prediction}
 \cite{hedau-cvpr-2012} seek to recover the free space in 2D images. They label ~500 images with box annotations, and aim to recover the bounding box layout of the scene in order to recover the free space.
-
-In the vision community, most of the work is based around estimating the spatial layout of rooms from images.
-For example \cite{bao-wacv-2014} use multiple images, before SfM and segmentation of the images. 
+\cite{bao-wacv-2014} use multiple images, before SfM and segmentation of the images. 
 They then generate hypotheses of the layout. 
 The hypotheses are chosen by evaluating their geometric cost, which is manually defined. 
-They cite a lot of papers which do scene reasoning from a single image, but they argue that the problem is ill-posed (which it is). 
+%They cite a lot of papers which do scene reasoning from a single image, but they argue that the problem is ill-posed (which it is). 
 
 Using a single image, many people fit bounding boxes and try to estimate the layout using high-level info about gravity, typical scene arrangements etc. 
 For example \cite{choi-cvpr-2013, shao-siggraphasia-2014}.
@@ -282,8 +319,6 @@ A small error in cuboid fitting can lead to a very large misclassification of vo
 \cite{lee-nips-2010} are another paper using a single image to estimate the layout of a room. 
 Similarly, \cite{zhang-iccv-2013} infer the clutter and layout and support and segmentation and labelling from an RGBD image (using the NYU dataset).
 
-\cite{hedau-cvpr-2012} seek to recover the free space in 2D images. 
-They label ~500 images with box annotations, and aim to recover the bounding box layout of the scene in order to recover the free space. 
 A big work in this area is that by \cite{gupta-cvpr-2011}, who estimate voxel occupation before fitting boxes.
 
 Satkin \ea \cite{satkin-bmvc-2012} use 3D models to do scene understanding from a single image, and they demonstrate results on room scenes such as bedrooms and living rooms. 
@@ -302,8 +337,37 @@ All these methods so far assume that the item in the scene has the exact same ge
 These latent axes are found using Gaussian processes.
 This adaptive fitting of generic primitives to the specific instances seen in an image has seen practical application in the graphics community, where it has been used for an impressive interactive photo-editing application \cite{kholgade-siggraph-2014}.
 
+\cite{zhang-eccv-2014} do indoor 3D semantic bounding box prediction using a single 2D panoramic image. They make heavy use of context to drive their predictions.
+In our work, by not restricting ourselves to trying to find semantic correspondences, we are able to model the shape of a far greater range of test scenes without making any assumptions about their semantic makeup.
+
 Render CAD models from multiple directions, combine with sliding window detector: \cite{song-eccv-2014}.
 
+
+\paragraph{General motivation}
+
+ \cite{nan-acm-2012}.
+
+Big issue with ground truth. Most papers don't have proper ground truth and therefore can only really do qualitative results, \eg \cite{all the papers...}.
+
+\paragraph{To add to related work:}
+\begin{itemize}
+\item Teaching 3D Geometry to Deformable Part Models
+\item Things which cited voxel CRF...
+Also: Amodal volume completion: 3D visual completion
+
+Class specific: Single and sparse view 3D reconstruction by learning shape priors
+
+
+%http://scholar.google.co.uk/scholar?safe=off&espv=2&bav=on.2,or.r_cp.r_qf.&bvm=bv.75775273,d.ZWU,pv.xjs.s.en.CtdJ7drbKko.O&ion=1&biw=1164&bih=816&um=1&ie=UTF-8&lr=&cites=16286130882256685425
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Application areas}
+\note{Just some notes and refs which could go here, in intro or no-where}
+
+\paragraph{Scene relighting}
+\cite{ikeda-acpr-2013} perform scene relighting from a single RGBD image, but cannot recover shadows cast by objects in the scene.
+On the other hand, \cite{xiao-cvpr-2014} use the RGBD information to automatically \textit{remove} hard and soft shadows from a single image.
 
 \paragraph{Robotics and path planning}
 Voxels or 2D occupancy grids are often used in robotics for path planning, and for maintaining a map of the environment. 
@@ -312,26 +376,6 @@ These are typically deterministic approaches, \eg \cite{jetchev-icra-2010}. Some
 \cite{stentz-icra-1994} introduced D*, an algorithm similar to A* but for path planing in partially unknown environments. 
 The world is in boxes, with arrows pointing to the direction which should be taken.
 More recently, \cite{plagemann-iros-2008} used Gaussian processes to fill in missing data in terrain models of environments, effectively treating terrain mapping as a regression problem.
-
-\paragraph{General motivation}
-
- \cite{nan-acm-2012}.
-
-Big issue with ground truth. Most papers don't have proper ground truth and therefore can only really do qualitative results, \eg \cite{all the papers...}.
-
-\paragraph{Scene relighting}
-\cite{ikeda-acpr-2013} perform scene relighting from a single RGBD image, but cannot recover shadows cast by objects in the scene.
-On the other hand, \cite{xiao-cvpr-2014} use the RGBD information to automatically \textit{remove} hard and soft shadows from a single image.
-
-\paragraph{Training for scene completion}
-Long history of using training scenes to try to complete and upsample.
-
-\paragraph{To add to related work:}
-\begin{itemize}
-\item Teaching 3D Geometry to Deformable Part Models
-\item Things which cited voxel CRF...
-%http://scholar.google.co.uk/scholar?safe=off&espv=2&bav=on.2,or.r_cp.r_qf.&bvm=bv.75775273,d.ZWU,pv.xjs.s.en.CtdJ7drbKko.O&ion=1&biw=1164&bih=816&um=1&ie=UTF-8&lr=&cites=16286130882256685425
-\end{itemize}
 
 
 
@@ -345,7 +389,7 @@ Long history of using training scenes to try to complete and upsample.
 
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Approach}
+\section{Methodology}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Our approach is somewhat inspired by patch-based methods used for superresolution or similar of depth images. 
@@ -357,24 +401,15 @@ Our approach is somewhat inspired by patch-based methods used for superresolutio
 % Instead, want to find a collection of good matches in the training set which, when combined, will give a sensible prediction of the voxel occupancy.
 % We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
 
-
-\subsection{Definition of occupancy}
-
-We treat a voxel as occupied if you cannot view its state from a camera moving around the scene from its start position.
-So a voxel inside a closed cardboard box, while void of solid object, would be considered occupied.
-On the other hand, a voxel on the inside of a cardboard box open at the top would be considered unoccupied.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Thickness prediction}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 The aim of our thickness prediction function is to map a point $\point$ in the image to a scalar thickness $t$.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Edges in depth images}
+\subsection{Preprocessing and discontinuity mapping}
 Describe here:
 \begin{itemize}
+\item Reprojecting the depth image into the colour camera
+\item Smoothing - both citations
 \item Types of edges (depth, colour, occluding etc)
 \item Our method for depth edges
 \item motivation - why do we care about occlusions?
@@ -385,6 +420,7 @@ We can compute the gradient of the depth edges using PCA on the edge pixels in i
 We ensure that the final gradient at each edge pixel points in the direction of the occluded side.
 
 We can then use the occlusion information in our feature computations --- see for example figure \ref{fig:occluded_region}.
+
 
 
 \begin{figure}
@@ -403,28 +439,16 @@ We can then use the occlusion information in our feature computations --- see fo
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Features}
+\note{Lots of papers \eg microsoft use local features in region of point. For thickness this doesn't cut the mustard, so we augment with region features. However, most region features ignore occlusions. We don't.}
+
 Our method is to use local and regional featues extracted from the image around $\point$ to predict the thickness of the object at that point.
-At each pixel on the dpeth image we compute an angle $\theta$, which represents the direction of the gradient of the depth in the image plane.
-Each of the features are computed with respect to the local reference frame defined by $\theta$.
-This has the effect of making our features invariant to rotations of objects in the camera plane --- computing our features at the same point on an object which has undergone an in-camera-plane rotation should give the same feature.
-
-%We avoid using region-level features
-
 We use two novel features, which we describe in detail here. See also figure \ref{fig:features}.
-%The first, the cobweb feature, captures 
-
 
 \newcommand{\subwidth}{0.32\columnwidth}
 \begin{figure*}
     \centering 
-    \subfigure[$\theta$ at each point]{%
-        \includegraphics[width=\subwidth]{01_angles}}
-        \hfill
     \subfigure[Spider feature]{%
         \includegraphics[width=\subwidth]{02_spider}}
-        \hfill
-    \subfigure[Rotation invariance]{%
-        \includegraphics[width=0.4\columnwidth]{03_spider_rot}}
         \hfill
     \subfigure[Occluded spider]{%
         \includegraphics[width=\subwidth]{04_spider_occ}
@@ -434,12 +458,11 @@ We use two novel features, which we describe in detail here. See also figure \re
         \includegraphics[width=\subwidth]{05_cobweb}}
         \hfill
     \caption{
-    (a) Each point on a depth image has an angle $\theta$ associated, which represents the direction of gradient of the depth. 
+    %(a) Each point on a depth image has an angle $\theta$ associated, which represents the direction of gradient of the depth. 
     (b) The spider features measure the distance between $\point$ and the edge points $e_{1, \cdots, 7}$.
-    (c) Because the spider features are computed relative to $\theta$, the resultant feature vector is invariant to object rotations in the camera plane.
+    %(c) Because the spider features are computed relative to $\theta$, the resultant feature vector is invariant to object rotations in the camera plane.
     (d) Where the spider line emitted from $\point$ first hits an occluded edge, only a \textit{minimum} extent is known --- this case is denoted as \texttt{?} in this figure.
-    (e) The cobweb feature measures the difference in depth between $\point$ and a set of points in the near vicinity of $\point$, arranged in a cobweb shape.
-    The cobweb feature is also computed relative to $\theta$.}%
+    (e) The cobweb feature measures the difference in depth between $\point$ and a set of points in the near vicinity of $\point$, arranged in a cobweb shape.}%
     \label{fig:features}
 \end{figure*}
 
@@ -453,27 +476,18 @@ We use two novel features, which we describe in detail here. See also figure \re
 \end{figure}
 
 
-\subsubsection{Cobweb feature}
-The cobweb feature captures the surface shape in the immediate vicinity of $\point$. 
-It captures very similar data to a patch of the depth image; however, an image patch maintains a constant resolution across the selected region, while the cobweb feature becomes more coarse the farther from $\point$ it is.
+%It captures very similar data to a patch of the depth image; however, an image patch maintains a constant resolution across the selected region, while the cobweb feature becomes more coarse the farther from $\point$ it is.
 %This property helps to reflect the 
+\subsubsection{Cobweb feature}
+The cobweb feature is a simple pairwise feature, inspired by \footnote{\url{http://research.microsoft.com/pubs/145347/bodypartrecognition.pdf}}, capturing the surface shape in the immediate vicinity of $\point$.
 \begin{align}
 f(i, j, \psi, t) &= \rgbdimage_{ij} - \rgbdimage_{ab} \\
-a &= \lfloor i + tm\sin(\theta_{ij}+\psi)\rceil \\
-b &= \lfloor j + tm\cos(\theta_{ij}+\psi)\rceil \\
-m &= \frac{df}{\rgbdimage_{ij}},
+a &= \left\lfloor i + \frac{tdf}{\rgbdimage_{ij}}  \sin(\psi) \right\rceil \\
+b &= \left\lfloor j + \frac{tdf}{\rgbdimage_{ij}}  \cos(\psi) \right\rceil
 \end{align}
 where $f$ is the focal length of the camera and $d$ is a fixed constant in real-world coordinates. For our experiements we set $d=0.02m$ and we compute the cobweb feature for $\psi = [0\degree, 45\degree, \ldots, 315\degree]$, and $t = [1, 2, 3]$. 
 The final cobweb feature is therefore 24-dimensional.
-
-Note that the depth invarience is the same as \url{http://research.microsoft.com/pubs/145347/bodypartrecognition.pdf}
-
-Note also: ``If an offset pixel lies on the background
-or outside the bounds of the image, the depth probe dI (x0) is given a large positive constant value''.
-
-They also do pairwise comparisons between pixels at two offsets, as opposed to just between the centre and the offsets.
-% Dealing with depth discontinuities?
-
+%Note also: ``If an offset pixel lies on the background or outside the bounds of the image, the depth probe dI (x0) is given a large positive constant value''.
 
 
 
@@ -484,11 +498,15 @@ We first compute an edge map for the image.
 We again consider the set of angles $\phi$. Starting from $\point$, we cast a Bresenham line along the depth image until it hits an edge. 
 We denote the point at which the edge was hit as $\point_{e}$.
 
-For each line cast, we store 
+For each line cast, we store
 a) the geodesic distance between $\point$ and $\point_{e}$ along the depth surface, and 
 b) the 3D distance between $\point$ and $\point_{e}$ along the direction of the normal at $\point$. (In practice, we take the point 95\% of the way between $\point$ and $\point_{e}$ in image space, as this helps to prevent problems with poor quality edge data).
 
 The spider feature is therefore 16-dimensional.
+
+While it captures a wide range of information about the region within which a point resides, the spider feature is extremely efficient to compute.
+This is mainly due to the additive nature of the feature: The spider feature in direction $0\degree$ at $(i, j)$ can be computed from summing a small fraction 
+We can compute the 16D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptomised C++ code; we would expect a significant speedup were this to be implemented on a GPU.
 
 \subsubsection{Occluded spider features}
 
@@ -511,7 +529,7 @@ We use a generative model to sample the missing feature from the minimum size in
 %\subsubsection{}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Learning}
+\subsection{Thickness Forest}
 
 We train a Random Forest using a total of 1,000,000 training examples extracted from 1,600 CAD models, each rendered from 42 different angles.
 
