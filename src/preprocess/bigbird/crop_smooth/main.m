@@ -35,7 +35,7 @@ for model_idx = 1:length(modelnames)
         % loading, cropping
         try
             bb = load_bigbird(modelname, view);
-            bb_cropped = reproject_csrop_and_smooth(bb);
+            bb_cropped = reproject_crop_and_smooth(bb);
             %plot_bb(bb_cropped)
 
             % saving to disk
@@ -44,7 +44,8 @@ for model_idx = 1:length(modelnames)
         catch err
             disp(err.message)
         end
-        disp(num2str(view_idx))
+	fprintf('%d ', view_idx);
+        %disp(num2str(view_idx))
       
     end
     

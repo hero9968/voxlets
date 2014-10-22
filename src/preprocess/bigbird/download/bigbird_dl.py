@@ -59,8 +59,8 @@ def is_decimated(objname):
 def exists(name):
     return os.path.exists(tmp_dir + name + ".tgz")
 
-def calbibration_exists(name):
-    return os.path.exists(base_path + name "/calibration.h5")
+def calibration_exists(name):
+    return os.path.exists(base_path + name + "/calibration.h5")
 
 def download_rgbd(name):
     base_url = "http://rll.berkeley.edu/bigbird/aliases/863afb5e73/export/"
@@ -101,16 +101,16 @@ names = get_object_names()
 for idx, name in enumerate(names):
 
     try:
-        if not exists(name):
+        if not exists(name) or not calibration_exists(name):
             download_rgbd(name)
             unpack_rgbd(name)
             print "Downloaded " + name
         else:
             print name + " already exists"
 
-        if not calbibration_exists(name):
-            unpack_rgbd(name)
-            print "Just unpacked " + name
+        #if not calbibration_exists(name):
+        #    unpack_rgbd(name)
+        #    print "Just unpacked " + name
 
         if not is_decimated(name):
             remove_unwanted_rgbd(name)
