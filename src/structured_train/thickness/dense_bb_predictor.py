@@ -83,11 +83,11 @@ class DensePredictor(object):
 
         print self.Y_pred.shape
 
-        self.prediction_image = disp.reconstruct_image(test_idxs, self.Y_pred, (240, 320))
+        self.prediction_image = disp.reconstruct_image(test_idxs, self.Y_pred, self.im.mask.shape)
 
         # doing GT...
         self.Y_gt = np.array(self.all_features['depth_diffs'])
-        self.GT_image = disp.reconstruct_image(test_idxs, np.array(self.Y_gt), (240, 320))
+        self.GT_image = disp.reconstruct_image(test_idxs, np.array(self.Y_gt), self.im.mask.shape)
 
 
     def prediction_gt_image(self):
@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     # loading the saved forest
     print "Loading forest..."
-    rf = pickle.load( open(paths.rf_folder_path_small + "patch_spider_5k_10trees.pkl", "r") )
+    rf = pickle.load( open(paths.rf_folder_path + "patch_spider_1M_100trees.pkl", "r") )
 
     #'2566f8400d964be69c3cb90632bf17f3' #
     #modelname = '109d55a137c042f5760315ac3bf2c13e'
