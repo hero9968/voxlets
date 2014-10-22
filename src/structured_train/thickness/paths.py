@@ -26,7 +26,8 @@ data_type = 'bigbird'
 if data_type=='bigbird':
     # paths to do with the dataset as a whole
     models_list = base_path + 'bigbird/bb_to_use.txt'
-    split_path = base_path + 'bigbird/split.mat'
+    train_path = base_path + 'bigbird/bb_train.txt'
+    test_path = base_path + 'bigbird/bb_test.txt'
     feature_path = base_path + 'bigbird_features/'
 
     f = open(base_path+'bigbird/poses_to_use.txt', 'r')
@@ -40,6 +41,8 @@ if data_type=='bigbird':
     model_config = base_path + 'bigbird/models_config.yaml'
     rf_folder_path = base_path + "bigbird_models/rf_models/"
     rf_folder_path_small = base_path + "bigbird_models/rf_models_small/"
+
+    dense_savefolder = base_path + "bigbird_dense/"
 
 
 elif data_type=='cad':
@@ -59,6 +62,7 @@ elif data_type=='cad':
     rf_folder_path = base_path + "structured/rf_models/"
     rf_folder_path_small = base_path + "structured/rf_models_small/"
 
+    dense_savefolder = base_path + "structured/dense_predictions/"
 
 
 # locations of the combined features
@@ -66,8 +70,6 @@ combined_test_features = combined_features_path + 'test.pkl'
 combined_test_features_small = combined_features_path + 'test_small.pkl'
 combined_train_features = combined_features_path + 'train.pkl'
 combined_train_features_small = combined_features_path + 'train_small.pkl'
-
-
 
 # paths for the dense predictions
 #dense_predictions = base_path + 
