@@ -12,6 +12,7 @@ class Mesh(object):
     def __init__(self):
         self.vertices = []
         self.faces = []
+        self.norms = []
 
 
     def load_from_ply(self, filename):
@@ -35,6 +36,7 @@ class Mesh(object):
             
         return np_vertex_data, faces
 
+
     def apply_transformation(self, trans):
         '''
         apply a 4x4 transformation matrix to the vertices
@@ -45,6 +47,41 @@ class Mesh(object):
         for idx in [0, 1, 2]:
             temp_transformed[:, idx] /= temp_transformed[:, 3]
         self.vertices = temp_transformed[:, :3]
+
+
+    def _normalize_v3(self, arr):
+        ''' Normalize a numpy array of 3 component vectors shape=(n,3) '''
+        lens = numpy.sqrt( arr[:,0]**2 + arr[:,1]**2 + arr[:,2]**2 )
+        arr[:,0] /= lens
+        arr[:,1] /= lens
+        arr[:,2] /= lens                
+        return arr
+
+
+    def compute_vertex_normals(self):
+        '''
+        https://sites.google.com/site/dlampetest/python/calculating-normals-of-a-triangle-mesh-using-numpy
+        '''
+        norms = np.zeros( self.vertices.shape, dtype=self.vertices.dtype )
+        #Create an indexed view into the vertex array using the array of three indices for triangles
+        tris = self.vertices[self.faces]
+        #Calculate the normal for all the triangles, by taking the cross product of the vectors v1-v0, and v2-v0 in each triangle             
+        n = np.cross( tris[::,1 ] - tris[::,0]  , tris[::,2 ] - tris[::,0] )
+        # n is now an array of normals per triangle. The length of each normal is dependent the vertices, 
+        # we need to normalize these, so that our next step weights each normal equally.
+        n = self._normalize_v3(n)
+        # now we have a normalized array of normals, one per triangle, i.e., per triangle normals.
+        # But instead of one per triangle (i.e., flat shading), we add to each vertex in that triangle, 
+        # the triangles' normal. Multiple triangles would then contribute to every vertex, so we need to normalize again afterwards.
+        # The cool part, we can actually add the normals through an indexed view of our (zeroed) per vertex normal array
+        norms[ self.faces[:,0] ] += n
+        norms[ self.faces[:,1] ] += n
+        norms[ self.faces[:,2] ] += n
+        norms = normalize_v3(norms)
+
+        self.norms = norms
+
+
         
 
 
