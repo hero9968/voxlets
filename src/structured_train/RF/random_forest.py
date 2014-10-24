@@ -6,12 +6,12 @@ from joblib import Parallel, delayed
 
 class ForestParams:
     def __init__(self):
-        self.num_tests = 200
-        self.min_sample_cnt = 2
+        self.num_tests = 4
+        self.min_sample_cnt = 100
         #self.max_depth = 30.0
         self.max_depth = 10
         self.num_trees = 20
-        self.bag_size = 0.1
+        self.bag_size = 0.6
         self.train_parallel = False
 
 
@@ -178,8 +178,6 @@ class Tree:
             # TODO is this the best way of checking info gain?
             #if info_gain[best_split] > self.tree_params.min_info_gain:
             # create new child nodes and update current node
-           
-
             node.update_node(test_inds1[best_split], test_thresh[best_split], info_gain[best_split])
             node.create_children(test_res[:, best_split], impurity_l[best_split], prob_l[best_split],
                                  impurity_r[best_split], prob_r[best_split])
