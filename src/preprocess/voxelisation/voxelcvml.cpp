@@ -99,14 +99,14 @@ int main(int argc, char **argv)
 
 	if (!readOBJ(geometry, filename))
 	{
-		cout << "Could not read file" << endl;
+		cerr << "Could not read file" << endl;
 		return(1);
 	}
 
     float voxel_size = 0.001f;
 	if (!cvmlcpp::voxelize(geometry, voxels, voxel_size))
 	{
-		cout << "Could not voxelise" << endl;
+		cerr << "Could not voxelise" << endl;
 		return(1);
 	}
 
