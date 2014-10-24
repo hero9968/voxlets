@@ -22,13 +22,54 @@ class Voxels(object):
 	def sum_positive(self):
 		return np.sum(self.V > 0)
 
+class WorldVoxels(Voxels):
+	'''
+	a regulare grid of voxels in the real world
+	this now includes voxel size
+	and the translation to the origin of the grid
+	'''
+	def __init__(self):
+		pass
+
+
+	def set_voxel_size(self, vox_size):
+		'''should be scalar'''
+		self.vox_size = vox_size
+
+
+	def set_origin(self, origin):
+		'''setting the origin in world space'''
+		assert origin.shape[0] == 3
+		self.origin = origin
+
+
+	def init_and_populate(self, indices):
+		'''initialises the grid and populates, based on the indices in idx
+		waits until now to initialise so it can be the correct size
+		'''
+		grid_size = np.max(indices, axis=0)+1
+		print grid_size
+		Voxels.__init__(self, grid_size, np.int8)
+		print indices[:, 0]
+		self.V[indices[:, 0], indices[:, 1], indices[:, 2]] = 1
+
+
+	def populate_from_txt_file(self, filepath):
+		'''
+		loads 3d locations from txt file
+		'''
+		pass
+
+
+
+
 
 class KinFuVoxels(Voxels):
 	'''
 	voxels as computed and save by KinFu
 	'''
 	def __init__(self):
-		Voxels.__init__((512, 512, 512), np.float32)
+		Voxels.__init__(self, (512, 512, 512), np.float32)
 
 	def read_from_pcd(self, filename):
 		''' 
@@ -43,7 +84,7 @@ class KinFuVoxels(Voxels):
 		# populate voxel grid
 		for line in fid:
 			t = line.split()
-			self.V[int(t[0]), int(t[1]), int(t[2])] = 1 - t[3]
+			self.V[int(t[0]), int(t[1]), int(t[2])] = float(t[3])
 
 	def fill_full_grid(self):
 		'''
@@ -65,7 +106,10 @@ class FrustumGrid(Voxels):
 	For now this is hard-coded as uint8
 	'''
 
-	def __init__(self, imagesize, d_front, d_back, focal_length	):
+	def __init__(self):
+		pass
+
+	def set_params(self, imagesize, d_front, d_back, focal_length):
 		'''
 		sets up the voxel grid. Also computes the number of voxels along the depth direction
 		'''
@@ -75,9 +119,29 @@ class FrustumGrid(Voxels):
 		self.imagesize = imagesize
 
 		# work out the optimal number of voxels to put along the length
-		self.m = 2 * focal_length * (d_back - d_front) / (d_front + d_back)
+		self.m = np.ceil(2 * focal_length * (d_back - d_front) / (d_front + d_back))
+		self.depth_vox_size = (d_back - d_front) / self.m
 
-		Voxels.__init__(imagesize.append(self.m), np.float32)
+		gridsize = [imagesize[0], imagesize[1], self.m]
+		Voxels.__init__(self, gridsize, np.float32)
+
+	def vox_locations_in_camera_coords(self):
+		'''
+		returns a meshgrid representation of the camera coords of every
+		voxel in the grid, in the coordinates of the camera
+		'''
+		#ax0 = np.arange(self.V.shape[0])
+		#ax1 = np.arange(self.V.shape[1])
+		#ax2 = np.arange(self.V.shape[2]) * self.m + self.d_front
+
+		# 0.5 offset beacuse we ant the centre of the voxels
+		A, B, C = np.mgrid[0.5:self.V.shape[0]+0.5, 
+				 		   0.5:self.V.shape[1]+0.5,
+				 		   0.5:self.V.shape[2]+0.5]
+
+		C = C * self.depth_vox_size + self.d_front # scaling for depth
+		grid = np.vstack((A.flatten(), B.flatten(), C.flatten()))
+		return grid
 
 
 	def depth_to_index(self, depth):
@@ -85,13 +149,13 @@ class FrustumGrid(Voxels):
 		for a given real-world depth, computes the voxel index in the z direction, in {0,1,...,m}
 		if the depth is out of range, returns -1
 		'''
-		if depth > self.d_back or depth < self.d_front:
-			return -1
-		else:
-			scaled_depth = (depth - self.d_front) / (self.d_back - self.d_front)
-			index = int(scaled_depth * self.m)
-			assert index >= 0 and index < self.V.shape[2]
-			return index
+		#if depth > self.d_back or depth < self.d_front:
+		#	return -1
+		#else:
+		scaled_depth = (depth - self.d_front) / (self.d_back - self.d_front)
+		index = int(scaled_depth * self.m)
+		#assert index >= 0 and index < self.V.shape[2]
+		return index
 
 
 	def populate(self, frontrender, back_predictions):
@@ -99,21 +163,24 @@ class FrustumGrid(Voxels):
 		fills the frustum grid with the predictions from the forest output
 		could get this to redefine the d_back and d_front
 		'''
-		assert(frontrender.shape == self.imagesize.shape)
-		assert(back_predictions[0].shape == self.imagesize.shape)
+		assert(frontrender.shape == self.imagesize)
+		assert(back_predictions[0].shape == self.imagesize)
 
 		# this is the addition to occupancy a vote from one tree makes
 		per_tree_contribution = 1/float(len(back_predictions))
 
 		# find the locations in frontrender which are non-nan
-		non_nans = np.nonzero(~np.isnan(frontrender))
+		non_nans = np.array(np.nonzero(~np.isnan(frontrender))).T
 
 		# populate the voxel array
 		for tree in back_predictions:
-			for col, row in non_nans:
-				start_idx = self.depth_to_index(frontrender[row, col])
-				end_idx = self.depth_to_index(tree[row, col])
+			for row, col in non_nans:
+				#print row, col, frontrender[row, col], tree[row, col]
+				start_idx = max(0, self.depth_to_index(frontrender[row, col]))
+				end_idx = min(self.V.shape[2], self.depth_to_index(tree[row, col]))
 
+				if np.isnan(start_idx) or np.isnan(end_idx):
+					continue
 				self.V[row, col, start_idx:end_idx] += per_tree_contribution
 
 

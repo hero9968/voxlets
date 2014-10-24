@@ -40,6 +40,33 @@ class RGBDImage(object):
         self.depth[self.depth==0] = np.nan
         self.assert_depth_rgb_equal()
 
+    def load_depth_from_pgm(self, pgm_path):
+        ''' the kinfu routine hack i made does pgm like this'''
+
+        # reading header
+        f = open(pgm_path, 'r')
+        assert(f.readline().strip()=="P2")
+        sizes = f.readline().split()
+        height = int(sizes[1])
+        width = int(sizes[0])
+        max_depth = f.readline()
+
+        # pre-allocating
+        self.depth = np.zeros((height, width))
+        for row_idx, row in enumerate(f):
+            for col_idx, col in enumerate(row.strip().split(" ")):
+                self.depth[row_idx, col_idx] = float(col)
+
+        self.depth[self.depth==0] = np.nan
+
+    def load_kinect_defaults(self):
+        '''
+        sets the intrinsics to some kinect default
+        '''
+        K = np.array([[570.0, 0, 320.0], [0, 570.0, 240.0], [0, 0, 1]])
+        self.set_intrinsics(K)
+
+
     def assert_depth_rgb_equal(self):
         pass
         #if self.depth.size > 0 and self.rgb.size > 0:

@@ -70,9 +70,31 @@ class Camera(object):
 
     def set_intrinsics(self, K):
         self.K = K
+        self.inv_K = np.linalg.inv(K)
 
     def set_extrinsics(self, H):
+        '''extrinsics should be the location of the camera relative to the world origin'''
         self.H = H
+        self.inv_H = np.linalg.inv(H)
+
+    def load_extrinsics_from_dat(self, filepath):
+        '''
+        loads extrinsics from my own shitty dat file.
+        in hindsight I should have written this as a yaml
+        but it's too late now
+        maybe
+        '''
+        f = open(filepath)
+        f.readline() # throw away
+        T = np.array(f.readline().split(' ')).astype(float)[np.newaxis, :].T
+        f.readline() # throw away
+        R = np.array([f.readline().strip().split(' '), 
+                      f.readline().strip().split(' '), 
+                      f.readline().strip().split(' ')]).astype(float)
+        H = np.concatenate((R, T), axis=1)
+        H = np.concatenate((H, np.array([0, 0, 0, 1])[np.newaxis, :]), axis=0)
+        self.set_extrinsics(H)
+
 
     def adjust_intrinsic_scale(self, scale):
         '''
@@ -106,17 +128,45 @@ class Camera(object):
         self.set_extrinsics(np5_to_this_camera.dot(mesh_to_np5))
         self.set_intrinsics(intrinsics)
 
+
     def project_points(self, xyz):
         '''
         projects nx3 points xyz into the camera image
         returns their 2D projected location
         '''
+        assert(xyz.shape[1] == 3)
         temp_xyz = self._apply_homo_transformation(xyz, self.H)
+        raise Exception("unsure if H should be inverted - be careful")
         temp_trans = self._apply_transformation(temp_xyz, self.K)
         temp_trans[:, 0] /= temp_trans[:, 2]
         temp_trans[:, 1] /= temp_trans[:, 2]
         return temp_trans#[:, 0:2]
-        
+
+
+    def inv_project_points(self, uvd):
+        '''
+        throws u,v,d points in pixel coords (and depth)
+        out into the real world, based on the transforms provided
+        '''
+        assert(uvd.shape[1] == 3)
+        n_points = uvd.shape[0]
+
+        # creating the camera rays
+        uv1 = np.hstack((uvd[:, :2], np.ones((n_points, 1))))
+        camera_rays = np.dot(self.inv_K, uv1.T).T
+
+        # forming the xyz points in the camera coordinates
+        temp = uvd[:, 2][np.newaxis, :].T
+        xyz_at_cam_loc = temp * camera_rays
+
+        # transforming points under the extrinsics
+        xyz_in_world = self._apply_homo_transformation(xyz_at_cam_loc, self.H)
+        xyz_in_world[:, 0] /= xyz_in_world[:, 3]
+        xyz_in_world[:, 1] /= xyz_in_world[:, 3]
+        xyz_in_world[:, 2] /= xyz_in_world[:, 3]
+        return xyz_in_world[:, :3], xyz_at_cam_loc, uv1, camera_rays
+
+
     def _apply_transformation(self, xyz, trans):
         '''
         apply a 3x3 transformation matrix to the vertices
