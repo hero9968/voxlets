@@ -3,21 +3,21 @@ script to voxelise all the bigbird meshes
 '''
 import os
 from subprocess import call
+import sys
 
-base_path = '/Users/Michael/projects/shape_sharing/data/'
-models_path = base_path + 'bigbird/all_bigbird.txt'
+sys.path.append('/Users/Michael/projects/shape_sharing/src/structured_train/')
+from thickness import paths
 
-f = open(models_path, 'r')
-for ff in f:
-    modelname = ff.strip()
 
-    out_path = base_path + "bigbird_meshes/" + modelname + "/meshes/voxelised.txt"
+for modelname in paths.modelnames:
+
+    out_path = paths.base_path + "bigbird_meshes/" + modelname + "/meshes/voxelised.vox"
 
     if os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
         print "Skipping " + modelname
         continue
 
-    mesh_path = base_path + "bigbird_meshes/" + modelname + "/meshes/poisson.obj"
+    mesh_path = paths.base_path + "bigbird_meshes/" + modelname + "/meshes/poisson.obj"
 
     f = open(out_path, "w")
 
@@ -25,4 +25,3 @@ for ff in f:
     call(['./voxelcvml', mesh_path], stdout=f)
 
     print "Done " + modelname
-    #break

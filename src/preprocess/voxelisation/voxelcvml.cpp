@@ -116,10 +116,20 @@ int main(int argc, char **argv)
 	size_t Y =  extents[1];
 	size_t Z =  extents[0];
 
-	// outputting the matrix to disk somehow...
-	//cout << extents[0] << " " << extents[1] << " " << extents[2] << endl;
-    //cout << geometry.min(0) << " " << geometry.min(1) << " " << geometry.min(2) << endl;
-    cerr << "About to spit out" << endl;
+    cerr << "About to spit out yaml file..." << endl;
+
+    cout << "origin:" << endl;
+    cout << geometry.min(0) << " " 
+          << geometry.min(1) << " " 
+          << geometry.min(2) << endl;
+
+    cout << "extents:" << endl;
+    cout << Z << " " << Y << " " << X << endl;
+
+    cout << "voxel_size:" << endl;
+    cout << voxel_size << endl;
+
+    cout << "vox:" << endl;
     // printing the locations of the occupied voxels to disk
     cvmlcpp::Matrix<int, 3u>::iterator it = voxels.begin();// it != voxels.end(); ++it
     for (size_t zi = 0; zi < Z; ++zi)
@@ -128,22 +138,11 @@ int main(int argc, char **argv)
             {
                 if (*it > 0.5)
                 {
-                    cout << geometry.min(0) + (float)zi * voxel_size << " "
-                         << geometry.min(1) + (float)yi * voxel_size << " "
-                         << geometry.min(2) + (float)xi * voxel_size << endl;
+                    cout << zi << " " << yi << " " << xi << endl;
+                         
                 }
                 ++it;
             }
-
-    /*
-	// printing voxels to disk
-    for ( cvmlcpp::Matrix<int, 3u>::iterator it = voxels.begin(); it != voxels.end(); ++it )
-	{
-		cout << *it << ", ";
-	}
-	cout << endl;
-    */
-
 
 	return 0;
 }
