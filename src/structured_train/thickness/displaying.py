@@ -3,6 +3,7 @@ Package for displaying of data and image manipulations etc.
 '''
 import numpy as np
 import compute_data
+import matplotlib.pyplot as plt
 
 def nans(shape, dtype=float):
     '''
@@ -47,3 +48,27 @@ def findfirst(array):
         return T[0][0]
     else:
         return np.nan
+
+from skimage import measure
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+def display_mesh_of_vol(vol, countour_level, title_text="", figure_id=0):
+
+    # create mesh and display
+    verts, faces = measure.marching_cubes(vol, countour_level)
+    fig = plt.figure(figure_id, figsize=(8, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    mesh = Poly3DCollection(verts[faces])
+    ax.add_collection3d(mesh)
+
+    ax.set_xlabel("x-axis")
+    ax.set_ylabel("y-axis")
+    ax.set_zlabel("z-axis")
+
+    ax.set_xlim(0, vol.shape[0])
+    ax.set_ylim(0, vol.shape[1])
+    ax.set_zlim(0, vol.shape[2])
+
+    plt.title(title_text)
+    plt.show()
