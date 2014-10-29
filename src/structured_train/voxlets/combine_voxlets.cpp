@@ -34,6 +34,7 @@ int main()
         // From the example above, "LevelSetSphere" is known to be a FloatGrid,
         // so cast the generic grid pointer to a FloatGrid pointer.
         openvdb::FloatGrid::Ptr grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+        grid->tree().prune();
         voxlets.push_back(grid);
     }
     file.close();
@@ -52,7 +53,7 @@ int main()
     {
 
         // load the cluster idx and associated transform
-        size_t voxlet_idx = config[i]["clust_idx"].as<size_t>();
+        size_t voxlet_idx = config[i]["cluster_idx"].as<size_t>();
 
         double transform[16];
         for (size_t j = 0; j < 16; ++j) {
@@ -82,7 +83,7 @@ int main()
         openvdb::tools::compSum(*output, *voxlet_trans);
 
         // Prune the target tree for optimal sparsity.
-        output->tree().prune();
+//        output->tree().prune();
 
     }
 

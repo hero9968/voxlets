@@ -11,6 +11,8 @@ temp.*
 *.vdb
 *.pyc
 *.pptx
+*.dylib
+combine_voxlets
 /media/ppt/
 /media/results/
 /media/notes/
