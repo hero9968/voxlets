@@ -33,6 +33,12 @@ if data_type=='bigbird':
     f = open(base_path+'bigbird/poses_to_use.txt', 'r')
     views = [line.strip() for line in f]
 
+    f = open(train_path, 'r')
+    train_names = [line.strip() for line in f]
+    
+    f = open(test_path, 'r')
+    test_names = [line.strip() for line in f]
+
     model_features = base_path + 'bigbird_features/'
 
     combined_features_path = base_path + "bigbird_combined/"

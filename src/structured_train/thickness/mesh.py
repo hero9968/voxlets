@@ -2,12 +2,13 @@ import numpy as np
 #https://github.com/dranjan/python-plyfile
 import paths
 import h5py
+from plyfile import PlyData, PlyElement
 
 class Mesh(object):
     '''
     class for storing mesh data eg as read from a ply file
     '''
-    #from plyfile import PlyData, PlyElement
+    
 
     def __init__(self):
         self.vertices = []
@@ -51,7 +52,7 @@ class Mesh(object):
 
     def _normalize_v3(self, arr):
         ''' Normalize a numpy array of 3 component vectors shape=(n,3) '''
-        lens = numpy.sqrt( arr[:,0]**2 + arr[:,1]**2 + arr[:,2]**2 )
+        lens = np.sqrt( arr[:,0]**2 + arr[:,1]**2 + arr[:,2]**2 )
         arr[:,0] /= lens
         arr[:,1] /= lens
         arr[:,2] /= lens                
@@ -77,7 +78,7 @@ class Mesh(object):
         norms[ self.faces[:,0] ] += n
         norms[ self.faces[:,1] ] += n
         norms[ self.faces[:,2] ] += n
-        norms = normalize_v3(norms)
+        norms = self._normalize_v3(norms)
 
         self.norms = norms
 
@@ -91,7 +92,7 @@ class BigbirdMesh(Mesh):
         '''
         loads a bigbird mesh
         '''
-        mesh_path = paths.bigbird_folder + objname + "/meshes/poisson.ply"
+        mesh_path = paths.base_path + "/bigbird_meshes/" + objname + "/meshes/poisson.ply"
         self.load_from_ply(mesh_path)
 
 
@@ -141,6 +142,7 @@ class Camera(object):
         self.K[1, 1] *= scale 
         self.K[0, 2] *= scale 
         self.K[1, 2] *= scale 
+        self.inv_K = np.linalg.inv(self.K)
 
 
     def load_bigbird_matrices(self, modelname, imagename):
@@ -173,7 +175,7 @@ class Camera(object):
         '''
         assert(xyz.shape[1] == 3)
         temp_xyz = self._apply_homo_transformation(xyz, self.H)
-        raise Exception("unsure if H should be inverted - be careful")
+        # upon inspection it seems totally cool that self.H is used...
         temp_trans = self._apply_transformation(temp_xyz, self.K)
         temp_trans[:, 0] /= temp_trans[:, 2]
         temp_trans[:, 1] /= temp_trans[:, 2]
@@ -197,11 +199,29 @@ class Camera(object):
         xyz_at_cam_loc = temp * camera_rays
 
         # transforming points under the extrinsics
-        xyz_in_world = self._apply_homo_transformation(xyz_at_cam_loc, self.H)
-        xyz_in_world[:, 0] /= xyz_in_world[:, 3]
-        xyz_in_world[:, 1] /= xyz_in_world[:, 3]
-        xyz_in_world[:, 2] /= xyz_in_world[:, 3]
-        return xyz_in_world[:, :3], xyz_at_cam_loc, uv1, camera_rays
+        return self._apply_normalised_homo_transform(xyz_at_cam_loc, np.linalg.inv(self.H))
+
+
+    def inv_transform_normals(self, normals):
+        '''
+        Transforms normals under the camera extrinsics, such that they end up 
+        pointing the correct way in world space
+        '''
+        assert normals.shape[1] == 3
+        R = np.linalg.inv(self.H[:3, :3])
+        #R = self.H[:3, :3]
+        #print np.linalg.inv(self.H[:3, :3])
+        #print np.linalg.inv(self.H)[:3, :3]
+        return np.dot(R, normals.T).T
+
+
+
+    def _apply_normalised_homo_transform(self, xyz, trans):
+        '''
+        applies homogeneous transform, and also does the normalising...
+        '''
+        temp = self._apply_homo_transformation(xyz, trans)
+        return temp[:, :3] / temp[:, 3][:, np.newaxis]
 
 
     def _apply_transformation(self, xyz, trans):

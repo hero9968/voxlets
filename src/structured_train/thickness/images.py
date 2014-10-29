@@ -167,7 +167,7 @@ class RGBDImage(object):
         plt.subplot(223) 
         plt.imshow(self.mask)
         plt.subplot(224) 
-        if self.edges:
+        if hasattr(self, 'edges') and self.edges:
             plt.imshow(self.edges)
             plt.show()
 
@@ -252,21 +252,35 @@ class CroppedRGBD(RGBDImage):
         self.depth = D['depth']     # this is the depth after smoothing
         self.frontrender = D['front_render'] # rendered from the voxel data
         self.backrender = D['back_render'] # rendered from the voxel data
-        self.aabb = D['aabb']  # can't remember the exact meaning of this...
-        self.K = D['T_K_rgb'] # as the depth has been reprojected into the RGB image, don't need the ir extrinsics or intrinscs
+        self.aabb = D['aabb'].flatten()  # [left, right, top bottom]
+        self.set_intrinsics(D['T_K_rgb']) # as the depth has been reprojected into the RGB image, don't need the ir extrinsics or intrinscs
         self.H = D['T_H_rgb'] 
+        # reshaping the xyz to be row-major... better I think and less likely to break
         self.mask = ~np.isnan(self.frontrender)#D['mask']
 
+        old_shape = [3, self.mask.shape[1], self.mask.shape[0]]
+
+        # the following line is a hack to convert from matlab row-col order to python
+        self.xyz = D['xyz'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
+        
         # loading the spider features
         spider_path = paths.base_path + 'bigbird_cropped/' + modelname + '/' + viewname + '_spider.mat'
         D = scipy.io.loadmat(spider_path)
         self.spider_channels = D['spider']
-        self.normals = D['normals']
+
+        # the following line is a hack to convert from matlab row-col order to python
+        self.normals = D['normals'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
+        #self.normals[:, [0, 1]] = self.normals[:, [1, 0]]
 
         self.angles = 0*self.depth
 
         self.view_idx = viewname
         self.modelname = modelname
+
+        # need here to create the xyz points from the image in world (not camera) coordinates...
+        R = np.linalg.inv(self.H[:3, :3].T)
+        T = self.H[3, :3]
+        #self.world_xyz = np.dot(R, (self.xyz - T).T).T# + 
 
     def depth_difference(self, index):
         ''' 
@@ -274,6 +288,21 @@ class CroppedRGBD(RGBDImage):
         renders at the specified (i, j) index
         '''
         return self.backrender[index[0], index[1]] - self.frontrender[index[0], index[1]]
+
+
+    def get_uvd(self):
+        '''
+        returns an nx3 numpy array where each row is the (col, row) index
+        location in the image, and the depth at that pixel
+        '''
+        cols = np.arange(self.aabb[0], self.aabb[1]+1)
+        rows = np.arange(self.aabb[2], self.aabb[3]+1)
+
+        [all_cols, all_rows] = np.meshgrid(cols, rows)
+
+        return np.vstack((all_cols.flatten(), 
+                          all_rows.flatten(), 
+                          self.depth.flatten())).T
 
 
 
