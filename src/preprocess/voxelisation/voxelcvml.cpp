@@ -69,11 +69,11 @@ bool readOBJ(cvmlcpp::Geometry<T> &geometry, const std::string filename)
 	    		assert(f1!=f2);
 	    		assert(f2!=f3);
 	    		assert(f1!=f3);
-	    		if (point_keys.at(f1)!=point_keys.at(f2) && 
-	    			point_keys.at(f1)!=point_keys.at(f3) &&
-	    			point_keys.at(f3)!=point_keys.at(f2))
+	    		if (point_keys.at(f1-1)!=point_keys.at(f2-1) && 
+	    			point_keys.at(f1-1)!=point_keys.at(f3-1) &&
+	    			point_keys.at(f3-1)!=point_keys.at(f2-1))
 	    		{
-		    		geometry.addFacet(point_keys.at(f1), point_keys.at(f2), point_keys.at(f3));
+		    		geometry.addFacet(point_keys.at(f1-1), point_keys.at(f2-1), point_keys.at(f3-1));
 		    	}
     			break;
     		default:

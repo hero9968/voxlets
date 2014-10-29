@@ -1,6 +1,7 @@
 import os
 from subprocess import call
 from plyfile import PlyData, PlyElement
+import numpy as np
 
 base_path = os.path.expanduser("~/projects/shape_sharing/data/")
 models_list = base_path + 'bigbird/bb_to_use.txt'
@@ -40,7 +41,7 @@ def write_obj(vertices, faces, filename):
         f.write("v " + str(vertex[0]) + " " + str(vertex[1]) + " " + str(vertex[2]) + "\n")
 
     for face in faces:
-        f.write("f " + str(face[0]) + " " + str(face[1]) + " " + str(face[2]) + "\n")
+        f.write("f " + str(face[0]+1) + " " + str(face[1]+1) + " " + str(face[2]+1) + "\n")
 
 
 f = open(models_list, 'r')
@@ -51,9 +52,9 @@ for idx, line in enumerate(f):
     ply_file = base_path + "bigbird_meshes/" + modelname + '/meshes/poisson.ply'
     obj_file = base_path + "bigbird_meshes/" + modelname + '/meshes/poisson.obj'
 
-    if os.path.exists(obj_file):
-        print "Skipping " + modelname
-        continue
+    #if os.path.exists(obj_file):
+        #print "Skipping " + modelname
+        #continue
 
     vertices, faces = load_from_ply(ply_file)
     write_obj(vertices, faces, obj_file)
