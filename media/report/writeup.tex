@@ -15,6 +15,7 @@
 \usepackage{subfigure}
 \usepackage{nonfloat}
 \usepackage{url}
+\usepackage[colorlinks=true, linkcolor=green, pagebackref]{hyperref}
 \usepackage{textcomp} % for textonehalf
 %\usepackage{subref}
 \graphicspath{{imgs/}}
@@ -120,12 +121,12 @@ There has been much research in vision in going from 2D images and depth images 
 Many approaches rely on the fusion of images of a scene or object captured from multiple viewpoints \cite{izadi-uist-2011, vicente-cvpr-2014}, effectively bypassing the effect of occlusion.
 Instead, we focus on the task of classifying each voxel in a 3D scene as being either `occupied' or `vacant' given just a single depth image from one viewpoint (figure \ref{fig:intro}).
 
-The set of use cases for such a 3D reconstruction from a single image is large and diverse.
+%The set of use cases for such a 3D reconstruction from a single image is large and diverse.
+There are many different applications for such a 3D reconstruction from a single image.
 When a robot sets out to grasp an unknown object in an unknown environment, it is unlikely to be able to grip the object solely on the visible face: Instead the `fingers' of the robot hand must extend into unseen regions of the scene.
 A 3D model of the immediate environment can be used to enable this grasping to take place without colliding with the object or nearby clutter.
 In graphics, adding a new light source to an image after it has been captured can be a laborious and challenging task due to the many shadows and highlights which are typically manually added to the scene.
 A full 3D model of the scene can allow for the automated addition of realistic shadows using ray-tracing techniques, making such operations easier to effect.
-
 
 \newcommand{\introsubwidth}{0.48\columnwidth}
 \begin{figure}[!t]
@@ -437,7 +438,8 @@ We use two novel features, which we describe in detail here. See also figure \re
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{Cobweb feature \note{Name up for debate!}}
+\subsubsection{Cobweb feature }
+\note{Name up for debate!}
 The cobweb feature is a simple pairwise feature, inspired by recent work such as \cite{shotton-cvpr-2011}, capturing the surface shape in the immediate vicinity of $\point$.
 \begin{align}
 f(u, v, \psi, t) &= \rgbdimage(u, v) - \rgbdimage(a, b) \\
@@ -449,7 +451,8 @@ The final cobweb feature is therefore 24-dimensional.
 %Note also: ``If an offset pixel lies on the background or outside the bounds of the image, the depth probe dI (x0) is given a large positive constant value''.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{Spider features \note{Name up for debate!}}
+\subsubsection{Spider features }
+\note{Name up for debate!}
 
 \note{Lots of papers \eg microsoft use local features in region of point. For thickness this doesn't cut the mustard, so we augment with region features. However, most region features ignore occlusions. We don't.}
 
