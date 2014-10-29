@@ -346,11 +346,12 @@ class WorldVoxels(Voxels):
 
 
 
-	def fill_from_grid(self, input_grid, method='naive'):
+	def fill_from_grid(self, input_grid, method='naive', combine='replace'):
 		'''
 		warps input_grid into the world space of self.
 		For all voxels in self.V which input_grid overlaps with, 
 		replace the voxel value with the corresponding value in input_grid.V
+		'combine' can be sum (add onto existing elements) or replace (overwirte existing elements)
 		'''
 
 		if method=='naive':
@@ -401,11 +402,9 @@ class WorldVoxels(Voxels):
 
 			valid_ij = world_ij[valid_ij_logical, :]
 			valid_ij_in_input = world_xy_in_input_grid_idx[valid_ij_logical, :]
-			#print valid_ij
 
 			# now find the valid slices in self: need to know the mapping along the z-axis
 			world_k_col, world_z_col = self.get_z_locations()
-			#print world_z_col
 
 			# each height in the input grid locations...
 			world_z_in_input_grid_idx = input_grid.world_to_idx(world_z_col) 
@@ -429,14 +428,13 @@ class WorldVoxels(Voxels):
 				this_z_in_input_grid = world_z_in_input_grid_idx[world_slice_idx, 2]
 				
 				# don't bother extracting the data for this slice if we already have it cached in data_to_insert
-				if current_shoebox_slice == this_z_in_input_grid:
-					pass
-				else:
+				if current_shoebox_slice != this_z_in_input_grid:
+
 					# extract the data from this slice in the input grid
 					# yes we overwrite each time - but we don't care as we never use it again!
 					valid_ij_in_input[:, 2] = this_z_in_input_grid
 
-					data_to_insert = input_grid.get_idxs(valid_ij_in_input)
+					data_to_insert = input_grid.get_idxs(valid_ij_in_input).astype(self.V.dtype)
 					current_shoebox_slice = this_z_in_input_grid
 
 				# now choosing where we put it in the world grid...
@@ -444,7 +442,11 @@ class WorldVoxels(Voxels):
 				valid_ij[:, 2] = world_slice_idx
 
 				# TODO - save all these up and do at end
-				self.set_idxs(valid_ij, data_to_insert)
+				if combine == 'sum':
+					addition = self.get_idxs(valid_ij)
+					self.set_idxs(valid_ij, data_to_insert+addition)
+				else:
+					self.set_idxs(valid_ij, data_to_insert)
 
 				#valid_ijs.append(valid_ij)
 				#valid_data.append(data_to_insert)
