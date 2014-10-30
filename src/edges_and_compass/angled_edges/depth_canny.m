@@ -1,9 +1,6 @@
 function [eout,thresh] = depth_canny(magGrad, depth_im)
 % EDGE Find edges in intensity image.
 % 
-% 
-
-%[a,method,thresh,sigma,thinning,H,kx,ky] = parse_inputs(varargin{:});
 
 [m,n] = size(magGrad);
 
@@ -13,15 +10,12 @@ e = false(m,n);
 %if strcmp(method,'canny')
     % Magic numbers
     PercentOfPixelsNotEdges = .9; % Used for selecting thresholds
-    ThresholdRatio = 0.3;          % Low thresh is this fraction of the high.
+    ThresholdRatio = 0.15;          % Low thresh is this fraction of the high.
     
     % Calculate gradients using a derivative of Gaussian filter
     sigma = sqrt(2);
     [dx, dy] = smoothGradient(depth_im, sigma);
-    
-    % Calculate Magnitude of Gradient
-    %magGrad = hypot(dx, dy);
-    
+
     % Normalize for threshold selection
     magmax = max(magGrad(:));
     if magmax > 0
