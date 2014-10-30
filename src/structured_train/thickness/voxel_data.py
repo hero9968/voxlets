@@ -524,20 +524,23 @@ class ShoeBox(WorldVoxels):
 
 		# creating the rotation matrix
 		new_z = updir
-		new_x = np.cross(normal, updir)
+		new_x = np.cross(updir, normal)
 		new_x /= np.linalg.norm(new_x)
-		new_y = -np.cross(new_x, updir)
+		new_y = np.cross(updir, new_x)
 		new_y /= np.linalg.norm(new_y)
-		R = np.vstack((new_x, new_y, new_z))
+		R = np.vstack((new_x, new_y, new_z)).T
+
 		assert R.shape[0] == 3 and R.shape[1] == 3
-		#assert np.abs(np.linalg.det(R) - 1) < 0.00001
+		
+		if np.abs(np.linalg.det(R) - 1) > 0.00001:
+			print "R is " + str(R)
+			raise Exception("R has det" % np.linalg.det(R))
 
 		# computing the grid origin
 		# using: p = R * p_from_grid_origin + grid_origin
 		new_origin = point - np.dot(R, self.p_from_grid_origin)
 
 		self.set_origin(new_origin, R)
-
 
 
 class KinFuVoxels(Voxels):
