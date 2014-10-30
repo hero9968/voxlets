@@ -106,14 +106,17 @@ class Camera(object):
         self.K = []
         self.H = []
 
+
     def set_intrinsics(self, K):
         self.K = K
         self.inv_K = np.linalg.inv(K)
+
 
     def set_extrinsics(self, H):
         '''extrinsics should be the location of the camera relative to the world origin'''
         self.H = H
         self.inv_H = np.linalg.inv(H)
+
 
     def load_extrinsics_from_dat(self, filepath):
         '''
@@ -187,6 +190,16 @@ class Camera(object):
         throws u,v,d points in pixel coords (and depth)
         out into the real world, based on the transforms provided
         '''
+        xyz_at_cam_loc = self.inv_project_points_cam_coords(uvd)
+
+        # transforming points under the extrinsics
+        return self._apply_normalised_homo_transform(xyz_at_cam_loc, self.inv_H)
+
+
+    def inv_project_points_cam_coords(self, uvd):
+        '''
+        as inv_project_points but doesn't do the homogeneous transformation
+        '''
         assert(uvd.shape[1] == 3)
         n_points = uvd.shape[0]
 
@@ -198,8 +211,7 @@ class Camera(object):
         temp = uvd[:, 2][np.newaxis, :].T
         xyz_at_cam_loc = temp * camera_rays
 
-        # transforming points under the extrinsics
-        return self._apply_normalised_homo_transform(xyz_at_cam_loc, np.linalg.inv(self.H))
+        return xyz_at_cam_loc
 
 
     def inv_transform_normals(self, normals):

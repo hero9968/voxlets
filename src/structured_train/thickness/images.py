@@ -139,6 +139,25 @@ class RGBDImage(object):
         return self.xyz
 
 
+    def get_uvd(self):
+        '''
+        returns (nxm)x3 matrix of all the u, v coordinates and the depth at eac one
+        '''
+        h, w = self.depth.shape
+        us, vs = np.meshgrid(np.arange(w), np.arange(h))
+        x = np.vstack((us.flatten(),
+                       vs.flatten(),
+                       self.depth.flatten()))
+
+
+    def set_camera(self, cam_in):
+        self.cam = cam_in
+
+
+    def get_world_xyz(self):
+        return self.cam.inv_project_points(self.get_uvd())
+
+
     def compute_ray_image(self):
         '''
         the ray image is an image where the values represent the 
@@ -282,6 +301,7 @@ class CroppedRGBD(RGBDImage):
         T = self.H[3, :3]
         #self.world_xyz = np.dot(R, (self.xyz - T).T).T# + 
 
+
     def depth_difference(self, index):
         ''' 
         returns the difference in depth between the front and the back
@@ -303,6 +323,11 @@ class CroppedRGBD(RGBDImage):
         return np.vstack((all_cols.flatten(), 
                           all_rows.flatten(), 
                           self.depth.flatten())).T
+
+
+    def get_world_normals(self):
+        return self.cam.inv_transform_normals(self.normals)
+
 
 
 
