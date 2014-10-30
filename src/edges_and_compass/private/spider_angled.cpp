@@ -52,7 +52,7 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 	double *out_stack = mxGetPr(plhs[0]);
 
 
-	mexPrintf("Starting loop\n");
+	//mexPrintf("Starting loop\n");
 
 	/*
 	 do it in the south - east direction
@@ -90,6 +90,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 			OUT_IM(row, col, 2) = perp_dist;
 		}
 	}
+    
+    //mexPrintf("Done 1\n");
 
 	for (size_t start_col = 0; start_col < W; ++start_col)
 	{
@@ -124,9 +126,11 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 			OUT_IM(row, col, 2) = perp_dist;
 		}
 	}
+    
+    //mexPrintf("Done 2\n");
 
 
-
+    //mexPrintf("Doing SW\n");
 
 	/*
 	 do it in the south - west direction
@@ -164,7 +168,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 			OUT_IM(row, col, 5) = perp_dist;
 		}
 	}
-	for (int start_col = W; start_col >= 0; --start_col)
+    //mexPrintf("Done 1\n");
+	for (int start_col = W-1; start_col >= 0; --start_col)
 	{
 		int pixel_count = -1;
 		double geo_dist = 0;
@@ -198,7 +203,9 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 		}
 	}
 
-
+    //mexPrintf("Done 2\n");
+    
+    //mexPrintf("Doing NW\n");
 
 
 
@@ -239,7 +246,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 			OUT_IM(row, col, 8) = perp_dist;
 		}
 	}
-	for (int start_col = W; start_col >= 0; --start_col)
+    //mexPrintf("Done 1\n");
+	for (int start_col = W-1; start_col >= 0; --start_col)
 	{
 		int pixel_count = -1;
 		double geo_dist = 0;
@@ -248,7 +256,7 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 		size_t edge_row = -1;
 
 		int col = start_col;
-		for (int row = H; col >= 0 && row >= 0; --col, --row)
+		for (int row = H-1; col >= 0 && row >= 0; --col, --row)
 		{
 			if (A(row, col, EDGE)==1)
 			{
@@ -273,7 +281,8 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 		}
 	}
 
-
+    //mexPrintf("Done 2\n");
+    //mexPrintf("Doing NE\n");
 
 
 
@@ -315,6 +324,7 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 			OUT_IM(row, col, 11) = perp_dist;
 		}
 	}
+    //mexPrintf("Done 1\n");
 	for (int start_col = 0; start_col < W; ++start_col)
 	{
 		int pixel_count = -1;
@@ -324,7 +334,7 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 		size_t edge_row = -1;
 
 		int col = start_col;
-		for (int row = H; col < W && row >= 0; ++col, --row)
+		for (int row = H-1; col < W && row >= 0; ++col, --row)
 		{
 			if (A(row, col, EDGE)==1)
 			{
@@ -337,6 +347,7 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 			else if (pixel_count>=0)
 			{
 				pixel_count++;
+				//mexPrintf("Row: %d, col: %d, skip: %d\n", row, col, skip);
 				if (pixel_count%skip==0) geo_dist += sqrt(SQDIST3D(row, col, row+skip, col-skip));
 				perp_dist = A(row, col, NX) * (A(edge_row, edge_col, X) - A(row, col, X))
 						  + A(row, col, NY) * (A(edge_row, edge_col, Y) - A(row, col, Y))
@@ -345,12 +356,13 @@ mexFunction (int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[])
 			}
 			OUT_IM(row, col, 9) = pixel_count;
 			OUT_IM(row, col, 10) = geo_dist;
+			//mexPrintf("Row, col = (%d, %d)\n", row, col);
 			OUT_IM(row, col, 11) = perp_dist;
 		}
 	}
 
-
-	mexPrintf("Done\n");
+    //mexPrintf("Done 2\n");
+	//mexPrintf("Done\n");
 
 	
 
