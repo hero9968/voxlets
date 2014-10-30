@@ -31,7 +31,7 @@
 \def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
 \def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
 
-% General noration
+% General notation
 \newcommand{\prob}{Pr}
 \newcommand{\degree}{^{\circ}}
 
@@ -49,6 +49,7 @@
 \newcommand{\pcloud}{\mathcal{P}}
 \newcommand{\point}{\mathbf{p}}
 \newcommand{\normal}{\mathbf{n}}
+\newcommand{\updir}{\mathbf{u}}
 
 % Transformations
 \newcommand{\trans}{T}
@@ -150,7 +151,7 @@ A full 3D model of the scene can allow for the automated addition of realistic s
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 In this paper we take a data-driven approach to estimating the missing geometry of a scene.
-Unlike many papers which tackle this as a mesh completion problem \cite{schnabel-eurographics-2009, ju-cst-2009, silberman-eccv-2014}, we directly tackle the problem by predicting voxel occupancy:
+Unlike many papers which tackle this as a mesh completion problem \cite{schnabel-eurographics-2009, ju-cst-2009}, we directly tackle the problem by predicting voxel occupancy:
 The input to our algorithm is a single depth image, while the output is an estimate of the occupancy of every voxel within the camera frustum.
 
 While some previous work on voxel occupancy prediction incorporates semantics, \eg \cite{kim-iccv-2013, shen-tog-2012, cocias-cgvcv-2013} we are able to predict shape irrespective of recognition of semantic class.
@@ -320,6 +321,7 @@ The aim of our algorithm is to recover $\voxelgrid$ given $\rgbdimage$.
   \includegraphics[width=0.9\columnwidth]{patch_sizes.png}
       
   \caption{Local, patch-type features do not give enough information to accurately predict depth. Here, two pairs of patches are marked. Each item in these pairs have identical local appearance. However, the thickness of the object at each patch location is very different. We use this to motivate the spider feature.}
+  \label{fig:patch_problems}
 \end{figure}
 
 
@@ -360,35 +362,8 @@ However, as we are predicting in 3D space we introduce \emph{voxlets}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Discontinuity discovery}
+%section{Discontinuity discovery}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-Describe here:
-\begin{itemize}
-\item Reprojecting the depth image into the colour camera
-\item Smoothing - both citations
-\item Types of edges (depth, colour, occluding etc)
-\item Our method for depth edges
-\item motivation - why do we care about occlusions?
-\end{itemize}
-
-We reason that discontinuities in depth images can be assigned a direction: one side of each edge is the occluder, the other is the occludee. 
-We can compute the gradient of the depth edges using PCA on the edge pixels in image space.
-We ensure that the final gradient at each edge pixel points in the direction of the occluded side.
-
-We can then use the occlusion information in our feature computations---see for example figure \ref{fig:occluded_region}.
-
-\begin{figure}
-    \centering 
-    \subfigure[]{%
-        \includegraphics[width=0.45\columnwidth]{occlusion_a}}
-        \hfill
-    \subfigure[]{%
-        \includegraphics[width=0.45\columnwidth]{occlusion_b}} \\
-    \caption{Where edges occur as a result of occlusion boundaries, the direction of the edge is important. The edge bounding region A can be divided into an \emph{occluding} portion (solid green) and an \emph{occluded} portion (dashed red).
-    We can make a reasonable assumption that region A may extend behind object B past the occluded edge---however, region A cannot continue sideways beyond its occluding edge.}
-    \label{fig:occluded_region}
-\end{figure}
 
 
 
@@ -454,14 +429,43 @@ The final cobweb feature is therefore 24-dimensional.
 \subsubsection{Spider features }
 \note{Name up for debate!}
 
-\note{Lots of papers \eg microsoft use local features in region of point. For thickness this doesn't cut the mustard, so we augment with region features. However, most region features ignore occlusions. We don't.}
+Describe here:
+\begin{itemize}
+\item Reprojecting the depth image into the colour camera
+\item Smoothing - both citations
+\item Types of edges (depth, colour, occluding etc)
+\item Our method for depth edges
+\item motivation - why do we care about occlusions?
+\end{itemize}
 
-The cobweb feature is 
+Motivation:
+\begin{itemize}
+\item Local features not good for many purposes (image)
+\item Region features capture properties of region (image)
+\item BUT We want to know where we are in a region  (image)
+\item Also the properties of a region can change over space (image)
+\item Occluded regions
+\end{itemize}
 
+
+
+
+%\note{Lots of papers \eg microsoft use local features in region of point. For thickness this doesn't cut the mustard, so we augment with region features. However, most region features ignore occlusions. We don't.}
+
+Local features such as our cobweb feature have proved discriminatory where the label space is directly related to the visual appearance at $\point$, such as labelling the point as being at a specific location in a scene \cite{}, or labelling the parts of a human body \cite{shotton-cvpr-2011}.
+
+However, when it comes to predicting the geometry of the scene we cannot observe, the local shape of the depth image around a point does not provide enough information. 
+An example of this can be seen in figure \ref{fig:patch_problems}; the two regions labelled in the image have identical \emph{local} appearance, but the geometry around each of the regions is very different due to the different thicknesses of the two items.
+
+For semantic classification, some works have proposed features based on a segmented region of an image
+Cite himmelsbach, golovinisky.
 The spider feature captures the size and shape of the region in which $\point$ resides. 
 Rather than explicitly computing region-level features, however, which may suffer from poor segmentations (and the problem with occlusion), we compute these features capturing the region's shape at the point level. 
+%The cobweb feature is 
+
+Cite drost here.
 We first compute an edge map for the image.
-We again consider the set of angles $\phi$. Starting from $\point$, we cast a Bresenham line along the depth image until it hits an edge. 
+
 We denote the point at which the edge was hit as $\point_{e}$.
 
 For each line cast, we store
@@ -474,10 +478,31 @@ While it captures a wide range of information about the region within which a po
 This is mainly due to the additive nature of the feature: The spider feature in direction $0\degree$ at $(i, j)$ can be computed from summing a small fraction 
 We can compute the 16D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptomised C++ code; we would expect a significant speedup were this to be implemented on a GPU.
 
-\subsubsection{Occluded spider features}
+\paragraph{Occluded spider features}
 
 We explicitly handle occlusion in the spider features. Where the spider feature first hits an occluded edge rather than an occluding edge, the true size of the object in that dimension is unknown (see figure \ref{fig:features:occluded_spider}).
 However, we do have a \textit{minimum} size in that direction.
+
+
+
+We reason that discontinuities in depth images can be assigned a direction: one side of each edge is the occluder, the other is the occludee. 
+We can compute the gradient of the depth edges using PCA on the edge pixels in image space.
+We ensure that the final gradient at each edge pixel points in the direction of the occluded side.
+
+We can then use the occlusion information in our feature computations---see for example figure \ref{fig:occluded_region}.
+
+\begin{figure}
+    \centering 
+    \subfigure[]{%
+        \includegraphics[width=0.45\columnwidth]{occlusion_a}}
+        \hfill
+    \subfigure[]{%
+        \includegraphics[width=0.45\columnwidth]{occlusion_b}} \\
+    \caption{Where edges occur as a result of occlusion boundaries, the direction of the edge is important. The edge bounding region A can be divided into an \emph{occluding} portion (solid green) and an \emph{occluded} portion (dashed red).
+    We can make a reasonable assumption that region A may extend behind object B past the occluded edge---however, region A cannot continue sideways beyond its occluding edge.}
+    \label{fig:occluded_region}
+\end{figure}
+
 %We explicitly encode this unknown value --- in practice with \texttt{NaN} --- and the Random Forest can then make a sensible decision about what to do with it.
 
 % \begin{figure}
@@ -501,6 +526,20 @@ However, we do have a \textit{minimum} size in that direction.
 %\end{figure}
 
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Voxlet alignment}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Each voxlet is aligned with the coordinate system:
+\begin{equation}
+  R = 
+  \left( \begin{array}{ccc}
+  \updir \\
+  \updir \times \normal \\
+  \updir \times (\updir \times \normal)  \end{array} \right),
+\end{equation}
+where $\normal$ is the normal at $\point$ and $\updir$ is the `up' direction of the scene, \ie pointing directly away from the direction of gravity.
+The top and bottom face of each voxlet is therefore 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Regularisation}
