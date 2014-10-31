@@ -245,6 +245,9 @@ class WorldVoxels(Voxels):
 		scaled_translated_rotated_xyz = np.dot(self.inv_R, scaled_translated_xyz.T).T
 
 		idx = (scaled_translated_rotated_xyz).astype(np.int)
+	#	print self.origin
+	#	print self.inv_R
+	#	print self.vox_size
 
 		if detect_out_of_range:
 			valid = self.find_valid_idx(idx)
@@ -496,7 +499,7 @@ class ShoeBox(WorldVoxels):
 	'''
 
 	def __init__(self, gridsize):
-		Voxels.__init__(self, gridsize, np.int)
+		Voxels.__init__(self, gridsize, np.int8)
 		self.grid_centre_from_grid_origin = []
 
 

@@ -12,6 +12,7 @@ from bitarray import bitarray
 import cv2
 
 import paths
+import mesh
 
 class RGBDImage(object):
 
@@ -304,6 +305,13 @@ class CroppedRGBD(RGBDImage):
         # world up direction - in world coordinates. 
         # this is not the up dir in camera coordinates...
         self.updir = np.array([0, 0, 1]) 
+
+        # loading the appropriate camera here
+        cam = mesh.Camera()
+        cam.load_bigbird_matrices(modelname, viewname)
+        cam.adjust_intrinsic_scale(0.5) # as the image is half-sized
+
+        self.set_camera(cam)
 
 
     def depth_difference(self, index):
