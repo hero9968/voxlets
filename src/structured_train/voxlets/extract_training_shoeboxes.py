@@ -123,7 +123,12 @@ for modelname in paths.modelnames:
 
         # load the image and the camera
         im = images.CroppedRGBD()
-        im.load_bigbird_from_mat(modelname, view)
+        try:
+            im.load_bigbird_from_mat(modelname, view)
+        except:
+            print "Could not load bigbird!"
+            print "Skipping " + modelname + " " + view_idx
+            continue
 
         # sample points from the image mask
         mask = ~np.isnan(im.frontrender)
