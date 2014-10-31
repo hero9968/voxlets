@@ -1,7 +1,7 @@
 
 Run:
-shoevoxes_from_bb.py
-to extract a load of shoeboxes from the bigbird dataset
+shoevoxes_from_bb_mesh.py
+to extract a load of shoeboxes from the meshes of the bigbird dataset
 
 Then:
 create_voxlet_dict.py
@@ -12,4 +12,10 @@ Then
 save_centres_to_vdb.py
 To convert the found cluster centers to openvdb format
 
-Next, it goes to the notebooks really.
+It sort of gets to the notebooks at this stage (esp dictionary_lookup)
+BUT:
+
+Next:
+extract_training_shoeboes.py
+To get training data from the images and voxel data for each object...
+This might have to be run on troll or something!

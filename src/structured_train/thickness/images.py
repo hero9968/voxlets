@@ -139,15 +139,15 @@ class RGBDImage(object):
         return self.xyz
 
 
-    def get_uvd(self):
-        '''
-        returns (nxm)x3 matrix of all the u, v coordinates and the depth at eac one
-        '''
-        h, w = self.depth.shape
-        us, vs = np.meshgrid(np.arange(w), np.arange(h))
-        x = np.vstack((us.flatten(),
-                       vs.flatten(),
-                       self.depth.flatten()))
+    # def get_uvd(self):
+    #     '''
+    #     returns (nxm)x3 matrix of all the u, v coordinates and the depth at eac one
+    #     '''
+    #     h, w = self.depth.shape
+    #     us, vs = np.meshgrid(np.arange(w), np.arange(h))
+    #     x = np.vstack((us.flatten(),
+    #                    vs.flatten(),
+    #                    self.depth.flatten()))
 
 
     def set_camera(self, cam_in):
@@ -300,6 +300,10 @@ class CroppedRGBD(RGBDImage):
         R = np.linalg.inv(self.H[:3, :3].T)
         T = self.H[3, :3]
         #self.world_xyz = np.dot(R, (self.xyz - T).T).T# + 
+
+        # world up direction - in world coordinates. 
+        # this is not the up dir in camera coordinates...
+        self.updir = np.array([0, 0, 1]) 
 
 
     def depth_difference(self, index):

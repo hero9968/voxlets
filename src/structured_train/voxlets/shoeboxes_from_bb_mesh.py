@@ -20,7 +20,7 @@ shoebox_gridsize = (20, 20, 20)
 shoebox_p_from_origin = np.array((0.1, 0.05, 0.1))
 shoebox_voxelsize = 0.2/20.0
 
-number_points_from_each_model = 100
+number_points_from_each_model = 250
 
 # all the shoeboxes are stored in a dictionary
 all_shoeboxes = {}
