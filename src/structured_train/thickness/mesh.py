@@ -2,7 +2,6 @@ import numpy as np
 #https://github.com/dranjan/python-plyfile
 import paths
 import h5py
-from plyfile import PlyData, PlyElement
 
 class Mesh(object):
     '''
@@ -20,6 +19,7 @@ class Mesh(object):
         '''
         loads faces and vertices from a ply file
         '''
+        from plyfile import PlyData, PlyElement
         plydata = PlyData.read(open(filename, 'r'))
         self.vertices, self.faces = self._extract_plydata(plydata)
 

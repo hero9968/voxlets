@@ -2,7 +2,7 @@
 import numpy as np
 import cPickle as pickle
 import sys, os
-sys.path.append('/Users/Michael/projects/shape_sharing/src/structured_train/')
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/structured_train/'))
 import scipy.io
 
 from thickness import voxel_data
