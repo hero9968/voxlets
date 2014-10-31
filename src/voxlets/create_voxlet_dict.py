@@ -8,8 +8,8 @@ import numpy as np
 import sys
 import cPickle as pickle
 
-sys.path.append('/Users/Michael/projects/shape_sharing/src/structured_train/')
-from thickness import paths
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+from common import paths
 
 # setting parameters
 number_clusters = 100

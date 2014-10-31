@@ -7,10 +7,12 @@ import os
 import scipy.io
 import collections
 import scipy.stats as stats
-import paths
 import cPickle as pickle
 import random
-# User options
+
+import sys
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+from common import paths
 
 
 

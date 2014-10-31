@@ -11,7 +11,11 @@ import matplotlib
 matplotlib.use('pdf')
 import matplotlib.pyplot as pl
 import os.path
-import paths
+
+import sys
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+from common import paths
+
 
 # loading all the model results
 all_models = yaml.load(open(paths.model_config, 'r'))

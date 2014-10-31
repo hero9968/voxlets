@@ -2,7 +2,6 @@
 Package for displaying of data and image manipulations etc.
 '''
 import numpy as np
-import compute_data
 import matplotlib.pyplot as plt
 
 def nans(shape, dtype=float):

@@ -11,7 +11,10 @@ import cPickle as pickle
 import timeit
 import yaml
 import socket
-import paths
+
+import sys
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+from common import paths
 
 host_name = socket.gethostname()
 

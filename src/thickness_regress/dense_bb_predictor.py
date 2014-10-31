@@ -25,16 +25,23 @@ import cPickle as pickle
 import scipy.io
 import os
 
-import paths
+import sys
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+
+from common import paths
+from common import images
+from common import displaying as disp
+
 import combine_data
 import compute_data
-import displaying as disp
+
 
 class DensePredictor(object):
 
     def __init__(self, forest):
 
         self.nan_replacement_value = 5.0
+        self.feature_engine = compute_data.DepthFeatureEngine()
 
 
         # load the forest to use
@@ -42,26 +49,17 @@ class DensePredictor(object):
         self.forest = forest
 
 
-    def load_renders(self, modelname, view_idx):
+    def set_image(self, im):
         # creating the engine for the feature computation
-        self.feature_engine = compute_data.DepthFeatureEngine(modelname, view_idx+1)
+        self.im = im
+        self.feature_engine.set_image(im)
 
-
-    def load_forest(self, forest_name):
-
-        self.forest_name = forest_name
-        self.forest = pickle.load(open(paths.rf_folder_path + forest_name + '.pkl'))
-
-
-    def set_forest(self, forest):
-        ''' sets the sklearn forest object'''
-        self.rf = forest
 
     def compute_features(self):
         '''compute dense features across the whole image'''
 
-        self.feature_engine.sample_from_mask(-1)
-        self.feature_engine.compute_features_and_depths(jobs=1)
+        self.feature_engine.dense_sample_from_mask()
+        self.feature_engine.compute_features_and_depths()
         self.all_features = self.feature_engine.features_and_depths_as_dict()
 
 
@@ -90,11 +88,11 @@ class DensePredictor(object):
 
         print self.Y_pred.shape
 
-        self.prediction_image = disp.reconstruct_image(test_idxs, self.Y_pred, (240, 320))
+        self.prediction_image = disp.reconstruct_image(test_idxs, self.Y_pred, self.im.mask.shape)
 
         # doing GT...
         self.Y_gt = np.array(self.all_features['depth_diffs'])
-        self.GT_image = disp.reconstruct_image(test_idxs, np.array(self.Y_gt), (240, 320))
+        self.GT_image = disp.reconstruct_image(test_idxs, np.array(self.Y_gt), self.im.mask.shape)
 
 
     def prediction_gt_image(self):
@@ -125,18 +123,18 @@ if __name__ == '__main__':
 
     # loading the saved forest
     print "Loading forest..."
-    rf = pickle.load( open(paths.rf_folder_path + "patch_spider_5k_10trees.pkl", "r") )
+    rf = pickle.load( open(paths.rf_folder_path + "patch_spider_1M_100trees.pkl", "r") )
 
     #'2566f8400d964be69c3cb90632bf17f3' #
     #modelname = '109d55a137c042f5760315ac3bf2c13e'
 
-    savefolder = paths.base_path + "structured/dense_predictions/"
+    savefolder = paths.dense_savefolder
 
     # prediction object - its job is to do the prediction!
-
-    object_names = [l.strip() for l in scipy.io.loadmat(paths.split_path)['train_names']]
+    f = open(paths.test_path, 'r')
+    object_names = [l.strip() for l in f]
     
-    for idx, modelname in enumerate(object_names[:3]):
+    for idx, modelname in enumerate(object_names):
 
         print "Processing " + modelname + ", number: " + str(idx)
 
@@ -144,32 +142,36 @@ if __name__ == '__main__':
         if not os.path.exists(modelsavefolder):
             os.makedirs(modelsavefolder)
 
-        view_idx = 12
+        for view in paths.views:
 
-        savepath = modelsavefolder + str(view_idx) + '.mat'
-        imgsavepath = modelsavefolder + str(view_idx) + '.pdf'
+            savepath = modelsavefolder + str(view) + '.mat'
+            imgsavepath = modelsavefolder + str(view) + '.pdf'
 
-        if os.path.exists(savepath) and not overwrite:
-            print "Skipping " + modelname + " " + str(view_idx)
+            if os.path.exists(savepath) and not overwrite:
+                print "Skipping " + modelname + " " + str(view) + " as it exists already"
 
-        print "Computing features"
-        pred = DensePredictor(rf)
-        pred.load_renders(modelname, view_idx)
-        pred.compute_features()
+            print "Loading image"
+            im = images.CroppedRGBD()
+            im.load_bigbird_from_mat(modelname, view)
 
-        print "Doing prediction"
-        pred.classify_features()
+            print "Computing features"
+            pred = DensePredictor(rf)
+            pred.set_image(im)
+            pred.compute_features()
 
-        print "Extracting and saving results"
-        d = pred.predictions_as_dict()
-        scipy.io.savemat(savepath, d)
+            print "Doing prediction"
+            pred.classify_features()
 
-        print "Creating image"
-        plt.clf()
-        plt.imshow(pred.prediction_gt_image())
-        plt.savefig(imgsavepath)
+            print "Extracting and saving results"
+            d = pred.predictions_as_dict()
+            scipy.io.savemat(savepath, d)
 
-        print "Done..."
+            print "Creating image"
+            plt.clf()
+            plt.imshow(pred.prediction_gt_image())
+            plt.savefig(imgsavepath)
+
+            print "Done..."
 
     print "Done all"
 
