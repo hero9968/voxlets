@@ -133,7 +133,12 @@ for modelname in paths.modelnames:
         im_shoeboxes = shoeboxes_from_image(im, vgrid, sampled_points)
 
         # now compute the features
-        cobweb, spider = features_from_image(im, sampled_points)
+        try:
+            cobweb, spider = features_from_image(im, sampled_points)
+        except:
+            print "Could not get features!"
+            print "Skipping " + modelname + " " + view_idx
+            continue
 
         # save these to a file
         D = dict(sboxes=im_shoeboxes, cobweb=cobweb, spider=spider, sampled_points=sampled_points)
