@@ -2,14 +2,14 @@
 import numpy as np
 import cPickle as pickle
 import sys, os
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/structured_train/'))
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
 import scipy.io
 
-from thickness import voxel_data
-from thickness import paths
-from thickness import mesh
-from thickness import images
-from thickness import features
+from common import voxel_data
+from common import paths
+from common import mesh
+from common import images
+from common import features
 
 
 '''PARAMETERS'''

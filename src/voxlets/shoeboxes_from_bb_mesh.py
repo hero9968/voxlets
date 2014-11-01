@@ -1,11 +1,11 @@
 import numpy as np
 import cPickle as pickle
 import sys, os
-sys.path.append('/Users/Michael/projects/shape_sharing/src/structured_train/')
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
 
-from thickness import voxel_data
-from thickness import paths
-from thickness import mesh
+from common import voxel_data
+from common import paths
+from common import mesh
 
 '''
 computes a shoebox for many points from each mesh

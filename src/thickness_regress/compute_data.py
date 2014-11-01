@@ -8,13 +8,15 @@ from multiprocessing import Pool
 from multiprocessing import cpu_count
 import itertools
 import timeit
-import features
 import socket
 import traceback
 import sys
 
-import paths
-import images
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+
+from common import paths
+from common import images
+from common import features
 
 # in an ideal world we wouldn't have this hardcoded path, but life is too short to do it properly
 host_name = socket.gethostname()

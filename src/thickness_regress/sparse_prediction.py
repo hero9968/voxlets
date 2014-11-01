@@ -9,7 +9,11 @@ import cPickle as pickle
 import scipy.io
 from sklearn.metrics import roc_curve, auc
 import yaml
-import paths
+import sys
+
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+from common import paths
+
 
 # setting paths
 small_dataset = False

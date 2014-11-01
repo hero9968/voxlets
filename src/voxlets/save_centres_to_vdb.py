@@ -3,13 +3,14 @@ this script will load the cluster centres from the sklearn kmeans pickled object
 and then save them out to a openvdb file
 '''
 import sys
-sys.path.append('/Users/Michael/projects/shape_sharing/src/structured_train/')
-sys.path.append('/Users/Michael/builds/openvdb_etc/openvdb')
+import sys, os
+sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+sys.path.append(os.path.expanduser('~/builds/openvdb_etc/openvdb'))
 
 import numpy as np 
 import cPickle as pickle
 import pyopenvdb as vdb
-from thickness import paths
+from common import paths
 
 shoebox_size = (20, 20, 20)
 
