@@ -1,7 +1,7 @@
 import numpy as np
 import cPickle as pickle
 import sys, os
-sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 
 from common import voxel_data
 from common import paths

@@ -2,7 +2,7 @@
 import numpy as np
 import cPickle as pickle
 import sys, os
-sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 import scipy.io
 
 from common import voxel_data
@@ -127,7 +127,7 @@ for modelname in paths.modelnames:
             im.load_bigbird_from_mat(modelname, view)
         except:
             print "Could not load bigbird!"
-            print "Skipping " + modelname + " " + view_idx
+            print "Skipping " + modelname + " " + view
             continue
 
         # sample points from the image mask
@@ -142,7 +142,7 @@ for modelname in paths.modelnames:
             cobweb, spider = features_from_image(im, sampled_points)
         except:
             print "Could not get features!"
-            print "Skipping " + modelname + " " + view_idx
+            print "Skipping " + modelname + " " + view
             continue
 
         # save these to a file
