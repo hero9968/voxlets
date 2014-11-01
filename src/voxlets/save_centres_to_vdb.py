@@ -4,7 +4,7 @@ and then save them out to a openvdb file
 '''
 import sys
 import sys, os
-sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 sys.path.append(os.path.expanduser('~/builds/openvdb_etc/openvdb'))
 
 import numpy as np 

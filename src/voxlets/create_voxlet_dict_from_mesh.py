@@ -8,16 +8,16 @@ import numpy as np
 import sys
 import cPickle as pickle
 
-sys.path.append(os.path.expanduser('~/project/shape_sharing/src/'))
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
 
 # setting parameters
 number_clusters = 100
-shoebox_kmeans_path = paths.base_path + "voxlets/shoebox_dictionary_training.pkl"
+shoebox_kmeans_path = paths.base_path + "voxlets/dict/shoebox_dictionary_training.pkl"
 
 # loading the extracted shoeboxes
 print "Loading shoeboxes..."
-shoebox_path = paths.base_path + "voxlets/all_shoeboxes.pkl"
+shoebox_path = paths.base_path + "voxlets/dict/all_shoeboxes.pkl"
 D = pickle.load(open(shoebox_path, 'rb'))
 
 # combining all the shoeboxes together
