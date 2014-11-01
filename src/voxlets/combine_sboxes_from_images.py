@@ -33,22 +33,19 @@ def load_bigbird_shoeboxes(modelname, view_idx):
 
 all_sboxes = []
 
-for modelname in paths.train_names[:2]:
+for modelname in paths.train_names:
     this_model_sbox_list = []
     for view in paths.views:
         
-        these_V = load_bigbird_shoeboxes(modelname, view)
-        
-        this_model_sbox_list.append(these_V)
+        try:
+            these_V = load_bigbird_shoeboxes(modelname, view)            
+            this_model_sbox_list.append(these_V)
+            print "Done " + view
+        except:
+            print "Failed to do model %s and view %s " % (modelname, view)
 
-        print "Done " + view
-
-    print "all sboxes has shape " + str(np.array(this_model_sbox_list).shape)
-    try:
-        points_in_sbox = np.array(this_model_sbox_list).shape[2]
-    except:
-        print "Failed!"
-        print np.array(this_model_sbox_list).shape
+    # finding out how many voxel in each sbox
+    points_in_sbox = np.array(this_model_sbox_list).shape[2]
 
     this_model_sboxes = np.array(this_model_sbox_list).reshape((-1, points_in_sbox))
     print "Before sampling: " + str(this_model_sboxes.shape)
@@ -66,6 +63,6 @@ print np.array(all_sboxes).shape
 print np.array(all_sboxes).reshape((-1, points_in_sbox)).shape
 
 # now save all of them to disk!
-all_training_sbox_path = paths.base_path + "voxlets/dict/training_sboxes.pkl"
+all_training_sbox_path = paths.base_path + "voxlets/dict/training_sboxes_from_images"
 np.save(all_training_sbox_path, all_sboxes)
 
