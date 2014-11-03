@@ -9,17 +9,17 @@ import cPickle as pickle
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
 
-number_clusters = 1
+number_clusters = 200
 
 print "Loading shoeboxes..."
-all_training_sbox_path = paths.base_path + "voxlets/dict/training_sboxes_from_images"
-all_sboxes = np.load(all_training_sbox_path)
-
+all_training_sbox_path = paths.base_path + "voxlets/dict/training_sboxes_from_images.npy"
+all_sboxes = np.load(all_training_sbox_path).reshape((-1, 16000))
+print all_sboxes.shape
 # clustering...
 print "Doing clustering..."
 from sklearn.cluster import MiniBatchKMeans
-km = MiniBatchKMeans(n_clusters=150)
-km.fit(all_shoeboxes.astype(np.float16))
+km = MiniBatchKMeans(n_clusters=number_clusters)
+km.fit(all_sboxes.astype(np.float16))
 
 # saving the km object
 print "Saving..."
