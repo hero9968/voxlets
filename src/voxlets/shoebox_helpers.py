@@ -2,13 +2,15 @@
 some functions to help with shoebox extraction
 '''
 import numpy as np
-import scipy.io
 import sys, os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+import cPickle as pickle
+import scipy.io
 
 from common import voxel_data
 from common import mesh
 from common import paths
+from common import features
 
 # params for the shoeboxes
 shoebox_gridsize = (20, 40, 20)
@@ -58,7 +60,7 @@ def shoeboxes_from_image(im, vgrid, indices):
 
         image_shoeboxes.append(shoebox)
 
-    return image_shoeboxes
+    return np.array([sbox.V.flatten() for sbox in image_shoeboxes])
 
 
 
@@ -90,27 +92,26 @@ def num_files_in_dir(dirname):
 
 
 def load_bigbird_shoeboxes(modelname, view):
-    loadpath = paths.base_path + "voxlets/bigbird/%s/%s.mat" % (modelname, view)
+    loadpath = paths.base_path + "voxlets/bigbird/%s/%s.pkl" % (modelname, view)
 
-    D = scipy.io.loadmat(loadpath)
+    #D = scipy.io.loadmat(loadpath)
+    D = pickle.load(open(loadpath, 'rb'))
 
     # loading in the shoeboxes (need some magic to sort out the matlab crap)
-    each_view_sbox = np.array([sbox[0][0][4] for sbox in D['sboxes'].flatten()])
-    num_boxes = each_view_sbox.shape[0]
-    image_sboxes = np.array(each_view_sbox).reshape((num_boxes, -1))
+    each_view_sbox = np.array([sbox.V.flatten() for sbox in D['sboxes']])
+    image_sboxes = np.array(each_view_sbox)
 
     return image_sboxes
 
 
 def load_bigbird_shoeboxes_and_features(modelname, view):
-    loadpath = paths.base_path + "voxlets/bigbird/%s/%s.mat" % (modelname, view)
+    loadpath = paths.base_path + "voxlets/bigbird/%s/%s.pkl" % (modelname, view)
 
-    D = scipy.io.loadmat(loadpath)
+    D = pickle.load(open(loadpath, 'rb'))
 
     # loading in the shoeboxes (need some magic to sort out the matlab crap)
-    each_view_sbox = np.array([sbox[0][0][4] for sbox in D['sboxes'].flatten()])
-    num_boxes = each_view_sbox.shape[0]
-    image_sboxes = np.array(each_view_sbox).reshape((num_boxes, -1))
+    each_view_sbox = np.array([sbox.V.flatten() for sbox in D['sboxes']])
+    image_sboxes = np.array(each_view_sbox)
 
     # now need to get features
     image_cobwebs = np.array(D['cobweb'])
