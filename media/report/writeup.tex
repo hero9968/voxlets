@@ -351,19 +351,36 @@ The aim of our algorithm is to recover $\voxelgrid$ given $\rgbdimage$.
 
 %http://scholar.google.co.uk/scholar?safe=off&espv=2&bav=on.2,or.r_cp.r_qf.&bvm=bv.75775273,d.ZWU,pv.xjs.s.en.CtdJ7drbKko.O&ion=1&biw=1164&bih=816&um=1&ie=UTF-8&lr=&cites=16286130882256685425
 
-\begin{figure}
-  \centering 
-  \includegraphics[width=0.9\columnwidth]{patch_sizes.png}
-
-  \caption{Local, patch-type features do not give enough information to accurately predict depth. Here, two pairs of patches are marked. Each item in these pairs have identical local appearance. However, the thickness of the object at each patch location is very different. We use this to motivate the spider feature.
-  \todo{Combine all the motivational images for the spider feature into one...}}
-  \label{fig:patch_problems}
-\end{figure}
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Voxlets}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+\newcommand{\preprocesssubwidth}{0.41\columnwidth}
+\begin{figure*}
+    \centering 
+    \subfigure[RGB image]{%
+        \includegraphics[width=\preprocesssubwidth]{preprocess_a}}
+        \hfill
+    \subfigure[Raw depth image]{%
+        \includegraphics[width=\preprocesssubwidth]{preprocess_b}}
+        \hfill
+    \subfigure[Smoothed depth]{%
+        \includegraphics[width=\preprocesssubwidth]{preprocess_c}}
+        \hfill
+    \subfigure[Structured edges]{%
+        \includegraphics[width=\preprocesssubwidth]{preprocess_d}\label{subfig:structedge}}
+        \hfill
+    \subfigure[Binary edge map]{%
+        \includegraphics[width=\preprocesssubwidth]{preprocess_e}\label{subfig:binaryedge}}
+    \caption{
+    Preprocessing
+    }%
+    \label{fig:preprocessing}
+\end{figure*}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -379,15 +396,24 @@ The \emph{spider} feature captures the size and shape of the region in which $\p
 \newcommand{\subwidth}{0.32\columnwidth}
 \begin{figure*}
     \centering 
-    \subfigure[Spider feature]{%
-        \includegraphics[width=\subwidth]{02_spider}}
-        \hfill
-    \subfigure[Occluded spider]{%
-        \includegraphics[width=\subwidth]{04_spider_occ}
-        \label{fig:features:occluded_spider}}
+    \subfigure[Query point]{%
+        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_2}}
         \hfill
     \subfigure[Cobweb feature]{%
-        \includegraphics[width=\subwidth]{05_cobweb}}
+        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_3}
+        \label{fig:features:occluded_spider}}
+        \hfill
+    \subfigure[Spider feature]{%
+        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_4}}
+        \hfill
+    \subfigure[$c_0$]{%
+        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_5}}
+        \hfill
+    \subfigure[$c_1$]{%
+        \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30]{features_6}}
+        \hfill
+    \subfigure[$c_2$]{%
+        \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30]{features_7}}
         \hfill
     \caption{
     %(a) Each point on a depth image has an angle $\theta$ associated, which represents the direction of gradient of the depth. 
@@ -398,13 +424,6 @@ The \emph{spider} feature captures the size and shape of the region in which $\p
     \label{fig:features}
 \end{figure*}
 
-
-\begin{figure}
-    \centering 
-    \includegraphics[width=1.0\columnwidth]{compass_features}
-    \caption{We compute three flavours of spider features, which measure the distance between $\mathbb{p}$ and the edge point $\mathbb{e}$ in different ways. $c_1$ is the distance perpendicular to the camera direction; $c_2$ measures the depth of the object perpendicular to the normal at $\mathbb{p}$; while $c_3$ is the geodesic distance between $\mathbb{p}$ and $\mathbb{e}$.}
-    \label{fig:spider_features}
-\end{figure}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -431,33 +450,57 @@ However, when it comes to predicting the geometry of the scene we cannot observe
 An example of this can be seen in figure \ref{fig:patch_problems}.
 The two regions circled in the image have identical \emph{local} appearance, but the 3D geometry around each regions is very different due to the different thicknesses of the two boxes.
 
+
+\begin{figure}[h]
+  \centering 
+  \includegraphics[width=0.9\columnwidth]{features_1}
+  \caption{Local, patch-type features do not give enough information to accurately predict depth. Here, two pairs of patches are marked. Each item in these pairs have identical local appearance. However, the thickness of the object at each patch location is very different. We use this to motivate the spider feature.}
+  \label{fig:patch_problems}
+\end{figure}
+%\todo{Combine all the motivational images for the spider feature into one...}}
+
+
 Previous works have used the properties of a whole segmented region for classification of individual points \cite{golovinskiy-iccv-2009}.
 When it comes to predicting the 3D shape local to a point in an image, however, we care as much about the point's location in the region as we do about the overall region properties (figure \ref{fig:spider_motivation}).
 
 We desire a feature which captures the size and shape of the region in which $\pixelidx$ resides, along with the location of $\pixelidx$ in that region.
 To achieve this we take inspiration from the features between a point and a binary edge map used by \cite{drost-3dimpvt-2012}.
 
-We first compute a binary edge map for the image, where each pixel takes the value 1 at a large discontinuity, and is 0 otherwise. \note{Refer to figure here.}
-We describe our method for computing this edge map in our supplementary material.
-From $\pixelidx$, we cast a line across the edge map in direction $\phi$.
+\paragraph{Computing a binary edge map}
+We first compute a binary edge map for the image, where each pixel takes the value 1 at a large change in depth or surface normal direction, and is 0 otherwise.
+We first use the method of \cite{dollar-iccv-2013} to compute a real-valued edge map for the image (figure \ref{subfig:structedge}).
+Next we apply the Canny filtering algorithm \cite{} to convert this to a binary edge map (figure \ref{subfig:structedge}).
+We mitigate against poor quality depth data around discontinuities by dilating this edge map with a 3x3 disc-shaped structuring element.
+
+\paragraph{Casting lines from $\pixelidx$}
+From $\pixelidx$, we then cast a line across the edge map in direction $\phi$.
 We note the point on the edge map where the line first hits a pixel with value 1 as $\edgeimidx$.
 The 2D locations $\pixelidx$ and $\edgeimidx$ reproject to 3D locations $\project(\pixelidx)$ and $\project(\edgeimidx)$ respectively.
 %For each line cast we therefore have two points in 3D space: $\point$ and $\point_e$.
 
-We compute the following three distance metrics between $\pixelidx$ and $\edgeimidx$:
+\paragraph{Extracting the spider feature}
+
+\newcommand{\spiderfeat}{s}
+
+The spider feature for a single point with a line cast in direction $\phi$ is $\Phi_s = (\spiderfeat_0, \spiderfeat_1, \spiderfeat_2)$.
+Each element of this tuple is completed as follows:
 \begin{itemize}
-\item The distance between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$
-$\sum_{i=2}^{|l|} \| \project(l_i) - \project(l_{i-1}) \| $, where $l$ is an ordered list of the pixel locations on the line between $\pixelidx$ and $\edgeimidx$.
 
-\item the 3D distance between $\point$ and $\point_{e}$ along the direction of the normal at $\point$. (In practice, we take the point 95\% of the way between $\point$ and $\point_{e}$ in image space, as this helps to prevent problems with poor quality edge data).
+\item $\spiderfeat_1 = \rgbdimage(\pixelidx) \|\pixelidx - \edgeimidx\| / f$. This is the distance between $\pixelidx$ and $\edgeimidx$ in pixel units $\|\pixelidx - \edgeimidx\|$ scaled by $\rgbdimage(\pixelidx) / f$ to convert to a real-world distance.
 
-\item the distance $\rgbdimage(\pixelidx) \|\pixelidx - \edgeimidx\| / f$ between $\pixelidx$ and $\edgeimidx$. This is the distance in pixel units $\|\pixelidx - \edgeimidx\|$ scaled by $\rgbdimage(\pixelidx) / f$ to convert it to a real-world distance.
+\item $\spiderfeat_2 = (\point(\pixelidx) - \point(\edgeimidx)) \cdot \normal$. 
+This is the Euclidean distance between $\point(\pixelidx)$ and $\point(\edgeimidx)$ along the direction of the normal at $\pixelidx$.
+
+\item $\spiderfeat_3 = \sum_{i=2}^{|l|} \| \project(l_i) - \project(l_{i-1}) \| $, where $l$ is an ordered list of the pixel locations on the line between $\pixelidx$ and $\edgeimidx$.
+This is the arc length between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$
 \end{itemize}
+
 %\item the \textbf{geodesic distance} $d_g(\point, point_e)$ across the surface of $\rgbdimage$
 
 We compute the spider features for  $\phi = [0\degree, 45\degree, \ldots, 315\degree]$
 The spider feature for a single point $\pixelidx$ is therefore 16-dimensional.
 
+\paragraph{Implementation}
 The spider feature is extremely efficient to compute.
 This is due to its cumulative nature: $(u, v, 0)$ can be directly computed from $s(u, v-1, 0)$.
 We can compute the 16D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptimized C++ code; we would expect a significant speedup were this to be implemented on a GPU.
@@ -516,6 +559,12 @@ Motivation:
 
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Learning a mapping from features to voxlets}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Notes}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Just some notes of things to also include:
@@ -525,12 +574,6 @@ Just some notes of things to also include:
 \begin{itemize}
 \item Patch based motivation
 \item Occlusion based motivation
-\end{itemize}
-\item Combine all the describing images for the spider feature into one...
-\begin{itemize}
-\item View of 3D scene with p, e etc
-\item Slice through (fig 5 currently I think)
-\item Cobweb feature...
 \end{itemize}
 \end{itemize}
 
