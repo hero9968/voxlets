@@ -1,26 +1,21 @@
-'''computes a shoebox for many points from bigbird images'''
+'''
+some functions to help with shoebox extraction
+'''
 import numpy as np
-import cPickle as pickle
 import sys, os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+import cPickle as pickle
 import scipy.io
 
 from common import voxel_data
-from common import paths
 from common import mesh
-from common import images
+from common import paths
 from common import features
-
-
-'''PARAMETERS'''
-overwrite = False
 
 # params for the shoeboxes
 shoebox_gridsize = (20, 40, 20)
 shoebox_p_from_origin = np.array((0.05, 0.05, 0.05))
 shoebox_voxelsize = 0.2/40.0
-
-number_points_from_each_image = 100
 
 
 def shoeboxes_from_image(im, vgrid, indices):
@@ -65,7 +60,8 @@ def shoeboxes_from_image(im, vgrid, indices):
 
         image_shoeboxes.append(shoebox)
 
-    return image_shoeboxes
+    return np.array([sbox.V.flatten() for sbox in image_shoeboxes])
+
 
 
 def features_from_image(im, indices):
@@ -94,62 +90,34 @@ def num_files_in_dir(dirname):
     return len([name for name in os.listdir(dirname) if os.path.isfile(os.path.join(dirname, name))])
 
 
-for modelname in paths.modelnames:
 
-    # creating folder if it doesn't exist
-    savefolder = paths.base_path + "voxlets/bigbird/%s/" % modelname
-    if not os.path.exists(savefolder):
-        os.mkdir(savefolder)
+def load_bigbird_shoeboxes(modelname, view):
+    loadpath = paths.base_path + "voxlets/bigbird/%s/%s.pkl" % (modelname, view)
 
-    # skipping this model if it seems we've already saved all the required files       
-    if num_files_in_dir(savefolder) == 75 and not overwrite:
-        print "Skipping model " + modelname
-        continue
+    #D = scipy.io.loadmat(loadpath)
+    D = pickle.load(open(loadpath, 'rb'))
 
-    # loading the voxel grid for this model
-    print "Loading voxel data for " + modelname
-    vgrid = voxel_data.BigBirdVoxels()
-    vgrid.load_bigbird(modelname)
+    # loading in the shoeboxes (need some magic to sort out the matlab crap)
+    each_view_sbox = np.array([sbox.V.flatten() for sbox in D['sboxes']])
+    image_sboxes = np.array(each_view_sbox)
 
-    # loop over the different images of this object:
-    for view in paths.views:
+    return image_sboxes
 
-        savepath = savefolder + "%s.mat" % view
 
-        # see if should skip
-        if os.path.exists(savepath) and not overwrite:
-            print "Skipping " + savepath
-            continue
+def load_bigbird_shoeboxes_and_features(modelname, view):
+    loadpath = paths.base_path + "voxlets/bigbird/%s/%s.pkl" % (modelname, view)
 
-        # load the image and the camera
-        im = images.CroppedRGBD()
-        try:
-            im.load_bigbird_from_mat(modelname, view)
-        except:
-            print "Could not load bigbird!"
-            print "Skipping " + modelname + " " + view
-            continue
+    D = pickle.load(open(loadpath, 'rb'))
 
-        # sample points from the image mask
-        mask = ~np.isnan(im.frontrender)
-        sampled_points = random_sample_from_mask(mask, number_points_from_each_image)
+    # loading in the shoeboxes (need some magic to sort out the matlab crap)
+    each_view_sbox = np.array([sbox.V.flatten() for sbox in D['sboxes']])
+    image_sboxes = np.array(each_view_sbox)
 
-        # now compute the shoeboxes
-        im_shoeboxes = shoeboxes_from_image(im, vgrid, sampled_points)
+    # now need to get features
+    image_cobwebs = np.array(D['cobweb'])
+    image_spider = np.array(D['spider'])
 
-        # now compute the features
-        try:
-            cobweb, spider = features_from_image(im, sampled_points)
-        except:
-            print "Could not get features!"
-            print "Skipping " + modelname + " " + view
-            continue
+    return image_sboxes, image_cobwebs, image_spider
 
-        # save these to a file
-        D = dict(sboxes=im_shoeboxes, cobweb=cobweb, spider=spider, sampled_points=sampled_points)
-        scipy.io.savemat(savepath, D, do_compression=True)
 
-        print "Done " + savepath
-
-    print "Done model " + modelname
-
+    

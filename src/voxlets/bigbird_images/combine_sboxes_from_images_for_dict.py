@@ -17,19 +17,7 @@ from common import paths
 num_to_sample_from_each_model = 1000
 shoebox_kmeans_path = paths.base_path + "voxlets/shoebox_dictionary_training_images.pkl"
 
-
-def load_bigbird_shoeboxes(modelname, view_idx):
-    loadpath = paths.base_path + "voxlets/bigbird/%s/%s.mat" % (modelname, view)
-
-    D = scipy.io.loadmat(loadpath)
-
-    # loading in the shoeboxes (need some magic to sort out the matlab crap)
-    each_view_sbox = np.array([sbox[0][0][4] for sbox in D['sboxes'].flatten()])
-    num_boxes = each_view_sbox.shape[0]
-    image_sboxes = np.array(each_view_sbox).reshape((num_boxes, -1))
-
-    return image_sboxes
-    
+from shoebox_helpers import *
 
 all_sboxes = []
 
