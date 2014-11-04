@@ -40,7 +40,7 @@ if data_type=='bigbird':
     
     f = open(test_path, 'r')
     test_names = [line.strip() for line in f]
-    test_names = [name for name in train_names  if name != 'cup_noodles_shrimp_picante' and name != 'paper_plate'
+    test_names = [name for name in train_names  if name != 'cup_noodles_shrimp_picante' and name != 'paper_plate']
 
     model_features = base_path + 'bigbird_features/'
 

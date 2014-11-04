@@ -2,8 +2,8 @@
 import numpy as np
 import cPickle as pickle
 import scipy.io
-import sys
-sys.path.append('/Users/Michael/projects/shape_sharing/src/')
+import sys, os
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from sklearn.cluster import MiniBatchKMeans
 
 from common import paths

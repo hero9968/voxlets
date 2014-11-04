@@ -51,10 +51,11 @@ for modelname in paths.modelnames:
         if os.path.exists(savepath) and not overwrite:
             print "Skipping " + savepath
             continue
+        try:
 
-        # load the image and the camera
-        im = images.CroppedRGBD()
-        im.load_bigbird_from_mat(modelname, view)
+            # load the image and the camera
+            im = images.CroppedRGBD()
+            im.load_bigbird_from_mat(modelname, view)
         #try:
         #except:
         #    print "Could not load bigbird!"
@@ -62,9 +63,8 @@ for modelname in paths.modelnames:
         #    continue
 
         # sample points from the image mask
-        mask = ~np.isnan(im.frontrender)
-        sampled_points = random_sample_from_mask(mask, number_points_from_each_image)
-        try:
+            mask = ~np.isnan(im.frontrender)
+            sampled_points = random_sample_from_mask(mask, number_points_from_each_image)
 
             # now compute the shoeboxes
             im_shoeboxes = shoeboxes_from_image(im, vgrid, sampled_points)
