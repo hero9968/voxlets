@@ -9,8 +9,9 @@ import cv2
 import numpy as np
 import paths
 from scipy.ndimage.morphology import distance_transform_edt
-
+import copy
 from numbers import Number
+
 
 class Voxels(object):
 	'''
@@ -366,13 +367,26 @@ class WorldVoxels(Voxels):
 			self_world_xyz = self.world_meshgrid()
 			self_idx = self.idx_meshgrid()
 
+			# convert the indices to world xyz space
+			#self_grid_in_sbox_idx, valid = input_grid.world_to_idx(self_world_xyz, True)
+			#print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
+	
+			#output_idxs = self_grid_in_sbox_idx[valid, :]
+			#occupied_values = input_grid.extract_from_indices(output_idxs)
+
 			# 2) Warp into idx space of input_grid and 
 			# 3) See which are valid idxs in input_grid
 			valid_values, valid = input_grid.just_valid_world_to_idx(self_world_xyz)
-			#updated_values = self.get_idxs(output_idx[valid, :]) + valid_values
-
+			#self.set_indicated_voxels(valid, occupied_values)
+			
 			# 4) Replace these values in self
-			self.set_idxs(self_idx[valid, :], valid_values)
+			if combine == 'sum':
+				addition = self.get_idxs(self_idx[valid, :])
+				self.set_idxs(self_idx[valid, :], valid_values+addition)
+			else:
+				self.set_idxs(self_idx[valid, :], valid_values)
+
+
 
 		elif method=='bounding_box':
 			'''
@@ -445,17 +459,20 @@ class WorldVoxels(Voxels):
 				valid_ij[:, 2] = world_slice_idx
 
 				# TODO - save all these up and do at end
-				if combine == 'sum':
+				if combine=='accumulator':
+					# here will do special stuff
+					self.sumV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += data_to_insert
+					self.countV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += 1
+
+				elif combine == 'sum':
 					addition = self.get_idxs(valid_ij)
 					self.set_idxs(valid_ij, data_to_insert+addition)
-				else:
+
+				elif combine=='replace':
 					self.set_idxs(valid_ij, data_to_insert)
-
-				#valid_ijs.append(valid_ij)
-				#valid_data.append(data_to_insert)
-
-			#print np.array(valid_ijs).shape
-			#self.set_idxs()
+					
+				else:
+					raise Exception("unknown combine type")
 
 			valid_ij = None # to prevent acciental use again 
 			valid_ij_in_input = None # to prevent acciental use again 
@@ -487,6 +504,85 @@ class BigBirdVoxels(WorldVoxels):
 	def load_bigbird(self, modelname):
 		idx_path = paths.base_path + "/bigbird_meshes/" + modelname + "/meshes/voxelised.vox"
 		self.populate_from_vox_file(idx_path)
+
+
+
+class VoxelGridCollection(object):
+	'''
+	class for doing things to a list of same-sized voxelgrids
+	'''
+	def __init__(self):
+		pass
+
+
+	def set_voxel_list(self, voxlist_in):
+		self.voxlist = voxlist_in
+
+
+	def cluster_voxlets(self, num_clusters, subsample_length):
+
+		'''helper function to cluster voxlets'''
+
+		# convert to np array
+		all_sboxes = np.array([sbox.V.flatten() for sbox in self.voxlist]).astype(np.float16)
+
+		# take subsample
+		to_use_for_clustering = np.random.randint(0, all_sboxes.shape[0], size=(subsample_length))
+		all_sboxes_subset = all_sboxes[to_use_for_clustering, :]
+		print all_sboxes_subset.shape
+
+		# doing clustering
+		from sklearn.cluster import MiniBatchKMeans
+		self.km = MiniBatchKMeans(n_clusters=num_clusters)
+		self.km.fit(all_sboxes_subset)
+
+		return self.km
+
+
+
+
+class UprightAccumulator(WorldVoxels):
+	'''
+	accumulates multiple voxels into one output grid
+	does the averaging etc also
+	for this reason does it all in 32 bit floats
+	Is an upright accumulator as assumed all the z directions are pointing the same way
+	'''
+
+	def __init__(self, gridsize):
+		Voxels.__init__(self, gridsize, np.float32)
+		self.grid_centre_from_grid_origin = []
+		self.sumV = (copy.deepcopy(self.V)*0)
+		self.countV = (copy.deepcopy(self.V)*0)
+
+
+	def add_voxlet(self, voxlet):
+		'''
+		adds a single voxlet into the output grid
+		'''
+
+		# convert the indices to world xyz space
+		#output_grid_in_voxlet_idx, valid = voxlet.world_to_idx(self.world_meshgrid(), True)
+
+		#print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
+
+		# get the idxs in the output space and the values in the input space	    
+		#output_idxs = output_grid_in_voxlet_idx[valid, :]
+		#occupied_values = voxlet.extract_from_indices(output_idxs)
+		
+		#self.sumV[valid.reshape(self.V.shape)] += occupied_values
+		#self.countV[valid.reshape(self.V.shape)] += 1
+		self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
+		
+
+	def compute_average(self):
+		'''
+		computes a grid of the average values, stores in V
+		'''
+		self.countV[self.countV==0] = 100
+		self.V = self.sumV / self.countV
+		#self.V[np.isinf(self.V)] = np.nan
+		return self.V
 
 
 

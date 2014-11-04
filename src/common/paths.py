@@ -91,3 +91,8 @@ for idx, line in enumerate(f):
 
 #print modelnames
 #print d['12bfa757452ae83d4c5341ee07f41676']
+
+
+# some helper functions...
+def num_files_in_dir(dirname):
+    return len([name for name in os.listdir(dirname) if os.path.isfile(os.path.join(dirname, name))])

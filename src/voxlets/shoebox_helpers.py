@@ -64,30 +64,12 @@ def shoeboxes_from_image(im, vgrid, indices):
 
 
 
-def features_from_image(im, indices):
-    '''
-    extract cobweb and spider features from image at specified locations
-    '''
-    patch_engine = features.CobwebEngine(t=5, fixed_patch_size=False)
-    patch_engine.set_image(im)
-    patch_features = patch_engine.extract_patches(indices)
-
-    spider_engine = features.SpiderEngine(im)
-    spider_features = spider_engine.compute_spider_features(indices)
-
-    return patch_features, spider_features
-
-
 def random_sample_from_mask(mask, num_samples):
     '''sample random points from a mask'''
     
     indices = np.array(np.nonzero(mask)).T
     samples = np.random.randint(0, indices.shape[0], num_samples)
     return indices[samples, :]
-
-
-def num_files_in_dir(dirname):
-    return len([name for name in os.listdir(dirname) if os.path.isfile(os.path.join(dirname, name))])
 
 
 

@@ -11,6 +11,7 @@ import scipy.io
 import cPickle as pickle
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+sys.path.append('..')
 from common import paths
 
 # setting parameters
