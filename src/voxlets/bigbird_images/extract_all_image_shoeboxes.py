@@ -64,12 +64,12 @@ for modelname in paths.modelnames:
         # sample points from the image mask
         mask = ~np.isnan(im.frontrender)
         sampled_points = random_sample_from_mask(mask, number_points_from_each_image)
-
-        # now compute the shoeboxes
-        im_shoeboxes = shoeboxes_from_image(im, vgrid, sampled_points)
-
-        # now compute the features
         try:
+
+            # now compute the shoeboxes
+            im_shoeboxes = shoeboxes_from_image(im, vgrid, sampled_points)
+
+            # now compute the features
             cobweb, spider = features_from_image(im, sampled_points)
         except:
             print "Could not get features!"
