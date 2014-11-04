@@ -11,8 +11,12 @@ from sklearn.ensemble import RandomForestClassifier
 from common import paths
 
 "Parameters"
+max_data_in_subsample = 300000
 number_trees = 100
-small_sample = True
+if paths.host_name != 'troll':
+    small_sample = True
+else:
+    small_sample = False
 max_depth = 15
 if small_sample: print "WARNING: Just computing on a small sample"
 
@@ -36,7 +40,7 @@ for count, modelname in enumerate(paths.train_names):
         print "SMALL SAMPLE: Stopping"
         break
 
-np_all_sboxes = np.concatenate(shoeboxes, axis=0)
+np_all_sboxes = np.concatenate(shoeboxes, axis=0).astype(np.float16)
 
 
 ####################################################################
@@ -52,11 +56,23 @@ idx_assign = km.predict(np_all_sboxes)
 ####################################################################
 print "Now training the forest"
 
-np_features = np.concatenate(all_features, axis=0)
-print "All features has shape " + str(np_features.shape)
+np_features = np.concatenate(features, axis=0)
+print "Idx assign has shape " + str(idx_assign.shape)
+
+if max_data_in_subsample > np_features.shape[0]:
+    print "Using all data..."
+    np_features_subset = np_features
+else:
+    print "Subsampling data..."
+    to_use_for_clustering = np.random.randint(0, np_features.shape[0], size=(max_data_in_subsample))
+    np_features_subset = np_features[to_use_for_clustering, :]
+    idx_assign = idx_assign[to_use_for_clustering]
+
+print "Features shape before subsampling :" + str(np_features.shape)
+print "Features shape after subsampling :" + str(np_features_subset.shape)
 
 forest = RandomForestClassifier(n_estimators=number_trees, criterion="entropy", oob_score=True, max_depth=max_depth)
-forest.fit(np_features, idx_assign)
+forest.fit(np_features_subset, idx_assign)
 
 print "Done training, now saving"
 pickle.dump(forest, open(paths.voxlet_model_path, 'wb'))
