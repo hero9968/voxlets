@@ -367,13 +367,26 @@ class WorldVoxels(Voxels):
 			self_world_xyz = self.world_meshgrid()
 			self_idx = self.idx_meshgrid()
 
+			# convert the indices to world xyz space
+			#self_grid_in_sbox_idx, valid = input_grid.world_to_idx(self_world_xyz, True)
+			#print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
+	
+			#output_idxs = self_grid_in_sbox_idx[valid, :]
+			#occupied_values = input_grid.extract_from_indices(output_idxs)
+
 			# 2) Warp into idx space of input_grid and 
 			# 3) See which are valid idxs in input_grid
 			valid_values, valid = input_grid.just_valid_world_to_idx(self_world_xyz)
-			#updated_values = self.get_idxs(output_idx[valid, :]) + valid_values
-
+			#self.set_indicated_voxels(valid, occupied_values)
+			
 			# 4) Replace these values in self
-			self.set_idxs(self_idx[valid, :], valid_values)
+			if combine == 'sum':
+				addition = self.get_idxs(self_idx[valid, :])
+				self.set_idxs(self_idx[valid, :], valid_values+addition)
+			else:
+				self.set_idxs(self_idx[valid, :], valid_values)
+
+
 
 		elif method=='bounding_box':
 			'''
@@ -446,17 +459,20 @@ class WorldVoxels(Voxels):
 				valid_ij[:, 2] = world_slice_idx
 
 				# TODO - save all these up and do at end
-				if combine == 'sum':
+				if combine=='accumulator':
+					# here will do special stuff
+					self.sumV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += data_to_insert
+					self.countV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += 1
+
+				elif combine == 'sum':
 					addition = self.get_idxs(valid_ij)
 					self.set_idxs(valid_ij, data_to_insert+addition)
-				else:
+
+				elif combine=='replace':
 					self.set_idxs(valid_ij, data_to_insert)
-
-				#valid_ijs.append(valid_ij)
-				#valid_data.append(data_to_insert)
-
-			#print np.array(valid_ijs).shape
-			#self.set_idxs()
+					
+				else:
+					raise Exception("unknown combine type")
 
 			valid_ij = None # to prevent acciental use again 
 			valid_ij_in_input = None # to prevent acciental use again 
@@ -546,23 +562,27 @@ class UprightAccumulator(WorldVoxels):
 		'''
 
 		# convert the indices to world xyz space
-		output_grid_in_voxlet_idx, valid = voxlet.world_to_idx(self.world_meshgrid(), True)
+		#output_grid_in_voxlet_idx, valid = voxlet.world_to_idx(self.world_meshgrid(), True)
 
-		print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
+		#print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
 
 		# get the idxs in the output space and the values in the input space	    
-		output_idxs = output_grid_in_voxlet_idx[valid, :]
-		occupied_values = voxlet.extract_from_indices(output_idxs)
+		#output_idxs = output_grid_in_voxlet_idx[valid, :]
+		#occupied_values = voxlet.extract_from_indices(output_idxs)
 		
-		self.sumV[valid.reshape(self.V.shape)] += occupied_values
-		self.countV[valid.reshape(self.V.shape)] += 1
+		#self.sumV[valid.reshape(self.V.shape)] += occupied_values
+		#self.countV[valid.reshape(self.V.shape)] += 1
+		self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
 		
 
 	def compute_average(self):
 		'''
 		computes a grid of the average values, stores in V
 		'''
+		self.countV[self.countV==0] = 100
 		self.V = self.sumV / self.countV
+		#self.V[np.isinf(self.V)] = np.nan
+		return self.V
 
 
 

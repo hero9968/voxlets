@@ -11,6 +11,7 @@ import scipy.stats
 import scipy.io
 import cv2
 from numbers import Number
+import scipy.stats as stats
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches

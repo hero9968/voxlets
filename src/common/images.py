@@ -352,7 +352,7 @@ class CroppedRGBD(RGBDImage):
         return self.cam.inv_transform_normals(self.normals)
 
 
-    def get_features(self):
+    def get_features(self, idxs):
         '''
         get the features from the channels etc
         '''
