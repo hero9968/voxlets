@@ -36,9 +36,11 @@ if data_type=='bigbird':
 
     f = open(train_path, 'r')
     train_names = [line.strip() for line in f]
+    train_names = [name for name in train_names if name != 'cup_noodles_shrimp_picante']
     
     f = open(test_path, 'r')
     test_names = [line.strip() for line in f]
+    test_names = [name for name in train_names  if name != 'cup_noodles_shrimp_picante']
 
     model_features = base_path + 'bigbird_features/'
 
@@ -55,6 +57,7 @@ if data_type=='bigbird':
     bigbird_training_data_mat = base_path + "voxlets/bigbird/%s.mat"
 
     voxlet_dict_path = base_path + "voxlets/dict/dict_from_training_images.pkl"
+    voxlet_model_path = base_path + "voxlets/dict/forest.pkl"
 
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
@@ -98,6 +101,8 @@ modelname_to_idx = dict()
 modelnames = []
 for idx, line in enumerate(f):
     modelname = line.strip()
+    if modelname == 'cup_noodles_shrimp_picante':
+        continue    
     modelname_to_idx[modelname] = idx
     modelnames.append(modelname)
 
