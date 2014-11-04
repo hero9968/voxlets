@@ -13,6 +13,7 @@ import cv2
 
 import paths
 import mesh
+import features
 
 class RGBDImage(object):
 
@@ -314,6 +315,16 @@ class CroppedRGBD(RGBDImage):
         self.set_camera(cam)
 
 
+    def disp_spider_channels(self):
+
+        print self.spider_channels.shape
+        for idx in range(self.spider_channels.shape[2]):
+            plt.subplot(4, 6, idx+1)
+            plt.imshow(self.spider_channels[:, :, idx])
+        
+
+
+
     def depth_difference(self, index):
         ''' 
         returns the difference in depth between the front and the back
@@ -340,6 +351,21 @@ class CroppedRGBD(RGBDImage):
     def get_world_normals(self):
         return self.cam.inv_transform_normals(self.normals)
 
+
+    def get_features(self):
+        '''
+        get the features from the channels etc
+        '''
+        ce = features.CobwebEngine(t=5, fixed_patch_size=False)
+        ce.set_image(self)
+        patch_features = ce.extract_patches(idxs)
+
+        se = features.SpiderEngine(self)
+        spider_features = se.compute_spider_features(idxs)
+        spider_features = features.replace_nans_with_col_means(spider_features)
+
+        all_features = np.concatenate((patch_features, spider_features), axis=1)
+        return all_features
 
 
 

@@ -17,6 +17,19 @@ import matplotlib.patches as patches
 import matplotlib as mpl
 
 
+# helper function related to features...
+def replace_nans_with_col_means(X):
+	'''
+	http://stackoverflow.com/questions/18689235/numpy-array-replace-nan-values-with-average-of-columns
+	'''
+	col_mean = stats.nanmean(X,axis=0)
+	col_mean[np.isnan(col_mean)] = 0
+	inds = np.where(np.isnan(X))
+	X[inds]=np.take(col_mean,inds[1])
+	return X
+
+
+
 class CobwebEngine(object):
 	'''
 	A different type of patch engine, only looking at points in the compass directions

@@ -9,8 +9,9 @@ import cv2
 import numpy as np
 import paths
 from scipy.ndimage.morphology import distance_transform_edt
-
+import copy
 from numbers import Number
+
 
 class Voxels(object):
 	'''
@@ -487,6 +488,81 @@ class BigBirdVoxels(WorldVoxels):
 	def load_bigbird(self, modelname):
 		idx_path = paths.base_path + "/bigbird_meshes/" + modelname + "/meshes/voxelised.vox"
 		self.populate_from_vox_file(idx_path)
+
+
+
+class VoxelGridCollection(object):
+	'''
+	class for doing things to a list of same-sized voxelgrids
+	'''
+	def __init__(self):
+		pass
+
+
+	def set_voxel_list(self, voxlist_in):
+		self.voxlist = voxlist_in
+
+
+	def cluster_voxlets(self, num_clusters, subsample_length):
+
+		'''helper function to cluster voxlets'''
+
+		# convert to np array
+		all_sboxes = np.array([sbox.V.flatten() for sbox in self.voxlist]).astype(np.float16)
+
+		# take subsample
+		to_use_for_clustering = np.random.randint(0, all_sboxes.shape[0], size=(subsample_length))
+		all_sboxes_subset = all_sboxes[to_use_for_clustering, :]
+		print all_sboxes_subset.shape
+
+		# doing clustering
+		from sklearn.cluster import MiniBatchKMeans
+		self.km = MiniBatchKMeans(n_clusters=num_clusters)
+		self.km.fit(all_sboxes_subset)
+
+		return self.km
+
+
+
+
+class UprightAccumulator(WorldVoxels):
+	'''
+	accumulates multiple voxels into one output grid
+	does the averaging etc also
+	for this reason does it all in 32 bit floats
+	Is an upright accumulator as assumed all the z directions are pointing the same way
+	'''
+
+	def __init__(self, gridsize):
+		Voxels.__init__(self, gridsize, np.float32)
+		self.grid_centre_from_grid_origin = []
+		self.sumV = (copy.deepcopy(self.V)*0)
+		self.countV = (copy.deepcopy(self.V)*0)
+
+
+	def add_voxlet(self, voxlet):
+		'''
+		adds a single voxlet into the output grid
+		'''
+
+		# convert the indices to world xyz space
+		output_grid_in_voxlet_idx, valid = voxlet.world_to_idx(self.world_meshgrid(), True)
+
+		print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
+
+		# get the idxs in the output space and the values in the input space	    
+		output_idxs = output_grid_in_voxlet_idx[valid, :]
+		occupied_values = voxlet.extract_from_indices(output_idxs)
+		
+		self.sumV[valid.reshape(self.V.shape)] += occupied_values
+		self.countV[valid.reshape(self.V.shape)] += 1
+		
+
+	def compute_average(self):
+		'''
+		computes a grid of the average values, stores in V
+		'''
+		self.V = self.sumV / self.countV
 
 
 

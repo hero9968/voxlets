@@ -5,7 +5,7 @@ loads all the shoeboxes and features and classifies each sbox against the dictio
 import numpy as np
 import cPickle as pickle
 import sys, os
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+sys.path.append(os.expanduser('~/projects/shape_sharing/src/'))
 import scipy.io
 
 from sklearn.ensemble import RandomForestClassifier

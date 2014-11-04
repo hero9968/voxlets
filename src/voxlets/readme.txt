@@ -18,13 +18,15 @@ shoebox_helpers.py is a file with some functions used in all the voxlet stuff
 ## For images:
 
 1)  extract_all_image_shoeboxes.py
-    To get shoeboxes and features from all the images
+    To get shoeboxes and features from all the images - now also classifies against the dictionary which is sort of circular...
 
-2)  combine_sboxes_from_images.py
-    To combine toether all the separate training shoebox files... to allow for dict to be formed
+2) DICTIONARY:
+    2)  combine_sboxes_from_images_for_dict.py
+        To combine toether all the separate training shoebox files... to allow for dict to be formed
 
-3)  create_dict_from_images.py
-    To do the kmeans clustering on the combined sboxes
+    3)  create_dict_from_images.py
+        To do the kmeans clustering on the combined sboxes
 
-4)  classify_voxlets_against_dict.py
-    Goes through the training (and test?) voxlets and sees which dictionary cluster they belong in. Combines into one big file
+5)  train_model.py
+
+6)  use voxel_combine.py to do the prediction... somehow!
