@@ -4,6 +4,7 @@ This module is purely here to store the paths to the data associated with all th
 
 import os
 import socket
+import numpy as np
 
 # per-view data paths
 host_name = socket.gethostname()
@@ -50,6 +51,17 @@ if data_type=='bigbird':
 
     dense_savefolder = base_path + "bigbird_dense/"
 
+
+    bigbird_training_data_mat = base_path + "voxlets/bigbird/%s.mat"
+
+    voxlet_dict_path = base_path + "voxlets/dict/dict_from_training_images.pkl"
+
+    # setting some voxlet params here
+    # NOTE BE VERY CAREFUL IF EDITING THESE
+    one_side_bins = 20
+    voxlet_shape = (one_side_bins, 2*one_side_bins, one_side_bins)
+    voxlet_size = 0.1/float(one_side_bins)
+    voxlet_centre = np.array((0.05, 0.025, 0.05))
 
 elif data_type=='cad':
     # paths to do with the dataset as a whole
