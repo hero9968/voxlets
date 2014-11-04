@@ -13,7 +13,10 @@ from common import images
 # parameters
 subsample_length = 10000 # how many points to cluster with
 number_clusters = 200
-small_sample = False
+if paths.host_name != 'troll':
+    small_sample = True
+else:
+    small_sample = False
 if small_sample: print "WARNING: Just computing on a small sample"
 
 def cluster_data(X, local_subsample_length, num_clusters):

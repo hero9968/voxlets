@@ -36,11 +36,11 @@ if data_type=='bigbird':
 
     f = open(train_path, 'r')
     train_names = [line.strip() for line in f]
-    train_names = [name for name in train_names if name != 'cup_noodles_shrimp_picante']
+    train_names = [name for name in train_names if name != 'cup_noodles_shrimp_picante' and name != 'paper_plate']
     
     f = open(test_path, 'r')
     test_names = [line.strip() for line in f]
-    test_names = [name for name in train_names  if name != 'cup_noodles_shrimp_picante']
+    test_names = [name for name in train_names  if name != 'cup_noodles_shrimp_picante' and name != 'paper_plate'
 
     model_features = base_path + 'bigbird_features/'
 
@@ -101,7 +101,7 @@ modelname_to_idx = dict()
 modelnames = []
 for idx, line in enumerate(f):
     modelname = line.strip()
-    if modelname == 'cup_noodles_shrimp_picante':
+    if modelname == 'cup_noodles_shrimp_picante' or modelname == 'paper_plate':
         continue    
     modelname_to_idx[modelname] = idx
     modelnames.append(modelname)

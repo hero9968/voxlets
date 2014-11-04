@@ -15,7 +15,10 @@ from common import images
 
 # parameters
 number_points_from_each_image = 100
-small_sample = False
+if paths.host_name != 'troll':
+    small_sample = True
+else:
+    small_sample = False
 
 if small_sample:
     print "WARNING: Just computing on a small sample"
