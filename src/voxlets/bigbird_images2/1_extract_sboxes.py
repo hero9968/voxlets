@@ -15,13 +15,13 @@ from common import images
 
 # parameters
 number_points_from_each_image = 100
-small_sample = True
+small_sample = False
 
 if small_sample:
     print "WARNING: Just computing on a small sample"
 
 
-for count, modelname in enumerate(paths.train_names):
+for count, modelname in enumerate(paths.modelnames):
 
     # initialise lists
     shoeboxes = []
@@ -30,6 +30,10 @@ for count, modelname in enumerate(paths.train_names):
     print "Processing " + modelname
     
     savepath = paths.bigbird_training_data_mat % modelname
+
+    if os.path.exists(savepath):
+        print "Skipping " + modelname
+        continue
 
     vgrid = voxel_data.BigBirdVoxels()
     vgrid.load_bigbird(modelname)
