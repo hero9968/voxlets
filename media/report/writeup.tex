@@ -257,13 +257,13 @@ On the other hand, \cite{harary-tog-2013} find matches in the mesh to the missin
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Image completion and super-resolution}
-Image completion works such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}, 
+Image completion works such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}
 typically use data-driven approaches as it is very difficult to form true generative models over image appearance.
 For example, \cite{hays-siggraph-2007} look up possible completion regions in a large database of similar images, while \cite{criminisi-cvpr-2003} in-paint by selecting and combining multiple plausible patches from other regions of the input image.
 This differs from our task as image completion typically aims for a visually plausible output, irrespective of the accuracy compared to ground truth.
 Similar to image \emph{completion} is image \emph{super-resolution}, \eg \cite{macaodha-eccv-2012, dong-eccv-2014}. 
 This, like our problem, is ill-posed and relies on the repeatability and predictability of the world in order to improve the local geometry of an image.
-
+Our problem differs from that of super-resolution because we make predictions about the state of the world outside of the region directly observable by the camera.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{A history of structured learning (not really)}
@@ -300,11 +300,7 @@ Structured edge detection \cite{dollar-iccv-2013}.
 \section{Approach overview}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
 Our approach is somewhat inspired by patch-based methods used for superresolution or similar of depth images. 
-
-
 
 Each voxlet is aligned with the coordinate system:
 \begin{equation}
@@ -317,16 +313,6 @@ Each voxlet is aligned with the coordinate system:
 where $\normal$ is the normal at $\point$ and $\updir$ is the `up' direction of the scene, \ie pointing directly away from the direction of gravity.
 The top and bottom face of each voxlet is therefore parallel with the ground plane.
 
-
-
-%However, as we are predicting in 3D space we introduce \emph{voxlets}.
-
-% Overview of the method --- Figure \ref{fig:pipeline}.
-% General motivation for method. Do not want to rely on having exact matches in training set. 
-% Instead, want to find a collection of good matches in the training set which, when combined, will give a sensible prediction of the voxel occupancy.
-% We take a RANSAC-style approach to finding basis shapes: first we \emph{propose} a set of candidate shapes which roughly match the scene, before we next \emph{re-weight} these candidates according to how well they match the scene geometry. 
-
-%\remove{The aim of our thickness prediction function is to map a point $\point$ in the image to a scalar thickness $t$.}
 
 We assume the 3D geometry of a scene to be a regular grid of voxels $\voxelgrid = \{\voxel_\voxidx\}$, where each $\voxel_\voxidx \in \{0, 1\}$ is a binary variable which takes the value $0$ if the voxel is vacant, and $1$ if it is occupied by solid matter.
 $\voxidx = (\voxelidxs)$ denotes the 3D coordinates of voxel $\voxidx$ in world space.
@@ -387,7 +373,8 @@ The aim of our algorithm is to recover $\voxelgrid$ given $\rgbdimage$.
 \section{Feature representation}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-In our method we use local and regional features extracted from the image around $\pixelidx$ to predict the thickness of the object at that point.
+We use local and regional features extracted from the image around $\pixelidx$ to represent the geometry around the point.
+This is used in our classifier to map from a single point to a prediction of voxel occupancy in the surrounding region.
 
 We use two novel features. 
 The \emph{cobweb} feature captures the shape of the depth surface in the immediate vicinity of $\pixelidx$. 
@@ -419,7 +406,8 @@ The \emph{spider} feature captures the size and shape of the region in which $\p
     %(a) Each point on a depth image has an angle $\theta$ associated, which represents the direction of gradient of the depth. 
     (b) The spider features measure the distance between $\point$ and the edge points $e_{1, \cdots, 7}$.
     %(c) Because the spider features are computed relative to $\theta$, the resultant feature vector is invariant to object rotations in the camera plane.
-    (d) Where the spider line emitted from $\point$ first hits an occluded edge, only a \textit{minimum} extent is known---this case is denoted as \texttt{?} in this figure.
+    (d) Where the spider line emitted from $\point$ first hits an occluded edge, only a \textit{minimum} extent is known.
+    This case is denoted as \texttt{?} in this figure.
     (e) The cobweb feature measures the difference in depth between $\point$ and a set of points in the near vicinity of $\point$, arranged in a cobweb shape.}%
     \label{fig:features}
 \end{figure*}
@@ -503,7 +491,8 @@ The spider feature for a single point $\pixelidx$ is therefore 16-dimensional.
 \paragraph{Implementation}
 The spider feature is extremely efficient to compute.
 This is due to its cumulative nature: $(u, v, 0)$ can be directly computed from $s(u, v-1, 0)$.
-We can compute the 16D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptimized C++ code; we would expect a significant speedup were this to be implemented on a GPU.
+We can compute the 16D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptimized C++ code.
+We would expect a significant speedup were this to be implemented on a GPU.
 
 
 \paragraph{Occluded spider features}
@@ -515,7 +504,8 @@ We reason that discontinuities in depth images can be assigned a direction: one 
 We can compute the gradient of the depth edges using PCA on the edge pixels in image space.
 We ensure that the final gradient at each edge pixel points in the direction of the occluded side.
 
-We can then use the occlusion information in our feature computations---see for example figure \ref{fig:occluded_region}.
+We can then use the occlusion information in our feature computations.
+See for example figure \ref{fig:occluded_region}.
 
 Motivation:
 \begin{itemize}
@@ -537,7 +527,8 @@ Motivation:
     \subfigure[]{%
         \includegraphics[width=0.45\columnwidth]{occlusion_b}} \\
     \caption{Where edges occur as a result of occlusion boundaries, the direction of the edge is important. The edge bounding region A can be divided into an \emph{occluding} portion (solid green) and an \emph{occluded} portion (dashed red).
-    We can make a reasonable assumption that region A may extend behind object B past the occluded edge---however, region A cannot continue sideways beyond its occluding edge.}
+    We can make a reasonable assumption that region A may extend behind object B past the occluded edge.
+    However, region A cannot continue sideways beyond its occluding edge.}
     \label{fig:occluded_region}
 \end{figure}
 
@@ -548,19 +539,30 @@ Motivation:
 %     \label{fig:occluded_spider}% 
 % \end{figure}
 
-%\begin{figure}
-%    \centering% 
-%    \includegraphics[width=1.0\columnwidth]{dtam_voxels.png}% 
-%    \figcaption{The warped voxelisation we make of our scene.
-%    The voxel space is a frustum grid, and each voxel is therefore a prismoidal hexahedron.
-%    Image from \cite{newcombe-iccv-2011}---I should probably make a similar one.}% 
-%    \label{fig:dtam_voxels}% 
-%\end{figure}
-
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Learning a mapping from features to voxlets}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+A Random Forest is a set of decision trees, each of which is trained on a different subset of the training data \cite{Breiman2001}. 
+At test time, each data point is passed through each tree, and at each node is passed left or right depending on the feature thresholds learned at training time. The final leaf node the data point ends in will vote for a class, based on which training samples ended up at that leaf node.
+
+Random Forests are well suited to our purpose, as they automatically select the features most suitable for separating the classes (unlike \eg SVMs) and they examine each dimension separately, making them robust to different scaling of each feature. They are also inherently non-linear, perform quick training and inference and are easily parallelizable.
+
+%In our case, the classes correspond to $y_{ij}$ and $\lnot y_{ij}$, which we now refer to as $y^{+}$ and $y^{-}$ for ease of notation.
+
+\subsection{Training the forest}
+
+We use the entropy split criterion
+\begin{equation}
+- \sum_j p_j \log_2 p_j.
+\end{equation}
+
+Often the modal class vote is taken as a hard prediction of class membership. Instead we follow \cite{bostrom-mla-2007} in using the fraction of votes for each class to approximate a probability of class membership. $p_{ij}$ can be interpreted as the parameter of a categorical distribution.
+%; \ie there is a probability $p_{ij}$ that $\imregion_i$ and $\imregion_j$ belong to the same class.
+
+
 
 
 
@@ -594,7 +596,8 @@ Just some notes of things to also include:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \paragraph{Evaluation criteria}
-The aim of our algorithm is to accurately classify free space in a scene; therefore, we report the per-voxel ROC curve for the scene, comparing the prediction $\Pr(o)$ with the ground truth occupancy as provided by KinFu.
+The aim of our algorithm is to accurately classify free space in a scene.
+Therefore, we report the per-voxel ROC curve for the scene, comparing the prediction $\Pr(o)$ with the ground truth occupancy as provided by KinFu.
 
 The shape of the ROC curve is strongly affected by the region over which the evaluation is performed.
 If all the voxels between the camera and the depth image are included in the evaluation, the false positive rate becomes very low, as the voxels in the free space between the camera and scene are `easy wins' for the algorithm. We therefore evaluate over all the voxels 
@@ -634,7 +637,7 @@ Also don't have the TSDF etc. Lots of problems
 - Implicit voxel occupancy
 - GPU
 - 3D object models where they are known
-- 
+- make splits in forest based on distance between cluster centers...  
 
 \section{For supplementary material probably:}
 But these could also come into the main paper:
