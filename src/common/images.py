@@ -60,6 +60,7 @@ class RGBDImage(object):
                 self.depth[row_idx, col_idx] = float(col)
 
         self.depth[self.depth==0] = np.nan
+        f.close()
 
     def load_kinect_defaults(self):
         '''

@@ -33,14 +33,17 @@ if data_type=='bigbird':
 
     f = open(base_path+'bigbird/poses_to_use.txt', 'r')
     views = [line.strip() for line in f]
+    f.close()
 
     f = open(train_path, 'r')
     train_names = [line.strip() for line in f]
     train_names = [name for name in train_names if name != 'cup_noodles_shrimp_picante' and name != 'paper_plate']
+    f.close()
     
     f = open(test_path, 'r')
     test_names = [line.strip() for line in f]
     test_names = [name for name in test_names  if name != 'cup_noodles_shrimp_picante' and name != 'paper_plate']
+    f.close()
 
     model_features = base_path + 'bigbird_features/'
 
@@ -58,6 +61,7 @@ if data_type=='bigbird':
     bigbird_training_data_mat_tsdf = base_path + "voxlets/bigbird/%s_tsdf.mat"
 
     voxlet_dict_path = base_path + "voxlets/dict/dict_from_training_images.pkl"
+    voxlet_dict_path_tsdf = base_path + "voxlets/dict/dict_from_training_images_tsdf.pkl"
     voxlet_model_path = base_path + "voxlets/dict/forest.pkl"
 
     # setting some voxlet params here
@@ -106,7 +110,7 @@ for idx, line in enumerate(f):
         continue    
     modelname_to_idx[modelname] = idx
     modelnames.append(modelname)
-
+f.close()
 #print modelnames
 #print d['12bfa757452ae83d4c5341ee07f41676']
 

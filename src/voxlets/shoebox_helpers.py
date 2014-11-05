@@ -77,7 +77,9 @@ def load_bigbird_shoeboxes(modelname, view):
     loadpath = paths.base_path + "voxlets/bigbird/%s/%s.pkl" % (modelname, view)
 
     #D = scipy.io.loadmat(loadpath)
-    D = pickle.load(open(loadpath, 'rb'))
+    f = open(loadpath, 'rb')
+    D = pickle.load(f)
+    f.close()
 
     # loading in the shoeboxes (need some magic to sort out the matlab crap)
     each_view_sbox = np.array([sbox.V.flatten() for sbox in D['sboxes']])
@@ -89,7 +91,9 @@ def load_bigbird_shoeboxes(modelname, view):
 def load_bigbird_shoeboxes_and_features(modelname, view):
     loadpath = paths.base_path + "voxlets/bigbird/%s/%s.pkl" % (modelname, view)
 
-    D = pickle.load(open(loadpath, 'rb'))
+    f = open(loadpath, 'rb')
+    D = pickle.load(f)
+    f.close()
 
     # loading in the shoeboxes (need some magic to sort out the matlab crap)
     each_view_sbox = np.array([sbox.V.flatten() for sbox in D['sboxes']])

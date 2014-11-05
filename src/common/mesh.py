@@ -20,7 +20,9 @@ class Mesh(object):
         loads faces and vertices from a ply file
         '''
         from plyfile import PlyData, PlyElement
-        plydata = PlyData.read(open(filename, 'r'))
+        f = open(filename, 'r')
+        plydata = PlyData.read(f)
+        f.close()
         self.vertices, self.faces = self._extract_plydata(plydata)
 
 
@@ -135,6 +137,8 @@ class Camera(object):
         H = np.concatenate((R, T), axis=1)
         H = np.concatenate((H, np.array([0, 0, 0, 1])[np.newaxis, :]), axis=0)
         self.set_extrinsics(H)
+
+        f.close()
 
 
     def adjust_intrinsic_scale(self, scale):
