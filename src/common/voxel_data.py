@@ -119,11 +119,36 @@ class Voxels(object):
 		uses scipy's Euclidean distance transform
 		'''
 		trans_inside = distance_transform_edt(self.V.astype(float))
-		print np.min(trans_inside), np.max(trans_inside)
+		#print np.min(trans_inside), np.max(trans_inside)
 		trans_outside = distance_transform_edt(1-self.V.astype(float))
-		print np.min(trans_outside), np.max(trans_outside)
-		print np.min(trans_outside - trans_inside), np.max(trans_outside - trans_inside)
-		return trans_outside, trans_inside, trans_outside - trans_inside
+		#print np.min(trans_outside), np.max(trans_outside)
+		#print np.min(trans_outside - trans_inside), np.max(trans_outside - trans_inside)
+
+		return trans_outside - trans_inside
+
+
+	def compute_tsdf(self, truncation):
+		'''
+		computes tsdf in real world units
+		truncation limit (mu in kinfupaper) needs to be set
+		'''
+		sdf = self.compute_sdt()
+
+		# convert to real-world distances
+		sdf *= self.vox_size
+
+		# truncate
+		sdf[sdf > truncation] = truncation
+		sdf[sdf < -truncation] = -truncation
+
+		return sdf
+
+
+	def convert_to_tsdf(self, trunctation):
+		'''
+		converts binary grid to a tsdf
+		'''
+		self.V = self.compute_tsdf(truncation).astype(np.float16)
 
 
 

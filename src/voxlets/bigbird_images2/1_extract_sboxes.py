@@ -32,7 +32,7 @@ for count, modelname in enumerate(paths.modelnames):
 
     print "Processing " + modelname
     
-    savepath = paths.bigbird_training_data_mat % modelname
+    savepath = paths.bigbird_training_data_mat_tsdf % modelname
 
     if os.path.exists(savepath):
         print "Skipping " + modelname
@@ -77,6 +77,7 @@ for count, modelname in enumerate(paths.modelnames):
             sbox_idxs = shoebox_xyx_in_world_idx[valid, :]
             occupied_values = vgrid.extract_from_indices(sbox_idxs)
             shoebox.set_indicated_voxels(valid, occupied_values)
+            shoebox.convert_to_tsdf()
     
             shoebox._clear_cache() # important for memory purposes!
             
