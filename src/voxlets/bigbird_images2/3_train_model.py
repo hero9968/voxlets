@@ -4,7 +4,7 @@ train the model dammit
 import numpy as np
 import cPickle as pickle
 import scipy.io
-import sys
+import sys, os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from sklearn.ensemble import RandomForestClassifier
 
@@ -54,6 +54,10 @@ np_all_idxs = np.hstack(all_idxs)
 ####################################################################
 print "Now training the forest"
 np_features = np.array(features).reshape((-1, 56))
+to_remove = np.any(np.isnan(np_features), axis=1)
+np_features = np_features[~to_remove, :]
+np_all_idxs = np_all_idxs[~to_remove]
+#np_features[np.isnan(np_features)] = 
 
 print "Idx assign has shape " + str(np_all_idxs.shape)
 
