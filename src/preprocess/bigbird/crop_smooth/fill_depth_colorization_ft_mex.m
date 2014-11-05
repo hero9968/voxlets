@@ -5,7 +5,7 @@
 % See: www.cs.huji.ac.il/~yweiss/Colorization/
 %
 % Args:
-%   imgRgb - HxWx3 matrix, the rgb image for the current frame. This must
+%   greyim - HxW matrix, the rgb image for the current frame. This must
 %            be between 0 and 1.
 %   imgDepth - HxW matrix, the depth image for the current frame in
 %              absolute (meters) space.
