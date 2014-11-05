@@ -45,10 +45,12 @@ for count, modelname in enumerate(paths.train_names):
     print "Processing " + modelname
 
     # loading the data
-    loadpath = paths.bigbird_training_data_mat % modelname
+    loadpath = paths.bigbird_training_data_mat_tsdf % modelname
     print "Loading from " + loadpath
     D = scipy.io.loadmat(loadpath)
-    shoeboxes.append(D['shoeboxes'])
+    temp = D['shoeboxes']
+    second_dim = temp.shape[2]
+    shoeboxes.append(temp.reshape((-1, second_dim)))
     
     if count > 2 and small_sample:
         print "SMALL SAMPLE: Stopping"
@@ -64,4 +66,4 @@ print "Doing clustering"
 km = cluster_data(np_all_sboxes, subsample_length, number_clusters)
 
 print "Saving to " + paths.voxlet_dict_path
-pickle.dump(km, open(paths.voxlet_dict_path, 'wb'))
+pickle.dump(km, open(paths.voxlet_dict_tsdf_path, 'wb'))
