@@ -144,7 +144,7 @@ class Voxels(object):
 		return sdf
 
 
-	def convert_to_tsdf(self, trunctation):
+	def convert_to_tsdf(self, truncation):
 		'''
 		converts binary grid to a tsdf
 		'''
