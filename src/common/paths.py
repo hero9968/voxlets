@@ -53,24 +53,23 @@ if data_type=='bigbird':
     model_config = base_path + 'bigbird/models_config.yaml'
     rf_folder_path = base_path + "bigbird_models/rf_models/"
     rf_folder_path_small = base_path + "bigbird_models/rf_models_small/"
-
     dense_savefolder = base_path + "bigbird_dense/"
 
 
-    bigbird_training_data_mat = base_path + "voxlets/bigbird/%s.mat"
-    bigbird_training_data_mat_tsdf = base_path + "voxlets/bigbird/%s_tsdf.mat"
+    bigbird_training_data_mat = base_path + "voxlets/bigbird/tsdf_small/%s.mat"
+    #bigbird_training_data_mat_tsdf = base_path + "voxlets/bigbird/%s_tsdf.mat"
 
-    voxlet_dict_path = base_path + "voxlets/dict/dict_from_training_images.pkl"
-    voxlet_dict_path_tsdf = base_path + "voxlets/dict/dict_from_training_images_tsdf.pkl"
-    voxlet_model_path = base_path + "voxlets/dict/forest.pkl"
-    voxlet_model_tsdf_path = base_path + "voxlets/dict/forest_tsdf.pkl"
+    voxlet_dict_path = base_path + "voxlets/dict/tsdf/dict_from_training_images.pkl"
+    voxlet_model_path = base_path + "voxlets/dict/tsdf/forest.pkl"
 
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
-    one_side_bins = 20
+    one_side_bins = 15
     voxlet_shape = (one_side_bins, 2*one_side_bins, one_side_bins)
     voxlet_size = 0.1/float(one_side_bins)
     voxlet_centre = np.array((0.05, 0.025, 0.05))
+
+    small_sample = (host_name != 'troll')
 
 elif data_type=='cad':
     # paths to do with the dataset as a whole
