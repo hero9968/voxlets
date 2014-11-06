@@ -92,12 +92,12 @@ for count, modelname in enumerate(paths.modelnames):
         all_features.append(im.get_features(idxs))
         
         "Now try to make this nice and like parrallel or something like what say what?"
-        shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
-
+        these_shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
+        shoeboxes.append(these_shoeboxes)
 
     # perhaps *HERE* save the data for this model
     np_sboxes = np.array(shoeboxes)
-    #np_sboxes = np_sboxes.reshape((-1, np_sboxes.shape[2])) # collapse 1st two dimensions
+    np_sboxes = np_sboxes.reshape((-1, np_sboxes.shape[2])) # collapse 1st two dimensions
 
     np_features = np.array(all_features)
     np_features = np_features.reshape((-1, np_features.shape[2])) # collapse 1st two dimensions
