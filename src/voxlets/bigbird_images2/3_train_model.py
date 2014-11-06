@@ -11,13 +11,13 @@ from sklearn.ensemble import RandomForestClassifier
 from common import paths
 
 "Parameters"
-max_data_in_subsample = 1000000
-number_trees = 100
+max_data_in_subsample = 500000
+number_trees = 20
 if paths.host_name != 'troll':
     small_sample = True
 else:
     small_sample = False
-max_depth = 15
+max_depth = 12
 if small_sample: print "WARNING: Just computing on a small sample"
 
 ####################################################################
@@ -49,11 +49,11 @@ for count, modelname in enumerate(paths.train_names):
         print "SMALL SAMPLE: Stopping"
         break
 
-np_all_idxs = np.hstack(all_idxs)
+np_all_idxs = np.hstack(all_idxs).astype(np.uint16)
 
 ####################################################################
 print "Now training the forest"
-np_features = np.array(features).reshape((-1, 56))
+np_features = np.array(features).reshape((-1, 56)).astype(np.float16)
 to_remove = np.any(np.isnan(np_features), axis=1)
 np_features = np_features[~to_remove, :]
 np_all_idxs = np_all_idxs[~to_remove]
