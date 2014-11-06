@@ -48,7 +48,7 @@ for count, modelname in enumerate(paths.train_names):
     loadpath = paths.bigbird_training_data_mat_tsdf % modelname
     print "Loading from " + loadpath
     D = scipy.io.loadmat(loadpath)
-    temp = D['shoeboxes']
+    temp = D['shoeboxes'].astype(np.float16)
     second_dim = temp.shape[2]
     shoeboxes.append(temp.reshape((-1, second_dim)))
     
