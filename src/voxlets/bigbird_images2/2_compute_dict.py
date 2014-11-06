@@ -1,4 +1,3 @@
-
 import numpy as np
 import cPickle as pickle
 import scipy.io
@@ -11,7 +10,7 @@ from common import voxel_data
 from common import images
 
 # parameters
-subsample_length = 10000 # how many points to cluster with
+subsample_length = 15000 # how many points to cluster with
 number_clusters = 200
 if paths.host_name != 'troll':
     small_sample = True
@@ -48,7 +47,7 @@ for count, modelname in enumerate(paths.train_names):
     loadpath = paths.bigbird_training_data_mat_tsdf % modelname
     print "Loading from " + loadpath
     D = scipy.io.loadmat(loadpath)
-    temp = D['shoeboxes']
+    temp = D['shoeboxes'].astype(np.float16)
     second_dim = temp.shape[2]
     shoeboxes.append(temp.reshape((-1, second_dim)))
     
@@ -65,5 +64,5 @@ print "All sboxes shape is " + str(np_all_sboxes.shape)
 print "Doing clustering"
 km = cluster_data(np_all_sboxes, subsample_length, number_clusters)
 
-print "Saving to " + paths.voxlet_dict_path
-pickle.dump(km, open(paths.voxlet_dict_tsdf_path, 'wb'))
+print "Saving to " + paths.voxlet_dict_path_tsdf
+pickle.dump(km, open(paths.voxlet_dict_path_tsdf, 'wb'))

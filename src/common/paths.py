@@ -63,6 +63,7 @@ if data_type=='bigbird':
     voxlet_dict_path = base_path + "voxlets/dict/dict_from_training_images.pkl"
     voxlet_dict_path_tsdf = base_path + "voxlets/dict/dict_from_training_images_tsdf.pkl"
     voxlet_model_path = base_path + "voxlets/dict/forest.pkl"
+    voxlet_model_tsdf_path = base_path + "voxlets/dict/forest_tsdf.pkl"
 
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
