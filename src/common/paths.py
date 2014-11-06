@@ -57,6 +57,7 @@ if data_type=='bigbird':
 
 
     bigbird_training_data_mat = base_path + "voxlets/bigbird/tsdf_small/%s.mat"
+    bigbird_training_data_fitted_mat = base_path + "voxlets/bigbird/tsdf_fitted_pca/%s.mat"
     #bigbird_training_data_mat_tsdf = base_path + "voxlets/bigbird/%s_tsdf.mat"
 
     voxlet_dict_path = base_path + "voxlets/dict/tsdf/dict_from_training_images.pkl"
