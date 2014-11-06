@@ -22,7 +22,7 @@ if small_sample: print "WARNING: Just computing on a small sample"
 
 ####################################################################
 print "Loading the dictionary"
-km = pickle.load(open(paths.voxlet_dict_tsdf_path, 'rb'))
+km = pickle.load(open(paths.voxlet_dict_path_tsdf, 'rb'))
 
 
 ####################################################################
