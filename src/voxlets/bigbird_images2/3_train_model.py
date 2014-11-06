@@ -17,12 +17,12 @@ if paths.host_name != 'troll':
     small_sample = True
 else:
     small_sample = False
-max_depth = 15
+max_depth = 14
 if small_sample: print "WARNING: Just computing on a small sample"
 
 ####################################################################
 print "Loading the dictionary"
-km = pickle.load(open(paths.voxlet_dict_path, 'rb'))
+km = pickle.load(open(paths.voxlet_dict_tsdf_path, 'rb'))
 
 
 ####################################################################
@@ -32,7 +32,7 @@ all_idxs = []
 for count, modelname in enumerate(paths.train_names):
 
     # loading the data
-    loadpath = paths.bigbird_training_data_mat % modelname
+    loadpath = paths.bigbird_training_data_tsdf_mat % modelname
     print "Loading from " + loadpath
 
     D = scipy.io.loadmat(loadpath)
@@ -80,4 +80,4 @@ forest = RandomForestClassifier(n_estimators=number_trees, criterion="entropy", 
 forest.fit(np_features_subset, np_all_idxs_subset)
 
 print "Done training, now saving"
-pickle.dump(forest, open(paths.voxlet_model_path, 'wb'))
+pickle.dump(forest, open(paths.voxlet_model_tsdf_path, 'wb'))
