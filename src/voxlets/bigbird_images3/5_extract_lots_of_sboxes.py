@@ -108,8 +108,8 @@ for count, modelname in enumerate(paths.modelnames):
         all_features.append(im.get_features(idxs))
         
         "Now try to make this nice and like parrallel or something like what say what?"
-        these_shoeboxes = [pool_helper(idx, im, vgrid) for idx in idxs]
-        #these_shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
+        #these_shoeboxes = [pool_helper(idx, im, vgrid) for idx in idxs]
+        these_shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
         shoeboxes.extend(these_shoeboxes)
 
     # perhaps *HERE* save the data for this model
