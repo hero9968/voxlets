@@ -40,7 +40,7 @@ class Reconstructer(object):
         np.random.seed(1)
         samples = np.random.randint(0, indices.shape[0], num_to_sample)
         self.sampled_idxs = indices[samples, :]
-        print "Sampled these many points : " + str(self.sampled_idxs.shape)
+        #print "Sampled these many points : " + str(self.sampled_idxs.shape)
 
 
     def classify_features(self, features):
@@ -52,18 +52,7 @@ class Reconstructer(object):
         probs = self.forest.predict_proba(features)
         small_number = 0.0001
         entropy = -np.sum(probs+small_number * np.log(probs+small_number), axis=1)
-        print "Max entropy is " + str(np.max(entropy))
-
-        print "Pred classes has shape " + str(pred_classes.shape)
-        print "Probs has shape " + str(probs.shape)
-        print "Entropy has shape " + str(entropy.shape)
-
-        #modal_classes = mode(tree_predictions, axis=1)[0]
-        #print np.array(modal_classes).shape
-        #agree_with_modal = modal_classes == tree_predictions
-        #confidences = np.sum(agree_with_modal, axis=1).astype(float) / float(len(forest.estimators_))
-        #print "confidences has shape " + str(confidences.shape)
-
+        
         return (pred_classes, probs, entropy)
 
 
@@ -177,7 +166,7 @@ class Reconstructer(object):
 
         "extract features from test image"
         combined_features = self.im.get_features(self.sampled_idxs)
-        print "Combined f has shape " + str(combined_features.shape)
+        #print "Combined f has shape " + str(combined_features.shape)
 
         "classify according to the forest"
         forest_predictions, class_probs, entropy = \
@@ -187,7 +176,7 @@ class Reconstructer(object):
         # DANGER - need to convert these to the real life classes
         per_tree_class_predictions = self.forest.classes_[temp_votes.astype(int)]
 
-        print "per_tree_votes has shape " + str(per_tree_class_predictions.shape)
+        #print "per_tree_votes has shape " + str(per_tree_class_predictions.shape)
 
         "creating the output voxel grid"
         if self.accum == None:

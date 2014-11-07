@@ -19,20 +19,20 @@ from common import images
 from common import features
 import reconstructer
 
-"Parameters"
+print "Setting parameters"
 max_points = 100
 number_samples = 2000
 combine_type = 'medioid'
 reconstruction_type='kmeans_on_pca'
 
-"Loading clusters and forest"
+print "Loading clusters and forest"
 forest_pca = pickle.load(open(paths.voxlet_model_pca_path, 'rb'))
 km_pca = pickle.load(open(paths.voxlet_pca_dict_path, 'rb'))
 pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
 
 def pool_helper(gt_grid, test_im):
 
-    "Filling the accumulator"
+    print "Inside the helper"
     rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='medioid')
     rec.set_forest(forest_pca)
     rec.set_pca_comp(pca)
@@ -42,7 +42,6 @@ def pool_helper(gt_grid, test_im):
     rec.initialise_output_grid(method='from_grid', gt_grid=gt_grid)
     accum1 = rec.fill_in_output_grid(max_points=max_points)
     
-
     rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_forest(forest_pca)
     rec.set_pca_comp(pca)
@@ -61,7 +60,9 @@ for modelname in paths.test_names:
     vgrid = voxel_data.BigBirdVoxels()
     vgrid.load_bigbird(modelname)
 
-    for test_view in paths.views[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]:
+    for this_view_idx in [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]:
+
+        test_view = paths.views[this_view_idx]
 
         test_im = images.CroppedRGBD()
         test_im.load_bigbird_from_mat(modelname, test_view)
@@ -90,6 +91,7 @@ for modelname in paths.test_names:
         gt_out.fill_from_grid(vgrid)
         gt = gt_out.compute_tsdf(0.03)
 
+        "Filling the figure"
         plt.rcParams['figure.figsize'] = (15.0, 20.0)
         plt.clf()
         plt.subplot(131)
@@ -102,6 +104,7 @@ for modelname in paths.test_names:
         plot_slice(gt)
         plt.title('Ground truth')
 
+        "Computing the scores"
         # compute some kind of result... true positive? false negatuve>
         gt += 0.03
         gt /= 0.06
@@ -112,8 +115,8 @@ for modelname in paths.test_names:
         result2 /= 0.06
         auc1 = sklearn.metrics.roc_auc_score(gt.flatten(), result1.flatten())
         auc2 = sklearn.metrics.roc_auc_score(gt.flatten(), result2.flatten())
-    
-        # save to file
+
+        "Saving figure"
         imagesavepath = paths.voxlet_prediction_image_path % (modelname, test_view, auc1, auc2)
         plt.savefig(imagesavepath, bbox_inches='tight')
 
