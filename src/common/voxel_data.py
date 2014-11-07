@@ -600,12 +600,16 @@ class UprightAccumulator(WorldVoxels):
 		self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
 		
 
-	def compute_average(self):
+	def compute_average(self, nan_value=0):
 		'''
 		computes a grid of the average values, stores in V
 		'''
-		self.countV[self.countV==0] = 100
-		self.V = self.sumV / self.countV
+		nan_locations = self.countV==0
+		print np.sum(nan_locations)
+		temp_countV = copy.deepcopy(self.countV)
+		temp_countV[nan_locations] = 100  # to avoid div by zero error
+		self.V = self.sumV / temp_countV
+		self.V[nan_locations] = nan_value
 		#self.V[np.isinf(self.V)] = np.nan
 		return self.V
 
