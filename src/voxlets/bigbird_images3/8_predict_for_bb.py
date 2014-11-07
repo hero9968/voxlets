@@ -7,7 +7,7 @@ saves each prediction to disk
 import numpy as np
 import matplotlib.pyplot as plt 
 import cPickle as pickle
-import sys
+import sys, os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 import copy
 import sklearn.metrics

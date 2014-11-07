@@ -60,6 +60,7 @@ if data_type=='bigbird':
     bigbird_training_data_fitted_mat = base_path + "voxlets/bigbird/tsdf_fitted_pca/%s.mat"
     #bigbird_training_data_mat_tsdf = base_path + "voxlets/bigbird/%s_tsdf.mat"
 
+    extra = ''
     if host_name != 'troll':
         extra = '.small'
 
