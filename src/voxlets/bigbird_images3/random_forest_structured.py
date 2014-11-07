@@ -9,8 +9,8 @@ class ForestParams:
     def __init__(self):
         self.num_tests = 1000
         self.min_sample_cnt = 2
-        self.max_depth = 30.0
-        self.num_trees = 12
+        self.max_depth = 16.0
+        self.num_trees = 50
         self.bag_size = 0.5
         self.train_parallel = True
 
