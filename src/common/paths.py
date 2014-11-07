@@ -60,23 +60,26 @@ if data_type=='bigbird':
     bigbird_training_data_fitted_mat = base_path + "voxlets/bigbird/tsdf_fitted_pca/%s.mat"
     #bigbird_training_data_mat_tsdf = base_path + "voxlets/bigbird/%s_tsdf.mat"
 
+    if host_name != 'troll':
+        extra = '.small'
+
     # standard kmeans dictionary
-    voxlet_dict_path = base_path + "voxlets/dict/tsdf/dict_from_training_images.pkl"
+    voxlet_dict_path = base_path + "voxlets/dict/tsdf/dict_from_training_images.pkl" + extra
 
     # dictionary formed from pca data
-    voxlet_pca_dict_path = base_path + "voxlets/dict/tsdf/dict_using_pca.pkl"
+    voxlet_pca_dict_path = base_path + "voxlets/dict/tsdf/dict_using_pca.pkl" + extra
 
     # model using standard kmeans dictionary
-    voxlet_model_path = base_path + "voxlets/dict/tsdf/forest.pkl"
+    voxlet_model_path = base_path + "voxlets/dict/tsdf/forest.pkl" + extra
 
     # model using kmeans dictionary formed from pca version of data
-    voxlet_model_pca_path = base_path + "voxlets/dict/tsdf/forest_pca.pkl"
+    voxlet_model_pca_path = base_path + "voxlets/dict/tsdf/forest_pca.pkl" + extra
 
     # model using oma code
-    voxlet_model_oma_path = base_path + "voxlets/dict/tsdf/oma_forest.pkl"
+    voxlet_model_oma_path = base_path + "voxlets/dict/tsdf/oma_forest.pkl" + extra
 
     # saved pca components of original data
-    voxlet_pca_path = base_path + "voxlets/dict/tsdf/pca.pkl"
+    voxlet_pca_path = base_path + "voxlets/dict/tsdf/pca.pkl" + extra
 
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
