@@ -19,21 +19,17 @@ if paths.host_name != 'troll':
 else:
     small_sample = False
     subsample_length = 1000000
-    number_trees = 100
+    number_trees = 50
     max_depth = 14
     
 if small_sample: print "WARNING: Just computing on a small sample"
 
 
 ####################################################################
-print "Loading the dictionaries etc"
+print "Loading the dictionaries"
 # load in the pca kmeans
 km_pca = pickle.load(open(paths.voxlet_pca_dict_path, 'rb'))
 km_standard = pickle.load(open(paths.voxlet_dict_path, 'rb'))
-
-# load in the pca components
-pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
-
 
 ####################################################################
 print "Loading in all the data..."
@@ -56,7 +52,7 @@ for count, modelname in enumerate(paths.train_names):
     pca_kmeans_idx.append(D['pca_kmeans_idx'])
     kmeans_idx.append(D['kmeans_idx'])
     
-    if count > 5 and small_sample:
+    if count > 3 and small_sample:
         print "SMALL SAMPLE: Stopping"
         break
 
@@ -105,8 +101,14 @@ print "np_pca_representation has shape " + str(np_pca_representation.shape)
 print "np_kmeans_idx has shape " + str(np_kmeans_idx.shape)
 print ""
 
+forest_pca = RandomForestClassifier(n_estimators=number_trees, criterion="entropy", oob_score=True, max_depth=max_depth, n_jobs=8)
+forest_pca.fit(np_features, np_pca_kmeans_idx)
+
+print "Done training, now saving"
+pickle.dump(forest_pca, open(paths.voxlet_model_pca_path, 'wb'))
+
 forest = RandomForestClassifier(n_estimators=number_trees, criterion="entropy", oob_score=True, max_depth=max_depth, n_jobs=8)
-forest.fit(np_features, np_pca_kmeans_idx)
+forest.fit(np_features, np_kmeans_idx)
 
 print "Done training, now saving"
 pickle.dump(forest, open(paths.voxlet_model_path, 'wb'))
