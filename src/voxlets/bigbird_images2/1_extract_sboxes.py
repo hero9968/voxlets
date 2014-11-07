@@ -49,7 +49,7 @@ def pool_helper(index, im, vgrid):
 
 
 import multiprocessing
-pool = multiprocessing.Pool(4)
+pool = multiprocessing.Pool(10)
 import functools
 
 
@@ -96,8 +96,8 @@ for count, modelname in enumerate(paths.modelnames):
         all_features.append(im.get_features(idxs))
         
         "Now try to make this nice and like parrallel or something like what say what?"
-        shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
-
+        temp_shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
+        shoeboxes.append(temp_shoeboxes)
 
     # perhaps *HERE* save the data for this model
     np_sboxes = np.array(shoeboxes)

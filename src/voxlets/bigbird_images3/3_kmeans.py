@@ -10,7 +10,7 @@ from common import voxel_data
 from common import images
 
 # parameters
-subsample_length = 15000 # how many points to cluster with
+subsample_length = 40000 # how many points to cluster with
 number_clusters = 200
 small_sample = paths.small_sample
 if small_sample: 

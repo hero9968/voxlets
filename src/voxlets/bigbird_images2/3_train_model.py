@@ -11,13 +11,14 @@ from sklearn.ensemble import RandomForestClassifier
 from common import paths
 
 "Parameters"
-max_data_in_subsample = 1000000
-number_trees = 100
+max_data_in_subsample = 500000
+number_trees = 20
 if paths.host_name != 'troll':
     small_sample = True
 else:
     small_sample = False
-max_depth = 14
+
+max_depth = 12
 if small_sample: print "WARNING: Just computing on a small sample"
 
 ####################################################################
@@ -32,7 +33,7 @@ all_idxs = []
 for count, modelname in enumerate(paths.train_names):
 
     # loading the data
-    loadpath = paths.bigbird_training_data_tsdf_mat % modelname
+    loadpath = paths.bigbird_training_data_mat_tsdf % modelname
     print "Loading from " + loadpath
 
     D = scipy.io.loadmat(loadpath)
@@ -40,7 +41,9 @@ for count, modelname in enumerate(paths.train_names):
     features.append(D['features'])
     
     print "Assigning model shoeboxes to clusters"
-    idx_assign = km.predict(D['shoeboxes'].astype(np.float32))
+    sbox_dim = D['shoeboxes'].shape[2]
+    sboxes = D['shoeboxes'].astype(np.float32).reshape((-1, sbox_dim))
+    idx_assign = km.predict(sboxes)
 
     all_idxs.append(idx_assign)
 
@@ -49,11 +52,11 @@ for count, modelname in enumerate(paths.train_names):
         print "SMALL SAMPLE: Stopping"
         break
 
-np_all_idxs = np.hstack(all_idxs)
+np_all_idxs = np.hstack(all_idxs).astype(np.uint16)
 
 ####################################################################
 print "Now training the forest"
-np_features = np.array(features).reshape((-1, 56))
+np_features = np.array(features).reshape((-1, 56)).astype(np.float16)
 to_remove = np.any(np.isnan(np_features), axis=1)
 np_features = np_features[~to_remove, :]
 np_all_idxs = np_all_idxs[~to_remove]
@@ -81,3 +84,4 @@ forest.fit(np_features_subset, np_all_idxs_subset)
 
 print "Done training, now saving"
 pickle.dump(forest, open(paths.voxlet_model_tsdf_path, 'wb'))
+

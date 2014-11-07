@@ -1,4 +1,3 @@
-voxlet_dict_path_tsdf
 import numpy as np
 import cPickle as pickle
 import scipy.io
