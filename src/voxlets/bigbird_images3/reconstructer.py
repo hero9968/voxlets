@@ -9,8 +9,9 @@ class Reconstructer(object):
     does the final prediction
     '''
 
-    def __init__(self):
-        pass
+    def __init__(self, reconstruction_type, combine_type):
+        self.reconstruction_type = reconstruction_type
+        self.combine_type = combine_type
 
 
     def set_km_dict(self, km):
@@ -30,7 +31,8 @@ class Reconstructer(object):
 
 
     def sample_points(self, num_to_sample):
-        ''' sampling points from the test image
+        '''
+        sampling points from the test image
         '''
         test_mask = ~np.isnan(self.im.frontrender)
 
@@ -90,26 +92,51 @@ class Reconstructer(object):
         return shoebox
 
 
-    def _reconstruct_voxlet_V(self, pred_class, method):
+    def _convert_forest_prediction_to_voxlet_vector(self, forest_prediction):
+
+        if self.reconstruction_type == 'standard_kmeans':
+
+            return self.km.cluster_centers_[forest_prediction]
+
+        elif self.reconstruction_type == 'kmeans_on_pca':
+
+            # look up the basis vectors for this point
+            basis_vectors = self.km.cluster_centers_[forest_prediction]
+            return self.pca.inverse_transform(basis_vectors)
+
+
+    def _reconstruct_voxlet_V(self, pred_class, per_tree_class_predictions):
         '''
         given the forest output reconstructs the appropriate voxlet 
         '''
 
-        if reconstruction_type == 'standard_kmeans':
+        if self.combine_type == 'modal_vote':
 
-            voxlet_as_vector = self.km.cluster_centers_[pred_class]
+            voxlet_as_vector = self._convert_forest_prediction_to_voxlet_vector(pred_class)
 
-        elif reconstruction_type == 'kmeans_on_pca':
 
-            # look up the basis vectors for this point
-            basis_vectors = self.km.cluster_centers_[pred_class]
-            voxlet_as_vector = self.pca.inverse_transform(basis_vectors)
+        elif self.combine_type == 'medioid' and self.reconstruction_type == 'kmeans_on_pca':
+            
+            # getting all the basis vectors predicted from each tree in the forest
+            voxlets_as_basis_vectors = np.array([self.km.cluster_centers_[pred_class]
+                                            for pred_class in per_tree_class_predictions])
+
+            # finding the medioid prediction in pca space
+            mu = voxlets_as_basis_vectors.mean(0)
+            mu_dist = np.sqrt(((voxlets_as_basis_vectors - mu[np.newaxis, ...])**2).sum(1))
+            median_item_idx = mu_dist.argmin()
+
+            medioid_basis_vector = voxlets_as_basis_vectors[median_item_idx]
+
+            # convert this basis vector to full representation
+            voxlet_as_vector = self.pca.inverse_transform(medioid_basis_vector)
+
+            #voxlet_as_vector = self.pca.inverse_transform(np.mean(voxlets_as_basis_vectors, axis=0))
+
+        else:
+            error("Dont know this method")
 
         return voxlet_as_vector.reshape(paths.voxlet_shape)
-
-        # forming a medioid of all the voxlets in this cluster...    
-        #all_indices = tree_predictions[idx_idx]
-        #cluster_center = km.cluster_centers_[int(all_indices[0])]
 
 
     def initialise_output_grid(self, method='from_image', gt_grid=None):
@@ -155,7 +182,13 @@ class Reconstructer(object):
         "classify according to the forest"
         forest_predictions, class_probs, entropy = \
             self.classify_features(combined_features)
-        
+
+        temp_votes = np.array([tree.predict(combined_features) for tree in self.forest.estimators_]).T
+        # DANGER - need to convert these to the real life classes
+        per_tree_class_predictions = self.forest.classes_[temp_votes.astype(int)]
+
+        print "per_tree_votes has shape " + str(per_tree_class_predictions.shape)
+
         "creating the output voxel grid"
         if self.accum == None:
             error('have not initilaised the accumulator')
@@ -173,12 +206,14 @@ class Reconstructer(object):
 
             # look up the prediction result
             forest_prediction = forest_predictions[idx_idx]
+            per_tree_class_prediction = per_tree_class_predictions[idx_idx]
 
-            shoebox.V = self._reconstruct_voxlet_V(forest_prediction, reconstruction_type)
-                        
+            shoebox.V = self._reconstruct_voxlet_V(forest_prediction, per_tree_class_prediction)
+
+
             self.accum.add_voxlet(shoebox)
 
-            if np.mod(count, 10) == 0:
+            if np.mod(count, 100) == 0:
                 print "Added shoebox " + str(count)
 
             if count > max_points:
