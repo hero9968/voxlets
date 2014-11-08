@@ -158,7 +158,7 @@ class Reconstructer(object):
         self.accum.set_voxel_size(voxlet_size)
 
 
-    def fill_in_output_grid(self, max_points=20, reconstruction_type='kmeans_on_pca'):
+    def fill_in_output_grid(self, max_points=500, reconstruction_type='kmeans_on_pca'):
         '''
         doing the final reconstruction
         vgrid is th e ground truth grid for size and shape - will have to change this soon!
@@ -185,7 +185,8 @@ class Reconstructer(object):
         "for each forest prediction, do something sensible"
 
         # fill in reverse order of confidence
-        order_to_fill = entropy.argsort()[::-1]
+        #order_to_fill = entropy.argsort()[::-1]
+        order_to_fill = range(max_points)
 
         # loop over all the predictions
         for count, idx_idx in enumerate(order_to_fill):
