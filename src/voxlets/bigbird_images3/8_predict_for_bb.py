@@ -30,7 +30,10 @@ forest_pca = pickle.load(open(paths.voxlet_model_pca_path, 'rb'))
 km_pca = pickle.load(open(paths.voxlet_pca_dict_path, 'rb'))
 pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
 
-def pool_helper(gt_grid, test_im):
+def predict_for_image(gt_grid, test_im):
+    '''
+    predicts the occupancy for an image
+    '''
 
     print "Inside the helper"
     rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='medioid')
@@ -53,74 +56,92 @@ def pool_helper(gt_grid, test_im):
 
     return accum1.compute_average(nan_value=0.03), accum2.compute_average(nan_value=0.03), accum1
 
+
+def main_pool_helper(this_view_idx, modelname,  vgrid):
+    '''
+    loads an image and then does the prediction for it 
+    '''
+    test_view = paths.views[this_view_idx]
+
+    test_im = images.CroppedRGBD()
+    test_im.load_bigbird_from_mat(modelname, test_view)
+
+    result1, result2, accum1 = predict_for_image(vgrid, test_im)
+
+
+    gt_out = copy.deepcopy(accum1)
+    gt_out.V *= 0
+    gt_out.fill_from_grid(vgrid)
+    gt = gt_out.compute_tsdf(0.03)
+
+    "Saving result to disk"
+    savepath = paths.voxlet_prediction_path % (modelname, test_view)
+    D = dict(medioid=result1, modal=result2, gt=gt)
+    f = open(savepath, 'wb')
+    pickle.dump(D, f)
+    f.close()
+
+    "Create an overview image and save that to disk also"
+    def plot_slice(V):
+        A = np.flipud(V[15, :, :].T)
+        B = np.flipud(V[:, 15, :].T)
+        C = np.flipud(V[:, :, 30])
+        bottom = np.concatenate((A, B), axis=1)
+        tt = np.zeros((C.shape[0], B.shape[1])) * np.nan
+        top = np.concatenate((C, tt), axis=1)
+        plt.imshow( np.concatenate((top, bottom), axis=0))
+
+
+    "Filling the figure"
+    plt.rcParams['figure.figsize'] = (15.0, 20.0)
+    plt.clf()
+    plt.subplot(131)
+    plot_slice(result1)
+    plt.title('Medioid')
+    plt.subplot(132)
+    plot_slice(result2)
+    plt.title('Modal')
+    plt.subplot(133)
+    plot_slice(gt)
+    plt.title('Ground truth')
+
+    "Computing the scores"
+    # compute some kind of result... true positive? false negative
+    gt += 0.03
+    gt /= 0.06
+    gt = gt.astype(int)
+    result1 += 0.03
+    result1 /= 0.06
+    result2 += 0.03
+    result2 /= 0.06
+    auc1 = sklearn.metrics.roc_auc_score(gt.flatten(), result1.flatten())
+    auc2 = sklearn.metrics.roc_auc_score(gt.flatten(), result2.flatten())
+
+    "Saving figure"
+    imagesavepath = paths.voxlet_prediction_image_path % (modelname, test_view, auc1, auc2)
+    plt.savefig(imagesavepath, bbox_inches='tight')
+
+
+import multiprocessing
+import functools
+
+
+if paths.small_sample:
+    pool = multiprocessing.Pool(4)
+else:
+    pool = multiprocessing.Pool(6)
+
+
 "MAIN LOOP"
-for modelname in paths.test_names:
+for modelname in paths.test_names[:1]:
 
     "Loading in test data"
     vgrid = voxel_data.BigBirdVoxels()
     vgrid.load_bigbird(modelname)
 
-    for this_view_idx in [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]:
+    poss_views = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]
 
-        test_view = paths.views[this_view_idx]
-
-        test_im = images.CroppedRGBD()
-        test_im.load_bigbird_from_mat(modelname, test_view)
-
-        result1, result2, accum1 = pool_helper(vgrid, test_im)
-
-
-        gt_out = copy.deepcopy(accum1)
-        gt_out.V *= 0
-        gt_out.fill_from_grid(vgrid)
-        gt = gt_out.compute_tsdf(0.03)
-
-        "Saving result to disk"
-        savepath = paths.voxlet_prediction_path % (modelname, test_view)
-        D = dict(medioid=result1, modal=result2, gt=gt)
-        f = open(savepath, 'wb')
-        pickle.dump(D, f)
-        f.close()
-
-        "Create an overview image and save that to disk also"
-        def plot_slice(V):
-            A = np.flipud(V[15, :, :].T)
-            B = np.flipud(V[:, 15, :].T)
-            C = np.flipud(V[:, :, 30])
-            bottom = np.concatenate((A, B), axis=1)
-            tt = np.zeros((C.shape[0], B.shape[1])) * np.nan
-            top = np.concatenate((C, tt), axis=1)
-            plt.imshow( np.concatenate((top, bottom), axis=0))
-
-
-        "Filling the figure"
-        plt.rcParams['figure.figsize'] = (15.0, 20.0)
-        plt.clf()
-        plt.subplot(131)
-        plot_slice(result1)
-        plt.title('Medioid')
-        plt.subplot(132)
-        plot_slice(result2)
-        plt.title('Modal')
-        plt.subplot(133)
-        plot_slice(gt)
-        plt.title('Ground truth')
-
-        "Computing the scores"
-        # compute some kind of result... true positive? false negatuve>
-        gt += 0.03
-        gt /= 0.06
-        gt = gt.astype(int)
-        result1 += 0.03
-        result1 /= 0.06
-        result2 += 0.03
-        result2 /= 0.06
-        auc1 = sklearn.metrics.roc_auc_score(gt.flatten(), result1.flatten())
-        auc2 = sklearn.metrics.roc_auc_score(gt.flatten(), result2.flatten())
-
-        "Saving figure"
-        imagesavepath = paths.voxlet_prediction_image_path % (modelname, test_view, auc1, auc2)
-        plt.savefig(imagesavepath, bbox_inches='tight')
+    pool.map(functools.partial(main_pool_helper, modelname=modelname, vgrid=vgrid), poss_views)
 
     print "DOne model " + modelname
 
