@@ -24,7 +24,7 @@ all_med_fpr = []
 
 
 # loop over each output saved file
-for modelname in paths.test_names:
+for modelname in paths.test_names[:2]:
     print "Doing model " + modelname
     for this_view_idx in [0, 10, 20, 30, 40]:
 
@@ -43,6 +43,14 @@ for modelname in paths.test_names:
         modal = convert_to_flat_in_zero_one(D['modal'])
         GT = convert_to_flat_in_zero_one(D['gt'])
 
+        print np.min(med)
+        print np.max(med)
+        print np.min(modal)
+        print np.max(modal)
+        print np.min(GT)
+        print np.max(GT)
+
+
         N = GT.shape[0]
 
         print "Doing analysis"
@@ -52,31 +60,34 @@ for modelname in paths.test_names:
         temp_modal_fpr = []
         for thres in thresholds:
 
-            fp = np.sum(np.logical_and(med>thres, GT<0.5))
-            temp_med_fpr.append(float(fp)/float(N))
+            pos = np.sum(GT>=0.5)
+            neg = np.sum(GT<0.5)
 
-            print fp 
+            fp = np.sum(np.logical_and(med>thres, GT<0.5))
+            temp_med_fpr.append(float(fp)/float(pos))
+
+            #print fp 
 
             fp = np.sum(np.logical_and(modal>thres, GT<0.5))
-            temp_modal_fpr.append(float(fp)/float(N))
+            temp_modal_fpr.append(float(fp)/float(pos))
 
-            print fp 
+            #print fp 
 
             tp = np.sum(np.logical_and(med>thres, GT>=0.5))
-            temp_med_tpr.append(float(tp)/float(N))
+            temp_med_tpr.append(float(tp)/float(pos))
 
-            print tp
+            #print tp
 
             tp = np.sum(np.logical_and(modal>thres, GT>=0.5))
-            temp_modal_tpr.append(float(tp)/float(N))
+            temp_modal_tpr.append(float(tp)/float(pos))
 
-            print tp
+           # print tp
             
 
         all_modal_tpr.append(temp_modal_tpr)
         all_modal_fpr.append(temp_modal_fpr)
-        all_med_tpr.append(temp_modal_tpr)
-        all_med_fpr.append(temp_modal_fpr)
+        all_med_tpr.append(temp_med_tpr)
+        all_med_fpr.append(temp_med_fpr)
 
     print "Done " + modelname
 
