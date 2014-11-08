@@ -923,3 +923,43 @@ class SliceFiller(object):
 
 
 
+
+class VoxMetrics(object):
+    '''
+    class to do metrics on the voxel datas
+    assumes everythin is TSDF
+    '''
+
+    def __init__(self):
+        pass
+
+
+    def set_gt(self, gt):
+        self.gt = 1.0 - (gt.flatten() + 0.03) / 0.06
+
+
+    def set_pred(self, pred):
+        self.pred = 1.0 - (pred.flatten() + 0.03) / 0.06
+
+
+    def compute_tpr_fpr(self, thresholds):
+
+        pos = np.sum(self.gt>=0.5)
+        neg = np.sum(self.gt<0.5)
+
+        fpr = []
+        tpr = []
+        
+        for thres in thresholds:
+
+            fp = np.sum(np.logical_and(self.pred>thres, self.gt<0.5))
+            fpr.append(float(fp)/float(pos))
+
+            tp = np.sum(np.logical_and(self.pred>thres, self.gt>=0.5))
+            tpr.append(float(tp)/float(pos))
+
+        return np.array(tpr), np.array(fpr)
+
+
+    def compute_auc(self):
+        return sklearn.metrics.roc_auc_score(self.gt, self.pred)

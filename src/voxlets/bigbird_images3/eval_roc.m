@@ -1,8 +1,8 @@
 close all
 h= figure()
-plot(mean(np_all_med_fpr), mean(np_all_med_tpr), 'b')
+plot(mean(medioid.tpr), mean(medioid.fpr), 'b')
 hold on
-plot(mean(np_all_modal_fpr), mean(np_all_modal_tpr), 'r--')
+plot(mean(modal.tpr), mean(modal.fpr), 'r--')
 hold off
 
 axis equal
