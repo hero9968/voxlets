@@ -31,7 +31,7 @@ for modelname in paths.test_names:
         test_view = paths.views[this_view_idx]
         print "Doing view " + test_view
 
-        loadpath = '/Users/Michael/projects/shape_sharing/data/voxlets/bigbird/troll_predictions/%s_%s.pkl' % (modelname, test_view)
+        loadpath = '/mnt/scratch/mfirman/data/voxlets/bigbird/predictions/%s_%s.pkl' % (modelname, test_view)
 
         print "loading the data"
         f = open(loadpath, 'rb')
