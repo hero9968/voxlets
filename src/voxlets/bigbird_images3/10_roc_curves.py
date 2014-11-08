@@ -41,11 +41,7 @@ for modelname in paths.test_names:
         print "Converting"
         med = convert_to_flat_in_zero_one(D['medioid'])
         modal = convert_to_flat_in_zero_one(D['modal'])
-        GT = np.round(convert_to_flat_in_zero_one(D['gt'])).astype(int)
-
-        print np.unique(med)
-        print np.unique(modal)
-        print np.unique(GT)
+        GT = convert_to_flat_in_zero_one(D['gt'])
 
         N = GT.shape[0]
 
@@ -55,17 +51,26 @@ for modelname in paths.test_names:
         temp_modal_tpr = []
         temp_modal_fpr = []
         for thres in thresholds:
-            fp = np.sum(np.logical_and(med>thres, GT==0))
-            temp_med_fpr.append(fp/N)
 
-            fp = np.sum(np.logical_and(modal>thres, GT==0))
-            temp_modal_fpr.append(fp/N)
+            fp = np.sum(np.logical_and(med>thres, GT<0.5))
+            temp_med_fpr.append(float(fp)/float(N))
 
-            tp = np.sum(np.logical_and(med>thres, GT==1))
-            temp_med_tpr.append(tp/N)
+            print fp 
 
-            tp = np.sum(np.logical_and(modal>thres, GT==1))
-            temp_modal_tpr.append(tp/N)
+            fp = np.sum(np.logical_and(modal>thres, GT<0.5))
+            temp_modal_fpr.append(float(fp)/float(N))
+
+            print fp 
+
+            tp = np.sum(np.logical_and(med>thres, GT>=0.5))
+            temp_med_tpr.append(float(tp)/float(N))
+
+            print tp
+
+            tp = np.sum(np.logical_and(modal>thres, GT>=0.5))
+            temp_modal_tpr.append(float(tp)/float(N))
+
+            print tp
             
 
         all_modal_tpr.append(temp_modal_tpr)
