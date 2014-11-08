@@ -69,9 +69,15 @@ for modelname in paths.test_names:
 
         result1, result2, accum1 = pool_helper(vgrid, test_im)
 
+
+        gt_out = copy.deepcopy(accum1)
+        gt_out.V *= 0
+        gt_out.fill_from_grid(vgrid)
+        gt = gt_out.compute_tsdf(0.03)
+
         "Saving result to disk"
         savepath = paths.voxlet_prediction_path % (modelname, test_view)
-        D = dict(medioid=result1, modal=result2)
+        D = dict(medioid=result1, modal=result2, gt=gt)
         f = open(savepath, 'wb')
         pickle.dump(D, f)
         f.close()
@@ -86,10 +92,6 @@ for modelname in paths.test_names:
             top = np.concatenate((C, tt), axis=1)
             plt.imshow( np.concatenate((top, bottom), axis=0))
 
-        gt_out = copy.deepcopy(accum1)
-        gt_out.V *= 0
-        gt_out.fill_from_grid(vgrid)
-        gt = gt_out.compute_tsdf(0.03)
 
         "Filling the figure"
         plt.rcParams['figure.figsize'] = (15.0, 20.0)
