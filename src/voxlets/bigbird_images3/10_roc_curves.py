@@ -41,7 +41,11 @@ for modelname in paths.test_names:
         print "Converting"
         med = convert_to_flat_in_zero_one(D['medioid'])
         modal = convert_to_flat_in_zero_one(D['modal'])
-        GT = convert_to_flat_in_zero_one(D['gt']).astype(int)
+        GT = np.round(convert_to_flat_in_zero_one(D['gt'])).astype(int)
+
+        print np.unique(med)
+        print np.unique(modal)
+        print np.unique(GT)
 
         N = GT.shape[0]
 

@@ -16,7 +16,7 @@ class ForestParams:
 
         # structured learning params
         self.pca_dims = 5
-        self.num_dims_for_pca = 512
+        self.num_dims_for_pca = 512 # number of dimensions that pca gets reduced to
         self.sub_sample_exs_pca = True  # can also subsample the number of exs we use for PCA
         self.num_exs_for_pca = 5000
 
@@ -91,12 +91,12 @@ class Tree:
         return y_pca, y_bin
 
     def pca(self, y):
-        # select a random subset of Y dimensions
+        # select a random subset of Y dimensions (possibly gives robustness as well as speed)
         rand_dims = np.sort(np.random.choice(y.shape[1], np.minimum(self.tree_params.num_dims_for_pca, y.shape[1]), replace=False))
         y = y.take(rand_dims, 1)
         y_sub = y
 
-        # optional: select a subset of exs
+        # optional: select a subset of exs (not so important if PCA is fast)
         if self.tree_params.sub_sample_exs_pca:
             rand_exs = np.sort(np.random.choice(y.shape[0], np.minimum(self.tree_params.num_exs_for_pca, y.shape[0]), replace=False))
             y_sub = y.take(rand_exs, 0)
