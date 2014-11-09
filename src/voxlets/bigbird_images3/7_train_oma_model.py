@@ -14,7 +14,7 @@ import random_forest_structured as srf
 "Parameters"
 if paths.host_name != 'troll':
     small_sample = True
-    subsample_length = 1000
+    subsample_length = 10000
     number_trees = 10
     max_depth = 10
 else:
@@ -28,10 +28,6 @@ if small_sample: print "WARNING: Just computing on a small sample"
 
 ####################################################################
 print "Loading the dictionaries etc"
-# load in the pca kmeans
-km_pca = pickle.load(open(paths.voxlet_pca_dict_path, 'rb'))
-km_standard = pickle.load(open(paths.voxlet_dict_path, 'rb'))
-
 # load in the pca components
 pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
 
@@ -57,7 +53,7 @@ for count, modelname in enumerate(paths.train_names):
     pca_kmeans_idx.append(D['pca_kmeans_idx'])
     kmeans_idx.append(D['kmeans_idx'])
     
-    if count > 2 and small_sample:
+    if count > 3 and small_sample:
         print "SMALL SAMPLE: Stopping"
         break
 
@@ -113,5 +109,8 @@ forest.train(np_features, np_pca_representation)
 toc = time.time()
 print 'train time', toc-tic
 
+print "Combining forest with training data"
+forest_dict = dict(forest=forest, traindata=np_pca_representation, pca_model=pca)
+
 print "Done training, now saving"
-pickle.dump(forest, open(paths.voxlet_model_oma_path, 'wb'))
+pickle.dump(forest_dict, open(paths.voxlet_model_oma_path, 'wb'))

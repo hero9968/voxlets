@@ -1,6 +1,5 @@
 '''
-computes a best case bounding box
-axis aligned or something
+baseline algorithms
 '''
 
 import sys, os  # maxint
@@ -14,6 +13,9 @@ import copy
 
 class BbBaseline(object):
     '''
+    computes a best case bounding box
+    axis aligned or something
+
     TODO - allow to set the upwards direction
     '''
 
@@ -52,5 +54,14 @@ class BbBaseline(object):
         for idx in range(min_z, max_z):
             out_grid.V[:, :, idx] = single_layer.T
 
+        out_grid.V = out_grid.V.astype(float)
+        inside = out_grid.V>0
+        out_grid.V[inside] = -0.03
+        out_grid.V[~inside] = 0.03
+        print "Unique is "
+        print np.unique(out_grid.V)
+
         return out_grid
 
+
+#class Spider(object):

@@ -3,6 +3,7 @@ import sys
 sys.path.append('../../common')
 import voxel_data
 import paths
+from scipy.stats import mode
 
 class Reconstructer(object):
     '''
@@ -49,11 +50,14 @@ class Reconstructer(object):
         here will be where the pca etc is used if it is used...
         '''
         pred_classes = self.forest.predict(features)
-        probs = self.forest.predict_proba(features)
-        small_number = 0.0001
-        entropy = -np.sum(probs+small_number * np.log(probs+small_number), axis=1)
+        #probs = self.forest.predict_proba(features)
+        #small_number = 0.0001
+        #entropy = -np.sum(probs+small_number * np.log(probs+small_number), axis=1)
         
-        return (pred_classes, probs, entropy)
+        temp_votes = np.array([tree.predict(features) for tree in self.forest.estimators_]).T
+        per_tree_class_predictions = self.forest.classes_[temp_votes.astype(int)]
+
+        return (pred_classes, per_tree_class_predictions)
 
 
     def _initialise_voxlet(self, index):
@@ -166,26 +170,16 @@ class Reconstructer(object):
 
         "extract features from test image"
         combined_features = self.im.get_features(self.sampled_idxs)
-        #print "Combined f has shape " + str(combined_features.shape)
 
         "classify according to the forest"
-        forest_predictions, class_probs, entropy = \
+        forest_predictions, per_tree_class_predictions = \
             self.classify_features(combined_features)
-
-        temp_votes = np.array([tree.predict(combined_features) for tree in self.forest.estimators_]).T
-        # DANGER - need to convert these to the real life classes
-        per_tree_class_predictions = self.forest.classes_[temp_votes.astype(int)]
-
-        #print "per_tree_votes has shape " + str(per_tree_class_predictions.shape)
 
         "creating the output voxel grid"
         if self.accum == None:
             error('have not initilaised the accumulator')
 
         "for each forest prediction, do something sensible"
-
-        # fill in reverse order of confidence
-        #order_to_fill = entropy.argsort()[::-1]
         order_to_fill = range(max_points)
 
         # loop over all the predictions
@@ -198,9 +192,8 @@ class Reconstructer(object):
             forest_prediction = forest_predictions[idx_idx]
             per_tree_class_prediction = per_tree_class_predictions[idx_idx]
 
+            # adding the shoebox into the result
             shoebox.V = self._reconstruct_voxlet_V(forest_prediction, per_tree_class_prediction)
-
-
             self.accum.add_voxlet(shoebox)
 
             if np.mod(count, 100) == 0:
@@ -212,4 +205,55 @@ class Reconstructer(object):
 
         return self.accum
 
+
+    def fill_in_output_grid_oma(self, max_points=500, reconstruction_type='kmeans_on_pca'):
+        '''
+        doing the final reconstruction
+        vgrid is th e ground truth grid for size and shape - will have to change this soon!
+
+        OMA forest saved is actually a dict conprising of the forest and the index data
+        '''
+
+        "extract features from test image"
+        combined_features = self.im.get_features(self.sampled_idxs)
+
+        "classify according to the forest"
+        forest_predictions = self.forest['forest'].test(combined_features)
+        print "Forest predictons has shape " + str(forest_predictions.shape)
+
+        "creating the output voxel grid"
+        if self.accum == None:
+            error('have not initilaised the accumulator')
+
+        "for each forest prediction, do something sensible"
+        order_to_fill = range(max_points)
+
+        # loop over all the predictions
+        for count, idx_idx in enumerate(order_to_fill):
+
+            # create the shoebox for this point
+            shoebox = self._initialise_voxlet(self.sampled_idxs[idx_idx])
+
+            # look up the structured prediction from the forest - this gives the indices into the original data
+            forest_prediction = forest_predictions[idx_idx]
+
+            # for now just use the modal prediction
+            this_class = int(mode(forest_prediction)[0])
+            this_pca_representation = self.forest['traindata'][this_class, :]
+
+            # convert this to a full voxlet
+            full_V = self.forest['pca_model'].inverse_transform(this_pca_representation)
+
+            # adding the shoebox into the result
+            shoebox.V = full_V.reshape(paths.voxlet_shape)
+            self.accum.add_voxlet(shoebox)
+
+            if np.mod(count, 100) == 0:
+                print "Added shoebox " + str(count)
+
+            if count > max_points:
+                print "Ending"
+                break
+
+        return self.accum
 

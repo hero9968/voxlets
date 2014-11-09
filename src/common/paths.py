@@ -83,7 +83,7 @@ if data_type=='bigbird':
     voxlet_pca_path = base_path + "voxlets/dict/tsdf/pca.pkl" + extra
 
     #voxlet_prediction_path = base_path + "voxlets/bigbird/predictions/%s_%s.pkl"
-    voxlet_prediction_image_path = base_path + "voxlets/bigbird/predictions/%s_%s.png"
+    voxlet_prediction_image_path = base_path + "voxlets/bigbird/predictions/%s/%s_%s.png"
 
     voxlet_prediction_folder_path = base_path + "/voxlets/bigbird/predictions/%s/"
     voxlet_prediction_path = voxlet_prediction_folder_path  + "%s_%s.mat"

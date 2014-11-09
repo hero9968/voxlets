@@ -19,7 +19,7 @@ class Voxels(object):
 	'''
 	def __init__(self, size, datatype):
 		'''initialise the numpy voxel grid to the correct size'''
-		assert np.prod(size) < 500e6 	# check to catch excess allocation
+		assert np.prod(size) < 500e6    # check to catch excess allocation
 		self.V = np.zeros(size, datatype)
 
 
@@ -238,9 +238,9 @@ class WorldVoxels(Voxels):
 		scaled_idx = (idx.astype(float)+0.5) * self.vox_size
 
 		# rotate the grid points under the rotation R
-#		if (count_grid.R == np.eye(3)).all():
-#			scaled_rotated_idx = scaled_idx
-#		else:	
+#       if (count_grid.R == np.eye(3)).all():
+#           scaled_rotated_idx = scaled_idx
+#       else:   
 		scaled_rotated_idx = np.dot(self.R, scaled_idx.T).T
 
 		# applying the real-world offset
@@ -265,15 +265,15 @@ class WorldVoxels(Voxels):
 
 		# finally rotating 
 		# note that (doing transpose twice seems to be quicker than np.dot(xyz, inv_R.T) )
-#		if (self.inv_R == np.eye(3)).all():
-#			scaled_translated_rotated_xyz = scaled_translated_xyz
-#		else:
+#       if (self.inv_R == np.eye(3)).all():
+#           scaled_translated_rotated_xyz = scaled_translated_xyz
+#       else:
 		scaled_translated_rotated_xyz = np.dot(self.inv_R, scaled_translated_xyz.T).T
 
 		idx = (scaled_translated_rotated_xyz).astype(np.int)
-	#	print self.origin
-	#	print self.inv_R
-	#	print self.vox_size
+	#   print self.origin
+	#   print self.inv_R
+	#   print self.vox_size
 
 		if detect_out_of_range:
 			valid = self.find_valid_idx(idx)
@@ -384,7 +384,7 @@ class WorldVoxels(Voxels):
 		'''
 
 		if method=='naive':
-			'''				
+			'''             
 			This is slow as need to transform twice, 
 			and transform *all* the voxels in self
 			'''
@@ -591,7 +591,7 @@ class UprightAccumulator(WorldVoxels):
 
 		#print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
 
-		# get the idxs in the output space and the values in the input space	    
+		# get the idxs in the output space and the values in the input space        
 		#output_idxs = output_grid_in_voxlet_idx[valid, :]
 		#occupied_values = voxlet.extract_from_indices(output_idxs)
 		
@@ -761,7 +761,7 @@ class FrustumGrid(Voxels):
 		if the depth is out of range, returns -1
 		'''
 		#if depth > self.d_back or depth < self.d_front:
-		#	return -1
+		#   return -1
 		#else:
 		scaled_depth = (depth - self.d_front) / (self.d_back - self.d_front)
 		index = int(scaled_depth * self.m)
@@ -899,7 +899,7 @@ class SliceFiller(object):
 		'''
 		#mindepth = self.get_start_depth()
 		#if maxdepth == -1:
-	#		maxdepth = self.get_end_depth()
+	#       maxdepth = self.get_end_depth()
 		scale_factor = output_image_height / (maxdepth - mindepth)
 		volume_slice = self.fill_slice(mindepth, maxdepth, gt)
 		self.volume_slice = volume_slice
@@ -925,41 +925,63 @@ class SliceFiller(object):
 
 
 class VoxMetrics(object):
-    '''
-    class to do metrics on the voxel datas
-    assumes everythin is TSDF
-    '''
+	'''
+	class to do metrics on the voxel datas
+	assumes everythin is TSDF
+	'''
 
-    def __init__(self):
-        pass
-
-
-    def set_gt(self, gt):
-        self.gt = 1.0 - (gt.flatten() + 0.03) / 0.06
+	def __init__(self):
+		pass
 
 
-    def set_pred(self, pred):
-        self.pred = 1.0 - (pred.flatten() + 0.03) / 0.06
+	def set_gt(self, gt):
+		self.gt = 1.0 - (gt.flatten() + 0.03) / 0.06
 
 
-    def compute_tpr_fpr(self, thresholds):
-
-        pos = np.sum(self.gt>=0.5)
-        neg = np.sum(self.gt<0.5)
-
-        fpr = []
-        tpr = []
-        
-        for thres in thresholds:
-
-            fp = np.sum(np.logical_and(self.pred>thres, self.gt<0.5))
-            fpr.append(float(fp)/float(pos))
-
-            tp = np.sum(np.logical_and(self.pred>thres, self.gt>=0.5))
-            tpr.append(float(tp)/float(pos))
-
-        return np.array(tpr), np.array(fpr)
+	def set_pred(self, pred):
+		self.pred = 1.0 - (pred.flatten() + 0.03) / 0.06
 
 
-    def compute_auc(self):
-        return sklearn.metrics.roc_auc_score(self.gt, self.pred)
+	def compute_tpr_fpr(self, thresholds):
+
+		pos = np.sum(self.gt>=0.5)
+		neg = np.sum(self.gt<0.5)
+
+		fpr = []
+		tpr = []
+		
+		for thres in thresholds:
+
+			fp = np.sum(np.logical_and(self.pred>thres, self.gt<0.5))
+			fpr.append(float(fp)/float(pos))
+
+			tp = np.sum(np.logical_and(self.pred>thres, self.gt>=0.5))
+			tpr.append(float(tp)/float(pos))
+
+		return np.array(tpr), np.array(fpr)
+
+
+	def compute_auc(self):
+		return sklearn.metrics.roc_auc_score(self.gt, self.pred)
+
+
+
+def expanded_grid_accum(original_grid):
+	'''
+	returns an accumulator grid like the origin but which is expanded by padding amount in each dimension
+	'''
+
+	# pad the gt grid slightly
+	grid_origin = original_grid.origin - 0.05
+	grid_end = original_grid.origin + \
+				np.array(original_grid.V.shape).astype(float) * original_grid.vox_size + 0.05
+
+	voxlet_size = paths.voxlet_size/2.0
+	grid_dims_in_real_world = grid_end - grid_origin
+	V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
+
+	accum = UprightAccumulator(V_shape)
+	accum.set_origin(grid_origin)
+	accum.set_voxel_size(voxlet_size)
+	return accum
+
