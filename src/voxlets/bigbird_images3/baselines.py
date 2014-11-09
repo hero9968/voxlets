@@ -52,15 +52,10 @@ class BbBaseline(object):
 
         # fill each layer in the z direction
         for idx in range(min_z, max_z):
-            out_grid.V[:, :, idx] = single_layer.T
+            out_grid.V[:, :, idx] = single_layer.T / 255.0
 
         out_grid.V = out_grid.V.astype(float)
-        inside = out_grid.V>0
-        out_grid.V[inside] = -0.03
-        out_grid.V[~inside] = 0.03
-        print "Unique is "
-        print np.unique(out_grid.V)
-
+        out_grid.convert_to_tsdf(0.03)
         return out_grid
 
 

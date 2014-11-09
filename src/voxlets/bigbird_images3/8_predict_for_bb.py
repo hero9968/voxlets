@@ -28,7 +28,7 @@ max_points = 200
 number_samples = 2000
 multiproc = not paths.small_sample
 
-test_types = ['oma', 'modal', 'medioid', 'bb']#, 'bpc', 'no_spider']
+test_types = ['bb']#['oma', 'modal', 'medioid', 'bb']#, 'bpc', 'no_spider']
 
 
 if 'modal' in test_types or 'medioid' in test_types:
@@ -157,13 +157,13 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
 
     "Computing the auc score"
     gt_occ = ((gt + 0.03) / 0.06).astype(int)
-    prediction = (prediction + 0.03) / 0.06
-    auc = sklearn.metrics.roc_auc_score(gt_occ.flatten(), prediction.flatten())
+    prediction_occ = (prediction + 0.03) / 0.06
+    auc = sklearn.metrics.roc_auc_score(gt_occ.flatten(), prediction_occ.flatten())
 
     "Filling the figure"
     imagesavepath = paths.voxlet_prediction_image_path % (test_type, modelname, test_view)
     save_plot_slice(prediction, gt, imagesavepath, imtitle=str(auc))
-
+ 
     print "Done view " + str(this_view_idx)
     
 
