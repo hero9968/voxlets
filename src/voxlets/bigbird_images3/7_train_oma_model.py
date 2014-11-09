@@ -28,12 +28,13 @@ if small_sample: print "WARNING: Just computing on a small sample"
 
 ####################################################################
 print "Loading the dictionaries etc"
-# load in the pca components
+########################################################################
 pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
 
 
 ####################################################################
 print "Loading in all the data..."
+########################################################################
 features = []
 pca_kmeans_idx = []
 pca_representation = []
@@ -57,50 +58,38 @@ for count, modelname in enumerate(paths.train_names):
         print "SMALL SAMPLE: Stopping"
         break
 
-np_pca_kmeans_idx = np.hstack(pca_kmeans_idx).flatten()
 np_pca_representation = np.vstack(pca_representation)
 np_kmeans_idx = np.hstack(kmeans_idx).flatten()
 
 
 ####################################################################
-print "Now training the forest"
+print "Subsampling"
+########################################################################
 np_features = np.array(features).reshape((-1, 56))
 to_remove = np.any(np.isnan(np_features), axis=1)
 
-print ""
 print "Before subsampling"
 print "np_features has shape " + str(np_features.shape)
-print "np_pca_kmeans_idx has shape " + str(np_pca_kmeans_idx.shape)
 print "np_pca_representation has shape " + str(np_pca_representation.shape)
-print "np_kmeans_idx has shape " + str(np_kmeans_idx.shape)
-print ""
 
 np_features = np_features[~to_remove, :]
-np_pca_kmeans_idx = np_pca_kmeans_idx[~to_remove]
 np_pca_representation = np_pca_representation[~to_remove, :]
-np_kmeans_idx = np_kmeans_idx[~to_remove]
 
-print ""
 print "Before subsampling"
 print "np_features has shape " + str(np_features.shape)
-print "np_pca_kmeans_idx has shape " + str(np_pca_kmeans_idx.shape)
 print "np_pca_representation has shape " + str(np_pca_representation.shape)
-print "np_kmeans_idx has shape " + str(np_kmeans_idx.shape)
-print ""
 
 rand_exs = np.sort(np.random.choice(np_features.shape[0], np.minimum(subsample_length, np_features.shape[0]), replace=False))
 np_features = np_features.take(rand_exs, 0)
-np_pca_kmeans_idx = np_pca_kmeans_idx.take(rand_exs, 0)
 np_pca_representation = np_pca_representation.take(rand_exs, 0)
-np_kmeans_idx = np_kmeans_idx.take(rand_exs, 0)
 
-print ""
 print "After subsampling"
 print "np_features has shape " + str(np_features.shape)
-print "np_pca_kmeans_idx has shape " + str(np_pca_kmeans_idx.shape)
 print "np_pca_representation has shape " + str(np_pca_representation.shape)
-print "np_kmeans_idx has shape " + str(np_kmeans_idx.shape)
-print ""
+
+########################################################################
+print "Training the standard forest"
+########################################################################
 
 forest_params = srf.ForestParams()
 forest = srf.Forest(forest_params)
@@ -114,3 +103,22 @@ forest_dict = dict(forest=forest, traindata=np_pca_representation, pca_model=pca
 
 print "Done training, now saving"
 pickle.dump(forest_dict, open(paths.voxlet_model_oma_path, 'wb'))
+
+
+########################################################################
+print "Training the forest with just the cobweb features"
+########################################################################
+
+forest_params = srf.ForestParams()
+cobweb_forest = srf.Forest(forest_params)
+tic = time.time()
+cobweb_forest.train(np_features[:, :32], np_pca_representation)
+toc = time.time()
+print 'train time', toc-tic
+
+print "Combining forest with training data"
+cobweb_forest_dict = dict(forest=cobweb_forest, traindata=np_pca_representation, pca_model=pca)
+
+print "Done training, now saving"
+pickle.dump(cobweb_forest_dict, open(paths.voxlet_model_oma_cobweb_path, 'wb'))
+

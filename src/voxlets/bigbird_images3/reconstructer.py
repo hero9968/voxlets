@@ -206,7 +206,7 @@ class Reconstructer(object):
         return self.accum
 
 
-    def fill_in_output_grid_oma(self, max_points=500, reconstruction_type='kmeans_on_pca'):
+    def fill_in_output_grid_oma(self, max_points=500, special=None):
         '''
         doing the final reconstruction
         vgrid is th e ground truth grid for size and shape - will have to change this soon!
@@ -216,6 +216,10 @@ class Reconstructer(object):
 
         "extract features from test image"
         combined_features = self.im.get_features(self.sampled_idxs)
+
+        "Special instruction to only compute some features"
+        if special=='cobweb':
+            combined_features = combined_features[:, :32]
 
         "classify according to the forest"
         forest_predictions = self.forest['forest'].test(combined_features)

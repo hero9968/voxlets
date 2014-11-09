@@ -924,7 +924,7 @@ class SliceFiller(object):
 
 
 
-class VoxMetrics(object):
+class VoxMetricsTSDF(object):
 	'''
 	class to do metrics on the voxel datas
 	assumes everythin is TSDF
@@ -935,11 +935,18 @@ class VoxMetrics(object):
 
 
 	def set_gt(self, gt):
-		self.gt = 1.0 - (gt.flatten() + 0.03) / 0.06
+		self.gt = ((1.0 - (gt.flatten() + 0.03) / 0.06) > 0.5).astype(int)
+		print "gt top bottom is "
+		print np.min(self.gt)
+		print np.max(self.gt)
+
 
 
 	def set_pred(self, pred):
 		self.pred = 1.0 - (pred.flatten() + 0.03) / 0.06
+		print "pred top bottom is "
+		print np.min(self.pred)
+		print np.max(self.pred)
 
 
 	def compute_tpr_fpr(self, thresholds):
@@ -952,11 +959,11 @@ class VoxMetrics(object):
 		
 		for thres in thresholds:
 
-			fp = np.sum(np.logical_and(self.pred>thres, self.gt<0.5))
-			fpr.append(float(fp)/float(pos))
-
-			tp = np.sum(np.logical_and(self.pred>thres, self.gt>=0.5))
+			tp = np.sum(np.logical_and(self.pred>thres, self.gt>0.5))
 			tpr.append(float(tp)/float(pos))
+
+			fp = np.sum(np.logical_and(self.pred>thres, self.gt<0.5))
+			fpr.append(float(fp)/float(neg))
 
 		return np.array(tpr), np.array(fpr)
 

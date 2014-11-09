@@ -14,7 +14,7 @@ from common import voxel_data
 
 ############################################
 "PARAMTERS"
-thresholds = np.linspace(0, 1, 100)
+thresholds = np.linspace(0, 1.0, 100)
 pred_types = ['oma', 'modal', 'medioid', 'bb']#, 'bpc', 'no_spider']
 
 ############################################
@@ -48,7 +48,7 @@ for pred_type in pred_types:
             D = scipy.io.loadmat(loadpath)
 
             print "Converting"
-            met = voxel_data.VoxMetrics()
+            met = voxel_data.VoxMetricsTSDF()
             met.set_gt(D['gt'])
         
             met.set_pred(D['prediction'])

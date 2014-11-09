@@ -228,14 +228,23 @@ An incorrectly guessed symmetrical transform can lead to a catastrophic mis-esti
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Voxel space reasoning}
 
-Our nearest neighbours are two works which aim to solver a similar problem to ours.
+Our `nearest neighbor' algorithms are two works which aim to directly solve a similar problem to ours.
 
 Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantical labeling of voxels from an RGBD image. 
 For training, they use manually labeled top-down views of the scene.
 Their final labellings are found from graph cuts over the CRF.
-With the exception of high-order-terms in the CRF, which enforce planar structures and for `objects' to remain contiguous, they model suffers from a simplistic model for occupancy: the probability of a voxel being occupied is modeled as a Gaussian centered on the first observed voxel along a camera ray.
+The basic model has a simplistic model for occupancy: the probability of a voxel being occupied is modeled as a Gaussian centered on the first observed voxel along a camera ray.
+High-order-terms in the CRF are used to enforce planar structures and for `objects' to remain contiguous.
 
-\todo{Also the beyond paper}
+Like \cite{kim-iccv-2013},  Zheng \ea \cite{zheng-cvpr-2013} go from a single depth image to a voxel representation of a scene.
+Their core algorithm consists of two parts.
+Firstly they complete missing voxels by extruding visible points in the detected Manhattan World directions of the scene.
+(This bears resemblance to a similar method used for completions by \cite{kroemer-humanoids-2012}.)
+Secondly, they use physics-based reasoning to fill in missing data to ensure connectedness and stability.
+The physics-based reasoning is clearly useful in complex scenes where, for example, a table leg may be occluded.
+However the voxel completion by extrusion is limited by the Manhattan World assumption, and the extent of visible voxels in the scene.
+
+\note{In contrast to these methods, by making structured predictions we are able to complete objects where the points making up the objects are hard to see.}
 
 
 
@@ -248,7 +257,7 @@ By detecting planes they can complete their 3D contours in 2D space using a nove
 This method, however, relies both on a fairly planar scene and on beginning with an almost-complete scan as input.
 In contrast, our method can provide shape predictions from just a single view.
 
-\cite{davis-3dpvt-2002} complete meshes by operating directly on the \emph{signed distance field}, the zero level-set of which defines the mesh location. They diffuse the signed distance field across holes in the mesh to fill in the gaps.
+Davis \ea \cite{davis-3dpvt-2002} complete meshes by operating directly on the \emph{signed distance field}, the zero level-set of which defines the mesh location. They diffuse the signed distance field across holes in the mesh to fill in the gaps.
 On the other hand, \cite{harary-tog-2013} take a data-driven approach.
 They find matches in the mesh to the missing region with both local and similarity, and blend the result in.
 
@@ -318,6 +327,14 @@ In addition, our primitives are used in label space, not in feature space.
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+
+\begin{figure*}[tb]
+    \includegraphics[width=2.0\columnwidth]{overview}
+    \caption{
+    An overview of our technique for making a prediction. 
+    }%
+    \label{fig:overview}
+\end{figure*}
 
 
 Our approach is somewhat inspired by patch-based methods used for superresolution or similar of depth images. 
@@ -452,7 +469,7 @@ The pattern of the extracted $\pixelidx + \Delta$ values can be seen in figure \
         \hfill
     \subfigure[Cobweb feature]{%
         \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_3}
-        \label{fig:features:occluded_spider}}
+        \label{subfig:cobweb}}
         \hfill
     \subfigure[Spider feature]{%
         \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_4}}
@@ -660,6 +677,8 @@ If all the voxels between the camera and the depth image are included in the eva
 
 List of baseline algorithms
 
+We do not compare to Kim \ea \cite{kim-iccv-2013} due to their inclusion of semantic labellings in the train and test portions of their algorithm.
+
 
 \subsection{Turntable dataset}
 
@@ -715,10 +734,14 @@ Also don't have the TSDF etc. Lots of problems
 
 \section{Future work}
 
-- Implicit voxel occupancy
-- GPU
-- 3D object models where they are known
-- make splits in forest based on distance between cluster centers...  
+
+The primary direction for our future work is to apply the algorithm to larger and more complex scenes.
+We would like to incorporate ideas from \cite{zheng-cvpr-2013, shao-siggraphasia-2014} by incorporating physics-based reasoning to help the completion of more complex objects and scenes.
+
+An interesting potential application of our method is to use the predicted completion as a prior when reconstructing the world from video data.
+We plan to implement a system which allows for more predictions of unobserved space to be made as more data arrives from the capture device, and for already-made predictions to be replaced as new views of the scene arrive.
+We believe that a GPU implementation of the voxlet reconstruction part of the algorithm would allow it to run in real time.
+%\todo{Also:- 3D object models where they are known
 
 \section{For supplementary material probably:}
 But these could also come into the main paper:

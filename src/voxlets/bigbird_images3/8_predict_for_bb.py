@@ -137,6 +137,17 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
         accum = rec.fill_in_output_grid_oma(max_points=max_points)
         prediction = accum.compute_average(nan_value=0.03)
 
+    elif test_type == 'oma_cobweb':
+
+        print "Reconstructing with oma forest"
+        rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+        rec.set_forest(oma_forest)
+        rec.set_pca_comp(pca)
+        rec.set_test_im(test_im)
+        rec.sample_points(number_samples)
+        rec.initialise_output_grid(method='from_grid', gt_grid=gt_grid)
+        accum = rec.fill_in_output_grid_oma(max_points=max_points, special='cobweb')
+        prediction = accum.compute_average(nan_value=0.03)
 
     elif test_type == 'bpc':
         pass
