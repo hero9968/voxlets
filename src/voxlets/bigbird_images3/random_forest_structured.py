@@ -3,6 +3,7 @@ import time
 import cPickle
 import pdb
 from joblib import Parallel, delayed
+from sklearn.decomposition import RandomizedPCA
 
 
 class ForestParams:
@@ -96,6 +97,7 @@ class Tree:
         y = y.take(rand_dims, 1)
         y_sub = y
 
+        '''
         # optional: select a subset of exs (not so important if PCA is fast)
         if self.tree_params.sub_sample_exs_pca:
             rand_exs = np.sort(np.random.choice(y.shape[0], np.minimum(self.tree_params.num_exs_for_pca, y.shape[0]), replace=False))
@@ -106,7 +108,9 @@ class Tree:
         y_sub = y_sub - y_sub_mean
         (l, M) = np.linalg.eig(np.dot(y_sub.T, y_sub))
         y_ds = np.dot(y-y_sub_mean, M[:, 0:self.tree_params.pca_dims])
-
+        '''
+        pca = RandomizedPCA(n_components=1) # compute for all components
+        y_ds = pca.fit_transform(y_sub)
         return y_ds
 
     def train(self, X, Y):
