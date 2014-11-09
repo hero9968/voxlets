@@ -40,8 +40,8 @@
 % Image notation
 \newcommand{\rgbdimage}{\mathcal{D}}
 \newcommand{\intrinsics}{K}
-\newcommand{\pixelidx}{\gamma}
-\newcommand{\edgeimidx}{\xi}
+\newcommand{\pixelidx}{\mathbf{s}}
+\newcommand{\edgeimidx}{\mathbf{e}}
 
 % Voxel notation
 \newcommand{\voxelgrid}{\mathcal{V}}
@@ -324,6 +324,8 @@ Our approach is somewhat inspired by patch-based methods used for superresolutio
 
 We do...
 
+\todo{Overview image}
+
 Each voxlet is aligned with the coordinate system
 \begin{equation}
   R = 
@@ -361,48 +363,16 @@ The aim of our algorithm is to recover $\voxelgrid$ given $\rgbdimage$.
 
 %http://scholar.google.co.uk/scholar?safe=off&espv=2&bav=on.2,or.r_cp.r_qf.&bvm=bv.75775273,d.ZWU,pv.xjs.s.en.CtdJ7drbKko.O&ion=1&biw=1164&bih=816&um=1&ie=UTF-8&lr=&cites=16286130882256685425
 
-\newcommand{\voxletsubwidth}{0.41\columnwidth}
-% % \newcommand{\voxcroptop}{0.41\columnwidth}
-% % \newcommand{\voxcropbot}{0.41\columnwidth}
-% % \newcommand{\voxcropl}{0.41\columnwidth}
-% % \newcommand{\voxcropr}{0.41\columnwidth}
-% %\includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_2}}
-\begin{figure}
-%     %\subfigure[]{%
-     \includegraphics[width=0.3\columnwidth]{voxlets/1_marching_cubes}
-     \includegraphics[width=0.3\columnwidth]{voxlets/5_marching_cubes}
-     \includegraphics[width=0.3\columnwidth]{voxlets/10_marching_cubes} \\
-     \includegraphics[width=0.3\columnwidth]{voxlets/19_marching_cubes}
-     \includegraphics[width=0.3\columnwidth]{voxlets/38_marching_cubes}
-     \includegraphics[width=0.3\columnwidth]{voxlets/44_marching_cubes}
-     \caption{Some of the voxlets detected from the Bigbird dataset}
-\end{figure}
-%     %}
-%     % \subfigure[]{%
-%     % \includegraphics[width=\voxletsubwidth, clip=true, trim=\voxcropl \voxcropbot \voxcropr \voxcropr]{5_marching_cubes}
-%     % }
-%     % \subfigure[]{%
-%     % \includegraphics[width=\voxletsubwidth, clip=true, trim=\voxcropl \voxcropbot \voxcropr \voxcropr]{8_marching_cubes}
-%     % }
-%     % \subfigure[]{%
-%     % \includegraphics[width=\voxletsubwidth, clip=true, trim=\voxcropl \voxcropbot \voxcropr \voxcropr]{10_marching_cubes}
-%     % }
-%     % \subfigure[]{%
-%     % \includegraphics[width=\voxletsubwidth, clip=true, trim=\voxcropl \voxcropbot \voxcropr \voxcropr]{19_marching_cubes}
-%     % }
-%     % \subfigure[]{%
-%     % \includegraphics[width=\voxletsubwidth, clip=true, trim=\voxcropl \voxcropbot \voxcropr \voxcropr]{38_marching_cubes}
-%     % }
-%     % \subfigure[]{%
-%     % \includegraphics[width=\voxletsubwidth, clip=true, trim=\voxcropl \voxcropbot \voxcropr \voxcropr]{44_marching_cubes}
-%     % }
-%     \caption{
-%     Some of the voxlets extracted from the Bigbird dataset.
-%     }%
-%     \label{fig:voxlets}
-
-
-
+% \newcommand{\voxletsubwidth}{0.41\columnwidth}
+% \begin{figure}
+%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/1_marching_cubes}
+%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/5_marching_cubes}
+%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/10_marching_cubes} \\
+%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/19_marching_cubes}
+%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/38_marching_cubes}
+%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/44_marching_cubes}
+%      \caption{Some of the voxlets detected from the Bigbird dataset}
+% \end{figure}
 
 
 \newcommand{\preprocesssubwidth}{0.41\columnwidth}
@@ -423,7 +393,10 @@ The aim of our algorithm is to recover $\voxelgrid$ given $\rgbdimage$.
     \subfigure[Binary edge map]{%
         \includegraphics[width=\preprocesssubwidth]{preprocess_e}\label{subfig:binaryedge}}
     \caption{
-    Preprocessing
+    The depth image preprocessing pipeline.
+    The noisy depth image (b) is smoothed and missing data is filled (c). 
+    This makes use of the RGB image in the cross-bilteral filtering (we use the implementation provided by \cite{silberman-eccv-2012}).
+    We then use the structured edge detection model from \cite{dollar-iccv-2013} to compute a real-valued edge map for the image (d), which is finally binarized with Canny edge filtering \cite{canny-pami-1986} (d).
     }%
     \label{fig:preprocessing}
 \end{figure*}
@@ -432,72 +405,47 @@ The aim of our algorithm is to recover $\voxelgrid$ given $\rgbdimage$.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Feature representation}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\feat}{\mathbf{x}}
 
-We use local and regional features extracted from the image around $\pixelidx$ to represent the geometry around the point.
+Our feature representation maps a pixel locaton $\pixelidx = (u, v)$ to a feature $\feat(\pixelidx)$, which represents the geometry around the point.
+We use local and regional features extracted from the image.
 This is used in our classifier to map from a single point to a prediction of voxel occupancy in the surrounding region.
 
-We use two novel features. 
-The \emph{cobweb} feature captures the shape of the depth surface in the immediate vicinity of $\pixelidx$. 
-The \emph{spider} feature captures the size and shape of the region in which $\pixelidx$ resides together with the position of $\pixelidx$ in that region\footnote{The names of our features are taken from the shapes they produce in image space (figure \ref{fig:features}).}.
+Our feature $\feat(\pixelidx) = [\feat_c(\pixelidx), \feat_s(\pixelidx)]$ is composed of two parts.
+The \emph{cobweb} feature $\feat_c(\pixelidx)$ captures the shape of the depth surface in the immediate vicinity of $\pixelidx$. 
+The \emph{spider} feature $\feat_s(\pixelidx)$ captures the size and shape of the region in which $\pixelidx$ resides together with the position of $\pixelidx$ in that region\footnote{The names of our features are taken from the shapes they produce in image space (figure \ref{fig:features}).}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Cobweb feature }
 %\note{Name up for debate!}
-The cobweb feature is a simple pairwise feature, related to recent work such as \cite{shotton-cvpr-2011, tola-pami-2010}, capturing the surface shape in the immediate vicinity of pixel $\pixelidx$.
-The feature computes the difference between the depth from the camera at $\pixelidx$ and the depth at a predetermined offset.
+The cobweb feature $\feat_c(\pixelidx)$ is a simple pairwise feature, related to recent work such as \cite{shotton-cvpr-2011, tola-pami-2010}, capturing the surface shape in the immediate vicinity of pixel $\pixelidx$.
+The feature computes the difference between the depth from the camera at $\pixelidx$ and the depth at a predetermined offset. We define
 \begin{align}
-\Phi_c(u, v, \psi, t) &= \rgbdimage(u, v) - \rgbdimage(a, b) \\
-a &= \left\lfloor u + M(t)  \sin(\psi) \right\rceil \\
-b &= \left\lfloor v + M(t)  \cos(\psi) \right\rceil
+\Phi(\pixelidx, \psi, t) &= \rgbdimage(\pixelidx) - \rgbdimage(\pixelidx + \Delta) \\
+\Delta &= M(t) (\sin(\psi), \cos(\psi))
 \end{align}
-where $M(t) = ft / \rgbdimage(\pixelidx)$ uses the focal length $f$ to map a distance in world space to a pixel offset. For our experiments we compute the cobweb feature for all combinations of $\psi = [0\degree, 45\degree, \ldots, 315\degree]$ and $t = [0.02m, 0.04m, 0.06m]$.
+where $M(t) = ft / \rgbdimage(\pixelidx)$ uses the focal length $f$ to map a distance in world space to a pixel offset. 
+The final feature is then composed of $\Phi(\pixelidx, \psi, t)$ evaluated over a range of values of $\psi$ and $t$.
+For our experiments we compute the cobweb feature for all combinations of $\psi = [0\degree, 45\degree, \ldots, 315\degree]$ and $t = [0.02m, 0.04m, 0.06m, 0.08m]$.
 The final cobweb feature is therefore 24-dimensional.
+The pattern of the extracted $\pixelidx + \Delta$ values can be seen in figure \ref{subfig:cobweb}.
+
+%In our experiments the final feature is then composed of 
+% as
+%\begin{align}
+%\feat_c(\pixelidx) &= [\Phi(\pixelidx, \psi, t): \psi = [0\degree, 45\degree, \ldots, 315\degree], t = [0.%02m, 0.04m, 0.06m, 0.08m].
+%\end{align}
+
+%a &= \left\lfloor u + M(t)  \sin(\psi) \right\rceil \\
+%b &= \left\lfloor v + M(t)  \cos(\psi) \right\rceil
+
+% over a range of values of  
 %Note also: ``If an offset pixel lies on the background or outside the bounds of the image, the depth probe dI (x0) is given a large positive constant value''.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{The spider feature}
-%\note{Name up for debate! Another candidate is `compass'}
-
-Local features such as our cobweb feature have proved discriminatory where the output labeling is on a per-pixel basis, such as labeling each pixel as a part of a human body \cite{shotton-cvpr-2011}.
-
-However, when it comes to predicting the geometry of the scene we cannot observe, the local shape of the depth image around a point does not provide enough information. 
-An example of this can be seen in figure \ref{fig:patch_problems}.
-The two regions circled in the image have identical \emph{local} appearance, but the 3D geometry around each regions is very different due to the different thicknesses of the two boxes.
-
-
-\begin{figure}[bt]
-  \centering 
-  \includegraphics[width=0.9\columnwidth]{features_1}
-  \caption{Local, patch-type features do not give enough information to accurately predict depth. Here, a pair of regions on two different objects are marked. Each region has identical local appearance. However, the thickness of the object at the two locations is very different. 
-  We use this observation to motivate the spider feature.}
-  \label{fig:patch_problems}
-\end{figure}
-%\todo{Combine all the motivational images for the spider feature into one...}}
-
-
-Previous works have used the properties of a whole segmented region for classification of individual points \cite{golovinskiy-iccv-2009}.
-When it comes to predicting the 3D shape local to a point in an image, however, we care as much about the point's location in the region as we do about the overall region properties (figure \ref{fig:spider_motivation}).
-
-We desire a feature which captures the size and shape of the region in which $\pixelidx$ resides, along with the location of $\pixelidx$ in that region.
-To achieve this we take inspiration from the features between a point and a binary edge map used by \cite{drost-3dimpvt-2012}.
-
-\paragraph{Computing a binary edge map}
-We first compute a binary edge map for the image, where each pixel takes the value 1 at a large change in depth or surface normal direction, and is 0 otherwise.
-We first use the method of \cite{dollar-iccv-2013} to compute a real-valued edge map for the image (figure \ref{subfig:structedge}).
-Next we apply the Canny filtering algorithm \cite{} to convert this to a binary edge map (figure \ref{subfig:structedge}).
-We mitigate against poor quality depth data around discontinuities by dilating this edge map with a 3x3 disc-shaped structuring element.
-
-\paragraph{Casting lines from $\pixelidx$}
-From $\pixelidx$, we then cast a line across the edge map in direction $\phi$.
-We note the point on the edge map where the line first hits a pixel with value 1 as $\edgeimidx$.
-The 2D locations $\pixelidx$ and $\edgeimidx$ reproject to 3D locations $\project(\pixelidx)$ and $\project(\edgeimidx)$ respectively.
-%For each line cast we therefore have two points in 3D space: $\point$ and $\point_e$.
-
 
 
 \newcommand{\subwidth}{0.32\columnwidth}
-\begin{figure*}[tb]
+\begin{figure}[tb]
     \centering 
     \subfigure[Query point]{%
         \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_2}}
@@ -508,7 +456,7 @@ The 2D locations $\pixelidx$ and $\edgeimidx$ reproject to 3D locations $\projec
         \hfill
     \subfigure[Spider feature]{%
         \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_4}}
-        \hfill
+        \\
     \subfigure[$c_0$]{%
         \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_5}\label{subfig:c0}}
         \hfill
@@ -526,7 +474,49 @@ The 2D locations $\pixelidx$ and $\edgeimidx$ reproject to 3D locations $\projec
     This case is denoted as \texttt{?} in this figure.
     (e) The cobweb feature measures the difference in depth between $\point$ and a set of points in the near vicinity of $\point$, arranged in a cobweb shape.}%
     \label{fig:features}
-\end{figure*}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{The spider feature}
+%\note{Name up for debate! Another candidate is `compass'}
+
+Local features such as our cobweb feature have proved discriminatory where the output labeling is on a per-pixel basis, such as labeling each pixel as a part of a human body \cite{shotton-cvpr-2011}.
+
+However, when it comes to predicting the geometry of the scene we cannot observe, the local shape of the depth image around a point does not provide enough information. 
+An example of this can be seen in figure \ref{fig:patch_problems}.
+The two regions circled in the image have identical \emph{local} appearance, but the 3D geometry around each regions is very different due to the different thicknesses of the two boxes.
+
+
+\begin{figure}[bt]
+  \centering 
+  \includegraphics[width=0.9\columnwidth]{features_1}
+  \caption{Local, patch-type features do not give enough information to accurately predict depth. Here, a pair of regions on two different objects are marked. Each region has identical local appearance. However, the voxel geometry of the object at the two locations is very different due to the different thicknesses. 
+  We use this observation to motivate the spider feature.}
+  \label{fig:patch_problems}
+\end{figure}
+%\todo{Combine all the motivational images for the spider feature into one...}}
+
+
+Previous works have used the properties of a whole segmented region for classification of individual points \cite{golovinskiy-iccv-2009}.
+When it comes to predicting the 3D shape local to a point in an image, however, we care as much about the point's location in the region as we do about the overall region properties (figure \ref{fig:spider_motivation}).
+
+We desire a feature which captures the size and shape of the region in which $\pixelidx$ resides, along with the location of $\pixelidx$ in that region.
+To achieve this we take inspiration from the features between a point and a binary edge map used by \cite{drost-3dimpvt-2012}.
+
+\paragraph{Computing a binary edge map}
+We first compute a binary edge map for the image, where each pixel takes the value 1 at a large change in depth or surface normal direction, and is 0 otherwise.
+We first use the method of \cite{dollar-iccv-2013} to compute a real-valued edge map for the image (figure \ref{subfig:structedge}).
+Next we apply the Canny filtering algorithm \cite{canny-pami-1986} to convert this to a binary edge map (figure \ref{subfig:structedge}).
+We mitigate against poor quality depth data around discontinuities by dilating this edge map with a 3x3 disc-shaped structuring element.
+
+\paragraph{Casting lines from $\pixelidx$}
+From $\pixelidx$, we then cast a line across the edge map in direction $\phi$.
+We note the point on the edge map where the line first hits a pixel with value 1 as $\edgeimidx$.
+The 2D locations $\pixelidx$ and $\edgeimidx$ reproject to 3D locations $\project_\pixelidx$ and $\project_\edgeimidx$ respectively.
+%For each line cast we therefore have two points in 3D space: $\point$ and $\point_e$.
+
+
 
 
 
@@ -540,21 +530,19 @@ Each element of this tuple is completed as follows:
 
 \item $\spiderfeat_1 = \rgbdimage(\pixelidx) \|\pixelidx - \edgeimidx\| / f$. This is the distance between $\pixelidx$ and $\edgeimidx$ in pixel units $\|\pixelidx - \edgeimidx\|$ scaled by $\rgbdimage(\pixelidx) / f$ to convert to a real-world distance (figure \ref{subfig:c0}).
 
-\item $\spiderfeat_2 = (\point(\pixelidx) - \point(\edgeimidx)) \cdot \normal$. 
-This is the Euclidean distance between $\point(\pixelidx)$ and $\point(\edgeimidx)$ along the direction of the normal at $\pixelidx$  (figure \ref{subfig:c1}).
-
-\item $\spiderfeat_3 = \sum_{i=2}^{|l|} \| \project(l_i) - \project(l_{i-1}) \| $, where $l$ is an ordered list of the pixel locations on the line between $\pixelidx$ and $\edgeimidx$.
-This is the arc length between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$  (figure \ref{subfig:c2}).
+\item $\spiderfeat_2 = (\point_\pixelidx - \point_\edgeimidx) \cdot \normal$. 
+This is the Euclidean distance between $\point_\pixelidx$ and $\point_\edgeimidx$ along the direction of the normal at $\pixelidx$  (figure \ref{subfig:c1}).
+\newcommand{\gline}{\mathbf{l}}
+\item $\spiderfeat_3 = \sum_{i=2}^{|\gline|} \| \project_{\gline(i)} - \project_{\gline(i-1)}) \| $, where $\gline$ is an ordered list of the pixel locations on the line between $\pixelidx$ and $\edgeimidx$.
+$\spiderfeat_3$ approximates the arc length between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$  (figure \ref{subfig:c2}).
 \end{itemize}
-
-%\item the \textbf{geodesic distance} $d_g(\point, point_e)$ across the surface of $\rgbdimage$
 
 We compute the spider features for  $\phi = [0\degree, 45\degree, \ldots, 315\degree]$
 The spider feature for a single point $\pixelidx$ is therefore 16-dimensional.
 
 \paragraph{Implementation}
 The spider feature is extremely efficient to compute.
-This is due to its cumulative nature: $(u, v, 0)$ can be directly computed from $s(u, v-1, 0)$.
+This is due to its cumulative nature: the feature at $\pixelidx$ can be directly computed from $\pixelidx - (0, 1)$.
 We can compute the 16D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptimized C++ code.
 We would expect a significant speedup were this to be implemented on a GPU.
 
@@ -658,15 +646,20 @@ This can be done fairly efficiently as the voxlets are all at a constant orienta
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \paragraph{Evaluation criteria}
-The aim of our algorithm is to accurately classify free space in a scene.
-Therefore, we report the per-voxel ROC curve for the scene, comparing the prediction $\Pr(o)$ with the ground truth occupancy as provided by KinFu.
+The aim of our algorithm is to accurately classify free space around objects and in scenes.
+Therefore, we report the per-voxel ROC curve for each object.
+This is computed by sweeping a parameter over the range of values in the TSDF, and comparing the classification of voxels as being `inside' or `outside' the object with the ground truth occupancy.
 
+%, comparing the prediction $\Pr(o)$ with the ground truth occupancy as provided by KinFu.
 The shape of the ROC curve is strongly affected by the region over which the evaluation is performed.
-If all the voxels between the camera and the depth image are included in the evaluation, the false positive rate becomes very low, as the voxels in the free space between the camera and scene are `easy wins' for the algorithm. We therefore evaluate over all the voxels 
+If all the voxels between the camera and the depth image are included in the evaluation, the false positive rate becomes very low, as the voxels in the free space between the camera and scene are `easy wins' for the algorithm. 
+%We therefore evaluate over all the voxels 
+
 
 \subsection{Baseline algorithms}
 
 List of baseline algorithms
+
 
 \subsection{Turntable dataset}
 
@@ -678,6 +671,17 @@ This mesh can be converted to provide us with a ground truth voxel occupancy.
 In our train/test split of this dataset, we note that there are many `near duplicate' items in the dataset.
 For example, two different flavor varieties of the same product may be included.
 To ensure a fair split we group such items together to ensure that each group ends up as a whole in the training or the test section.
+
+% following computed from the matlab script eval_roc, after loading 
+% /Users/Michael/projects/shape_sharing/data/voxlets/roc_curve_data.mat
+% which was copied from troll,  after being computed by 10_ssds.py
+\begin{figure}[bt]
+  \centering 
+  \includegraphics[width=0.9\columnwidth]{roc_curve}
+  \caption{ROC curve comparing results from the turntable dataset. 
+  The dot on each curve shows the value of the TPR and the FPR at the level set of 0 in the predicted result.}
+  \label{fig:bigbird_roc}
+\end{figure}
 
 
 % \begin{figure}
