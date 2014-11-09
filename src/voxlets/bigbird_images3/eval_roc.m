@@ -1,8 +1,17 @@
 close all
-h= figure()
-plot(mean(medioid.tpr), mean(medioid.fpr), 'b')
+halfway_point = length(medioid.tpr)/2
+
+h = figure()
+
+tpr = mean(medioid.tpr);
+fpr = mean(medioid.fpr);
+plot(tpr, fpr, 'b')
 hold on
-plot(mean(modal.tpr), mean(modal.fpr), 'r--')
+plot(tpr(halfway_point), fpr(halfway_point), 'bo')
+tpr = mean(modal.tpr);
+fpr = mean(modal.fpr);
+plot(tpr, fpr, 'r--')
+plot(tpr(halfway_point), fpr(halfway_point), 'ro')
 hold off
 
 axis equal

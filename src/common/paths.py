@@ -81,8 +81,12 @@ if data_type=='bigbird':
     # saved pca components of original data
     voxlet_pca_path = base_path + "voxlets/dict/tsdf/pca.pkl" + extra
 
-    voxlet_prediction_path = base_path + "voxlets/bigbird/predictions/%s_%s.pkl"
-    voxlet_prediction_image_path = base_path + "voxlets/bigbird/predictions/%s_%s_%f_%f.png"
+    #voxlet_prediction_path = base_path + "voxlets/bigbird/predictions/%s_%s.pkl"
+    voxlet_prediction_image_path = base_path + "voxlets/bigbird/predictions/%s_%s.png"
+
+    voxlet_prediction_folder_path = base_path + "/voxlets/bigbird/predictions/%s/"
+    voxlet_prediction_path = voxlet_prediction_folder_path  + "%s_%s.mat"
+
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
     one_side_bins = 15
