@@ -152,7 +152,7 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
 
     "Saving result to disk"
     savepath = paths.voxlet_prediction_path % (test_type, modelname, test_view)
-    D = dict(prediction=prediction)
+    D = dict(prediction=prediction, gt=gt)
     scipy.io.savemat(savepath, D, do_compression=True)
 
     "Computing the auc score"

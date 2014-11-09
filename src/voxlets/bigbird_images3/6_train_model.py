@@ -47,17 +47,14 @@ for count, modelname in enumerate(paths.train_names):
     D = scipy.io.loadmat(loadpath)
 
     features.append(D['features'])
-    
-    pca_representation.append(D['pca_representation'])
     pca_kmeans_idx.append(D['pca_kmeans_idx'])
     kmeans_idx.append(D['kmeans_idx'])
-    
+
     if count > 3 and small_sample:
         print "SMALL SAMPLE: Stopping"
         break
 
 np_pca_kmeans_idx = np.hstack(pca_kmeans_idx).flatten()
-np_pca_representation = np.vstack(pca_representation)
 np_kmeans_idx = np.hstack(kmeans_idx).flatten()
 
 
@@ -70,45 +67,39 @@ print ""
 print "Before subsampling"
 print "np_features has shape " + str(np_features.shape)
 print "np_pca_kmeans_idx has shape " + str(np_pca_kmeans_idx.shape)
-print "np_pca_representation has shape " + str(np_pca_representation.shape)
 print "np_kmeans_idx has shape " + str(np_kmeans_idx.shape)
-print ""
 
 np_features = np_features[~to_remove, :]
 np_pca_kmeans_idx = np_pca_kmeans_idx[~to_remove]
-np_pca_representation = np_pca_representation[~to_remove, :]
 np_kmeans_idx = np_kmeans_idx[~to_remove]
 
 print ""
 print "Before subsampling"
 print "np_features has shape " + str(np_features.shape)
 print "np_pca_kmeans_idx has shape " + str(np_pca_kmeans_idx.shape)
-print "np_pca_representation has shape " + str(np_pca_representation.shape)
 print "np_kmeans_idx has shape " + str(np_kmeans_idx.shape)
-print ""
 
 rand_exs = np.sort(np.random.choice(np_features.shape[0], np.minimum(subsample_length, np_features.shape[0]), replace=False))
 np_features = np_features.take(rand_exs, 0)
 np_pca_kmeans_idx = np_pca_kmeans_idx.take(rand_exs, 0)
-np_pca_representation = np_pca_representation.take(rand_exs, 0)
 np_kmeans_idx = np_kmeans_idx.take(rand_exs, 0)
 
 print ""
 print "After subsampling"
 print "np_features has shape " + str(np_features.shape)
 print "np_pca_kmeans_idx has shape " + str(np_pca_kmeans_idx.shape)
-print "np_pca_representation has shape " + str(np_pca_representation.shape)
 print "np_kmeans_idx has shape " + str(np_kmeans_idx.shape)
-print ""
 
 forest_pca = RandomForestClassifier(n_estimators=number_trees, criterion="entropy", oob_score=True, max_depth=max_depth, n_jobs=8)
 forest_pca.fit(np_features, np_pca_kmeans_idx)
 
 print "Done training, now saving"
+#forest_dict = dict(forest=forest, km_model=km_pca, pca_model=)
 pickle.dump(forest_pca, open(paths.voxlet_model_pca_path, 'wb'))
 
 forest = RandomForestClassifier(n_estimators=number_trees, criterion="entropy", oob_score=True, max_depth=max_depth, n_jobs=8)
 forest.fit(np_features, np_kmeans_idx)
 
 print "Done training, now saving"
+#forest_dict = dict(forest=forest, pca_model=pca)
 pickle.dump(forest, open(paths.voxlet_model_path, 'wb'))
