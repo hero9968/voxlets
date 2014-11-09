@@ -8,7 +8,7 @@ from sklearn.decomposition import RandomizedPCA
 
 class ForestParams:
     def __init__(self):
-        self.num_tests = 1000
+        self.num_tests = 2000
         self.min_sample_cnt = 2
         self.max_depth = 16.0
         self.num_trees = 50
@@ -16,8 +16,8 @@ class ForestParams:
         self.train_parallel = True
 
         # structured learning params
-        self.pca_dims = 5
-        self.num_dims_for_pca = 512 # number of dimensions that pca gets reduced to
+        #self.pca_dims = 5
+        self.num_dims_for_pca = 20 # number of dimensions that pca gets reduced to
         self.sub_sample_exs_pca = True  # can also subsample the number of exs we use for PCA
         self.num_exs_for_pca = 5000
 
