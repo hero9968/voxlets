@@ -24,7 +24,7 @@ all_med_fpr = []
 
 
 # loop over each output saved file
-for modelname in paths.test_names[:2]:
+for modelname in paths.test_names:
     print "Doing model " + modelname
     for this_view_idx in [0, 10, 20, 30, 40]:
 
