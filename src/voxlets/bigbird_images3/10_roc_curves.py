@@ -8,19 +8,25 @@ import matplotlib.pyplot as plt
 import cPickle as pickle
 import sys, os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
-#import sklearn.metrics
 
 from common import paths
+from common import voxel_data
 
+############################################
+"PARAMTERS"
 thresholds = np.linspace(0, 1, 100)
+pred_types = ['modal', 'medioid']
 
-def convert_to_flat_in_zero_one(V_in):
-    return 1 - (V_in.flatten() + 0.03) / 0.06
+############################################
+"Setting up the dictionary to store results"
+metrics = {}
+for pred_type in pred_types:
+    metrics[pred_type] = {}
+    metrics[pred_type]['tpr'] = []
+    metrics[pred_type]['fpr'] = []
 
-all_modal_tpr = []
-all_modal_fpr = []
-all_med_tpr = []
-all_med_fpr = []
+############################################
+"MAIN LOOP"
 
 
 # loop over each output saved file
@@ -31,7 +37,11 @@ for modelname in paths.test_names:
         test_view = paths.views[this_view_idx]
         print "Doing view " + test_view
 
-        loadpath = '/mnt/scratch/mfirman/data/voxlets/bigbird/predictions/%s_%s.pkl' % (modelname, test_view)
+        # TODO - will eventually make this so each prediciton type is in a different folder or something
+        if paths.host_name == 'troll':
+            loadpath = paths.base_path + '/data/voxlets/bigbird/predictions/%s_%s.pkl' % (modelname, test_view)
+        else:
+            loadpath = paths.base_path + '/data/voxlets/bigbird/troll_predictions/%s_%s.pkl' % (modelname, test_view)
 
         print "loading the data"
         f = open(loadpath, 'rb')
@@ -39,75 +49,19 @@ for modelname in paths.test_names:
         f.close()
 
         print "Converting"
-        med = convert_to_flat_in_zero_one(D['medioid'])
-        modal = convert_to_flat_in_zero_one(D['modal'])
-        GT = convert_to_flat_in_zero_one(D['gt'])
+        met = voxel_data.VoxMetrics()
+        met.set_gt(D['gt'])
 
-        print np.min(med)
-        print np.max(med)
-        print np.min(modal)
-        print np.max(modal)
-        print np.min(GT)
-        print np.max(GT)
+        for pred_type in pred_types:
+            met.set_pred(D[pred_type])
+            fpr, tpr = met.compute_tpr_fpr(thresholds)
 
-
-        N = GT.shape[0]
-
-        print "Doing analysis"
-        temp_med_fpr = []
-        temp_med_tpr = []
-        temp_modal_tpr = []
-        temp_modal_fpr = []
-        for thres in thresholds:
-
-            pos = np.sum(GT>=0.5)
-            neg = np.sum(GT<0.5)
-
-            fp = np.sum(np.logical_and(med>thres, GT<0.5))
-            temp_med_fpr.append(float(fp)/float(pos))
-
-            #print fp 
-
-            fp = np.sum(np.logical_and(modal>thres, GT<0.5))
-            temp_modal_fpr.append(float(fp)/float(pos))
-
-            #print fp 
-
-            tp = np.sum(np.logical_and(med>thres, GT>=0.5))
-            temp_med_tpr.append(float(tp)/float(pos))
-
-            #print tp
-
-            tp = np.sum(np.logical_and(modal>thres, GT>=0.5))
-            temp_modal_tpr.append(float(tp)/float(pos))
-
-           # print tp
-            
-
-        all_modal_tpr.append(temp_modal_tpr)
-        all_modal_fpr.append(temp_modal_fpr)
-        all_med_tpr.append(temp_med_tpr)
-        all_med_fpr.append(temp_med_fpr)
+            metrics[pred_type]['tpr'].append(tpr)
+            metrics[pred_type]['fpr'].append(fpr)
 
     print "Done " + modelname
 
-
-# convert them to np arrays
-np_all_modal_tpr = np.array(all_modal_tpr)
-np_all_modal_fpr = np.array(all_modal_fpr)
-np_all_med_tpr = np.array(all_med_tpr)
-np_all_med_fpr = np.array(all_med_fpr)
-
-print np_all_modal_tpr.shape
-print np_all_modal_fpr.shape
-print np_all_med_tpr.shape
-print np_all_med_fpr.shape
-
-# now save them all to disk
-D = dict(np_all_modal_tpr=np_all_modal_tpr, 
-         np_all_modal_fpr=np_all_modal_fpr, 
-         np_all_med_tpr=np_all_med_tpr, 
-         np_all_med_fpr=np_all_med_fpr)
-
+############################################
+"SAVING"
 import scipy.io
-scipy.io.savemat('roc_curve_data.mat', D)
+scipy.io.savemat('roc_curve_data.mat', metrics)
