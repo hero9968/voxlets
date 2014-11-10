@@ -79,6 +79,7 @@ if data_type=='bigbird':
     # model using oma code
     voxlet_model_oma_path = base_path + "voxlets/dict/tsdf/oma_forest.pkl" + extra
     voxlet_model_oma_cobweb_path = base_path + "voxlets/dict/tsdf/oma_forest_cobweb.pkl" + extra
+    voxlet_model_oma_spider_path = base_path + "voxlets/dict/tsdf/oma_forest_spider.pkl" + extra
 
     # saved pca components of original data
     voxlet_pca_path = base_path + "voxlets/dict/tsdf/pca.pkl" + extra

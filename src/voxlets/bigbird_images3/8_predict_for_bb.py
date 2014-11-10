@@ -28,7 +28,7 @@ max_points = 200
 number_samples = 2000
 multiproc = not paths.small_sample
 
-test_types = ['bb']#['oma', 'modal', 'medioid', 'bb']#, 'bpc', 'no_spider']
+test_types = ['just_spider', 'just_cobweb']
 
 
 if 'modal' in test_types or 'medioid' in test_types:
@@ -45,9 +45,19 @@ if 'oma' in test_types:
     oma_forest = pickle.load(open(paths.voxlet_model_oma_path, 'rb'))
     #pass
 
-if 'no_spider' in test_types:
-    sa
-    pass
+if 'just_spider' in test_types:
+
+    print "Loading OMA forest"
+    pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
+    spider_forest = pickle.load(open(paths.voxlet_model_oma_spider_path, 'rb'))
+
+
+if 'just_cobweb' in test_types:
+
+    print "Loading OMA forest"
+    pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
+    cobweb_forest = pickle.load(open(paths.voxlet_model_oma_cobweb_path, 'rb'))
+
 
 
 def plot_slice(V):
@@ -137,11 +147,23 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
         accum = rec.fill_in_output_grid_oma(max_points=max_points)
         prediction = accum.compute_average(nan_value=0.03)
 
-    elif test_type == 'oma_cobweb':
+    elif test_type == 'just_cobweb':
 
         print "Reconstructing with oma forest"
         rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
-        rec.set_forest(oma_forest)
+        rec.set_forest(cobweb_forest)
+        rec.set_pca_comp(pca)
+        rec.set_test_im(test_im)
+        rec.sample_points(number_samples)
+        rec.initialise_output_grid(method='from_grid', gt_grid=gt_grid)
+        accum = rec.fill_in_output_grid_oma(max_points=max_points, special='cobweb')
+        prediction = accum.compute_average(nan_value=0.03)
+
+    elif test_type == 'just_spider':
+
+        print "Reconstructing with oma forest"
+        rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+        rec.set_forest(spider_forest)
         rec.set_pca_comp(pca)
         rec.set_test_im(test_im)
         rec.sample_points(number_samples)

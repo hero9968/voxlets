@@ -122,3 +122,20 @@ cobweb_forest_dict = dict(forest=cobweb_forest, traindata=np_pca_representation,
 print "Done training, now saving"
 pickle.dump(cobweb_forest_dict, open(paths.voxlet_model_oma_cobweb_path, 'wb'))
 
+
+########################################################################
+print "Training the forest with just the spider features"
+########################################################################
+
+forest_params = srf.ForestParams()
+spider_forest = srf.Forest(forest_params)
+tic = time.time()
+spider_forest.train(np_features[:, 32:], np_pca_representation)
+toc = time.time()
+print 'train time', toc-tic
+
+print "Combining forest with training data"
+spider_forest_dict = dict(forest=spider_forest, traindata=np_pca_representation, pca_model=pca)
+
+print "Done training, now saving"
+pickle.dump(spider_forest_dict, open(paths.voxlet_model_oma_spider_path, 'wb'))
