@@ -924,6 +924,7 @@ class SliceFiller(object):
 
 
 
+
 class VoxMetricsTSDF(object):
 	'''
 	class to do metrics on the voxel datas
@@ -936,10 +937,15 @@ class VoxMetricsTSDF(object):
 
 	def set_gt(self, gt):
 		self.gt = ((1.0 - (gt.flatten() + 0.03) / 0.06) > 0.5).astype(int)
-		print "gt top bottom is "
-		print np.min(self.gt)
-		print np.max(self.gt)
-
+		
+		# finding the bottom along the z-direction. Don't use anything below that...
+		temp = np.any(self.gt>0.5, axis=0)
+		temp = np.any(temp, axis=0)
+		hull_points_z = np.nonzero(temp)
+		min_z = np.min(hull_points_z)
+		tempgt = copy.deepcopy(gt) * 0 + 1
+		tempgt[:, :, :min_z] = 0
+		self.valid_points = tempgt.flatten()
 
 
 	def set_pred(self, pred):
@@ -951,18 +957,22 @@ class VoxMetricsTSDF(object):
 
 	def compute_tpr_fpr(self, thresholds):
 
-		pos = np.sum(self.gt>=0.5)
-		neg = np.sum(self.gt<0.5)
+		pos = np.sum(np.logical_and(self.gt>=0.5, self.valid_points==1))
+		neg = np.sum(np.logical_and(self.gt<0.5, self.valid_points==1)) 
 
 		fpr = []
 		tpr = []
 		
 		for thres in thresholds:
 
-			tp = np.sum(np.logical_and(self.pred>thres, self.gt>0.5))
+			tp = np.sum(np.logical_and.reduce((self.pred>thres, 
+												self.gt>0.5, 
+												self.valid_points==1)))
 			tpr.append(float(tp)/float(pos))
 
-			fp = np.sum(np.logical_and(self.pred>thres, self.gt<0.5))
+			fp = np.sum(np.logical_and.reduce((self.pred>thres, 
+												self.gt<0.5,
+												self.valid_points==1)))
 			fpr.append(float(fp)/float(neg))
 
 		return np.array(tpr), np.array(fpr)
