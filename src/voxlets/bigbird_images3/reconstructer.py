@@ -35,7 +35,10 @@ class Reconstructer(object):
         '''
         sampling points from the test image
         '''
-        test_mask = ~np.isnan(self.im.frontrender)
+        if hasattr(self.im, 'frontrender'):
+            test_mask = ~np.isnan(self.im.frontrender)
+        else:
+            test_mask = self.im.mask
 
         indices = np.array(np.nonzero(test_mask)).T
         np.random.seed(1)
@@ -156,6 +159,7 @@ class Reconstructer(object):
         voxlet_size = paths.voxlet_size/2.0
         grid_dims_in_real_world = grid_end - grid_origin
         V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
+        print "Output grid will have shape " + str(V_shape)
 
         self.accum = voxel_data.UprightAccumulator(V_shape)
         self.accum.set_origin(grid_origin)

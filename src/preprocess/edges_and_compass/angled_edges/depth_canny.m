@@ -9,8 +9,8 @@ e = false(m,n);
 
 %if strcmp(method,'canny')
     % Magic numbers
-    PercentOfPixelsNotEdges = .9; % Used for selecting thresholds
-    ThresholdRatio = 0.15;          % Low thresh is this fraction of the high.
+    PercentOfPixelsNotEdges = .95; % Used for selecting thresholds
+    ThresholdRatio = 0.13;          % Low thresh is this fraction of the high.
     
     % Calculate gradients using a derivative of Gaussian filter
     sigma = sqrt(2);

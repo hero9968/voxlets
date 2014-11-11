@@ -55,6 +55,8 @@ if data_type=='bigbird':
     rf_folder_path_small = base_path + "bigbird_models/rf_models_small/"
     dense_savefolder = base_path + "bigbird_dense/"
 
+    osd_path = base_path + "other_3D/osd/OSD-0.2-depth/mdf/"
+
 
     bigbird_training_data_mat = base_path + "voxlets/bigbird/tsdf_small/%s.mat"
     bigbird_training_data_fitted_mat = base_path + "voxlets/bigbird/tsdf_fitted_pca/%s.mat"

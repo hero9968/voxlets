@@ -57,7 +57,7 @@ class CobwebEngine(object):
 		'''extracts cobweb for a single index point'''
 		row, col = index
 		
-		start_angle = self.im.angles[row, col]
+		start_angle = 0#self.im.angles[row, col]
 		start_depth = self.im.depth[row, col]
 
 		if self.fixed_patch_size:

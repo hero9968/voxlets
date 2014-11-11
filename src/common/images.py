@@ -370,6 +370,129 @@ class CroppedRGBD(RGBDImage):
 
 
 
+class RealRGBD(RGBDImage):
+    '''
+    rgbd image loaded from matlab mat file, which is a real world image
+    '''
+
+    def load_from_mat(self, name):
+        '''
+        loads all the bigbird data from a mat file
+        '''
+        mat_path = paths.base_path + 'other_3D/osd/OSD-0.2-depth/mdf/' + name + ".mat"
+
+        D = scipy.io.loadmat(mat_path)
+        #return D
+        self.rgb = D['rgb']
+        self.depth = D['smoothed_depth']     # this is the depth after smoothing
+        self.set_intrinsics(D['K']) # as the depth has been reprojected into the RGB image, don't need the ir extrinsics or intrinscs
+        #self.H = D['T_H_rgb'] 
+        self.mask = D['mask']
+
+
+        # the following line is a hack to convert from matlab row-col order to python
+        old_shape = [3, self.mask.shape[1], self.mask.shape[0]]
+        self.xyz = D['xyz'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
+        
+        # loading the spider features
+        self.spider_channels = D['spider']
+
+        # the following line is a hack to convert from matlab row-col order to python
+        self.normals = D['norms'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
+
+        self.modelname = name
+
+        # need here to create the xyz points from the image in world (not camera) coordinates...
+        '''
+        R = np.linalg.inv(self.H[:3, :3].T)
+        T = self.H[3, :3]
+        '''
+        self.world_updir = D['up'][0]
+
+        "Forming the H"
+        new_z = self.world_updir[:3]
+        new_x = np.cross(new_z, np.array([0, 1, 0]))
+        new_x /= np.linalg.norm(new_x)
+        new_y = np.cross(new_z, new_x)
+        new_y /= np.linalg.norm(new_y)
+        R = np.vstack((new_x, new_y, new_z)).T
+        H = np.zeros((4, 4))
+        H[:3, :3] = R
+        H[3, 3] = 1
+        
+        self.H = H
+
+        
+
+        #self.world_xyz = np.dot(R, (self.xyz - T).T).T# + 
+
+        # world up direction - in world coordinates. 
+        # this is not the up dir in camera coordinates...
+        self.updir = np.array([0, 0, 1]) 
+
+        # loading the appropriate camera here
+        cam = mesh.Camera()
+        cam.set_intrinsics(self.K)
+        cam.set_extrinsics(self.H)
+        self.set_camera(cam)
+
+        "Now able to add the translation part of the H matrix..."
+        inliers = self.get_world_xyz()[self.mask.flatten()==1, :]
+        origin_x = np.min(inliers[:, 0])
+        origin_y = np.min(inliers[:, 1])
+        origin_z = -self.world_updir[3]
+        m = np.array([ origin_x, origin_y, origin_z])
+        m = np.dot(R, m)
+        self.H[:3, 3] = m.T
+        cam.set_extrinsics(self.H)
+        #print self.H
+
+        #cam.load_bigbird_matrices(modelname, viewname)
+
+
+
+    def disp_spider_channels(self):
+
+        print self.spider_channels.shape
+        for idx in range(self.spider_channels.shape[2]):
+            plt.subplot(4, 6, idx+1)
+            plt.imshow(self.spider_channels[:, :, idx])
+        
+
+    def get_world_normals(self):
+        return self.cam.inv_transform_normals(self.normals)
+
+
+    def get_features(self, idxs):
+        '''
+        get the features from the channels etc
+        '''
+        ce = features.CobwebEngine(t=5, fixed_patch_size=False)
+        ce.set_image(self)
+        patch_features = ce.extract_patches(idxs)
+
+        se = features.SpiderEngine(self)
+        spider_features = se.compute_spider_features(idxs)
+        spider_features = features.replace_nans_with_col_means(spider_features)
+
+        all_features = np.concatenate((patch_features, spider_features), axis=1)
+        return all_features
+
+
+
+    def get_uvd(self):
+        '''
+        returns (nxm)x3 matrix of all the u, v coordinates and the depth at eac one
+        '''
+        h, w = self.depth.shape
+        us, vs = np.meshgrid(np.arange(w), np.arange(h))
+        return np.vstack((us.flatten(),
+                       vs.flatten(),
+                       self.depth.flatten())).T
+
+
+
+
 class CADRender(RGBDImage):
     '''
     class representing a CAD render model
