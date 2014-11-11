@@ -292,22 +292,22 @@ Gupta \ea \cite{gupta-cvpr-2011} estimate voxel occupancy from a 2D image, which
 The obvious problem with bounding box style methods is that they can only give coarse shape information, which is not suitable for many applications of geometry completion.
 
 In our work we make use of 3D primitives.
-Unlike geons, which are fixed in shape, we learn a distribution of shapes from training data.
+However, unlike geons which are fixed in shape, we learn a distribution of shapes from training data.
 We are also able to make more fine-grained predictions than bounding boxes.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Structured learning for vision}
-In recent years \emph{structured learning} has become a popular paradigm for some computer vision tasks.
-
-The typical approach for the use of structured learning in vision is to find a mapping from feature space to a label space, where in contrast to standard supervised learning the label space is multidimensional.
+In recent years \emph{structured learning} has become a popular method for some computer vision tasks.
+As with standard supervised learning, structured learning finds a mapping from feature space to a label space.
+In contrast to standard supervised learning, however, a structured label space is multidimensional.
 Feature space is typically limited to a local descriptor of the image, while the label space may be surface normals \cite{fouhey-iccv-2013}, human poses \cite{bourdev-iccv-2009} or semantic labels.
 
 %A question that arises is: How to form the set of primitives?
 There are many different ways of finding the mapping from feature to structured label space.
 For example, \cite{bourdev-iccv-2009} cluster human poses, while \cite{fouhey-iccv-2013} use an SVM-like formulation to find primitives which are both discriminative in feature space and informative in label space.
 
-In our work we draw on the power of Random Forests \cite{breiman-ml-2001}.
-Originally proposed for regression and single-label classification problems, random forests have since been adpated to be able to make structured outputs, where the label space is multidimensional.
+In our work we make use of Random Forests \cite{breiman-ml-2001}.
+Originally proposed for regression and single-label classification problems, they have since been adapted to be able to make structured outputs where the label space is multidimensional.
 One example of this is work on structured edge detection, where an input image patch is mapped to a prediction of the edges in the region of the patch \cite{dollar-iccv-2013}.
 Structured prediction can be much faster at test time than unary prediction, as one feature vector and one forest traversal is able to predict for multiple outputs.
 In our case, however, we benefit from a structured prediction as we are able to make predictions beyond the location of the input data point.
@@ -326,64 +326,77 @@ In our case, however, we benefit from a structured prediction as we are able to 
 
 
 \begin{figure*}[tb]
-    \includegraphics[width=2.0\columnwidth]{overview}
-    \caption{
-    An overview of our technique for making a prediction. 
+    %\centering 
+    \subfigure[Query point]{%
+        \includegraphics[width=0.5\columnwidth, clip=true, trim=110 170 205 30, page=1]{overview_image}}
+        \hfill
+    \subfigure[Forest prediction]{%
+        \includegraphics[width=0.45\columnwidth, clip=true, trim=80 170 265 30, page=2]{overview_image}}
+        \hfill
+    \subfigure[Insertion into voxel grid]{%
+        \includegraphics[width=0.5\columnwidth, clip=true, trim=110 170 205 30, page=3]{overview_image}}
+        \hfill
+      \subfigure[Multiple predictions]{%
+        \includegraphics[width=0.5\columnwidth, clip=true, trim=110 170 205 30, page=4]{overview_image}}
+    \caption{\textbf{Overview of our algorithm, shown diagrammatically in a 2D representation.} 
+    (a) At test time, we define a cuboid of voxels $\mathcal{R}$ around a query point $\pixelidx$.
+    This cuboid is aligned with the normal at $\pixelidx$.
+    (b) A feature representation $\mathbf{x}(\mathbf{s})$ is put through our pre-trained Random Forest.
+    The forest makes a prediction for the values of each of the voxels in $\mathcal{R}$.
+    (c) This prediction is transformed into the scene and used to update the values of the voxels.
+    (d) The aggregation of multiple such predictions forms our final prediction of voxel occupancy.
     }%
     \label{fig:overview}
 \end{figure*}
 
-We model the geometry of a scene as a regular grid of voxels $\voxelgrid = \{\voxel_\voxidx\}$, where each $\voxel_\voxidx \in [-t, t]$ represents the \emph{truncated signed distance function} (TSDF) of the geometry of the scene. $|\voxel_\voxidx|$ gives the distance from $\voxel_\voxidx$ to the nearest surface, truncated to a maximum value of $t$. $\voxel_\voxidx$ is negative where $\voxel_\voxidx$ is inside solid opaque matter, and positive if it is in free space. The zero level-set of $\voxelgrid$ represents the location of the surface.
 
-Our system maps a point $\pixelidx = (u, v)$ on a depth image $\rgbdimage$ to a prediction of the TSDF in a region in the vicinity of $\pixelidx$.
+We model the geometry of a scene as a regular grid of voxels $\voxelgrid = \{\voxel_\voxidx\}$, where each $\voxel_\voxidx \in [-t, t]$ represents the \emph{truncated signed distance function} (TSDF) of the surface of the scene. 
+Each $|\voxel_\voxidx|$ gives the distance from $\voxel_\voxidx$ to the nearest surface, truncated to a maximum value of $t$, which is a parameter. 
+$\voxel_\voxidx$ is negative where $\voxel_\voxidx$ is inside solid opaque matter, and positive if it is in free space. 
+The zero level-set of $\voxelgrid$ therefore represents the location of the surface.
 
+\newcommand{\voxregion}{\mathcal{R}}
 
-Each voxlet is aligned with the coordinate system
-\begin{equation}
-  R = 
-  \left( \begin{array}{ccc}
-  (\updir \times \normal)_{u} \\
-  (\updir \times (\updir \times \normal)  )_{u} \\
-  \updir 
-  \end{array}\right), \qquad
-  (\mathbf{x})_{u} := \mathbf{x} / \| \mathbf{x} \|,
-\end{equation}
-where $\normal$ is the normal at $\point$ and $\updir$ is the `up' direction of the scene (\ie pointing directly away from the direction of gravity).
-The top and bottom face of each voxlet is therefore parallel with the ground plane.
+Our system maps a point $\pixelidx = (u, v)$ on an input depth image $\rgbdimage$ to a prediction of the TSDF in a set of voxels in the vicinity of $\project(\pixelidx)$, where $\project(\pixelidx)$ is the 
+The aggregation of multiple such predictions gives our final TSDF prediction for the scene.
 
 
+\paragraph{Voxel grid alignment}
+We make our predictions in a voxel grid aligned with world coordinates.
+In practice this means that the z direction of the voxel grid is aligned with the up direction of the world space.
+We do not make any Manhattan World assumptions so are free to position the voxel grid at any orientation about the z-axis.
 
+\paragraph{Making a single prediction}
+At test time, we select a single pixel $\pixelidx$ from our input depth image.
+We map this pixel to a feature representation $\mathbf{x}(\pixelidx)$ (section \ref{sec:features}).
+The \emph{support region} $\voxregion_\pixelidx \subset \voxelgrid$ is a set of voxels in the vicinity of $\pixelidx$ for which we now make a prediction of geometry.
+Each $\voxregion$ is of a fixed size, and is of approximately cuboid shape.
+This cuboid shape is aligned such that its z direction is coincident with the world z-axis. 
+The cuboid is then rotated about the z-axis so that its y-axis is perpendicular with the normal at $\project(\pixelidx)$.
+The top and bottom face of each cuboid region $\voxregion$ is therefore parallel with the ground plane.
 
-%The relationship between $\voxidx$ and the voxel's location in the Cartesian coordinate system of the world is %modelled by an affine transformation $\voxelgridtoworld$.
-
-% Our scene geometry $\voxelgrid$ is then captured in a single static depth image $\rgbdimage$ by a camera with extrinsics $\extrinsics$ and intrinsics $\intrinsics$. 
-% Assuming perspective projection, the center of each voxel projects into the camera is
+% \remove{
+% Each $\voxregion$ is aligned with the coordinate system
 % \begin{equation}
-% [u, v, d]^T = \intrinsics \extrinsics [\voxelidxs]^T,
+%   \Lambda = 
+%   \left( \begin{array}{ccc}
+%   \updir \times \normal \,\, / \,\,  \| \updir \times \normal \| \\
+%   \updir \times (\updir \times \normal) \,\,  / \,\,  \| \updir \times (\updir \times \normal) \|  \\
+%   \updir 
+%   \end{array}\right),
+%   % \qquad
+%   %(\mathbf{v})_{u} := \mathbf{v} / \| \mathbf{v} \|,
 % \end{equation}
-% where $(u,v)$ is the position of the voxel in image coordinates, and $d$ is the  perpendicular distance from the camera centre to the voxel.
-% Finally, the value of each pixel $(u^*, v^*)$ in the depth image $\rgbdimage$ is given by the depth to the first occupied voxel along the camera ray
-% \begin{equation}
-% \rgbdimage(u^*,v^*) = \min_\voxidx \left\{ d_{\voxidx} : v_{\voxidx} = 1, \lfloor u_{\voxidx} \rfloor = u^*, \lfloor v_{\voxidx} \rfloor = v^* \right\}.
-% \label{eqn:minimisation}
-% \end{equation}
-% %_{world \rightarrow camera} H_{grid \rightarrow world}
+% where $\normal$ is the normal at $\point$ and $\updir$ is the `up' direction of the scene (\ie pointing directly away from the direction of gravity).
 
-% The $\min_\voxidx$ in (\ref{eqn:minimisation}) is the manifestation of occlusion: Each ray from the camera stops at the first occupied voxel it reaches.
-% The aim of our algorithm is to recover $\voxelgrid$ given $\rgbdimage$.
+We then use a Random Forest to make a prediction of the geometry inside of $\voxregion$.
+We call this prediction of geometry $\mathcal{S}$ a \emph{voxlet}.
+The voxlet, which comes out of the forest in cononical alignment, is then transformed from its local coordinate system into world space.
+This transformation is the rotation $\Lambda$ followed by the translation $\mathbf{p}(\mathbf{\pixelidx}) - C(\mathcal{S})$, where $\mathbf{p}(\mathbf{\pixelidx})$ is the projection of $\pixelidx$ into world space, and $C(\mathcal{S})$ is the center of the voxlet. \note{This notation and explanation is a bit of a mess --- suggestions welcome! Also need to reference the figure in the text. Figure will ultimately be split into (a), (b) etc to make this easier.}
 
-%http://scholar.google.co.uk/scholar?safe=off&espv=2&bav=on.2,or.r_cp.r_qf.&bvm=bv.75775273,d.ZWU,pv.xjs.s.en.CtdJ7drbKko.O&ion=1&biw=1164&bih=816&um=1&ie=UTF-8&lr=&cites=16286130882256685425
 
-% \newcommand{\voxletsubwidth}{0.41\columnwidth}
-% \begin{figure}
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/1_marching_cubes}
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/5_marching_cubes}
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/10_marching_cubes} \\
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/19_marching_cubes}
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/38_marching_cubes}
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/44_marching_cubes}
-%      \caption{Some of the voxlets detected from the Bigbird dataset}
-% \end{figure}
+\paragraph{Training time}
+At training time we similarly define a region $\voxregion$ around a single point $\pixelidx$. In this case the ground truth values of $\voxelgrid$ and hence $\voxregion$ are known. We use these ground truth TSDF values, together with $\mathbf{x}(\pixelidx)$, to train a Random Forest (section \ref{sec:forest_train}).
 
 
 \newcommand{\preprocesssubwidth}{0.41\columnwidth}
@@ -415,6 +428,7 @@ The top and bottom face of each voxlet is therefore parallel with the ground pla
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Feature representation}
+\label{sec:features}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newcommand{\feat}{\mathbf{x}}
 
@@ -478,6 +492,7 @@ The pattern of the extracted $\pixelidx + \Delta$ values can be seen in figure \
         \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30]{features_7}\label{subfig:c2}}
         \hfill
     \caption{
+    \todo{Clean up pictures to have notation consistent with text and in correct places on images}
     (a) We compute a feature vector for a single point $\pixelidx = (u, v)$.
     (b) The cobweb feature computes the difference in depth between $\pixelidx$ and the points that surround it.
     (c) The spider features $\mathbf{x_s} = [c_0, c_2, c_2$ measure the distance between $\point$ and the edge points $\edgeimidx_{1, \cdots, 7}$.
@@ -595,8 +610,10 @@ See for example figure \ref{fig:occluded_region}.
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Learning a mapping from features to voxlets}
+\label{sec:forest_train}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\note{TODO}
 
 A Random Forest is a set of decision trees, each of which is trained on a different subset of the training data \cite{breiman-ml-2001}.
 At test time, each data point is passed through each tree, and at each node is passed left or right depending on the feature thresholds learned at training time. The final leaf node the data point ends in will vote for a class, based on which training samples ended up at that leaf node.
@@ -643,7 +660,7 @@ If all the voxels between the camera and the depth image are included in the eva
 %We therefore evaluate over all the voxels 
 
 
-\subsubsection{Baseline algorithms}
+\subsubsection{Baselines and algorithm variants}
 
 \noindent \textbf{(a) Bounding box} We fit a bounding box to the 3D points in the scene, as defined by the ground truth object mask.
 
@@ -653,10 +670,9 @@ If all the voxels between the camera and the depth image are included in the eva
 
 \noindent \textbf{(d) Spider only} Our full structured forest, but only using the spider features
 
-\noindent \textbf{(e) Full}  Our full structured forest using both cobweb and spider features.
+\noindent \textbf{(e) Cobweb + spider}  Our full structured forest using both cobweb and spider features.
 
 \noindent \textbf{(f) Zheng \ea \cite{zheng-cvpr-2013}}
-
 
 
 
@@ -679,11 +695,13 @@ To ensure a fair split we group such items together to ensure that each group en
 % which was copied from troll,  after being computed by 10_ssds.py
 \begin{figure}[bt]
   \centering 
-  \includegraphics[width=0.9\columnwidth]{roc_curve}
+  \includegraphics[width=0.9\columnwidth]{roc_curve.png}
   \caption{ROC curve comparing results from the turntable dataset. 
-  The dot on each curve shows the value of the TPR and the FPR at the level set of 0 in the predicted result.}
+  \todo{Also implement a bounding box fitting to the visible data, not just to the ground truth. Spider only is not so good. This is disappointing. Perhaps should revisit this feature if there is time. It may be the case that bad quality data at the edges are causing the feature to perform badly. Perhaps this shouldn't be a graph and instead should be a table of precision recall values.}
+  }
   \label{fig:bigbird_roc}
 \end{figure}
+  %The dot on each curve shows the value of the TPR and the FPR at the level set of 0 in the predicted result.
 
 
 % \begin{figure}
@@ -695,18 +713,35 @@ To ensure a fair split we group such items together to ensure that each group en
 % \end{figure}
 
 
-\subsection{Database of CAD models}
-Use the database from Fisher \ea \cite{fisher-siggraphasia-2012}.
-1600 CAD models, each depth-rendered from 42 viewing angles using OpenGL.
+\newcommand{\voxletsubwidth}{0.41\columnwidth}
+\begin{figure}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/1_marching_cubes.jpg}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/5_marching_cubes.jpg}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/10_marching_cubes.jpg} \\
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/19_marching_cubes.jpg}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/38_marching_cubes.jpg}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/44_marching_cubes.jpg}
+     \caption{Some of the voxlets learned from the Bigbird dataset. \todo{Perhaps instead show leaf nodes.}}
+\end{figure}
 
-\subsubsection{Potential test datasets}
-\begin{itemize}
-\item Create our own KinFu dataset
-\item Kaparthy \ea --- would probably have to re-render their meshes.
-Also don't have the TSDF etc. Lots of problems
-\item NYU dataset --- classic dataset. Potential ground truth labels from \cite{guo-iccv-2013} (figure \ref{fig:guo_labels}) or \cite{kim-iccv-2013}.
-\item \cite{fisher-siggraphasia-2012}, use their synthetic scenes (great for a first pass!)
-\end{itemize}
+
+\newcommand{\resultswidth}{0.41\columnwidth}
+\begin{figure}
+     \includegraphics[width=0.48\columnwidth]{results/nutrigrain_harvest_blueberry_bliss_NP2_216}
+     \includegraphics[width=0.48\columnwidth]{results/pop_secret_butter_NP2_312}\\
+     \includegraphics[width=0.48\columnwidth]{results/pringles_bbq_NP2_0}
+     \includegraphics[width=0.48\columnwidth]{results/progresso_new_england_clam_chowder_NP2_312}\\
+     \includegraphics[width=0.48\columnwidth]{results/quaker_big_chewy_chocolate_chip_NP2_312}
+     \includegraphics[width=0.48\columnwidth]{results/red_cup_NP3_0}
+     \caption{Slices through the TSDF for some of our results, comparing each one to the GT. 
+     Our prediction is on the left in each image.
+     Each image is set up like a 2d orthographic projection, showing a slice mid-way through the voxel volume in each of the 3 main directions.
+     The scaling is wrong on the colorbars so ignore that for now.
+     \todo{Redo these in 3D or something. Show some comparisons to baselines etc.}
+     Would be good also to include the RGB/depth input to see what the objects are!}
+\end{figure}
+
+
 
 % \begin{figure}
 %     \centering% 
@@ -727,15 +762,6 @@ Using our prediction as a prior could form the basis of a \emph{next-best-view} 
 %We believe that a GPU implementation of the voxlet reconstruction part of the algorithm would allow it to run in real time.
 %, and for already-made predictions to be replaced as new views of the scene arrive.
 %\todo{Also:- 3D object models where they are known
-
-\section{For supplementary material probably:}
-But these could also come into the main paper:
-\begin{itemize}
-\item Reprojecting the depth image into the colour camera
-\item Smoothing - both citations
-\item Types of edges (depth, colour, occluding etc)
-\item The method for finding depth edges
-\end{itemize}
 
 % \section{Acknowledgements}
 % Peter Gehler
