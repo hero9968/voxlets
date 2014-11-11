@@ -272,13 +272,15 @@ class CroppedRGBD(RGBDImage):
         D = scipy.io.loadmat(mat_path)
         self.rgb = D['rgb']
         self.depth = D['depth']     # this is the depth after smoothing
-        self.frontrender = D['front_render'] # rendered from the voxel data
-        self.backrender = D['back_render'] # rendered from the voxel data
+        #self.frontrender = D['front_render'] # rendered from the voxel data
+        #self.backrender = D['back_render'] # rendered from the voxel data
         self.aabb = D['aabb'].flatten()  # [left, right, top bottom]
-        self.set_intrinsics(D['T_K_rgb']) # as the depth has been reprojected into the RGB image, don't need the ir extrinsics or intrinscs
-        self.H = D['T_H_rgb'] 
+        #print D['T']['K_rgb'][0][0]
+        self.set_intrinsics(D['T']['K_rgb'][0][0]) # as the depth has been reprojected into the RGB image, don't need the ir extrinsics or intrinscs
+        self.H = D['T']['H_rgb'][0][0]
+        #print self.H
         # reshaping the xyz to be row-major... better I think and less likely to break
-        self.mask = ~np.isnan(self.frontrender)#D['mask']
+        self.mask = D['mask']#~np.isnan(self.frontrender)#D['mask']
 
         old_shape = [3, self.mask.shape[1], self.mask.shape[0]]
 
@@ -286,12 +288,12 @@ class CroppedRGBD(RGBDImage):
         self.xyz = D['xyz'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
         
         # loading the spider features
-        spider_path = paths.base_path + 'bigbird_cropped/' + modelname + '/' + viewname + '_spider.mat'
-        D = scipy.io.loadmat(spider_path)
+        #spider_path = paths.base_path + 'bigbird_cropped/' + modelname + '/' + viewname + '_spider.mat'
+        #D = scipy.io.loadmat(spider_path)
         self.spider_channels = D['spider']
 
         # the following line is a hack to convert from matlab row-col order to python
-        self.normals = D['normals'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
+        self.normals = D['norms'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
         #self.normals[:, [0, 1]] = self.normals[:, [1, 0]]
 
         self.angles = 0*self.depth
@@ -369,6 +371,7 @@ class CroppedRGBD(RGBDImage):
         return all_features
 
 
+from copy import deepcopy
 
 class RealRGBD(RGBDImage):
     '''
@@ -442,6 +445,7 @@ class RealRGBD(RGBDImage):
         origin_y = np.min(inliers[:, 1])
         origin_z = -self.world_updir[3]
         m = np.array([ origin_x, origin_y, origin_z])
+        self.m = deepcopy(m)
         m = np.dot(R, m)
         self.H[:3, 3] = m.T
         cam.set_extrinsics(self.H)

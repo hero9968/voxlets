@@ -21,9 +21,9 @@ bb.H_rgb = h5read([obj_path, '/calibration.h5'], ['/H_' bb.cam_name '_from_NP5']
 bb.H_ir = h5read([obj_path, '/calibration.h5'], ['/H_' bb.cam_name '_ir_from_NP5']);
 
 % loading the front render and the back render
-temp = load([base_path, '/bigbird_renders/', modelname, '/', view, '_renders.mat'], 'front', 'back');
-bb.front_render = single(temp.front);
-bb.back_render = single(temp.back);
+%temp = load([base_path, '/bigbird_renders/', modelname, '/', view, '_renders.mat'], 'front', 'back');
+%bb.front_render = single(temp.front);
+%bb.back_render = single(temp.back);
 
 % doing all the scaling here
 bb.scale_factor = 0.5; % this is the linear scale factor of how much smaller the RGB image will be
@@ -38,6 +38,6 @@ bb.rgb = imresize(bb.rgb, bb.scale_factor);
 bb.mask = imresize(bb.mask, bb.scale_factor);
 
 %bb
-assert(size(bb.rgb, 2)==size(bb.front_render, 2))
-assert(size(bb.rgb, 2)==size(bb.back_render, 2))
+%assert(size(bb.rgb, 2)==size(bb.front_render, 2))
+%assert(size(bb.rgb, 2)==size(bb.back_render, 2))
 assert(size(bb.rgb, 1)==size(bb.mask, 1))

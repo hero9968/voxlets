@@ -37,8 +37,8 @@ cropped.depth = fill_depth_colorization_ft_mex(equ_grey, reproj_depth_crop);
 cropped.orig_d = reproj_depth_crop;
 
 % cropping the renders of the mesh
-cropped.front_render = bb.front_render(top:bottom, left:right);
-cropped.back_render = bb.back_render(top:bottom, left:right);
+%cropped.front_render = bb.front_render(top:bottom, left:right);
+%cropped.back_render = bb.back_render(top:bottom, left:right);
 
 % finally adding on the transforms...
 cropped.T.K_rgb = bb.K_rgb;
@@ -51,17 +51,17 @@ cropped.xyz = reproject_3d(cropped.depth, cropped.T.K_rgb, cropped.aabb([1, 3]))
 %cropped.normals = normals_wrapper(cropped.xyz, 'knn', 100);
 
 % projecting mesh render into 3d and doing normals
-cropped.clean.xyz = reproject_3d(cropped.front_render, cropped.T.K_rgb, cropped.aabb([1, 3]));
+%cropped.clean.xyz = reproject_3d(cropped.front_render, cropped.T.K_rgb, cropped.aabb([1, 3]));
 %cropped.clean.normals = normals_wrapper(cropped.clean.xyz, 'knn', 100);
 
 % converting to single precision...
 cropped.depth = single(cropped.depth);
 cropped.orig_d = single(cropped.orig_d);
-cropped.front_render = single(cropped.front_render);
-cropped.back_render = single(cropped.back_render);
+%cropped.front_render = single(cropped.front_render);
+%cropped.back_render = single(cropped.back_render);
 cropped.xyz = single(cropped.xyz);
 %cropped.normals = single(cropped.normals);
 
-cropped.clean.xyz = single(cropped.clean.xyz);
+%cropped.clean.xyz = single(cropped.clean.xyz);
 %cropped.clean.normals = single(cropped.clean.normals);
 
