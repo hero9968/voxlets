@@ -41,21 +41,18 @@ if 'modal' in test_types or 'medioid' in test_types:
 if 'oma' in test_types:
 
     print "Loading OMA forest"
-    pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
     oma_forest = pickle.load(open(paths.voxlet_model_oma_path, 'rb'))
     #pass
 
 if 'just_spider' in test_types:
 
     print "Loading OMA forest"
-    pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
     spider_forest = pickle.load(open(paths.voxlet_model_oma_spider_path, 'rb'))
 
 
 if 'just_cobweb' in test_types:
 
     print "Loading OMA forest"
-    pca = pickle.load(open(paths.voxlet_pca_path, 'rb'))
     cobweb_forest = pickle.load(open(paths.voxlet_model_oma_cobweb_path, 'rb'))
 
 
@@ -140,7 +137,6 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
         print "Reconstructing with oma forest"
         rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
         rec.set_forest(oma_forest)
-        rec.set_pca_comp(pca)
         rec.set_test_im(test_im)
         rec.sample_points(number_samples)
         rec.initialise_output_grid(method='from_grid', gt_grid=gt_grid)
@@ -152,7 +148,6 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
         print "Reconstructing with oma forest"
         rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
         rec.set_forest(cobweb_forest)
-        rec.set_pca_comp(pca)
         rec.set_test_im(test_im)
         rec.sample_points(number_samples)
         rec.initialise_output_grid(method='from_grid', gt_grid=gt_grid)
@@ -164,7 +159,6 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
         print "Reconstructing with oma forest"
         rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
         rec.set_forest(spider_forest)
-        rec.set_pca_comp(pca)
         rec.set_test_im(test_im)
         rec.sample_points(number_samples)
         rec.initialise_output_grid(method='from_grid', gt_grid=gt_grid)

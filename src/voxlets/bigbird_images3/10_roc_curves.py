@@ -46,6 +46,7 @@ for pred_type in pred_types:
 
             print "loading the data"
             D = scipy.io.loadmat(loadpath)
+            print D['gt'].shape
 
             print "Converting"
             met = voxel_data.VoxMetricsTSDF()
@@ -62,4 +63,5 @@ for pred_type in pred_types:
 ############################################
 "SAVING"
 import scipy.io
-scipy.io.savemat('roc_curve_data.mat', metrics)
+if not os.path.exists('./data/'): os.makedirs('data')
+scipy.io.savemat('data/roc_curve_data.mat', metrics)
