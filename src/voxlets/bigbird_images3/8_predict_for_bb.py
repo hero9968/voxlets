@@ -127,9 +127,10 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
         accum = voxel_data.expanded_grid_accum(gt_grid)
         accum.fill_from_grid(gt_grid)
 
-        # Min area bounding box
-        bb = baselines.BbBaseline()
+        # Min area bounding box for visible points
+        bb = baselines.SimpleBbBaseline()
         bb.set_gt_vgrid(accum)
+        bb.set_image(test_im)
         prediction = bb.compute_min_bb().V
 
     elif test_type == 'oma':
