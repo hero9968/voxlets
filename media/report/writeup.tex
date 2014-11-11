@@ -97,13 +97,13 @@
 	%Building a representation of the geometry of a scene is an essential task for many applications including robotic navigation, scene re-lighting and object manipulation. 
 	%Most existing works to recover the scene geometry rely on combining multiple views of the scene captured from many different directions or use of \emph{a priori} information about the expected semantic make-up of the scene.
 
-  Building a complete 3D model of a scene is underconstrained from a single camera view.
-  To gain a full volumetric model from a single view we typically either need lots of data or to work under the strong assumption that we have a library of training instances that we can use to model the shape of each object in the scene.
+  Building a complete 3D model of a scene is underconstrained given a single camera view.
+  To gain a full volumetric model, we typically need either multiple views or a single view and proceed under the strong assumption that we have a library of training instances that we can use to fit the shape of each object in the scene.
   
-  We hypothesise that objects of dissimilar semantic classes often share similar shapes, enabling a limited  training dataset to model the shape of a wide range of objects and hence estimate the hidden geometry of various scenes.
-  Under this hypothesis we have implemented a system which can complete the unobserved geometry of a scene using a library of volumetric elements learned from training data.
+  We hypothesize that objects of dissimilar semantic classes often share similar shape components, enabling a limited  training dataset to model the shape of a wide range of objects, and hence estimate the hidden geometry of various scenes.
+  Exploring this hypothesis, we have implemented a system which can complete the unobserved geometry of a scene using a library of simple volumetric elements learned from training data.
   Using a novel feature representation, we train our model to map from observed depth values to voxel occupancy in the region surrounding a 3D location.
-  Through a prototype system we valid our approach qualitatively and quantitatively on a range of indoor scenes.
+  Through the prototype, we validate our approach qualitatively and quantitatively on a range of indoor scenes.
 
 
 %	Our primary contribution is the \emph{voxlet}, a primitive explaining voxel occupancy in the region of a point in 3D space. We also develop a novel feature representation, which coupled with a Random Forest forms a mapping from a point in a depth image to a prediction of voxel occupancy in the point's vicinity.
@@ -120,23 +120,23 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
-\footnote{Potential to add to intro: Psychology: Are humans good at this? Not much evaluation in other work.}
+%\footnote{Potential to add to intro: Psychology: Are humans good at this? Not much evaluation in other work.}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 % What is the problem?
 We broadly categorize space in our world as being `occupied' and opaque, or `vacant' and transparent.
 Depth cameras such as the Microsoft Kinect are able to give an estimate of which regions of a scene are composed of free, vacant space.
-However, each pixel in a depth image only makes a estimate of occupancy until the first solid surface is encountered along that camera ray (figure \ref{fig:intro}).
-The `occlusion phenomenon' prevents any information from being extracted about the occupancy of space beyond that first surface.
+However, each pixel in a depth image only makes an estimate of occupancy in front of the first solid surface encountered along that camera ray (figure \ref{fig:intro}).
+The `occlusion phenomenon' prevents any information from being measured about the occupancy of space beyond that first surface.
 
 % Why is it interesting and important?
-There are many applications, however, which crucially require a complete representation of the world geometry.
-When a robot sets out to grasp an unknown object in an unknown scene a 3D model is required to prevent collision with the object or nearby clutter.
+There are many applications, however, which critically require a complete representation of the world geometry.
+When a robot sets out to grasp an unknown object in an unknown scene, a 3D model is required to get there and prevent collision with the object or nearby clutter.
 Separately, in photo-editing, the full geometry could enable realistic shadows from a new light source to be automatically added to an image after it has been captured.
 
 % Why is it hard? (E.g., why do naive approaches fail?)
-Much research in computer vision has reconstructed the full 3D world from images of a scene captured from multiple viewpoints, thus overcoming the effect of occlusion  (\eg \cite{izadi-uist-2011}).
+Much research in computer vision has reconstructed the full 3D world from images of a scene captured from multiple viewpoints, thus coping with the effects of occlusion  (\eg \cite{izadi-uist-2011}).
 Instead, we focus on the task of classifying each voxel in a 3D scene as being either `occupied' or `vacant' given just a single depth image from one viewpoint.
 
 % Why hasn't it been solved before? (Or, what's wrong with previous proposed solutions? How does mine differ?)
@@ -164,22 +164,21 @@ Instead, we focus on the task of classifying each voxel in a 3D scene as being e
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Given a single depth image, our system predicts whether each voxel in the scene is occupied by a solid impermeable object, or free and empty.
-In effect, we strive to predict the voxelized occupancy grid of KinectFusion\footnote{\note{Actualy a TSDF...}} \cite{izadi-uist-2011}, but having test-time input of only a single view of the scene instead of multiple views.
+In effect, we strive to predict the voxelized output KinectFusion \cite{izadi-uist-2011}, but having test-time input of only a single view of the scene instead of multiple views.
 
 We achieve this by learning a mapping from local and novel semi-regional features to a structured voxel occupancy prediction in the region of a query point, using a general-purpose collection of training objects and scenes.
 We take inspiration from recent work which has segmented objects from images using silhouettes learned from different object classes \cite{kim-eccv-2012}.
-Their work showed that shape can transcend class boundaries, enabling shape predictions to be made regardless of the accuracy of semantic classifiers.
-Because we care about shape and voxel occupancy rather than semantic understanding, we are free to use training objects which differ from the objects being modeled in the scene.
+Their work showed that shape can transcend class categories, enabling shape predictions to be made regardless of the accuracy of semantic classifiers.
+Because we care about shape and voxel occupancy independently semantic understanding, we are free to use training objects which differ from the objects being modeled in the scene.
 
-Our key contributions are:
-
+The key contributions that underpin our novel depth image to voxel occupancy framework are:
 \begin{itemize}
 \item \todo{Will fill these bullet points in final week}
 \item \emph{Voxlets}, a representation of multi-voxel occupancy in the region of a point in a scene. 
-We learn a dictionary of voxlets from training data, and at test time each predicted voxlet is able to make structured predictions about occupancy in the region of a query point.
-\item We introduce a novel feature representation for a point in a depth image, which captures both local and region-level shape while respecting occlusions.
-%\item Use of training data to allow our method to accurately complete detailed shapes.
+We use a Random Forest to learn a mapping from a point in a depth image to a structured prediction of voxel occupancy in the region near the point.
+\item A novel feature representation for a point in a depth image, which captures both local and region-level shape while respecting occlusions.
 \end{itemize}
+%\item Use of training data to allow our method to accurately complete detailed shapes.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -195,7 +194,7 @@ We learn a dictionary of voxlets from training data, and at test time each predi
 Previous works on completing unknown regions of visual data can be categorized against several different criteria.
 Some of these are given here, and we italicize the categories into which our approach falls.
 
-Works can be classes according to their application domain, such as operating on meshes \cite{harary-tog-2013, schnabel-eurographics-2009}, 2D images \cite{gupta-cvpr-2011} or in \emph{voxel space} \cite{kim-iccv-2013}.
+Works can be classed according to their application domain, such as operating on meshes \cite{harary-tog-2013, schnabel-eurographics-2009}, 2D images \cite{gupta-cvpr-2011} or in \emph{voxel space} \cite{kim-iccv-2013}.
 Some works make use of highly specialist hardware to capture images \eg \cite{velten-nature-2012}, while we use \emph{hardware available to consumers}.
 Some approaches only aim to get a result that looks plausible, while we strive for \emph{accuracy in comparison to the ground truth}.
 In comparison to works which use heuristics, we take a \emph{data-driven} approach to completion.
@@ -204,7 +203,7 @@ Data-driven approaches can be further classed according to whether the data used
 We now outline some of these previous approaches in more detail, and compare them to our approach.
 
 %While some previous work on voxel occupancy prediction incorporates semantics, \eg \cite{kim-iccv-2013, shen-tog-2012, cocias-cgvcv-2013}, we are able to predict shape irrespective of recognition of semantic class.
-\subsection{Fitting 3D models}
+\paragraph{Fitting 3D models}
 If prior knowledge is available about the objects present in the scene in the form of 3D models then an instance-level model can be fitted to a 3D scene.
 This gives a good recovery of missing geometry of that object \cite{hinterstoisser-accv-2012, drost-3dimpvt-2012}.
 Many advanced works focus on the broader problem where an exact match is not present in the training set.
@@ -219,14 +218,14 @@ In our approach we set out to get as much shape information as possible without 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Symmetry}
+\paragraph{Symmetry}
 Where one can accurately detect symmetry, it can be leveraged to complete some types of objects (\eg \cite{law-cviu-2010, thrun-iccv-2005, kroemer-humanoids-2012}). 
 However, using symmetry for object completion is brittle.
 An incorrectly guessed symmetrical transform can lead to a catastrophic mis-estimate of geometry, and if symmetry cannot be detected at all then no prediction can be made.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Voxel space reasoning}
+\paragraph{Voxel space reasoning}
 
 Our `nearest neighbor' algorithms are two works which aim to directly solve a similar problem to ours.
 
@@ -250,7 +249,7 @@ However the voxel completion by extrusion is limited by the Manhattan World assu
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Surface completion}
+\paragraph{Surface completion}
 
 % complete meshes from partial Kinect Fusion reconstructions, \eg behind items of furniture.
 Silberman \ea \cite{silberman-eccv-2014} tackle the completion of an incomplete multi-view reconstruction as a surface completion problem.
@@ -267,7 +266,7 @@ In our case, we are completing an unknown surface which is typically at least as
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Image completion and super-resolution}
+\paragraph{Image completion and super-resolution}
 
 Image completion works such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}
 typically use data-driven approaches as it is very difficult to form true generative models over image appearance.
@@ -279,7 +278,7 @@ Our problem differs from that of super-resolution because we make predictions ab
 %, dong-eccv-2014
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Using 3D primitives for recognition}
+\paragraph{Using 3D primitives for recognition}
 
 `Geons' are proposed by \cite{bieberman-rbc-1987} as a set of 3D primitives such as cylinders and cuboids used by humans in their recognition of object shapes.
 While in theory geons could be used by computers  as features to describe natural objects, in practice this was found to be challenging due to their ``idealized nature'', requirement for part segmentation, labeling errors and the coarseness of features used to extract geons in the first place \cite{dickinson-iavc-1997}.
@@ -296,7 +295,7 @@ However, unlike geons which are fixed in shape, we learn a distribution of shape
 We are also able to make more fine-grained predictions than bounding boxes.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Structured learning for vision}
+\paragraph{Structured learning for vision}
 In recent years \emph{structured learning} has become a popular method for some computer vision tasks.
 As with standard supervised learning, structured learning finds a mapping from feature space to a label space.
 In contrast to standard supervised learning, however, a structured label space is multidimensional.
@@ -321,7 +320,7 @@ In our case, however, we benefit from a structured prediction as we are able to 
 
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Approach overview}
+\section{Approach formulation}
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -339,7 +338,7 @@ In our case, however, we benefit from a structured prediction as we are able to 
       \subfigure[Multiple predictions]{%
         \includegraphics[width=0.5\columnwidth, clip=true, trim=110 170 205 30, page=4]{overview_image}}
     \caption{\textbf{Overview of our algorithm, shown diagrammatically in a 2D representation.} 
-    (a) At test time, we define a cuboid of voxels $\mathcal{R}$ around a query point $\pixelidx$.
+    (a) At test time, we define a cuboid region of voxels $\mathcal{R}$ around a query point $\pixelidx$.
     This cuboid is aligned with the normal at $\pixelidx$.
     (b) A feature representation $\mathbf{x}(\mathbf{s})$ is put through our pre-trained Random Forest.
     The forest makes a prediction for the values of each of the voxels in $\mathcal{R}$.
@@ -352,14 +351,13 @@ In our case, however, we benefit from a structured prediction as we are able to 
 
 We model the geometry of a scene as a regular grid of voxels $\voxelgrid = \{\voxel_\voxidx\}$, where each $\voxel_\voxidx \in [-t, t]$ represents the \emph{truncated signed distance function} (TSDF) of the surface of the scene. 
 Each $|\voxel_\voxidx|$ gives the distance from $\voxel_\voxidx$ to the nearest surface, truncated to a maximum value of $t$, which is a parameter. 
-$\voxel_\voxidx$ is negative where $\voxel_\voxidx$ is inside solid opaque matter, and positive if it is in free space. 
+$\voxel_\voxidx$ is negative if voxel $\voxidx$ is inside solid opaque matter, and positive if it is in free space. 
 The zero level-set of $\voxelgrid$ therefore represents the location of the surface.
 
 \newcommand{\voxregion}{\mathcal{R}}
 
-Our system maps a point $\pixelidx = (u, v)$ on an input depth image $\rgbdimage$ to a prediction of the TSDF in a set of voxels in the vicinity of $\project(\pixelidx)$, where $\project(\pixelidx)$ is the 
+Our system maps a point $\pixelidx = (u, v)$ on an input depth image $\rgbdimage$ to a prediction of the TSDF in a set of voxels in the vicinity of $\project(\pixelidx)$, where $\project(\pixelidx)$ is the 3D location of $\pixelidx$ in world space.
 The aggregation of multiple such predictions gives our final TSDF prediction for the scene.
-
 
 \paragraph{Voxel grid alignment}
 We make our predictions in a voxel grid aligned with world coordinates.
@@ -418,9 +416,9 @@ At training time we similarly define a region $\voxregion$ around a single point
         \includegraphics[width=\preprocesssubwidth]{preprocess_e}\label{subfig:binaryedge}}
     \caption{
     The depth image preprocessing pipeline.
-    The noisy depth image (b) is smoothed and missing data is filled (c). 
-    This makes use of the RGB image in the cross-bilteral filtering (we use the implementation provided by \cite{silberman-eccv-2012}).
-    We then use the structured edge detection model from \cite{dollar-iccv-2013} to compute a real-valued edge map for the image (d), which is finally binarized with Canny edge filtering \cite{canny-pami-1986} (d).
+    The noisy depth image (b) is smoothed, and missing data is filled (c). 
+    This makes use of the RGB image in the cross-bilteral filtering, where we use the implementation provided by \cite{silberman-eccv-2012}.
+    We then use the structured edge detection model from \cite{dollar-iccv-2013} to compute a real-valued edge map (d) for the image, which is finally binarized (e) with Canny edge filtering \cite{canny-pami-1986}.
     }%
     \label{fig:preprocessing}
 \end{figure*}
@@ -442,7 +440,7 @@ The \emph{spider} feature $\feat_s(\pixelidx)$ captures the size and shape of th
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{Cobweb feature }
+\subsection{Cobweb feature }
 %\note{Name up for debate!}
 The cobweb feature $\feat_c(\pixelidx)$ is a simple pairwise feature, related to recent work such as \cite{shotton-cvpr-2011, tola-pami-2010}, capturing the surface shape in the immediate vicinity of pixel $\pixelidx$.
 The feature computes the difference between the depth from the camera at $\pixelidx$ and the depth at a predetermined offset. We define
@@ -505,7 +503,7 @@ The pattern of the extracted $\pixelidx + \Delta$ values can be seen in figure \
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{The spider feature}
+\subsection{The spider feature}
 %\note{Name up for debate! Another candidate is `compass'}
 
 Local features such as our cobweb feature have proved discriminatory where the output labeling is on a per-pixel basis, such as labeling each pixel as a part of a human body \cite{shotton-cvpr-2011}.
@@ -697,6 +695,7 @@ To ensure a fair split we group such items together to ensure that each group en
   \centering 
   \includegraphics[width=0.9\columnwidth]{roc_curve.png}
   \caption{ROC curve comparing results from the turntable dataset. 
+  \note{See section 7.1.1 for the explanation of the types. OMA is the full forest. Ground truth is fixed, while the level set of the TSDF predictions is swept. Bounding box is currently converted to a TSDF which might not make sense.}
   \todo{Also implement a bounding box fitting to the visible data, not just to the ground truth. Spider only is not so good. This is disappointing. Perhaps should revisit this feature if there is time. It may be the case that bad quality data at the edges are causing the feature to perform badly. Perhaps this shouldn't be a graph and instead should be a table of precision recall values.}
   }
   \label{fig:bigbird_roc}
