@@ -269,6 +269,7 @@ class CroppedRGBD(RGBDImage):
         loads all the bigbird data from a mat file
         '''
         mat_path = paths.base_path + 'bigbird_cropped/' + modelname + '/' + viewname + '.mat'
+        #mat_path = '/Volumes/HDD/shape_sharing_bits_prob_delete/bigbird_cropped/' + modelname + '/' + viewname + '.mat'
         D = scipy.io.loadmat(mat_path)
         self.rgb = D['rgb']
         self.depth = D['depth']     # this is the depth after smoothing
@@ -276,11 +277,17 @@ class CroppedRGBD(RGBDImage):
         #self.backrender = D['back_render'] # rendered from the voxel data
         self.aabb = D['aabb'].flatten()  # [left, right, top bottom]
         #print D['T']['K_rgb'][0][0]
+
+        #>>> NEW
         self.set_intrinsics(D['T']['K_rgb'][0][0]) # as the depth has been reprojected into the RGB image, don't need the ir extrinsics or intrinscs
         self.H = D['T']['H_rgb'][0][0]
+        #self.set_intrinsics(D['T_K_rgb']) # as the depth has been reprojected into the RGB image, don't need the ir extrinsics or intrinscs"
+        #self.H = D['T_H_rgb']
+        # END NEW
+
         #print self.H
         # reshaping the xyz to be row-major... better I think and less likely to break
-        self.mask = D['mask']#~np.isnan(self.frontrender)#D['mask']
+        self.mask = D['mask']==1#~np.isnan(self.frontrender)#D['mask']
 
         old_shape = [3, self.mask.shape[1], self.mask.shape[0]]
 
@@ -288,13 +295,13 @@ class CroppedRGBD(RGBDImage):
         self.xyz = D['xyz'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
         
         # loading the spider features
-        #spider_path = paths.base_path + 'bigbird_cropped/' + modelname + '/' + viewname + '_spider.mat'
+        #spider_path = '/Volumes/HDD/shape_sharing_bits_prob_delete/bigbird_cropped/' + modelname + '/' + viewname + '_spider.mat'
         #D = scipy.io.loadmat(spider_path)
         self.spider_channels = D['spider']
 
         # the following line is a hack to convert from matlab row-col order to python
+        #print D.keys()
         self.normals = D['norms'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
-        #self.normals[:, [0, 1]] = self.normals[:, [1, 0]]
 
         self.angles = 0*self.depth
 
