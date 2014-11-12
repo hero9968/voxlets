@@ -131,7 +131,7 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
         bb = baselines.SimpleBbBaseline()
         bb.set_gt_vgrid(accum)
         bb.set_image(test_im)
-        prediction = bb.compute_min_bb().V
+        prediction = bb.compute_min_bb()
 
     elif test_type == 'oma':
 
