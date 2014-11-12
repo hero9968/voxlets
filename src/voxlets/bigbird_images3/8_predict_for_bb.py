@@ -28,7 +28,7 @@ max_points = 200
 number_samples = 2000
 multiproc = not paths.small_sample
 
-test_types = ['just_spider', 'just_cobweb']
+test_types = ['oma', 'modal', 'just_spider', 'just_cobweb']
 
 
 if 'modal' in test_types or 'medioid' in test_types:
