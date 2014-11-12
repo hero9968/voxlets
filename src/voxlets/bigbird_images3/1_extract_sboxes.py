@@ -85,8 +85,7 @@ for count, modelname in enumerate(paths.modelnames):
         im.load_bigbird_from_mat(modelname, view)
     
         "Sampling from image"
-        mask = ~np.isnan(im.frontrender)
-        idxs = random_sample_from_mask(mask, number_points_from_each_image)
+        idxs = random_sample_from_mask(im.mask, number_points_from_each_image)
         
         "Extracting features"
         all_features.append(im.get_features(idxs))
