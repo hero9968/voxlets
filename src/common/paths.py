@@ -91,6 +91,7 @@ if data_type=='bigbird':
 
     voxlet_prediction_folder_path = base_path + "/voxlets/bigbird/predictions/%s/"
     voxlet_prediction_path = voxlet_prediction_folder_path  + "%s_%s.mat"
+    voxlet_prediction_path_pkl = voxlet_prediction_folder_path  + "%s_%s.pkl"
 
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
