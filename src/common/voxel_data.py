@@ -11,7 +11,7 @@ import paths
 from scipy.ndimage.morphology import distance_transform_edt
 import copy
 from numbers import Number
-
+import sklearn.metrics
 
 class Voxels(object):
 	'''
@@ -984,8 +984,8 @@ class VoxMetricsTSDF(object):
 		return np.array(tpr), np.array(fpr)
 
 	def compute_pres_recall(self):
-		pres = sklearn.metrics.precision_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
-		recall = sklearn.metrics.recall_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
+		pres = sklearn.metrics.precision_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1].astype(int))
+		recall = sklearn.metrics.recall_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1].astype(int))
 		return (pres, recall)
 
 	def compute_auc(self):
