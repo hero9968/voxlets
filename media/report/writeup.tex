@@ -19,6 +19,8 @@
 \usepackage{textcomp} % for textonehalf
 %\usepackage{subfig}
 %\usepackage{subref}
+
+\usepackage{wrapfig}
 \graphicspath{{imgs/}}
 
 \usepackage{xspace}
@@ -36,6 +38,7 @@
 % General notation
 \newcommand{\prob}{Pr}
 \newcommand{\degree}{^{\circ}}
+\newcommand{\feat}{\varphi}
 
 % Image notation
 \newcommand{\rgbdimage}{\mathcal{D}}
@@ -98,23 +101,12 @@
 	%Most existing works to recover the scene geometry rely on combining multiple views of the scene captured from many different directions or use of \emph{a priori} information about the expected semantic make-up of the scene.
 
   Building a complete 3D model of a scene is underconstrained given a single camera view.
-  To gain a full volumetric model, we typically need either multiple views or a single view and proceed under the strong assumption that we have a library of training instances that we can use to fit the shape of each object in the scene.
-  
-  We hypothesize that objects of dissimilar semantic classes often share similar shape components, enabling a limited  training dataset to model the shape of a wide range of objects, and hence estimate the hidden geometry of various scenes.
+  To gain a full volumetric model, we typically need either multiple views, or a single view together with the strong assumption that we have a library of unambiguous training instances that we can use to fit the shape of each individual object in the scene.
+
+  We hypothesize that objects of dissimilar semantic classes often share similar shape components, enabling a limited dataset of objects to model the shape of a wide range of objects, and hence estimate the hidden geometry of various scenes.
   Exploring this hypothesis, we have implemented a system which can complete the unobserved geometry of a scene using a library of simple volumetric elements learned from training data.
-  Using a novel feature representation, we train our model to map from observed depth values to voxel occupancy in the region surrounding a 3D location.
+  Using a novel feature representation, we train a model to map from observed depth values to an estimate of surface shape in the region surrounding a 3D location.
   Through the prototype, we validate our approach qualitatively and quantitatively on a range of indoor scenes.
-
-
-%	Our primary contribution is the \emph{voxlet}, a primitive explaining voxel occupancy in the region of a point in 3D space. We also develop a novel feature representation, which coupled with a Random Forest forms a mapping from a point in a depth image to a prediction of voxel occupancy in the point's vicinity.
- % We present a range of qualitative and quantitative results which show we can accurately reconstruct shape in both simple and challenging scenes, and we show many advantages over the current state-of-the-art.
-%  We demonstrate the advantages of our technique over the current state of the art.
-
-  %, method comprises of three main components:
-   % 1) We generate a dinctionary of voxlets, which is a primitive describing 
-   % 2) We introduce a novel regional feature to describe the shape of the region surrounding a point.
-    %3) We use a Random Forest, trained on turntable and real-world data to map our feature representations of a pixel to a suitable voxlet which can be used to describe local voxel occupancy.
-    %4) Finally we combine and regularise the  predictions to form a full probabilistic distribution of occupancy for each voxel in the scene, respecting constraints such as connectivity and gravity.
 
 \end{abstract}
 
@@ -138,9 +130,7 @@ Separately, in photo-editing, the full geometry could enable realistic shadows f
 % Why is it hard? (E.g., why do naive approaches fail?)
 Much research in computer vision has reconstructed the full 3D world from images of a scene captured from multiple viewpoints, thus coping with the effects of occlusion  (\eg \cite{izadi-uist-2011}).
 Instead, we focus on the task of classifying each voxel in a 3D scene as being either `occupied' or `vacant' given just a single depth image from one viewpoint.
-
-% Why hasn't it been solved before? (Or, what's wrong with previous proposed solutions? How does mine differ?)
-% What are the key components of my approach and results? Also include any specific limitations.
+%% THERE WILL ALWAYS BE HOLES, EVEN WITH KINFU %%
 
 \newcommand{\introsubwidth}{0.48\columnwidth}
 \begin{figure}[!t]
@@ -151,9 +141,9 @@ Instead, we focus on the task of classifying each voxel in a 3D scene as being e
     \subfigure[Depth rendering of world]{%
         \includegraphics[width=\introsubwidth, clip=true, trim=110 105 205 30]{fig_1b}}
     \caption{
-    We assume that our world is made up of voxels, which are either occupied or empty (vacant). 
-    An overhead view of a coarse representation of this is shown in (a). 
-    When observed by a depth camera, only the first visible voxel along each ray is seen.
+    We assume that our world can be represented as voxels, each of which is either occupied or empty (vacant). 
+    An overhead view of a coarse 2D representation of this is shown in (a).
+    When observed by a depth camera, only the first voxel along each ray is seen.
     This leaves a region of unknown occupancy extending beyond the depth surface (b).
     The aim of our algorithm is to predict the state of the voxels in this unknown region.}%
     \label{fig:intro}
@@ -164,28 +154,25 @@ Instead, we focus on the task of classifying each voxel in a 3D scene as being e
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 Given a single depth image, our system predicts whether each voxel in the scene is occupied by a solid impermeable object, or free and empty.
-In effect, we strive to predict the voxelized output KinectFusion \cite{izadi-uist-2011}, but having test-time input of only a single view of the scene instead of multiple views.
+In effect, we strive to predict the voxelized output of KinectFusion \cite{izadi-uist-2011}, but having test-time input of only a single view of the scene instead of multiple views.
 
-We achieve this by learning a mapping from local and novel semi-regional features to a structured voxel occupancy prediction in the region of a query point, using a general-purpose collection of training objects and scenes.
+We achieve this by learning a mapping from local and novel semi-regional features to a structured prediction of geometry in the region of a query point, using a general-purpose collection of training objects and scenes.
 We take inspiration from recent work which has segmented objects from images using silhouettes learned from different object classes \cite{kim-eccv-2012}.
 Their work showed that shape can transcend class categories, enabling shape predictions to be made regardless of the accuracy of semantic classifiers.
-Because we care about shape and voxel occupancy independently semantic understanding, we are free to use training objects which differ from the objects being modeled in the scene.
+Because we care about shape independently of semantic understanding, we are free to use training objects which differ from the objects being modeled in the scene.
 
-The key contributions that underpin our novel depth image to voxel occupancy framework are:
+The key contributions that underpin our novel depth image to voxel geometry framework are:
 \begin{itemize}
-\item \todo{Will fill these bullet points in final week}
-\item \emph{Voxlets}, a representation of multi-voxel occupancy in the region of a point in a scene. 
-We use a Random Forest to learn a mapping from a point in a depth image to a structured prediction of voxel occupancy in the region near the point.
+\item \note{Tom says that being able to ``solve the problem as stated'' should be on this list. Opinions?}
+\item \emph{Voxlets}, a representation of multi-voxel geometry in the region of a point in a scene. 
+We use a Random Forest to learn a mapping from a point in a depth image to a structured prediction of geometry in the region near the point.
 \item A novel feature representation for a point in a depth image, which captures both local and region-level shape while respecting occlusions.
 \end{itemize}
-%\item Use of training data to allow our method to accurately complete detailed shapes.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Related work}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 
 %Most prior work in the area of completing missing data can be categorized according to its application domain (\eg meshes \cite{schnabel-eurographics-2009, ju-cst-2009}, 2D images \cite{gupta-cvpr-2011} or depth images \cite{shen-tog-2012}).
 
@@ -196,44 +183,43 @@ Some of these are given here, and we italicize the categories into which our app
 
 Works can be classed according to their application domain, such as operating on meshes \cite{harary-tog-2013, schnabel-eurographics-2009}, 2D images \cite{gupta-cvpr-2011} or in \emph{voxel space} \cite{kim-iccv-2013}.
 Some works make use of highly specialist hardware to capture images \eg \cite{velten-nature-2012}, while we use \emph{hardware available to consumers}.
-Some approaches only aim to get a result that looks plausible, while we strive for \emph{accuracy in comparison to the ground truth}.
-In comparison to works which use heuristics, we take a \emph{data-driven} approach to completion.
-Data-driven approaches can be further classed according to whether the data used for completion comes from within the same image (\eg symmetry \cite{kroemer-humanoids-2012}) or from a \emph{database of training data}.
+Some approaches only aim to get a result that looks plausible to a human, while we strive for \emph{accuracy in comparison to the ground truth}.
+In comparison to works which use heuristics, we make use of \emph{training data}.
+Such `supervised' approaches can be further classed according to whether the data used come from within the same image (\eg symmetry \cite{kroemer-humanoids-2012}) or from a \emph{database of training data}.
 
 We now outline some of these previous approaches in more detail, and compare them to our approach.
 
-%While some previous work on voxel occupancy prediction incorporates semantics, \eg \cite{kim-iccv-2013, shen-tog-2012, cocias-cgvcv-2013}, we are able to predict shape irrespective of recognition of semantic class.
-\paragraph{Fitting 3D models}
-If prior knowledge is available about the objects present in the scene in the form of 3D models then an instance-level model can be fitted to a 3D scene.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\textbf{Fitting 3D models}
+If prior knowledge is available about the objects present in the scene, in the form of 3D models, then an instance-level model can be fitted to a 3D scene.
 This gives a good recovery of missing geometry of that object \cite{hinterstoisser-accv-2012, drost-3dimpvt-2012}.
-Many advanced works focus on the broader problem where an exact match is not present in the training set.
+Some works focus on the broader problem where an exact match is not present in the training set.
 Shen \ea \cite{shen-tog-2012} complete the missing regions of a single object using an assembly of parts from several different models in a CAD database.
 Cocias \ea \cite{cocias-cgvcv-2013} directly deform a mesh to fit to a point cloud, while Prisacariu and Reid \cite{prisacariu-iccv-2011} fit a class-level manifold model to the image data.
 
 All these methods, however, rely on the availability of some form of specific prior model.
-Collecting training data for this is laborious and costly, and currently these 3D models do not exist on a scale suitable for completing most scenes.
+Collecting training data for this is laborious and costly, and currently there do not exist enough 3D models suitable for accurately completing most real-world scenes.
 Furthermore, this completion method relies on an accurate detector to find and classify each object in the scene.
-In our approach we set out to get as much shape information as possible without semantics, thus remaining free of its associated machinery and limitations.
+In our approach we set out to get as much shape information as possible \emph{without semantics}, thus remaining free of its associated machinery and limitations.
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Symmetry}
+\noindent\textbf{Symmetry}
 Where one can accurately detect symmetry, it can be leveraged to complete some types of objects (\eg \cite{law-cviu-2010, thrun-iccv-2005, kroemer-humanoids-2012}). 
 However, using symmetry for object completion is brittle.
 An incorrectly guessed symmetrical transform can lead to a catastrophic mis-estimate of geometry, and if symmetry cannot be detected at all then no prediction can be made.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Voxel space reasoning}
+\noindent\textbf{Voxel space reasoning}
+The two algorithms which bear the most similarity to ours both make predictions of full scene geometry from a single depth image.
 
-Our `nearest neighbor' algorithms are two works which aim to directly solve a similar problem to ours.
-
-Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantical labeling of voxels from an RGBD image. 
+Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantic labeling of voxels from an RGBD image. 
 For training, they use manually labeled top-down views of the scene.
 Their final labellings are found from graph cuts over the CRF.
-The basic model has a simplistic model for occupancy. 
-The probability of a voxel being occupied is modeled as a Gaussian centered on the first observed voxel along a camera ray.
+They primarily model the probability of a voxel being occupied as a Gaussian centered on the first observed voxel along a camera ray.
 However, high-order-terms in the CRF are used to enforce planar structures and for `objects' to remain contiguous.
 
 Like \cite{kim-iccv-2013},  Zheng \ea \cite{zheng-cvpr-2013} go from a single depth image to a voxel representation of a scene.
@@ -247,14 +233,11 @@ However the voxel completion by extrusion is limited by the Manhattan World assu
 \note{In contrast to these methods, by making structured predictions we are able to complete objects where the points making up the objects are hard to see.}
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Surface completion}
-
-% complete meshes from partial Kinect Fusion reconstructions, \eg behind items of furniture.
+\noindent\textbf{Surface completion}
 Silberman \ea \cite{silberman-eccv-2014} tackle the completion of an incomplete multi-view reconstruction as a surface completion problem.
 By detecting planes they can complete their 3D contours in 2D space using a novel CRF method.
-This method, however, relies both on a fairly planar scene and on beginning with an almost-complete scan as input.
+This method, however, relies both on a piecewise-planar scene, and on beginning with an almost-complete scan as input.
 
 Davis \ea \cite{davis-3dpvt-2002} complete surfaces by operating directly on the \emph{signed distance field}, the zero level-set of which defines the surface location. They diffuse the signed distance field across holes in the mesh to fill in the gaps.
 On the other hand, \cite{harary-tog-2013} take a data-driven approach.
@@ -264,22 +247,19 @@ All of these completion methods are only suitable where the set of missing data 
 In our case, we are completing an unknown surface which is typically at least as large as the observed surface.
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Image completion and super-resolution}
-
+\noindent\textbf{Image completion and super-resolution}
 Image completion works such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}
-typically use data-driven approaches as it is very difficult to form true generative models over image appearance.
+typically use region-based data-driven approaches as it is very difficult to form true generative models over image appearance.
 For example, \cite{hays-siggraph-2007} look up possible completion regions in a large database of similar images, while \cite{criminisi-cvpr-2003} in-paint by selecting and combining multiple plausible patches from other regions of the input image.
 This differs from our task as image completion typically aims for a visually plausible output, irrespective of the accuracy compared to ground truth.
 Similar to image \emph{completion} is image \emph{super-resolution}, \eg \cite{macaodha-eccv-2012}. 
 This, like our problem, is ill-posed and relies on the repeatability and predictability of the world in order to improve the local geometry of an image.
 Our problem differs from that of super-resolution because we make predictions about the state of the world outside of the region directly observable by the camera.
-%, dong-eccv-2014
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Using 3D primitives for recognition}
-
+\noindent\textbf{Using 3D primitives for recognition}
 `Geons' are proposed by \cite{bieberman-rbc-1987} as a set of 3D primitives such as cylinders and cuboids used by humans in their recognition of object shapes.
 While in theory geons could be used by computers  as features to describe natural objects, in practice this was found to be challenging due to their ``idealized nature'', requirement for part segmentation, labeling errors and the coarseness of features used to extract geons in the first place \cite{dickinson-iavc-1997}.
 %Besl - hand-defined
@@ -294,40 +274,12 @@ In our work we make use of 3D primitives.
 However, unlike geons which are fixed in shape, we learn a distribution of shapes from training data.
 We are also able to make more fine-grained predictions than bounding boxes.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Structured learning for vision}
-In recent years \emph{structured learning} has become a popular method for some computer vision tasks.
-As with standard supervised learning, structured learning finds a mapping from feature space to a label space.
-In contrast to standard supervised learning, however, a structured label space is multidimensional.
-Feature space is typically limited to a local descriptor of the image, while the label space may be surface normals \cite{fouhey-iccv-2013}, human poses \cite{bourdev-iccv-2009} or semantic labels.
-
-%A question that arises is: How to form the set of primitives?
-There are many different ways of finding the mapping from feature to structured label space.
-For example, \cite{bourdev-iccv-2009} cluster human poses, while \cite{fouhey-iccv-2013} use an SVM-like formulation to find primitives which are both discriminative in feature space and informative in label space.
-
-In our work we make use of Random Forests \cite{breiman-ml-2001}.
-Originally proposed for regression and single-label classification problems, they have since been adapted to be able to make structured outputs where the label space is multidimensional.
-One example of this is work on structured edge detection, where an input image patch is mapped to a prediction of the edges in the region of the patch \cite{dollar-iccv-2013}.
-Structured prediction can be much faster at test time than unary prediction, as one feature vector and one forest traversal is able to predict for multiple outputs.
-In our case, however, we benefit from a structured prediction as we are able to make predictions beyond the location of the input data point.
-
-%There is lots of work on primitive-based techniques to recover the shape and pose of objects; see the related work of \cite{fouhey-iccv-2013} for a good overview.
-
-% \begin{quote}
-% Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
-% \cite{snow-cvpr-2000}
-% \end{quote}
 
 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Approach formulation}
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-\begin{figure*}[tb]
+\begin{figure*}[!htb]
     %\centering 
     \subfigure[Query point]{%
-        \includegraphics[width=0.5\columnwidth, clip=true, trim=110 170 205 30, page=1]{overview_image}}
+        \includegraphics[width=0.5\columnwidth, clip=true, trim=110 170 205 30, page=1]{overview_image}\label{subfig:voxregion}}
         \hfill
     \subfigure[Forest prediction]{%
         \includegraphics[width=0.45\columnwidth, clip=true, trim=80 170 265 30, page=2]{overview_image}}
@@ -343,35 +295,67 @@ In our case, however, we benefit from a structured prediction as we are able to 
     (b) A feature representation $\mathbf{x}(\mathbf{s})$ is put through our pre-trained Random Forest.
     The forest makes a prediction for the values of each of the voxels in $\mathcal{R}$.
     (c) This prediction is transformed into the scene and used to update the values of the voxels.
-    (d) The aggregation of multiple such predictions forms our final prediction of voxel occupancy.
+    (d) The aggregation of multiple such predictions forms our final prediction of the TSDF, which can be converted to voxel occupancy or a surface representation.
     }%
     \label{fig:overview}
 \end{figure*}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\noindent\textbf{Structured learning for vision}
+In recent years \emph{structured learning} has become a popular method for some computer vision tasks.
+As with standard supervised learning, structured learning finds a mapping from feature space to a label space.
+In contrast to the traditional classification paradigm, however, a structured label space is \emph{multidimensional}.
+Feature space is typically limited to a local descriptor of the image, while the label space may be surface normals \cite{fouhey-iccv-2013}, human poses \cite{bourdev-iccv-2009} or semantic labels.
+This family of works provides inspiration for our approach.
+
+%A question that arises is: How to form the set of primitives?
+There are many different ways of finding the mapping from feature to structured label space.
+For example, \cite{bourdev-iccv-2009} cluster human poses, while \cite{fouhey-iccv-2013} use an SVM-like formulation to find primitives which are both discriminative in feature space and informative in label space.
+
+In our work we make use of Random Forests \cite{breiman-ml-2001}.
+Originally proposed for regression and then single-label classification problems, they have since been adapted to be able to make structured predictions for tasks such as semantic labelling \cite{kontschieder-iccv-2011} and edge detection \cite{dollar-iccv-2013}.
+Structured prediction can make faster and more regularized predictions than a single dimensional predictor.
+In our case, however, we benefit from a structured prediction as we are able to make predictions beyond the location of the input data point.
+
+%One example of this is work on edge detection, where an input image patch is mapped to a prediction of the edges in the region of the patch 
+% \begin{quote}
+% Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
+% \cite{snow-cvpr-2000}
+% \end{quote}
 
 
-We model the geometry of a scene as a regular grid of voxels $\voxelgrid = \{\voxel_\voxidx\}$, where each $\voxel_\voxidx \in [-t, t]$ represents the \emph{truncated signed distance function} (TSDF) of the surface of the scene. 
-Each $|\voxel_\voxidx|$ gives the distance from $\voxel_\voxidx$ to the nearest surface, truncated to a maximum value of $t$, which is a parameter. 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Approach formulation}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+We model the geometry of a scene as a regular grid of voxels $\voxelgrid = \{\voxel_\voxidx\}$.
+Following works such as \cite{izadi-uist-2011, prisacariu-iccv-2011}, each $\voxel_\voxidx \in [-d_{\max}, d_{\max}]$ represents the \emph{truncated signed distance function} (TSDF) of the surface of the scene.
+Each $|\voxel_\voxidx|$ gives the distance from $\voxel_\voxidx$ to the nearest surface, truncated to a maximum value of $d_{\max}$, which is a parameter. 
 $\voxel_\voxidx$ is negative if voxel $\voxidx$ is inside solid opaque matter, and positive if it is in free space. 
 The zero level-set of $\voxelgrid$ therefore represents the location of the surface.
 
 \newcommand{\voxregion}{\mathcal{R}}
 
-Our system maps a point $\pixelidx = (u, v)$ on an input depth image $\rgbdimage$ to a prediction of the TSDF in a set of voxels in the vicinity of $\project(\pixelidx)$, where $\project(\pixelidx)$ is the 3D location of $\pixelidx$ in world space.
+Our system maps a point $\pixelidx$ on an input depth image $\rgbdimage$ to a prediction of the TSDF in a set of voxels in the neighborhood of $\project(\pixelidx)$, where $\project(\pixelidx)$ is the 3D location of $\pixelidx$ in world space.
 The aggregation of multiple such predictions gives our final TSDF prediction for the scene.
 
-\paragraph{Voxel grid alignment}
-We make our predictions in a voxel grid aligned with world coordinates.
-In practice this means that the z direction of the voxel grid is aligned with the up direction of the world space.
-We do not make any Manhattan World assumptions so are free to position the voxel grid at any orientation about the z-axis.
+%\paragraph{Voxel grid alignment}
+%We make our predictions in a voxel grid aligned with world coordinates.
+%In practice this means that the z direction of the voxel grid is aligned with the up direction of the world space.
+%We do not make any Manhattan World assumptions so are free to position the voxel grid at any orientation about the z-axis.
 
-\paragraph{Making a single prediction}
-At test time, we select a single pixel $\pixelidx$ from our input depth image.
-We map this pixel to a feature representation $\mathbf{x}(\pixelidx)$ (section \ref{sec:features}).
-The \emph{support region} $\voxregion_\pixelidx \subset \voxelgrid$ is a set of voxels in the vicinity of $\pixelidx$ for which we now make a prediction of geometry.
-Each $\voxregion$ is of a fixed size, and is of approximately cuboid shape.
-This cuboid shape is aligned such that its z direction is coincident with the world z-axis. 
-The cuboid is then rotated about the z-axis so that its y-axis is perpendicular with the normal at $\project(\pixelidx)$.
-The top and bottom face of each cuboid region $\voxregion$ is therefore parallel with the ground plane.
+
+\paragraph{Support regions}
+The \emph{support region} $\voxregion_\pixelidx \subset \voxelgrid$ is a set of voxels in the neighborhood of $\pixelidx$ for which our model can make a prediction of geometry.
+Each $\voxregion$ is a fixed-size cuboid of voxels aligned with the normal direction at $\pixelidx$ (figure \ref{subfig:voxregion}).
+In 2D, the location of $\pixelidx$ and the direction of its normal can unambiguously define the location and orientation of $\voxregion$.
+However, in 3D there is a degree of freedom unconstrained as the rotation of the cuboid about the axis of the normal is unspecified.
+We resolve this by aligning the cuboid such that its z direction is coincident with the world z-axis.
+The top and bottom face of each cuboid region $\voxregion$ is therefore parallel with the world's ground plane.
+The normal at $\pixelidx$ is used to contrain the degree of freedom around the z-axis.
+\todo{Figure for this!}
+%The cuboid is then rotated about the z-axis so that its y-axis is perpendicular to the normal at $\project(\pixelidx)$.
 
 % \remove{
 % Each $\voxregion$ is aligned with the coordinate system
@@ -387,14 +371,24 @@ The top and bottom face of each cuboid region $\voxregion$ is therefore parallel
 % \end{equation}
 % where $\normal$ is the normal at $\point$ and $\updir$ is the `up' direction of the scene (\ie pointing directly away from the direction of gravity).
 
-We then use a Random Forest to make a prediction of the geometry inside of $\voxregion$.
+%We examine each $\feat(\pixelidx)$ from $\rgbdimage$ in turn.
+\paragraph{Making a single prediction}
+At test time, we map a pixel $\pixelidx$ to a feature representation $\feat(\pixelidx)$, as described in section \ref{sec:features}.
+Using a structured Random Forest, we can make a prediction of the geometry inside of $\voxregion_\pixelidx$.
 We call this prediction of geometry $\mathcal{S}$ a \emph{voxlet}.
-The voxlet, which comes out of the forest in cononical alignment, is then transformed from its local coordinate system into world space.
-This transformation is the rotation $\Lambda$ followed by the translation $\mathbf{p}(\mathbf{\pixelidx}) - C(\mathcal{S})$, where $\mathbf{p}(\mathbf{\pixelidx})$ is the projection of $\pixelidx$ into world space, and $C(\mathcal{S})$ is the center of the voxlet. \note{This notation and explanation is a bit of a mess --- suggestions welcome! Also need to reference the figure in the text. Figure will ultimately be split into (a), (b) etc to make this easier.}
+The voxlet, which comes out of the forest in canonical alignment, is then transformed from its local coordinate system into world space to fill the voxels in $\voxregion$.
+
+The accumulation of multiple such predictions forms our final prediction of our TSDF.
+This can then be converted to a prediction of surface geometry, a process which is described in section \ref{sec:combining}.
+
+%This transformation is the rotation $\Lambda$ followed by the translation $\mathbf{p}(\mathbf{\pixelidx}) - C(\mathcal{S})$, where $\mathbf{p}(\mathbf{\pixelidx})$ is the projection of $\pixelidx$ into world space, and $C(\mathcal{S})$ is the center of the voxlet. 
+%\note{This notation and explanation is a bit of a mess --- suggestions welcome! Also need to reference the figure in the text. Figure will ultimately be split into (a), (b) etc to make this easier.}
 
 
-\paragraph{Training time}
-At training time we similarly define a region $\voxregion$ around a single point $\pixelidx$. In this case the ground truth values of $\voxelgrid$ and hence $\voxregion$ are known. We use these ground truth TSDF values, together with $\mathbf{x}(\pixelidx)$, to train a Random Forest (section \ref{sec:forest_train}).
+\paragraph{Training}
+At training time, we similarly define a region $\voxregion$ around each point $\pixelidx$, again of a fixed size. 
+In this case, the ground truth values of $\voxelgrid$ and hence $\voxregion$ are known. 
+We use these ground truth TSDF values, together with $\mathbf{x}(\pixelidx)$, to train a Random Forest, as explained in  section \ref{sec:forest_train}.
 
 
 \newcommand{\preprocesssubwidth}{0.41\columnwidth}
@@ -417,8 +411,8 @@ At training time we similarly define a region $\voxregion$ around a single point
     \caption{
     The depth image preprocessing pipeline.
     The noisy depth image (b) is smoothed, and missing data is filled (c). 
-    This makes use of the RGB image in the cross-bilteral filtering, where we use the implementation provided by \cite{silberman-eccv-2012}.
-    We then use the structured edge detection model from \cite{dollar-iccv-2013} to compute a real-valued edge map (d) for the image, which is finally binarized (e) with Canny edge filtering \cite{canny-pami-1986}.
+    This makes use of the RGB image in the cross-bilateral filtering, where we use the implementation provided by \cite{silberman-eccv-2012}.
+    We then use the structured edge detection model from \cite{dollar-iccv-2013} to compute a real-valued edge map (d) for the image, which is finally binarized (e) using the Canny edge hysteresis method \cite{canny-pami-1986}.
     }%
     \label{fig:preprocessing}
 \end{figure*}
@@ -428,32 +422,43 @@ At training time we similarly define a region $\voxregion$ around a single point
 \section{Feature representation}
 \label{sec:features}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\newcommand{\feat}{\mathbf{x}}
 
-Our feature representation maps a pixel locaton $\pixelidx = (u, v)$ to a feature $\feat(\pixelidx)$, which represents the geometry around the point.
-We use local and regional features extracted from the image.
-This is used in our classifier to map from a single point to a prediction of voxel occupancy in the surrounding region.
+%Our feature representation maps a pixel location $\pixelidx = (u, v)$ to a feature $\feat(\pixelidx)$, which represents the geometry around the point.
+Our feature representation $\feat(\pixelidx)$ at location $\pixelidx$ in the depth map describes aspects of its neighborhood.
+We use local and regional features extracted from the depth image.
+The Random Forest--based model weights feature space to make structured predictions of the truncated signed distance function in the surrounding region.
+%This is used in our classifier to map from a single point to a prediction of voxel occupancy in the surrounding region.
 
 Our feature $\feat(\pixelidx) = [\feat_c(\pixelidx), \feat_s(\pixelidx)]$ is composed of two parts.
-The \emph{cobweb} feature $\feat_c(\pixelidx)$ captures the shape of the depth surface in the immediate vicinity of $\pixelidx$. 
-The \emph{spider} feature $\feat_s(\pixelidx)$ captures the size and shape of the region in which $\pixelidx$ resides together with the position of $\pixelidx$ in that region\footnote{The names of our features are taken from the shapes they produce in image space (figure \ref{fig:features}).}.
+The \emph{spider} feature $\feat_s(\pixelidx)$ captures the size and shape of the region in which $\pixelidx$ resides, together with the position of $\pixelidx$ in that region.
+The \emph{cobweb} feature $\feat_c(\pixelidx)$ captures the shape of the depth surface in the immediate neighborhood of $\pixelidx$.
+%\footnote{The names of our features are taken from the shapes they produce in image space (figure \ref{fig:features}).}. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Cobweb feature }
+\note{Motivation}
 %\note{Name up for debate!}
-The cobweb feature $\feat_c(\pixelidx)$ is a simple pairwise feature, related to recent work such as \cite{shotton-cvpr-2011, tola-pami-2010}, capturing the surface shape in the immediate vicinity of pixel $\pixelidx$.
+\begin{wrapfigure}{r}{0.35\columnwidth}
+    \includegraphics[width=0.35\columnwidth, clip=true, trim=150 190 340 100, page=1]{spider_cobweb}
+  \caption{A gull}
+\end{wrapfigure}
+
+The cobweb feature $\feat_c(\pixelidx)$ is a simple pairwise feature, inspired by recent work such as \cite{shotton-cvpr-2011, tola-pami-2010}, capturing the surface shape in the immediate neighborhood of pixel $\pixelidx$.
 The feature computes the difference between the depth from the camera at $\pixelidx$ and the depth at a predetermined offset. We define
 \begin{align}
-\Phi(\pixelidx, \psi, t) &= \rgbdimage(\pixelidx) - \rgbdimage(\pixelidx + \Delta) \\
-\Delta &= M(t) (\sin(\psi), \cos(\psi))
+\Phi(\pixelidx, \psi, t) &= \rgbdimage(\pixelidx) - \rgbdimage(\pixelidx + \Delta), \, \text{where} \\
+\Delta &= M(t) (\sin(\psi), \cos(\psi)).
 \end{align}
-where $M(t) = ft / \rgbdimage(\pixelidx)$ uses the focal length $f$ to map a distance in world space to a pixel offset. 
+Here $M(t) = \frac{t\cdotp f}{\rgbdimage(\pixelidx)}$ uses the focal length $f$ to map a distance in world space to a pixel offset. 
 The final feature is then composed of $\Phi(\pixelidx, \psi, t)$ evaluated over a range of values of $\psi$ and $t$.
-For our experiments we compute the cobweb feature for all combinations of $\psi = [0\degree, 45\degree, \ldots, 315\degree]$ and $t = [0.02m, 0.04m, 0.06m, 0.08m]$.
+For our experiments, we compute the cobweb feature for all combinations of $\psi = [0\degree, 45\degree, \ldots, 315\degree]$ and $t = [0.02m, 0.04m, 0.06m, 0.08m]$.
 The final cobweb feature is therefore 24-dimensional.
 The pattern of the extracted $\pixelidx + \Delta$ values can be seen in figure \ref{subfig:cobweb}.
 
+
+  %\end{center}
+  %\begin{center}
 %In our experiments the final feature is then composed of 
 % as
 %\begin{align}
@@ -471,32 +476,32 @@ The pattern of the extracted $\pixelidx + \Delta$ values can be seen in figure \
 \begin{figure}[tb]
     \centering 
     \subfigure[Query point]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_2}}
+        \includegraphics[width=\subwidth, clip=true, trim=130 125 300 30, page=1]{spider_cobweb}}
         \hfill
     \subfigure[Cobweb feature]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_3}
+        \includegraphics[width=\subwidth, clip=true, trim=130 125 300 30, page=2]{spider_cobweb}
         \label{subfig:cobweb}}
         \hfill
     \subfigure[Spider feature]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_4}}
+        \includegraphics[width=\subwidth, clip=true, trim=130 125 300 30, page=3]{spider_cobweb}}
         \\
-    \subfigure[$c_0$]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30]{features_5}\label{subfig:c0}}
+    \subfigure[$s_0$]{%
+        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30, page=4]{spider_cobweb}\label{subfig:c0}}
         \hfill
-    \subfigure[$c_1$ (Top view of scene)]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30]{features_6}\label{subfig:c1}}
+    \subfigure[$s_1$ (Top view of scene)]{%
+        \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30, page=5]{spider_cobweb}\label{subfig:c1}}
         \hfill
-    \subfigure[$c_2$ (Top view of scene)]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30]{features_7}\label{subfig:c2}}
+    \subfigure[$s_2$ (Top view of scene)]{%
+        \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30, page=6]{spider_cobweb}\label{subfig:c2}}
         \hfill
     \caption{
     \todo{Clean up pictures to have notation consistent with text and in correct places on images}
     (a) We compute a feature vector for a single point $\pixelidx = (u, v)$.
     (b) The cobweb feature computes the difference in depth between $\pixelidx$ and the points that surround it.
-    (c) The spider features $\mathbf{x_s} = [c_0, c_2, c_2$ measure the distance between $\point$ and the edge points $\edgeimidx_{1, \cdots, 7}$.
-    (d) $c_0$ measures the distance between $\pixelidx$ and $\edgeimidx$ in the image space.
-    (e) $c_1$ measures the distance between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$
-    (f) $c_2$ gives an estimate of the depth of the object at the location of $\pixelidx$.
+    (c) The spider features $\mathbf{x_s} = [s_0, s_2, s_2$ measure the distance between $\point$ and the edge points $\edgeimidx_{1, \cdots, 7}$.
+    (d) $s_0$ measures the distance between $\pixelidx$ and $\edgeimidx$ in the image space.
+    (e) $s_1$ measures the distance between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$
+    (f) $s_2$ gives an estimate of the depth of the object at the location of $\pixelidx$.
     }%
     \label{fig:features}
 \end{figure}
@@ -506,17 +511,16 @@ The pattern of the extracted $\pixelidx + \Delta$ values can be seen in figure \
 \subsection{The spider feature}
 %\note{Name up for debate! Another candidate is `compass'}
 
-Local features such as our cobweb feature have proved discriminatory where the output labeling is on a per-pixel basis, such as labeling each pixel as a part of a human body \cite{shotton-cvpr-2011}.
-
+Local features, such as our cobweb feature, have proved discriminatory where the output labeling is on a per-pixel basis, such as labeling each pixel as a part of a human body \cite{shotton-cvpr-2011}.
 However, when it comes to predicting the geometry of the scene we cannot observe, the local shape of the depth image around a point does not provide enough information. 
 An example of this can be seen in figure \ref{fig:patch_problems}.
-The two regions circled in the image have identical \emph{local} appearance, but the 3D geometry around each regions is very different due to the different thicknesses of the two boxes.
+The two regions circled in the image have identical \emph{local} appearance, but the 3D geometry around each region is very different due to the different thicknesses of the two boxes.
 
 
 \begin{figure}[bt]
   \centering 
   \includegraphics[width=0.9\columnwidth]{features_1}
-  \caption{Local, patch-type features do not give enough information to accurately predict depth. Here, a pair of regions on two different objects are marked. Each region has identical local appearance. However, the voxel geometry of the object at the two locations is very different due to the different thicknesses. 
+  \caption{Patch-type features do not give enough information to accurately predict depth. Here, regions on two different objects are marked. Each region has identical local appearance. However, the voxel geometry of the object at the two locations is very different due to the different thicknesses. 
   We use this observation to motivate the spider feature.}
   \label{fig:patch_problems}
 \end{figure}
@@ -524,7 +528,7 @@ The two regions circled in the image have identical \emph{local} appearance, but
 
 
 Previous works have used the properties of a whole segmented region for classification of individual points \cite{golovinskiy-iccv-2009}.
-When it comes to predicting the 3D shape local to a point in an image, however, we care as much about the point's location in the region as we do about the overall region properties (figure \ref{fig:spider_motivation}).
+When it comes to predicting the 3D shape local to a point in a depth image, however, we care as much about the point's location in the region as we do about the overall region properties (figure \ref{fig:spider_motivation}).
 
 We desire a feature which captures the size and shape of the region in which $\pixelidx$ resides, along with the location of $\pixelidx$ in that region.
 To achieve this we take inspiration from the features between a point and a binary edge map used by \cite{drost-3dimpvt-2012}.
@@ -532,12 +536,12 @@ To achieve this we take inspiration from the features between a point and a bina
 \paragraph{Computing a binary edge map}
 We first compute a binary edge map for the image, where each pixel takes the value 1 at a large change in depth or surface normal direction, and is 0 otherwise.
 We first use the method of \cite{dollar-iccv-2013} to compute a real-valued edge map for the image (figure \ref{subfig:structedge}).
-Next we apply the Canny filtering algorithm \cite{canny-pami-1986} to convert this to a binary edge map (figure \ref{subfig:structedge}).
+Next we apply the Canny filtering algorithm \cite{canny-pami-1986} to convert this to a binary edge map (figure \ref{subfig:binaryedge}).
 We mitigate against poor quality depth data around discontinuities by dilating this edge map with a 3x3 disc-shaped structuring element.
 
 \paragraph{Casting lines from $\pixelidx$}
-From $\pixelidx$, we then cast a line across the edge map in direction $\phi$.
-We note the point on the edge map where the line first hits a pixel with value 1 as $\edgeimidx$.
+From $\pixelidx$, we then cast a line across the edge map in each direction $\phi$.
+We denote the point on the edge map where the line first hits a pixel with value 1 as $\edgeimidx$.
 The 2D locations $\pixelidx$ and $\edgeimidx$ reproject to 3D locations $\project_\pixelidx$ and $\project_\edgeimidx$ respectively.
 %For each line cast we therefore have two points in 3D space: $\point$ and $\point_e$.
 
@@ -548,31 +552,34 @@ The 2D locations $\pixelidx$ and $\edgeimidx$ reproject to 3D locations $\projec
 \paragraph{Extracting the spider feature}
 
 \newcommand{\spiderfeat}{s}
+\newcommand{\gline}{\mathbf{l}}
 
 The spider feature for a single point with a line cast in direction $\phi$ is $\Phi_s = (\spiderfeat_0, \spiderfeat_1, \spiderfeat_2)$.
-Each element of this tuple is completed as follows:
+Each element of this tuple is a distance between $\pixelidx$ and $\edgeimidx$, computed as follows:
 \begin{itemize}
 
-\item $\spiderfeat_1 = \rgbdimage(\pixelidx) \|\pixelidx - \edgeimidx\| / f$. This is the distance between $\pixelidx$ and $\edgeimidx$ in pixel units $\|\pixelidx - \edgeimidx\|$ scaled by $\rgbdimage(\pixelidx) / f$ to convert to a real-world distance (figure \ref{subfig:c0}).
+\item $\spiderfeat_0 = \rgbdimage(\pixelidx) \|\pixelidx - \edgeimidx\| / f$. This is the distance between $\pixelidx$ and $\edgeimidx$ in pixel units $\|\pixelidx - \edgeimidx\|$ scaled by $\rgbdimage(\pixelidx) / f$ to convert to a real-world distance (figure \ref{subfig:c0}).
+
+\item $\spiderfeat_1 = \sum_{i=2}^{|\gline|} \| \project_{\gline(i)} - \project_{\gline(i-1)}) \| $, where $\gline$ is an ordered list of the pixel locations on the line between $\pixelidx$ and $\edgeimidx$.
+$\spiderfeat_3$ approximates the arc length between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$  (figure \ref{subfig:c2}).
 
 \item $\spiderfeat_2 = (\point_\pixelidx - \point_\edgeimidx) \cdot \normal$. 
 This is the Euclidean distance between $\point_\pixelidx$ and $\point_\edgeimidx$ along the direction of the normal at $\pixelidx$  (figure \ref{subfig:c1}).
-\newcommand{\gline}{\mathbf{l}}
-\item $\spiderfeat_3 = \sum_{i=2}^{|\gline|} \| \project_{\gline(i)} - \project_{\gline(i-1)}) \| $, where $\gline$ is an ordered list of the pixel locations on the line between $\pixelidx$ and $\edgeimidx$.
-$\spiderfeat_3$ approximates the arc length between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$  (figure \ref{subfig:c2}).
+
 \end{itemize}
 
 We compute the spider features for  $\phi = [0\degree, 45\degree, \ldots, 315\degree]$
-The spider feature for a single point $\pixelidx$ is therefore 16-dimensional.
+The spider feature for a single point $\pixelidx$ is therefore 24-dimensional.
 
 \paragraph{Implementation}
 The spider feature is extremely efficient to compute.
-We can compute the 16D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptimized C++ code.
+We can compute the 24D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptimized C++ code.
 We would expect a significant speedup were this to be implemented on a GPU.
 %This is due to its cumulative nature: the feature at $\pixelidx$ can be directly computed from $\pixelidx - (0, 1)$.
 
 
 \paragraph{Occluded spider features}
+\todo{Remove or improve and do experiments}
 
 We explicitly handle occlusion in the spider features. Where the spider feature first hits an occluded edge rather than an occluding edge, the true size of the object in that dimension is unknown (see figure \ref{fig:features:occluded_spider}).
 However, we do have a \textit{minimum} size in that direction.
@@ -618,12 +625,7 @@ At test time, each data point is passed through each tree, and at each node is p
 
 %Random Forests are well suited to our purpose, as they automatically select the features most suitable for separating the classes (unlike \eg SVMs) and they examine each dimension separately, making them robust to different scaling of each feature. They are also inherently non-linear, perform quick training and inference and are easily parallelizable.
 
-%\subsection{Training the forest}
-In training our forest we use the entropy split criterion
-\begin{equation}
-- \sum_j p_j \log_2 p_j.
-\end{equation}
-at each node.
+\subsection{Training the forest}
 
 Often the modal class vote from all the trees is taken as a hard prediction of class membership. Instead we follow \cite{} in using... medioid? Modal?
 
@@ -634,6 +636,7 @@ Often the modal class vote from all the trees is taken as a hard prediction of c
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Combining and regularizing predictions}
+\label{sec:combining}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 This can be done fairly efficiently as the voxlets are all at a constant orientation in world space.
@@ -642,6 +645,8 @@ This can be done fairly efficiently as the voxlets are all at a constant orienta
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Experiments}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\note{Train and test split}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -660,15 +665,17 @@ If all the voxels between the camera and the depth image are included in the eva
 
 \subsubsection{Baselines and algorithm variants}
 
-\noindent \textbf{(a) Bounding box} We fit a bounding box to the 3D points in the scene, as defined by the ground truth object mask.
+\noindent \textbf{(a) Bounding box} We fit a minimum-area bounding box to the 3D points belonging to the object, as defined by the ground truth object segmentation mask provided by \cite{singh-icra-2014}.
+We additionally are careful to remove `flying pixels', as they can have a large adverse effect on bounding box predictions.
+Finally, the prediction of voxel occupancy is simply that all voxels inside the bounding box are predicted to be occupied, while those outside are predicted to be empty.
 
-\noindent \textbf{(b) K-means forest} We use a standard classification Random Forest, the leaf nodes of which vote for items in a dictionary of 200 voxlets formed by running K-means on the training set.
+\noindent \textbf{(b) Structured (cobweb only)} Our full structured forest, but only using the cobweb features
 
-\noindent \textbf{(c) Cobweb only} Our full structured forest, but only using the cobweb features
+\noindent \textbf{(c) Structured (spider only)} Our full structured forest, but only using the spider features
 
-\noindent \textbf{(d) Spider only} Our full structured forest, but only using the spider features
+\noindent \textbf{(d) Structured (Cobweb + spider)}  Our full structured forest using both cobweb and spider features.
 
-\noindent \textbf{(e) Cobweb + spider}  Our full structured forest using both cobweb and spider features.
+\noindent \textbf{(e) K-means forest} We use a standard classification Random Forest, the leaf nodes of which vote for items in a dictionary of 200 voxlets formed by running K-means on the training set of voxlets.
 
 \noindent \textbf{(f) Zheng \ea \cite{zheng-cvpr-2013}}
 
@@ -680,7 +687,7 @@ We do not compare to Kim \ea \cite{kim-iccv-2013} due to their dependence upon s
 \subsection{Turntable dataset}
 
 For our experiments on objects in isolation, we make use of the `Bigbird' dataset \cite{singh-icra-2014}. 
-This dataset comprises of 125 household objects, captured on a turntable from multiple viewing angles.
+This dataset comes of 125 household objects, captured on a turntable from multiple viewing angles.
 The camera poses are well calibrated, and a complete object mesh is provided for each object.
 This mesh can be converted to provide us with a ground truth voxel occupancy.
 
@@ -720,7 +727,7 @@ To ensure a fair split we group such items together to ensure that each group en
      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/19_marching_cubes.jpg}
      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/38_marching_cubes.jpg}
      \includegraphics[width=0.32\columnwidth, clip=true, trim=150 150 150 150]{voxlets/44_marching_cubes.jpg}
-     \caption{Some of the voxlets learned from the Bigbird dataset. \todo{Perhaps instead show leaf nodes.}}
+     \caption{Some of the voxlets learned from the Bigbird dataset. \todo{Perhaps instead show leaf nodes. Describe in text what is going on.}}
 \end{figure}
 
 
@@ -770,7 +777,7 @@ Using our prediction as a prior could form the basis of a \emph{next-best-view} 
 % Tom
 % Peter
 % Yotam
-
+% Open source community - python scipy pcl etc
 
 {\small
 \bibliographystyle{ieee}
