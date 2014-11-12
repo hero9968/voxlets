@@ -53,10 +53,13 @@ for pred_type in pred_types:
             met.set_gt(D['gt'])
         
             met.set_pred(D['prediction'])
-            fpr, tpr = met.compute_tpr_fpr(thresholds)
+            #fpr, tpr = met.compute_tpr_fpr(thresholds)
+            prescision, recall = met.compute_pres_recall(thresholds)
+            fpr, tpr = met.compute_acu(thresholds)
 
-            metrics[pred_type]['tpr'].append(tpr)
-            metrics[pred_type]['fpr'].append(fpr)
+            metrics[pred_type]['auc'].append(auc)
+            metrics[pred_type]['prescision'].append(prescision)
+            metrics[pred_type]['recall'].append(recall)
 
         print "Done " + modelname
 

@@ -611,7 +611,13 @@ class UprightAccumulator(WorldVoxels):
 		self.V = self.sumV / temp_countV
 		self.V[nan_locations] = nan_value
 		#self.V[np.isinf(self.V)] = np.nan
-		return self.V
+
+		# clear these grid for memory reasons
+		self.sumV = None
+		self.countV = None
+
+		# return myself
+		return self
 
 
 
@@ -937,7 +943,7 @@ class VoxMetricsTSDF(object):
 
 	def set_gt(self, gt):
 		self.gt = ((1.0 - (gt.flatten() + 0.03) / 0.06) > 0.5).astype(int)
-		
+
 		# finding the bottom along the z-direction. Don't use anything below that...
 		temp = np.any(self.gt>0.5, axis=0)
 		temp = np.any(temp, axis=0)
@@ -977,11 +983,35 @@ class VoxMetricsTSDF(object):
 
 		return np.array(tpr), np.array(fpr)
 
+	def compute_pres_recall(self):
+		pres = sklearn.metrics.precision_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
+		recall = sklearn.metrics.recall_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
+		return (pres, recall)
 
 	def compute_auc(self):
-		return sklearn.metrics.roc_auc_score(self.gt, self.pred)
+		return sklearn.metrics.roc_auc_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
 
 
+
+
+def expanded_grid(original_grid):
+	'''
+	returns a grid like the origin but which is expanded by padding amount in each dimension
+	'''
+
+	# pad the gt grid slightly
+	grid_origin = original_grid.origin - 0.05
+	grid_end = original_grid.origin + \
+				np.array(original_grid.V.shape).astype(float) * original_grid.vox_size + 0.05
+
+	voxlet_size = paths.voxlet_size/2.0
+	grid_dims_in_real_world = grid_end - grid_origin
+	V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
+
+	accum = WorldVoxels(V_shape)
+	accum.set_origin(grid_origin)
+	accum.set_voxel_size(voxlet_size)
+	return accum
 
 def expanded_grid_accum(original_grid):
 	'''
