@@ -166,8 +166,10 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
         accum = rec.fill_in_output_grid_oma(max_points=max_points, special='cobweb')
         prediction = accum.compute_average(nan_value=0.03)
 
-    elif test_type == 'bpc':
-        pass
+    elif test_type == 'gt':
+
+        prediction = voxel_data.expanded_grid(gt_grid)
+        prediction.fill_from_grid(gt_grid)
 
     else:
         error("Unknown test type")
@@ -180,17 +182,21 @@ def main_pool_helper(this_view_idx, modelname,  gt_grid, test_type):
 
     "Saving result to disk"
     savepath = paths.voxlet_prediction_path % (test_type, modelname, test_view)
-    D = dict(prediction=prediction, gt=gt)
+    D = dict(prediction=prediction.V, gt=gt)
     scipy.io.savemat(savepath, D, do_compression=True)
+
+    "Now also save to a pickle file so have the original data..."
+    savepathpickle = paths.voxlet_prediction_path_pkl % (test_type, modelname, test_view)
+    pickle.dump(prediction, open(savepathpickle, 'wb'))
 
     "Computing the auc score"
     gt_occ = ((gt + 0.03) / 0.06).astype(int)
-    prediction_occ = (prediction + 0.03) / 0.06
+    prediction_occ = (prediction.V + 0.03) / 0.06
     auc = sklearn.metrics.roc_auc_score(gt_occ.flatten(), prediction_occ.flatten())
 
     "Filling the figure"
     imagesavepath = paths.voxlet_prediction_image_path % (test_type, modelname, test_view)
-    save_plot_slice(prediction, gt, imagesavepath, imtitle=str(auc))
+    save_plot_slice(prediction.V, gt, imagesavepath, imtitle=str(auc))
  
     print "Done view " + str(this_view_idx)
     
