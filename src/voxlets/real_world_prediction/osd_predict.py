@@ -20,9 +20,9 @@ import reconstructer
 
 ############################################################
 print "Setting parameters"
-max_points = 200
+max_points = 500
 print "WARNING - only doing with 200 points"
-number_samples = 2000
+number_samples = 500
 padding_value = 0.15 # in future pass this in
 savefolder = paths.base_path + "other_3D/osd/OSD-0.2-depth/predictions/"
 
@@ -53,14 +53,14 @@ for fline in f:
     prediction = accum.compute_average(nan_value=0.03)
 
     print "Force the base to be solid"
-    padding_value = 0.15 # in future pass this in
-    base_height = padding_value / accum.vox_size
-    accum.V[:, :, :base_height] = 0.03
+    #padding_value = 0.15 # in future pass this in
+    #base_height = padding_value / accum.vox_size
+    #accum.V[:, :, :base_height] = 0.03
 
     print "Saving result to " + savepath
     pickle.dump(accum, open(savepath, 'wb'))
 
-    print "Breaking"
-    break
+    #print "Breaking"
+    #break
 
 print "Done"
