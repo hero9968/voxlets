@@ -21,17 +21,20 @@ import reconstructer
 ############################################################
 print "Setting parameters"
 max_points = 200
+print "WARNING - only doing with 200 points"
 number_samples = 2000
 padding_value = 0.15 # in future pass this in
 savefolder = paths.base_path + "other_3D/osd/OSD-0.2-depth/predictions/"
 
 ############################################################
 print "Loading forest"
-oma_forest = pickle.load(open(paths.voxlet_model_oma_path + '.small', 'rb'))
+oma_forest = pickle.load(open(paths.voxlet_model_oma_path, 'rb'))
 
 ############################################################
 print "Main loop"
-for name in ['learn1']:
+f = open('./names.txt', 'r')
+for fline in f:
+    name = fline.strip()
 
     savepath = savefolder + name + ".pkl"
 
@@ -56,5 +59,8 @@ for name in ['learn1']:
 
     print "Saving result to " + savepath
     pickle.dump(accum, open(savepath, 'wb'))
+
+    print "Breaking"
+    break
 
 print "Done"
