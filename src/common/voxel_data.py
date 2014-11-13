@@ -613,8 +613,8 @@ class UprightAccumulator(WorldVoxels):
 		#self.V[np.isinf(self.V)] = np.nan
 
 		# clear these grid for memory reasons
-		self.sumV = None
-		self.countV = None
+		#self.sumV = None
+		#self.countV = None
 
 		# return myself
 		return self

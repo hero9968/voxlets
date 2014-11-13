@@ -55,7 +55,7 @@ for pred_type in pred_types:
             met.set_pred(D['prediction'])
             #fpr, tpr = met.compute_tpr_fpr(thresholds)
             prescision, recall = met.compute_pres_recall()
-            fpr, tpr = met.compute_acu()
+            auc = met.compute_auc()
 
             metrics[pred_type]['auc'].append(auc)
             metrics[pred_type]['prescision'].append(prescision)
