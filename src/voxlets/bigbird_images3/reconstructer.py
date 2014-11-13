@@ -156,6 +156,13 @@ class Reconstructer(object):
             grid_origin = gt_grid.origin - 0.05
             grid_end = gt_grid.origin + np.array(gt_grid.V.shape).astype(float) * gt_grid.vox_size + 0.05
 
+        elif method == 'basic':
+            self.accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
+            self.accum.set_origin(gt_grid.origin)
+            self.accum.set_voxel_size(gt_grid.vox_size)
+            return
+
+
         voxlet_size = paths.voxlet_size/2.0
         grid_dims_in_real_world = grid_end - grid_origin
         V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
