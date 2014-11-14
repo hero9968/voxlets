@@ -352,7 +352,7 @@ The aggregation of multiple such predictions gives our final TSDF prediction for
 
 \paragraph{Support regions}
 The \emph{support region} $\voxregion \subset \voxelgrid$ is a set of voxels in the neighborhood of $\pixelidx_p$ for which our model can make a prediction of the TSDF.
-Each $\voxregion$ is a fixed-size cuboid of voxels aligned with the normal direction at $\pixelidx$ (Figure \ref{subfig:voxregion}).
+Each $\voxregion$ is a fixed-size cuboid of voxels, whose x-axis aligned with the normal direction at $\pixelidx$ (Figure \ref{subfig:voxregion}).
 
 In a 2D world, the location of $\pixelidx$ and the direction of its normal can unambiguously define the location and orientation of $\voxregion$.
 However, in 3D there is a degree of freedom unconstrained as the rotation of the cuboid about the axis of the normal is unspecified.
@@ -382,7 +382,7 @@ The top and bottom face of each cuboid region $\voxregion$ is therefore parallel
 \paragraph{Making a single prediction}
 At test time, we map a pixel $\pixelidx$ to a feature representation $\feat(\pixelidx)$, as described in Section \ref{sec:features}.
 Using a structured Random Forest, we can make a prediction of the geometry inside of $\voxregion$.
-We call this prediction of geometry $\mathcal{S}$ a \emph{voxlet}.
+We call this prediction of geometry a \emph{voxlet}.
 The voxlet, which comes out of the forest in canonical alignment, is then transformed from its local coordinate system into world space to fill the voxels in $\voxregion$.
 
 The accumulation of multiple such predictions forms our final prediction of our TSDF.
@@ -529,7 +529,7 @@ $\feat_{\text{off}}$ is therefore 24-dimensional.
     %(a) We compute a feature vector for a single point $\pixelidx = (u, v)$.
     %(b) The offset feature computes the difference in depth between $\pixelidx$ and the points that surround it.
     (a) The spider features $\scalfeat_s(\pixelidx, \edgeimidx, \psi) = (s_1, s_2, s_3)$ provides three measures of the distance between $\pixelidx$ and the edge point $\edgeimidx$.
-    (d) $s_1$ measures the distance between pixel locations $\pixelidx$ and $\edgeimidx$.
+    (b) $s_1$ measures the distance between pixel locations $\pixelidx$ and $\edgeimidx$.
     (c) $s_2$ measures the distance between 3D points $\pointthreed$ and $\edgethreed$ along the surface of $\rgbdimage$
     (d) $s_3$ gives an estimate of the depth of the object at the 3D location $\pointthreed$.
     }%
@@ -566,8 +566,8 @@ We use this observation to motivate the `spider feature'.
 %\todo{Combine all the motivational images for the spider feature into one...}}
 
 
-Previous works have used the properties of a whole segmented region for classification of individual points \cite{golovinskiy-iccv-2009}.
-When it comes to predicting the 3D shape local to a point in a depth image, however, we care as much about the point's location in the region as we do about the overall region properties (Figure \ref{fig:spider_motivation}).
+%Previous works have used the properties of a whole segmented region for classification of individual points \cite{golovinskiy-iccv-2009}.
+%When it comes to predicting the 3D shape local to a point in a depth image, however, we care as much about the point's location in the region as we do about the overall region properties (Figure \ref{fig:spider_motivation}).
 
 We desire a feature which captures the size and shape of the region in which $\pixelidx$ resides, along with the location of $\pixelidx$ in that region.
 To achieve this we take inspiration from the features between a point and a binary edge map used by \cite{drost-3dimpvt-2012}.
@@ -587,7 +587,6 @@ We additionally denote the 3D reprojections of the 2D pixel coordinates $\pixeli
 %For each line cast we therefore have two points in 3D space: $\point$ and $\point_e$.
 
 \paragraph{Extracting the spider feature}
-
 The spider feature for a single point with a line cast in direction $\psi$ is $\scalfeat_s(\pixelidx, \edgeimidx, \psi) = (\spiderfeat_1, \spiderfeat_2, \spiderfeat_3)$.
 Each element of this tuple is a distance between $\pixelidx$ and $\edgeimidx$, computed as follows:
 \begin{itemize}
@@ -595,10 +594,10 @@ Each element of this tuple is a distance between $\pixelidx$ and $\edgeimidx$, c
 \item $\spiderfeat_1 = \rgbdimage(\pixelidx) \|\pixelidx - \edgeimidx\|_2 / f$. This is the distance between $\pixelidx$ and $\edgeimidx$ in pixel units $\|\pixelidx - \edgeimidx\|_2$ scaled by $\rgbdimage(\pixelidx) / f$ to convert to a real-world distance (Figure \ref{subfig:c0}).
 
 \item $\spiderfeat_2 = \sum_{i=2}^{|\gline|} \| \gline(i) - \gline(i-1)) \|_2 $, where $\gline$ is an ordered list of the 3D locations of the points on the line between $\pixelidx$ and $\edgeimidx$.
-$\spiderfeat_2$ approximates the arc length between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$  (Figure \ref{subfig:c2}).
+$\spiderfeat_2$ approximates the arc length between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$  (Figure \ref{subfig:c1}).
 
 \item $\spiderfeat_3 = (\pointthreed - \edgethreed) \cdot \normal_\pixelidx$. 
-This is the Euclidean distance between 3D points $\pointthreed$ and $\edgethreed$ along the direction of the normal $\normal_\pixelidx$ at $\pixelidx$  (Figure \ref{subfig:c1}).
+This is the Euclidean distance between 3D points $\pointthreed$ and $\edgethreed$ along the direction of the normal $\normal_\pixelidx$ at $\pixelidx$  (Figure \ref{subfig:c2}).
 
 \end{itemize}
 
@@ -608,9 +607,9 @@ The concatenation of $\feat_\text{off}$ and $\feat_\text{spi}$ forms the final 5
 
 \paragraph{Implementation}
 The spider feature is efficient to compute.
-We can compute the 24D spider feature for every point in a $640\times480$ image in less than 0.01s using unoptimized C++ code.
+We can compute the 24D spider feature for every point in a $640\times480$ image in less than 0.01s using C++.
 We would expect a significant speedup were this to be implemented on a GPU.
-%This is due to its cumulative nature: the feature at $\pixelidx$ can be directly computed from $\pixelidx - (0, 1)$.
+
 
 % \paragraph{Occluded spider features}
 % \todo{Remove or improve and do experiments}
@@ -653,7 +652,7 @@ We would expect a significant speedup were this to be implemented on a GPU.
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 In this paper we pose unobserved geometry estimation given partial observed information as a supervised learning problem. 
 More specifically, our goal is to learn a function $f: \mathcal{X}\to \mathcal{Y}$, which maps each observed feature vector $\mathbf{x} \in \mathcal{X}$ to the label space $\mathbf{v} \in \mathcal{Y}$ representing the corresponding 3D geometry in the region $\mathcal{R}$ around $\mathbf{x}$. 
-Unlike standard classification where the goal is to predict a category label for each $\mathbf{x}$, our label space is a multi-dimensional structured vector $\mathbf{v} \in \mathbb{R}^{w\times{}h\times{}d}$ which encodes the TDSF values in a local region. 
+Unlike standard classification where the goal is to predict a category label for each $\mathbf{x}$, our label space is a multi-dimensional structured vector $\mathbf{v} \in \mathbb{R}^{w\times{}d\times{}h}$ which encodes the TDSF values in a local region. 
 Inspired by the recent work of Doll{\'a}r and Zitnick~\cite{dollar-iccv-2013} we use a structured Random Forest to learn the function $f$. 
 
 \paragraph{Training} 
@@ -693,7 +692,7 @@ We use simple axis aligned feature splits at each node.
   \caption{}%The offset feature}
     \label{fig:voxlet_dims}
 \end{wrapfigure}
-The fixed-size regions $\mathcal{R}$ in the voxel grid are set in our experiments to have height $\times$ width $\times$ depth of $15 \times 15 \times 30$ voxels.
+The fixed-size regions $\mathcal{R}$ in the voxel grid are set in our experiments to have width $\times$ depth $\times$ height of $15 \times 30 \times 15$ voxels.
 We make the voxlets longer in the depth direction than the other two dimensions as it is this direction that is approximately parallel to the normal at $\pixelidx_p$.
 This allows the voxlet to make a larger prediction \emph{backwards} into the scene than \emph{sideways} into a region which typically already has observed data.
 We set each voxlet to have real-world dimensions $0.1m \times 0.2m \times 0.1m$, meaning each voxel inside a voxlet has edge lengths of $(0.1 / 15)$m.
@@ -760,6 +759,8 @@ In our train/test split of this dataset, we note that there are many `near dupli
 For example, two different varieties of the same product may be included.
 To ensure a fair split we group such items together to ensure that each group ends up as a whole in either the training or the test section.
 Our final training set consists of 80 objects, and our test set 45 objects.
+We use 45 views of each object.
+
 %We additionally remove objects which failed from 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -773,16 +774,16 @@ For our experiments on the Object Segmentation Dataset, we use the model learned
 
 \begin{table}
   \centering
-  \begin{tabular}{p{2.6cm}cc}
+  \begin{tabular}{p{4.8cm}cc}
   \toprule
   \textbf{Method}  &   \textbf{Precision} & \textbf{Recall} \\
   \midrule
   Bounding box & 0.550 & 0.683  \\
   Zheng \ea \cite{zheng-cvpr-2013}  &  &  \\
   K-means forest & 0.922 & 0.944 \\
-  Offset only & 0.921 & 0.948 \\
-  Spider only &  0.855 & 0.949 \\
-  Offset + spider & 0.926 & 0.948 \\
+  Structured forest (Offset only) & 0.921 & 0.948 \\
+  Structured forest (Spider only) &  0.855 & 0.949 \\
+  Structured forest (Offset + spider) & 0.926 & 0.948 \\
   \bottomrule
   \end{tabular}
   \vspace{5pt}
@@ -798,12 +799,6 @@ For our experiments on the Object Segmentation Dataset, we use the model learned
 The aim of our algorithm is to accurately classify free space around objects and in scenes.
 Therefore, we report the per-voxel precision and recall over all the test data.
 To find our test volume, we find the minimum volume axis-aligned bounding box for the ground truth voxel data before padding this voxel grid with 10cm of padding in each axis direction.
-
-%This is computed by sweeping a parameter over the range of values in the TSDF, and comparing the classification of voxels as being `inside' or `outside' the object with the ground truth occupancy.
-
-%, comparing the prediction $\Pr(o)$ with the ground truth occupancy as provided by KinFu.
-%The shape of the ROC curve is strongly affected by the region over which the evaluation is performed.
-%If all the voxels between the camera and the depth image are included in the evaluation, the false positive rate becomes very low, as the voxels in the free space between the camera and scene are `easy wins' for the algorithm. 
 
 
 \paragraph{Baselines and algorithm variants}
@@ -831,9 +826,18 @@ We then perform their axis-aligned voxel search for each unobserved voxel, and c
 
 \noindent \textbf{(f) Structured (Offset + spider)}  Our full structured forest using both offset and spider features.
 
-The results from our quantitative analysis are shown in Table \ref{tab:quant_results}.
+\vspace{10pt}
 
+The results from our quantitative analysis on the Bigbird turntable dataset are shown in Table \ref{tab:quant_results}.
+We additionally present some individual results in Figure \ref{fig:turntable_qual}.
 
+We notice that the naive bounding box prediction suffers from a poor rate of recall.
+This is expected, as typically the bounding box predictions under-predict the volume due to a lack of observed pixels to complete the shape of the object (\ref{fig:turntable_qual}).
+
+While our full forest outperforms the other baselines and algorithm variants, we notice only a small variation in the variants of our approach using different features.
+The lower precision and higher recall for the spider feature suggests that it is over-predicting the size of objects, although the performance is maximized when it coupled with the offset feature.
+The K-means Forest does almost as well as our full structured forest.
+However, as it has discretized the label space before training we would not expect it to generalize well to larger and more diverse training data.
 
 \newcommand{\voxletsubwidth}{0.41\columnwidth}
 \begin{figure}
@@ -851,36 +855,69 @@ The results from our quantitative analysis are shown in Table \ref{tab:quant_res
   \input{pringles_bbq_NP2_0.mat_#1}%
 }
 
-
 \begin{figure*}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=50 0 50 60]{data/renders_turn_table/pringles_bbq_NP2_0.mat_bb.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=50 0 50 60]{data/renders_turn_table/pringles_bbq_NP2_0.mat_gt.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 50 60]{data/renders_turn_table/pringles_bbq_NP2_0.mat_modal.jpg}
+    \begin{tabular}{cccc}
+    \includegraphics[width=0.32\columnwidth, clip=true, trim=50 0 50 60]{data/renders_turn_table/pringles_bbq_NP2_0.mat_bb.jpg} &
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=50 0 50 60]{data/renders_turn_table/pringles_bbq_NP2_0.mat_gt.jpg} &
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 50 60]{data/renders_turn_table/pringles_bbq_NP2_0.mat_modal.jpg} &
      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 50 60]{data/renders_turn_table/pringles_bbq_NP2_0.mat_oma.jpg} \\
-    \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 110]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_bb.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 110]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_gt.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 110]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_modal.jpg}
+    \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 110]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_bb.jpg} &
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 110]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_gt.jpg} &
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 110]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_modal.jpg} &
      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 110]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_oma.jpg} \\
-      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 150]{data/renders_turn_table/progresso_new_england_clam_chowder_NP3_312.mat_bb.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 150]{data/renders_turn_table/progresso_new_england_clam_chowder_NP3_312.mat_gt.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 150]{data/renders_turn_table/progresso_new_england_clam_chowder_NP3_312.mat_modal.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 150]{data/renders_turn_table/progresso_new_england_clam_chowder_NP3_312.mat_oma.jpg} 
-     \caption{Qualitative results from the Bigbird turntable dataset. 
+     (a) Ground truth & (b) Bounding box & (c) Modal &  \\
+    \end{tabular}
+    \vspace{10pt}
+     \caption{Results from the Bigbird turntable dataset. 
      Each row shows a different object, while each column shows the results of a different algorithm. 
      The details of the algorithms are given in Section \ref{sec:algorithms}.
-     %Column 1: The best case bounding box fitted to the ground truth. Column 2: Voxelisation of the ground truth mesh. Column 3: K-Means forest (might not use these for qualitative results), Column 4: Structured forest.
+     \label{fig:turntable_qual}
      }
 \end{figure*}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Qualitative scene results}
+
+In our qualitative analysis, we run the model we have trained on the turntable dataset on cluttered scenes.
+Qualitative results from this evaluation are shown in Figure \ref{fig:osd_qual}.
+We notice that the geometry of larger objects is recovered well, while the geometry of smaller regions is sometimes missed.
+Where objects are heavily occluded, our algorithm sometimes fails to recover the most occluded sections.
+See for example the result in row three, column three.
+
+\newcommand{\scenewidth}{0.48\columnwidth}
+\newcommand{\topc}{30}
+
+\begin{figure*}
+    \begin{tabular}{cccc}
+    \includegraphics[width=\scenewidth]{scene/image_color/learn12} &
+    \includegraphics[width=\scenewidth]{scene/image_color/test11} &
+    \includegraphics[width=\scenewidth]{scene/image_color/learn13} &
+    \includegraphics[width=\scenewidth]{scene/image_color/test45} \\
+    \includegraphics[width=\scenewidth]{scene/cropped/learn12_op_0} &
+    \includegraphics[width=\scenewidth]{scene/cropped/test11_op_0} &
+    \includegraphics[width=\scenewidth]{scene/cropped/learn13_op_0} &
+    \includegraphics[width=\scenewidth]{scene/cropped/test45_op_0} \\
+    \includegraphics[width=\scenewidth]{scene/cropped/learn12_op_1} &
+    \includegraphics[width=\scenewidth]{scene/cropped/test11_op_1} &
+    \includegraphics[width=\scenewidth]{scene/cropped/learn13_op_1} &
+    \includegraphics[width=\scenewidth]{scene/cropped/test45_op_1} \\
+    \end{tabular}
+     \caption{Qualitative results from the Object Segmentation Dataset.
+     Each column shows a different image from the database.
+     The first row shows the RGB image of the input view.
+     The following two rows show the results of our full algorithm.
+     \label{fig:osd_qual}
+     }
+\end{figure*}
 
 \subsection{Limitations}
-We can see that while we have success reconstructing 
+We can see that while we have success reconstructing well-observed objects, our algorithm can fail to recover geometry in occluded regions.
+We propose that a physics-based-reasoning post-processing step, such as is proposed by \cite{zheng-cvpr-2013, shao-siggraphasia-2014}, would help the completion of ambiguous regions.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions and future work}
 The primary direction for our future work is to apply the algorithm to larger and more natural scenes.
-We would like to incorporate ideas from \cite{zheng-cvpr-2013, shao-siggraphasia-2014} by incorporating physics-based reasoning to help the completion of ambiguous regions.
-We also believe a coarse-to-fine version of our system would help to make the method more robust.
+In particular, we believe that training on real-world scenes in addition to turntable data may help the reconstruction quality.
 
 An interesting potential application of our method is to use the predicted completion as a prior for structure-from-motion.
 We plan to implement a system which updates our prediction of occupancy with observed data as it arrives from the capture device.
@@ -888,6 +925,9 @@ Using our prediction as a prior could form the basis of a \emph{next-best-view} 
 
 Currently we use a random sampling strategy to select the set of 3D points to use to form the reconstruction.
 We believe that a more intelligent sampling strategy, such as using the points which we believe to give accurate estimates of the depth \cite{reynolds-cvpr-2011}, may yield more accurate reconstructions.
+%We would like to incorporate ideas from \cite{zheng-cvpr-2013, shao-siggraphasia-2014} by incorporating physics-based reasoning to help the completion of ambiguous regions.
+%We also believe a coarse-to-fine version of our system would help to make the method more robust.
+
 
 
 % \section{Acknowledgements}
