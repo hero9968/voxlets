@@ -1,0 +1,1 @@
+rsync -rv newgate:/cs/research/vecg/prism/data1/michael/* ./data
