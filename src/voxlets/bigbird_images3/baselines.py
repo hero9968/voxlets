@@ -32,10 +32,12 @@ class BbBaseline(object):
         hull_points_2d = np.array(np.nonzero(full)).T
 
         "Getting rectangle"
-        print hull_points_2d
+        # print hull_points_2d
         rect = cv2.minAreaRect(hull_points_2d)
         box = cv2.cv.BoxPoints(rect)
         box = np.int0(box)
+        self.box = box
+        #print box
 
         "find z min and max"
         temp = np.any(self.vgrid.V>0.5, axis=0)
@@ -46,18 +48,23 @@ class BbBaseline(object):
 
         single_layer = np.zeros((self.vgrid.V.shape[1], self.vgrid.V.shape[0]), np.uint8)
         cv2.fillConvexPoly(single_layer, box, 255, 0)
+        #print np.sum(single_layer)
 
         # create output grid
         out_grid = copy.deepcopy(self.vgrid)
         out_grid.V *=0
 
         # fill each layer in the z direction
+        #print min_z
+        #print max_z
         for idx in range(min_z, max_z):
             out_grid.V[:, :, idx] = single_layer.T / 255.0
 
         out_grid.V = out_grid.V.astype(float)
-        out_grid.convert_to_tsdf(0.03)
+        print np.sum(out_grid.V)
+        #out_grid.convert_to_tsdf(0.03)
         return out_grid
+
 
 
 
