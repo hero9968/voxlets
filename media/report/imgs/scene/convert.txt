@@ -1,0 +1,1 @@
+mogrify -path cropped -crop 200x150+25+250 *.png
