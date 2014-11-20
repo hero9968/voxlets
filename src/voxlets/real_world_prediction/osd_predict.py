@@ -9,6 +9,7 @@ import cPickle as pickle
 import sys, os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 sys.path.append('../bigbird_images3/')
+import scipy.io
 
 from common import paths
 from common import voxel_data
@@ -20,26 +21,29 @@ import reconstructer
 
 ############################################################
 print "Setting parameters"
-max_points = 200
-number_samples = 2000
+max_points = 500
+print "WARNING - only doing with 200 points"
+number_samples = 500
 padding_value = 0.15 # in future pass this in
 savefolder = paths.base_path + "other_3D/osd/OSD-0.2-depth/predictions/"
 
 ############################################################
 print "Loading forest"
-oma_forest = pickle.load(open(paths.voxlet_model_oma_path + '.small', 'rb'))
+oma_forest = pickle.load(open(paths.voxlet_model_oma_path, 'rb'))
 
 ############################################################
 print "Main loop"
-for name in ['learn1']:
+f = open('./names.txt', 'r')
+for fline in f:
+    name = fline.strip()
 
-    savepath = savefolder + name + ".pkl"
+    savepath = savefolder + name + ".mat"
 
     print "Loading image " + name
     im = images.RealRGBD()
     im.load_from_mat(name)
-    im.disp_channels()
-
+    '''im.disp_channels()
+    '''
     print "Reconstructing with oma forest"
     rec = reconstructer.Reconstructer(reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_forest(oma_forest)
@@ -50,11 +54,17 @@ for name in ['learn1']:
     prediction = accum.compute_average(nan_value=0.03)
 
     print "Force the base to be solid"
-    padding_value = 0.15 # in future pass this in
-    base_height = padding_value / accum.vox_size
-    accum.V[:, :, :base_height] = 0.03
+    #padding_value = 0.15 # in future pass this in
+    #base_height = padding_value / accum.vox_size
+    #accum.V[:, :, :base_height] = 0.03
 
     print "Saving result to " + savepath
-    pickle.dump(accum, open(savepath, 'wb'))
+    '''pickle.dump(accum, open(savepath, 'wb'))
+    '''
+    D = dict(prediction=accum.V)
+    scipy.io.savemat(savepath, D)
+    #print "Breaking"
+    #break
 
 print "Done"
+
