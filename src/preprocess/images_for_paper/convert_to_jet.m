@@ -1,8 +1,10 @@
-function rgbImage  = convert_to_jet(m)
+function rgbImage  = convert_to_jet(m, m_minValue, m_maxValue)
 
 % converts a greyscale image to jet colourmap
-m_minValue = min(m(:));
-m_maxValue = max(m(:));
+if nargin == 1
+    m_minValue = min(m(:));
+    m_maxValue = max(m(:));
+end
 
 % Scale to 0-255;
 m = 255.0 * (m - m_minValue) / (m_maxValue - m_minValue);
