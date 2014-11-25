@@ -25,9 +25,12 @@ for ii = 1:65
     names = [names, {['test', num2str(ii)]}]
 end
 
+%% get names
+names = {'learn1', 'learn12', 'learn13', 'learn16', 'learn24', 'learn25', 'learn31', 'test31', 'test11', 'test21', 'test43', 'test45', 'test62', 'test63', 'test65'}
+
 %% 
 OVERWRITE = true;
-for ii = 1%:length(names)
+for ii = 1:length(names)
     
     name = names{ii};
     im.name = name;
@@ -80,7 +83,10 @@ for ii = 1%:length(names)
     outliers = reshape(outliers_vector, size(im.smoothed_depth));
     imagesc(reshape(outliers, size(im.smoothed_depth)) + im.edges*2);
     
-    im.mask = ~outliers & ~imdilate(im.edges, se) & (im.smoothed_depth< 1.2) & reshape(im.norms(:, 3)<-0.4, size(im.smoothed_depth))
+    im.mask = ~outliers & ~imdilate(im.edges, se) & ...
+        (im.smoothed_depth< 1.2) & reshape(im.norms(:, 3)<-0.4, size(im.smoothed_depth)) & ...
+        reshape(im.xyz(:, 1) < 0.35, size(im.smoothed_depth))
+    im.mask(1:50, :) = 0;
     
     %% Quickly augment the edges with depths on the plane
     new_edges = edge(im.mask);
@@ -92,7 +98,6 @@ for ii = 1%:length(names)
     %% removing shit
     im = rmfield(im, {'struct_edges', 'struct_edges_canny', 'curve', 'seg', 'depth'});
     
-    
     %% SAving
     im.rgb = im2double(im.rgb);
     save(save_name, '-struct', 'im');
@@ -102,6 +107,7 @@ for ii = 1%:length(names)
     disp(['Done model ', name, ' ', num2str(ii)])
     
 end
+%%
 
 %plotNormals(bb_cropped.xyz, bb_cropped.normals, 0.01)
 
@@ -125,6 +131,7 @@ axis image
 subplot(236)
 imagesc(im.mask)
 axis image
+
 
 
 %% displayin the spider

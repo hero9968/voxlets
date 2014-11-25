@@ -54,7 +54,6 @@ for pred_type in pred_types:
             recall = sklearn.metrics.recall_score(bin_gt, pred_scaled.astype(int))
             auc = sklearn.metrics.roc_auc_score(bin_gt, D['prediction'].flatten())
 
-
             metrics[pred_type]['auc'].append(auc)
             metrics[pred_type]['prescision'].append(prescision)
             metrics[pred_type]['recall'].append(recall)

@@ -174,6 +174,9 @@ class Camera(object):
         self.set_extrinsics(np5_to_this_camera.dot(mesh_to_np5))
         self.set_intrinsics(intrinsics)
 
+        calib.close()
+        pose.close()
+
 
     def project_points(self, xyz):
         '''

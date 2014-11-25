@@ -3,10 +3,11 @@
 % Then smooth
 % Then crop
 % Then save
+clear
 addpath('~/projects/shape_sharing/src/matlab/matlab_features')
 addpath('~/projects/shape_sharing/src/preprocess/bigbird/crop_smooth/')
 addpath('~/projects/shape_sharing/src/preprocess/edges_and_compass/')
-OVERWRITE = false;
+OVERWRITE = true;
 %matlabpool(6)
 %%
 base_path = get_base_path();
@@ -49,12 +50,13 @@ for model_idx = 1:length(modelnames)
 
             bb_cropped.spider = spider_wrapper(bb_cropped.xyz, bb_cropped.norms, ...
                                                 bb_cropped.edges, bb_cropped.mask, bb_cropped.T.K_rgb(1));
+            save_file(save_name, bb_cropped);
 
         catch
             disp(['Failed ', modelname, view])
         end
         % saving to disk
-        save_file(save_name, bb_cropped);
+        
 
         fprintf('%d ', view_idx);
       
