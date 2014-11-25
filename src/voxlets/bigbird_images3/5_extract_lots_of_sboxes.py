@@ -95,21 +95,23 @@ for count, modelname in enumerate(paths.modelnames):
     vgrid.load_bigbird(modelname)
     
     for view in paths.views[:45]:
-
-        print '.'
-        im = images.CroppedRGBD()
-        im.load_bigbird_from_mat(modelname, view)
+        try:
+            print '.'
+            im = images.CroppedRGBD()
+            im.load_bigbird_from_mat(modelname, view)
     
-        "Sampling from image"
-        idxs = random_sample_from_mask(im.mask, number_points_from_each_image)
+            "Sampling from image"
+            idxs = random_sample_from_mask(im.mask, number_points_from_each_image)
         
-        "Extracting features"
-        all_features.append(im.get_features(idxs))
+            "Extracting features"
+            all_features.append(im.get_features(idxs))
         
-        "Now try to make this nice and like parrallel or something like what say what?"
-        #these_shoeboxes = [pool_helper(idx, im, vgrid) for idx in idxs]
-        these_shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
-        shoeboxes.extend(these_shoeboxes)
+            "Now try to make this nice and like parrallel or something like what say what?"
+            #these_shoeboxes = [pool_helper(idx, im, vgrid) for idx in idxs]
+            these_shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
+            shoeboxes.extend(these_shoeboxes)
+        except:
+            print "Failed to do " + modelname + " " + view
 
     # perhaps *HERE* save the data for this model
     np_features = np.array(all_features)

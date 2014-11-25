@@ -20,7 +20,7 @@ else:
     small_sample = False
     subsample_length = 1000000
     number_trees = 50
-    max_depth = 14
+    max_depth = 10
     
 if small_sample: print "WARNING: Just computing on a small sample"
 
@@ -40,12 +40,15 @@ kmeans_idx = []
 
 for count, modelname in enumerate(paths.train_names):
 
+    if modelname == 'nice_honey_roasted_almonds':
+        continue
     # loading the data
     loadpath = paths.bigbird_training_data_fitted_mat % modelname
     print "Loading from " + loadpath
 
     D = scipy.io.loadmat(loadpath)
 
+    print D['features'].shape
     features.append(D['features'])
     pca_kmeans_idx.append(D['pca_kmeans_idx'])
     kmeans_idx.append(D['kmeans_idx'])
@@ -60,6 +63,7 @@ np_kmeans_idx = np.hstack(kmeans_idx).flatten()
 
 ####################################################################
 print "Now training the forest"
+print np.array(features).shape
 np_features = np.array(features).reshape((-1, 56))
 to_remove = np.any(np.isnan(np_features), axis=1)
 

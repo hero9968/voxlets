@@ -389,8 +389,10 @@ class RealRGBD(RGBDImage):
         '''
         loads all the bigbird data from a mat file
         '''
-        mat_path = paths.base_path + 'other_3D/osd/OSD-0.2-depth/mdf/' + name + ".mat"
-
+        '''mat_path = paths.base_path + 'other_3D/osd/OSD-0.2-depth/mdf/' + name + ".mat"
+        '''
+        mat_path = paths.base_path + 'voxlets/from_biryani/' + name + ".mat"
+        
         D = scipy.io.loadmat(mat_path)
         #return D
         self.rgb = D['rgb']

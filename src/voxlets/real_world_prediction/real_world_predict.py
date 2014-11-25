@@ -25,7 +25,7 @@ max_points = 500
 print "WARNING - only doing with 200 points"
 number_samples = 500
 padding_value = 0.15 # in future pass this in
-savefolder = paths.base_path + "other_3D/osd/OSD-0.2-depth/predictions/"
+savefolder = paths.base_path + "voxlets/from_biryani/predictions/"
 
 ############################################################
 print "Loading forest"
@@ -33,11 +33,23 @@ oma_forest = pickle.load(open(paths.voxlet_model_oma_path, 'rb'))
 
 ############################################################
 print "Main loop"
-f = open('./names.txt', 'r')
-for fline in f:
-    name = fline.strip()
+'''names = {'frame_20141120T134535.682741_', 'frame_20141120T185954.959422_'}
+'''
+names = ['frame_20141121T145136.414620_']
+
+'''frame_20141120T215459.461384_']
+'''
+'''frame_20141120T134535.682741_', 
+'frame_20141120T185954.959422_', 
+'frame_20141120T213448.378796_', 
+'frame_20141120T213442.525035_', 
+'frame_20141120T213440.257049_', 
+'frame_20141120T213449.827419_']
+'''
+for name in names:
 
     savepath = savefolder + name + ".mat"
+    savepathpkl = savefolder + name + ".pkl"
 
     print "Loading image " + name
     im = images.RealRGBD()
@@ -59,13 +71,11 @@ for fline in f:
     #accum.V[:, :, :base_height] = 0.03
 
     print "Saving result to " + savepath
-    '''pickle.dump(accum, open(savepath, 'wb'))
-    '''
+    pickle.dump(accum, open(savepathpkl, 'wb'))
+    
     D = dict(prediction=accum.V)
     scipy.io.savemat(savepath, D)
-    #print "Breaking"
-    #break
-
+    
     #print "Breaking"
     #break
 

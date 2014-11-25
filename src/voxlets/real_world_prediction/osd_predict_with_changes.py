@@ -37,7 +37,7 @@ f = open('./names.txt', 'r')
 for fline in f:
     name = fline.strip()
 
-    savepath = savefolder + name + ".mat"
+    savepath = savefolder + name + ".pkl"
 
     print "Loading image " + name
     im = images.RealRGBD()
@@ -59,13 +59,10 @@ for fline in f:
     #accum.V[:, :, :base_height] = 0.03
 
     print "Saving result to " + savepath
-    '''pickle.dump(accum, open(savepath, 'wb'))
-    '''
-    D = dict(prediction=accum.V)
+    pickle.dump(accum, open(savepath, 'wb'))
+    '''D = dict(prediction=accum.V)
     scipy.io.savemat(savepath, D)
-    #print "Breaking"
-    #break
-
+    ''' 
     #print "Breaking"
     #break
 
