@@ -41,7 +41,8 @@ pca_representation = []
 kmeans_idx = []
 
 for count, modelname in enumerate(paths.train_names):
-
+    if modelname == 'nice_honey_roasted_almonds':
+        continue
     # loading the data
     loadpath = paths.bigbird_training_data_fitted_mat % modelname
     print "Loading from " + loadpath

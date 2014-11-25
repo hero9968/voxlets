@@ -3,7 +3,7 @@ make predictions for all of bigbird dataset
 using my algorhtm
 saves each prediction to disk
 '''
-
+njobs = 4
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -25,11 +25,13 @@ import baselines
 
 print "Setting parameters"
 max_points = 200
-number_samples = 2000
-multiproc = not paths.small_sample
+number_samples = 200
+multiproc = True 
+'''not paths.small_sample'''
 
-test_types = ['oma', 'modal', 'just_spider', 'just_cobweb']
-
+test_types = ['oma']
+''', 'modal', 'just_spider', 'just_cobweb']
+'''
 
 if 'modal' in test_types or 'medioid' in test_types:
 
@@ -208,7 +210,7 @@ if multiproc:
     if paths.small_sample:
         pool = multiprocessing.Pool(4)
     else:
-        pool = multiprocessing.Pool(6)
+        pool = multiprocessing.Pool(njobs)
 
 
 print "Checking results folders exist, creating if not"
@@ -219,13 +221,14 @@ for test_type in test_types:
 
 
 print "MAIN LOOP"
-for modelname in paths.test_names:
-
+for modelname in ['nutrigrain_harvest_blueberry_bliss']:
+    '''paths.test_names:
+    '''
     "Loading in test data"
     gt_grid = voxel_data.BigBirdVoxels()
     gt_grid.load_bigbird(modelname)
 
-    poss_views = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]
+    poss_views = range(75)
 
     for test_type in test_types:
         if multiproc:

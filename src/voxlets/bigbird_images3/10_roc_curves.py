@@ -11,19 +11,19 @@ sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 
 from common import paths
 from common import voxel_data
-
+import sklearn.metrics
 ############################################
 "PARAMTERS"
-thresholds = np.linspace(0, 1.0, 100)
-pred_types = ['oma', 'modal', 'medioid', 'bb']#, 'bpc', 'no_spider']
+pred_types = ['oma', 'modal', 'just_spider', 'just_cobweb']#, 'bpc', 'no_spider']
 
 ############################################
 "Setting up the dictionary to store results"
 metrics = {}
 for pred_type in pred_types:
     metrics[pred_type] = {}
-    metrics[pred_type]['tpr'] = []
-    metrics[pred_type]['fpr'] = []
+    metrics[pred_type]['auc'] = []
+    metrics[pred_type]['prescision'] = []
+    metrics[pred_type]['recall'] = []
 
 ############################################
 "MAIN LOOP"
@@ -44,24 +44,28 @@ for pred_type in pred_types:
             else:
                 loadpath = paths.base_path + '/voxlets/bigbird/troll_predictions/%s/%s_%s.mat' % (pred_type, modelname, test_view)
 
-            print "loading the data"
+            "loading the data"
             D = scipy.io.loadmat(loadpath)
-            print D['gt'].shape
 
-            print "Converting"
-            met = voxel_data.VoxMetricsTSDF()
-            met.set_gt(D['gt'])
-        
-            met.set_pred(D['prediction'])
-            #fpr, tpr = met.compute_tpr_fpr(thresholds)
-            prescision, recall = met.compute_pres_recall()
-            fpr, tpr = met.compute_acu()
+            "Converting"
+            bin_gt = ((D['gt'].flatten() + 0.03) / 0.06).astype(int)
+            pred_scaled = ((D['prediction'].flatten() + 0.03) / 0.06).astype(float)
+            prescision = sklearn.metrics.precision_score(bin_gt, pred_scaled.astype(int))
+            recall = sklearn.metrics.recall_score(bin_gt, pred_scaled.astype(int))
+            auc = sklearn.metrics.roc_auc_score(bin_gt, D['prediction'].flatten())
+
 
             metrics[pred_type]['auc'].append(auc)
             metrics[pred_type]['prescision'].append(prescision)
             metrics[pred_type]['recall'].append(recall)
 
         print "Done " + modelname
+
+    print "------------------"
+    print pred_type
+    print np.mean(metrics[pred_type]['auc'])
+    print np.mean(metrics[pred_type]['prescision'])
+    print np.mean(metrics[pred_type]['recall'])
 
 ############################################
 "SAVING"
