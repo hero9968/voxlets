@@ -1,14 +1,20 @@
 import numpy as np
 import line_casting_cython
 import itertools
+import copy
 
-def line_features_2d(input_im):
+def line_features_2d(known_empty, known_filled):
     '''
     given an input image, computes the line features for each direction 
     and concatenates them somehow
     perhaps give options for how the features get returned, e.g. as 
     (H*W)*N or as a list...
     '''
+
+    # constructing the input image from the two inputs
+    input_im = copy.deepcopy(known_empty) * 0 - 1
+    input_im[known_empty==1] = 0
+    input_im[known_filled==1] = 1
 
     # generating numpy array of directions
     itertools_directions = itertools.product([-1, 0, 1], repeat=2)
@@ -23,8 +29,14 @@ def line_features_2d(input_im):
     directions = directions[idxs]
 
     # computing the actual features using the cython code
-    all_features = [line_casting_cython.outer_loop(input_im, direction) for direction in directions]
-    return all_features
+    all_distances = []
+    all_observed = []
+    for direction in directions:
+        distances, observed = line_casting_cython.outer_loop(input_im, direction)
+        all_distances.append(distances)
+        all_observed.append(observed)
+    
+    return all_distances, all_observed
 
 
 
