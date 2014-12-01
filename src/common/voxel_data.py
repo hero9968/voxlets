@@ -23,6 +23,22 @@ class Voxels(object):
 		self.V = np.zeros(size, datatype)
 
 
+	def copy(self):
+		'''
+		returns a deep copy of self
+		'''
+		return copy.deepcopy(self)
+
+
+	def blank_copy(self):
+		'''
+		returns a copy of self, but with all voxels empty
+		'''
+		temp = copy.deepcopy(self)
+		temp.V *= 0
+		return temp
+
+
 	def num_voxels(self):
 		return np.prod(self.V.shape)
 
@@ -45,14 +61,20 @@ class Voxels(object):
 		return self.V[ijk[:, 0], ijk[:, 1], ijk[:, 2]]
 
 
-	def set_idxs(self, ijk, values):
+	def set_idxs(self, ijk, values, check_bounds=False):
 		'''
 		helper function to set the values indicated in the nx3 ijk array
 		to the values in the n-long vector of values
 		'''
 		assert ijk.shape[1] == 3
 		assert isinstance(values, Number) or ijk.shape[0] == values.shape[0]
-		self.V[ijk[:, 0], ijk[:, 1], ijk[:, 2]] = values
+
+		if check_bounds:
+			valid = self.find_valid_idx(ijk)
+			self.V[ijk[valid, 0], ijk[valid, 1], ijk[valid, 2]] = values
+		else:
+			self.V[ijk[:, 0], ijk[:, 1], ijk[:, 2]] = values
+
 
 
 	def find_valid_idx(self, idx):
@@ -928,9 +950,6 @@ class SliceFiller(object):
 		return warped_image
 
 
-
-
-
 class VoxMetricsTSDF(object):
 	'''
 	class to do metrics on the voxel datas
@@ -995,8 +1014,6 @@ class VoxMetricsTSDF(object):
 		return sklearn.metrics.roc_auc_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
 
 
-
-
 def expanded_grid(original_grid, expand_amount=0.05):
 	'''
 	returns a grid like the origin but which is expanded by padding amount in each dimension
@@ -1010,11 +1027,14 @@ def expanded_grid(original_grid, expand_amount=0.05):
 	voxlet_size = paths.voxlet_size/2.0
 	grid_dims_in_real_world = grid_end - grid_origin
 	V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
+	print V_shape
 
-	accum = WorldVoxels(V_shape)
+	accum = WorldVoxels()
+	accum.V = np.zeros(V_shape, original_grid.V.dtype)
 	accum.set_origin(grid_origin)
 	accum.set_voxel_size(voxlet_size)
 	return accum
+
 
 def expanded_grid_accum(original_grid, expand_amount=0.05):
 	'''
@@ -1029,9 +1049,52 @@ def expanded_grid_accum(original_grid, expand_amount=0.05):
 	voxlet_size = paths.voxlet_size/2.0
 	grid_dims_in_real_world = grid_end - grid_origin
 	V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
+	print V_shape
 
 	accum = UprightAccumulator(V_shape)
 	accum.set_origin(grid_origin)
 	accum.set_voxel_size(voxlet_size)
 	return accum
 
+
+def get_known_empty_grid(im, vgrid):
+	''' 
+	returns a copy of voxel grid vgrid, such that voxels 
+	known to be empty (from depth image im) have value 1, 
+	while voxels with unknown state have value 0
+	'''
+
+	# get the world meshgrid from the grid and project into the camera
+	grid_in_world = vgrid.world_meshgrid()
+	projected_voxels = im.cam.project_points(grid_in_world)
+	projected_voxels[:, :2] -= np.array([im.aabb[0], im.aabb[2]])
+
+	# now work out which voxels are in front of or behind the depth image
+	# and location in camera image of each voxel
+	uv = np.round(projected_voxels[:, :2]).astype(int)
+	inside_image = np.logical_and.reduce((uv[:, 0] >= 0, uv[:, 1] >= 0, uv[:, 1] < im.mask.shape[0], uv[:, 0] < im.mask.shape[1]))
+	all_observed_depths = im.depth[uv[inside_image, 1], uv[inside_image, 0]]
+	is_observed = all_observed_depths > projected_voxels[inside_image, 2]
+
+	# reconstructing original voxel grid
+	observed_V = vgrid.blank_copy()
+	observed_V.set_indicated_voxels(inside_image, is_observed)
+	return observed_V, projected_voxels
+
+
+def get_known_full_grid(im, vgrid):
+	''' 
+	returns a copy of voxel grid vgrid, such that voxels 
+	known to be full (from depth image im) have value 1, 
+	while voxels with unknown state have value 0
+	'''
+
+	# create output grid
+	known_full_V = vgrid.blank_copy()
+
+	# populate the output grid
+	world_xyz = im.get_world_xyz()
+	idx = known_full_V.world_to_idx(world_xyz)
+	known_full_V.set_idxs(idx, values=1, check_bounds=True)
+
+	return known_full_V
