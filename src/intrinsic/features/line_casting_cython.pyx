@@ -36,7 +36,7 @@ def inner_loop(np.ndarray[double, ndim=2] input_im,
     H = input_im.shape[0]
     W = input_im.shape[1]
 
-    cumsum = -1
+    cumsum = -1 #special indicator to signify inifinity   np.iinfo(np.int32).max
     observed_to_be_full = 0
 
     # doing full check is unnecessary for certain directions - this could be optimised
@@ -46,9 +46,12 @@ def inner_loop(np.ndarray[double, ndim=2] input_im,
             # this is voxel known to be empty
             cumsum = 0
             observed_to_be_full = 0
+
         else:
-            # voxels either observed to be full OR unknown
-            cumsum += 1
+            if cumsum != -1:
+                # voxels either observed to be full OR unknown
+                # check for -1 checks whether should be accumulating or not...
+                cumsum += 1
 
             if input_im[i, j] == 1:
                 # voxel observed by the camera
