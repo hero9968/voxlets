@@ -1057,7 +1057,7 @@ def expanded_grid_accum(original_grid, expand_amount=0.05):
 	return accum
 
 
-def get_known_empty_grid(im, vgrid):
+def get_known_empty_grid(im, vgrid, known_full_grid=None):
 	''' 
 	returns a copy of voxel grid vgrid, such that voxels 
 	known to be empty (from depth image im) have value 1, 
@@ -1074,11 +1074,17 @@ def get_known_empty_grid(im, vgrid):
 	uv = np.round(projected_voxels[:, :2]).astype(int)
 	inside_image = np.logical_and.reduce((uv[:, 0] >= 0, uv[:, 1] >= 0, uv[:, 1] < im.mask.shape[0], uv[:, 0] < im.mask.shape[1]))
 	all_observed_depths = im.depth[uv[inside_image, 1], uv[inside_image, 0]]
-	is_observed = all_observed_depths > projected_voxels[inside_image, 2]
+	known_to_be_empty = all_observed_depths > projected_voxels[inside_image, 2]
 
 	# reconstructing original voxel grid
 	observed_V = vgrid.blank_copy()
-	observed_V.set_indicated_voxels(inside_image, is_observed)
+	observed_V.set_indicated_voxels(inside_image, known_to_be_empty)
+
+	# if we have explicity given a grid of voxels known to be full, we can use this to clean up the output
+	# TODO - make it so we don't have to do this
+	if known_full_grid:
+		observed_V.V[known_full_grid.V==1] = 0
+
 	return observed_V, projected_voxels
 
 

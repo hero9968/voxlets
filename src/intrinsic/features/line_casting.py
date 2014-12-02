@@ -5,6 +5,36 @@ import copy
 
 out_of_range_value = 250
 
+
+def get_directions_2d():
+    '''
+    doing this by hand instead of using e.g. itertools, for clarity.
+    also to preserve angle order and as we don't want [0, 0] to be included
+    '''
+    return [[0, -1],
+           [1, -1],
+           [1, 0],
+           [1, 1],
+           [0, 1],
+           [-1, 1],
+           [-1, 0],
+           [-1, -1]]
+
+def get_directions_3d():
+    '''
+    speed is not an issue here, but clarity and bug-free-ness is
+    Writing this 'by hand' could introduce bugs, so instead make 
+    use of the 2d version with a loop for each z-direction
+    '''
+    directions_2d = get_directions_2d()
+
+    dir1 = [[direction[0], direction[1], -1] for direction in directions_2d]
+    dir2 = [[direction[0], direction[1], 0] for direction in directions_2d]
+    dir3 = [[direction[0], direction[1], 1] for direction in directions_2d]
+
+    return dir1 + dir2 + dir3
+
+
 def line_features_2d(observed_tsdf, known_filled):
     '''
     given an input image, computes the line features for each direction 
@@ -19,16 +49,7 @@ def line_features_2d(observed_tsdf, known_filled):
     input_im[known_filled==1] = 1
 
     # generating numpy array of directions
-    itertools_directions = itertools.product([-1, 0, 1], repeat=2)
-    directions = np.array(list(itertools_directions)).astype(np.int32)
-
-    # removing the [0, 0, 0] entry
-    to_remove = np.sum(np.abs(directions), 1) == 0
-    directions = directions[~to_remove]
-
-    # sorting array by the angle (polar coordinates representation)
-    idxs = np.argsort((np.arctan2(directions[:, 1], directions[:, 0])))
-    directions = directions[idxs]
+    directions = np.array(get_directions_2d()).astype(np.int32)
 
     # computing the actual features using the cython code
     all_distances = []
@@ -41,7 +62,6 @@ def line_features_2d(observed_tsdf, known_filled):
 
     # returning the data as specified
     return all_distances, all_observed
-
 
 
 def feature_pairs(observed_tsdf, known_filled,  gt_tsdf, samples=-1):
@@ -76,4 +96,33 @@ def feature_pairs(observed_tsdf, known_filled,  gt_tsdf, samples=-1):
 
 
 
+
+def line_features_3d(known_empty_voxels, known_full_voxels):
+    #Not done yet!
+    '''
+    given an input image, computes the line features for each direction 
+    and concatenates them somehow
+    perhaps give options for how the features get returned, e.g. as 
+    (H*W)*N or as a list...
+    '''
+    input_im = known_full_voxels.blank_copy()
+    input_im.V += -1
+    input_im.V[known_full_voxels.V==1] = 1
+    input_im.V[known_empty_voxels.V==1] = 0
+
+    # generating numpy array of directions
+    # note that in my coordinate system, up is k
+    directions = np.array(get_directions_3d()).astype(np.int32)
+
+    # computing the actual features using the cython code
+    all_distances = []
+    all_observed = []
+    for direction in directions:
+        distances, observed = line_casting_cython.outer_loop(input_im.V, direction)
+        distances[distances==-1] = out_of_range_value
+        all_distances.append(distances)
+        all_observed.append(observed)
+
+    # returning the data as specified
+    return all_distances, all_observed
 
