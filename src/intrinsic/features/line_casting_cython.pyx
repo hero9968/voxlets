@@ -109,7 +109,7 @@ def outer_loop(np.ndarray[double, ndim=2] input_im, np.ndarray[int, ndim=1] dire
 
 
 
-def inner_loop_3d(np.ndarray[double, ndim=3] input_im, 
+def inner_loop_3d(np.ndarray[np.int8_t, ndim=3] input_im, 
                 int start_row,
                 int start_col,
                 int start_slice,
@@ -170,7 +170,7 @@ def inner_loop_3d(np.ndarray[double, ndim=3] input_im,
 
 
 
-def outer_loop_3d(np.ndarray[double, ndim=3] input_im, np.ndarray[int, ndim=1] direction):
+def outer_loop_3d(np.ndarray[np.int8_t, ndim=3] input_im, np.ndarray[int, ndim=1] direction):
     '''
     given an input image and a direction in which to go, does all of the iterations
     '''
@@ -196,7 +196,7 @@ def outer_loop_3d(np.ndarray[double, ndim=3] input_im, np.ndarray[int, ndim=1] d
         # start at all locations on bottom face
         for col in xrange(W):
             for sslice in xrange(D):
-                inner_loop(input_im, H-1, col, sslice, direction, output_im, observed_to_be_full)
+                inner_loop_3d(input_im, H-1, col, sslice, direction, output_im, observed_to_be_full)
 
 
     ##################################################
@@ -204,13 +204,13 @@ def outer_loop_3d(np.ndarray[double, ndim=3] input_im, np.ndarray[int, ndim=1] d
         # start at all locations on left face
         for row in xrange(H):
             for sslice in xrange(D):
-                inner_loop(input_im, row, 0, sslice, direction, output_im, observed_to_be_full)
+                inner_loop_3d(input_im, row, 0, sslice, direction, output_im, observed_to_be_full)
 
     elif direction[1] < 0:
         # start at all locations on right face
         for row in xrange(H):
             for sslice in xrange(D):
-                inner_loop(input_im, row, W-1, sslice, direction, output_im, observed_to_be_full)
+                inner_loop_3d(input_im, row, W-1, sslice, direction, output_im, observed_to_be_full)
 
 
     ##################################################
@@ -218,13 +218,13 @@ def outer_loop_3d(np.ndarray[double, ndim=3] input_im, np.ndarray[int, ndim=1] d
         # start at all locations on front face
         for row in xrange(H):
             for col in xrange(W):
-                inner_loop(input_im, row, col, 0, direction, output_im, observed_to_be_full)
+                inner_loop_3d(input_im, row, col, 0, direction, output_im, observed_to_be_full)
 
     elif direction[2] < 0:
         # start at all locations on back face
         for row in xrange(H):
             for col in xrange(W):
-                inner_loop(input_im, row, col, D-1, direction, output_im, observed_to_be_full)
+                inner_loop_3d(input_im, row, col, D-1, direction, output_im, observed_to_be_full)
 
 
     return output_im, observed_to_be_full
