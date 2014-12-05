@@ -1017,6 +1017,8 @@ class VoxMetricsTSDF(object):
 def expanded_grid(original_grid, expand_amount=0.05):
 	'''
 	returns a grid like the origin but which is expanded by padding amount in each dimension
+	NOTE that this is actually shitty as it also introduces a constant (/2) and other stuff.
+	Try to improve this TODO TODO
 	'''
 
 	# pad the gt grid slightly
@@ -1027,7 +1029,6 @@ def expanded_grid(original_grid, expand_amount=0.05):
 	voxlet_size = paths.voxlet_size/2.0
 	grid_dims_in_real_world = grid_end - grid_origin
 	V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
-	print V_shape
 
 	accum = WorldVoxels()
 	accum.V = np.zeros(V_shape, original_grid.V.dtype)
@@ -1049,7 +1050,6 @@ def expanded_grid_accum(original_grid, expand_amount=0.05):
 	voxlet_size = paths.voxlet_size/2.0
 	grid_dims_in_real_world = grid_end - grid_origin
 	V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
-	print V_shape
 
 	accum = UprightAccumulator(V_shape)
 	accum.set_origin(grid_origin)
@@ -1100,6 +1100,10 @@ def get_known_full_grid(im, vgrid):
 
 	# populate the output grid
 	world_xyz = im.get_world_xyz()
+
+	to_ignore = im.normals[:, 2] > -0.5
+	world_xyz = world_xyz[~to_ignore, :]
+
 	idx = known_full_V.world_to_idx(world_xyz)
 	known_full_V.set_idxs(idx, values=1, check_bounds=True)
 
