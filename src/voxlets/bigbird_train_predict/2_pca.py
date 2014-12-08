@@ -22,17 +22,6 @@ if small_sample:
 # save path
 f = open(paths.voxlet_pca_path, 'wb')
 
-def pca_1(X_in, num_pca_dims):
-
-    rand_exs = np.sort(np.random.choice(X_in.shape[0], np.minimum(subsample_length, X_in.shape[0]), replace=False))
-    X = X_in.take(rand_exs, 0)
-
-    X = X - np.tile(np.mean(X, 0), (X.shape[0], 1))
-    (l, M) = np.linalg.eig(np.dot(X.T, X))
-    X_ds = np.dot(X, M[:, 0:num_pca_dims])
-    return X_ds
-
-
 def pca_randomized(X_in, num_pca_dims):
 
     # take subsample
