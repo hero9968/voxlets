@@ -1,7 +1,4 @@
-'''
-idea is to load a depth image, and for each pixel work out the dictionary item which belongs to it
-the ultimate aim is to be able to create a training set based on the dictionary
-'''
+
 import sys
 sys.path.append('/Users/Michael/projects/shape_sharing/src/')
 from common import paths

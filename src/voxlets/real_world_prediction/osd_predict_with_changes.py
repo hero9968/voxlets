@@ -16,7 +16,6 @@ from common import voxel_data
 from common import mesh
 from common import images
 from common import features
-from thickness_regress import combine_data
 import reconstructer
 
 ############################################################
