@@ -14,13 +14,13 @@ from common import images
 from features import line_casting
 
 # setting up paths here
-rf_path = paths.base_path + '/implicit/bigbird/rf/rf_shallow.pkl'
+rf_path = paths.base_path + '/implicit/bigbird/rf/rf_shallow_rotated.pkl'
 
 print "Loading model"
 rf = pickle.load(open(rf_path, 'rb'))
 
-intrinsic_save_path = paths.base_path + '/implicit/bigbird/predictions/%s_%s.mat'
-intrinsic_img_save_path = paths.base_path + '/implicit/bigbird/predictions/%s_%s.png'
+intrinsic_save_path = paths.base_path + '/implicit/bigbird/predictions_rotated/%s_%s.mat'
+intrinsic_img_save_path = paths.base_path + '/implicit/bigbird/predictions_rotated/%s_%s.png'
 
 
 def plot_slice(V):
@@ -86,7 +86,7 @@ for modelname in paths.test_names:
 
         # extracting features
         X, Y = line_casting.feature_pairs_3d(known_empty_voxels, 
-            known_full_voxels, gt_tsdf_V, samples=-1, base_height=15)
+            known_full_voxels, gt_tsdf_V, samples=-1, base_height=15, autorotate=True)
 
         # making prediction
         Y_pred = rf.predict(X)
@@ -96,7 +96,14 @@ for modelname in paths.test_names:
                                                 known_full_voxels.V.flatten() == 0)
         pred_grid = expanded_gt.blank_copy()
         pred_grid.V = pred_grid.V.astype(np.float64) + 0.03
-        pred_grid.set_indicated_voxels(unknown_voxel_idxs, Y_pred)
+        print np.sum(known_empty_voxels.V.flatten())
+        print np.sum(known_empty_voxels.V.flatten())
+        print unknown_voxel_idxs.shape
+        print np.sum(unknown_voxel_idxs==1)
+        print Y_pred.shape
+        print Y_pred.dtype
+        print pred_grid.V.shape
+        pred_grid.set_indicated_voxels(unknown_voxel_idxs==1, Y_pred)
 
         # saving
         "Saving result to disk"

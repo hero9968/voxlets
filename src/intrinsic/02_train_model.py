@@ -11,8 +11,8 @@ import sys, os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
 
-load_path_template = paths.base_path + '/implicit/bigbird/training_data/%s_%s.mat'
-rf_save_path = paths.base_path + '/implicit/bigbird/rf/rf_shallow.pkl'
+load_path_template = paths.base_path + '/implicit/bigbird/training_data_rotated/%s_%s.mat'
+rf_save_path = paths.base_path + '/implicit/bigbird/rf/rf_shallow_rotated.pkl'
 
 all_X = []
 all_Y = []

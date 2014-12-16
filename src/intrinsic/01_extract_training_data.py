@@ -12,7 +12,7 @@ from common import voxel_data
 from common import images
 from features import line_casting
 
-save_path_template = paths.base_path + '/implicit/bigbird/training_data/%s_%s.mat'
+save_path_template = paths.base_path + '/implicit/bigbird/training_data_rotated/%s_%s.mat'
 
 
 for modelname in paths.modelnames:
@@ -44,7 +44,7 @@ for modelname in paths.modelnames:
         gt_tsdf_V = expanded_gt.compute_tsdf(0.03)
 
         X, Y = line_casting.feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf_V,
-                                             samples=200, base_height=15)
+                                             samples=200, base_height=15, autorotate=True)
 
         print "Done view " + view_idx + " with shapes " + str(X.shape) + " " + str(Y.shape)
         print "Saving to " + save_name

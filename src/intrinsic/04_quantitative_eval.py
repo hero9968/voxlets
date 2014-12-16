@@ -12,7 +12,7 @@ all_pres = []
 all_rec = []
 all_auc = []
 
-intrinsic_save_path = paths.base_path + '/implicit/bigbird/predictions/%s_%s.mat'
+intrinsic_save_path = paths.base_path + '/implicit/bigbird/predictions_rotated/%s_%s.mat'
 
 # now will use this prediction to reconstruct one of the original objects from an image
 for modelname in paths.test_names:
