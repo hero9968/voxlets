@@ -96,13 +96,51 @@ def feature_pairs(observed_tsdf, known_filled,  gt_tsdf, samples=-1):
     return X, Y
 
 
-def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
+def autorotate_3d_features(distances, observed):
+    '''
+    circshifts the feature vector about the z-axis such that the
+    direction in the horizontal plane which hits an observed voxel
+    first is the first feature given.
+    hardcodes the ordering of the features so be careful!
+    feature parts are: a[0], a[1:9], a[9:17], a[17:25], a[25]
+    '''
+    assert(distances.shape[0] == 26)
+    assert(observed.shape[0] == 26) 
+
+    # extracting the distances which are horizontal
+    observed_subpart = observed[9:17]
+    distances_subpart = distances[9:17].copy()
+
+    # setting those distances which don't hit oberserved geometry to be very large
+    distances_subpart[observed_subpart!=1] = 1e6
+    
+    # find the minimum of all the distances now
+    min_direction_idx = np.argmin(distances_subpart)
+    print "min direction idx is " + str(min_direction_idx)
+
+    # now rotate all the points
+    observed[1:9] = np.roll(observed[1:9], -min_direction_idx)
+    observed[9:17] = np.roll(observed[9:17], -min_direction_idx)
+    observed[17:25] = np.roll(observed[17:25], -min_direction_idx)
+
+    distances[1:9] = np.roll(distances[1:9], -min_direction_idx)
+    distances[9:17] = np.roll(distances[9:17], -min_direction_idx)
+    distances[17:25] = np.roll(distances[17:25], -min_direction_idx)
+
+    return distances, observed
+
+
+
+
+
+def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autorotate=False):
     #Not done yet!
     '''
     given an input image, computes the line features for each direction 
     and concatenates them somehow
     perhaps give options for how the features get returned, e.g. as 
     (H*W)*N or as a list...
+    autorotate decides if the feature vectors are circshifted so the closest point is at the start...
     '''
     # remove the base voxels
     known_empty_voxels.V = known_empty_voxels.V[:, :, base_height:]
@@ -127,12 +165,15 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
     for direction in directions:
         distances, observed = line_casting_cython.outer_loop_3d(input_im.V.astype(np.int8), direction)
         
-        # scaling distances so they are equal in real-world terms
+        # scaling distances so they are equal in real-world terms (note np.linalg.norm returns a float)
         distances = (distances.astype(np.float) *  np.linalg.norm(direction)).astype(np.int32)
 
         # dealing with out of range distances
         distances[distances==-1] = out_of_range_value
 
+        if autorotate:
+            distances, observed = autorotate_features(distances, observed)
+      
         all_distances.append(distances)
         all_observed.append(observed)
 
@@ -140,7 +181,7 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
     return all_distances, all_observed
 
 
-def feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf, samples=-1, base_height=0):
+def feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf, samples=-1, base_height=0, autorotate=False):
     '''
     samples 
         is an integer defining how many feature pairs to sample. 
@@ -150,7 +191,7 @@ def feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf, samples=-1,
         is an integer defining how many voxels to ignore from the base of the grid
     '''
     
-    all_distances, all_observed = line_features_3d(known_empty_voxels, known_full_voxels)
+    all_distances, all_observed = line_features_3d(known_empty_voxels, known_full_voxels, autorotate=autorotate)
 
     # converting computed features to reshaped numpy arrays
     N = len(all_distances)
