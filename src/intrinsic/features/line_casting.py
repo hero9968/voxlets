@@ -96,6 +96,21 @@ def feature_pairs(observed_tsdf, known_filled,  gt_tsdf, samples=-1):
     return X, Y
 
 
+def roll_rows_independently(A, r):
+    '''
+    like np.roll, but allows each row to be rolled indepentdently
+    http://stackoverflow.com/questions/20360675/roll-rows-of-a-matrix-independently
+    '''
+    rows, column_indices = np.ogrid[:A.shape[0], :A.shape[1]]
+
+    # Use always a negative shift, so that column_indices are valid.
+    # (could also use module operation)
+    r %= A.shape[1]
+    column_indices = column_indices - r[:,np.newaxis]
+
+    return  A[rows, column_indices]
+
+
 def autorotate_3d_features(distances, observed):
     '''
     circshifts the feature vector about the z-axis such that the
@@ -104,33 +119,29 @@ def autorotate_3d_features(distances, observed):
     hardcodes the ordering of the features so be careful!
     feature parts are: a[0], a[1:9], a[9:17], a[17:25], a[25]
     '''
-    assert(distances.shape[0] == 26)
-    assert(observed.shape[0] == 26) 
+    assert(distances.shape[1] == 26)
+    assert(observed.shape[1] == 26) 
 
     # extracting the distances which are horizontal
-    observed_subpart = observed[9:17]
-    distances_subpart = distances[9:17].copy()
+    observed_subpart = observed[:, 9:17]
+    distances_subpart = distances[:, 9:17].copy()
 
     # setting those distances which don't hit oberserved geometry to be very large
     distances_subpart[observed_subpart!=1] = 1e6
     
     # find the minimum of all the distances now
-    min_direction_idx = np.argmin(distances_subpart)
-    print "min direction idx is " + str(min_direction_idx)
+    min_direction_idx = np.argmin(distances_subpart, axis=1)
 
     # now rotate all the points
-    observed[1:9] = np.roll(observed[1:9], -min_direction_idx)
-    observed[9:17] = np.roll(observed[9:17], -min_direction_idx)
-    observed[17:25] = np.roll(observed[17:25], -min_direction_idx)
+    observed[:, 1:9] = roll_rows_independently(observed[:, 1:9], -min_direction_idx)
+    observed[:, 9:17] = roll_rows_independently(observed[:, 9:17], -min_direction_idx)
+    observed[:, 17:25] = roll_rows_independently(observed[:, 17:25], -min_direction_idx)
 
-    distances[1:9] = np.roll(distances[1:9], -min_direction_idx)
-    distances[9:17] = np.roll(distances[9:17], -min_direction_idx)
-    distances[17:25] = np.roll(distances[17:25], -min_direction_idx)
+    distances[:, 1:9] = roll_rows_independently(distances[:, 1:9], -min_direction_idx)
+    distances[:, 9:17] = roll_rows_independently(distances[:, 9:17], -min_direction_idx)
+    distances[:, 17:25] = roll_rows_independently(distances[:, 17:25], -min_direction_idx)
 
     return distances, observed
-
-
-
 
 
 def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autorotate=False):
@@ -171,9 +182,6 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
         # dealing with out of range distances
         distances[distances==-1] = out_of_range_value
 
-        if autorotate:
-            distances, observed = autorotate_features(distances, observed)
-      
         all_distances.append(distances)
         all_observed.append(observed)
 
@@ -198,6 +206,7 @@ def feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf, samples=-1,
     all_distances_np = np.array(all_distances).astype(np.int16).reshape((N, -1)).T
     all_observed_np = np.array(all_observed).astype(np.int16).reshape((N, -1)).T
 
+
     # get feature pairs from the cast lines
     unknown_voxel_idxs = np.logical_and(known_empty_voxels.V.flatten() == 0,
                                         known_full_voxels.V.flatten() == 0)
@@ -205,6 +214,10 @@ def feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf, samples=-1,
 
     X1 = all_distances_np[unknown_voxel_idxs]
     X2 = all_observed_np[unknown_voxel_idxs]
+
+    if autorotate:
+        X1, X2 = autorotate_3d_features(X1, X2)
+  
     X = np.concatenate((X1, X2), axis=1)
 
     # subsample if requested
