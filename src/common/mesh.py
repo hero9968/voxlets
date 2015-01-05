@@ -59,10 +59,11 @@ class Mesh(object):
                     self.faces.append([int(f)-1 for f in split_line[1:]])
 
                 elif split_line[0] == '#':
-                    print "Comment... " + line
+                    pass
+                    #print "Comment... " + line
 
-                else:
-                    print "Unknown line: " + line
+                #else:
+                #    print "Unknown line: " + line
 
 
     def scale_mesh(self, scale):
@@ -77,7 +78,6 @@ class Mesh(object):
         centers the mesh such that the mean of the vertices is at (0, 0, 0)
         '''
         self.vertices = np.array(self.vertices)
-        print self.vertices
         self.vertices -= np.mean(self.vertices, axis=0)
 
 
@@ -138,6 +138,14 @@ class Mesh(object):
         norms = self._normalize_v3(norms)
 
         self.norms = norms
+
+
+    def range(self):
+        '''
+        returns a 1 x 3 vector giving the size along each dimension
+        '''
+        return np.max(self.vertices, axis=0) - np.min(self.vertices, axis=0)
+
 
 
         
