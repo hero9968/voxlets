@@ -6,7 +6,9 @@ import string
 obj_folderpath = os.path.expanduser('~/projects/shape_sharing/data/meshes2/models/')
 
 # seeding random
-random.seed(11)
+random.seed(121)
+
+num_to_load = 10 # in future this will be random number
 
 with open(obj_folderpath + '../all_names.txt', 'r') as f:
     models_to_use = [f.readline().strip() for ii in range(200)]
@@ -17,13 +19,15 @@ print(models_to_use)
 
 #bpy.data.scenes['Scene'].frame_end = 500
 
+# z = 13
+# x, y = -5 ... +5
+
 #######################################################
 
 def loadSingleObject(number):
     '''
     loads in a single object and puts it above the plane in a random place
     '''
-
 
     #should clear selection here
 
@@ -42,7 +46,9 @@ def loadSingleObject(number):
     # now moving it to a random position
     for obj in imported_object:
         print("Setting location")
-        obj.location = (0, 0.1*number, 10) # this will be a random position above the plane
+        x = random.random() * 1.2 - 0.6
+        y = random.random() * 1.2 - 0.6
+        obj.location = (x, y, 14) # this will be a random position above the plane
         bpy.context.scene.objects.active = obj
     
     bpy.ops.rigidbody.object_add(type='ACTIVE')
@@ -53,11 +59,13 @@ def renderScene():
     name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
     bpy.data.scenes['Scene'].render.filepath = 'data/' + name + '.png'
     bpy.ops.render.render( write_still=True )
+    return name
 
 
 #######################################################
  
-num_to_load = 10 # in future this will be random number
+
+loaded_objs = []
 
 for ii in range(num_to_load):
 
@@ -71,35 +79,38 @@ for ii in range(num_to_load):
 
     obj = loadSingleObject(ii)
 
-    obj.rigid_body.linear_damping = 0.2
-    obj.rigid_body.angular_damping = 0.2
-    obj.scale = (0.05, 0.05, 0.05)
-    obj.rigid_body.collision_shape='MESH'
-    
-    # baking the cache
-    bpy.ops.ptcache.bake_all(bake=True)
+    obj.rigid_body.linear_damping = 0.5
+    obj.rigid_body.angular_damping = 0.1
+    scale = 4
+    obj.scale = (scale, scale, scale)
+    obj.rigid_body.collision_shape='CONVEX_HULL'
 
-    # applying the transforms
-    scene = bpy.context.screen.scene
-    context = bpy.context # or whatever context you have
-    context.scene.frame_set(scene.frame_end)    
-    print(scene.frame_end)
+    loaded_objs.append(obj)
 
-    # selecting just the object
-    bpy.ops.object.select_all(action='DESELECT')
+
+# baking the cache
+bpy.ops.ptcache.bake_all(bake=True)
+
+# applying the transforms
+scene = bpy.context.screen.scene
+context = bpy.context # or whatever context you have
+context.scene.frame_set(scene.frame_end)    
+print(scene.frame_end)
+
+# selecting just the object
+bpy.ops.object.select_all(action='DESELECT')
+for obj in loaded_objs:
     obj.select = True
 
-    # applying the visual transform and setting its position to 
-    bpy.ops.object.visual_transform_apply()
-    #obj.rigid_body.type = 'PASSIVE'
+# applying the visual transform and setting its position to 
+bpy.ops.object.visual_transform_apply()
 
-    # clearing the cache?
-    bpy.ops.ptcache.free_bake_all({'scene': bpy.data.scenes['Scene']})
+# clearing the cache?
+bpy.ops.ptcache.free_bake_all({'scene': bpy.data.scenes['Scene']})
 
-    
-    
+filename = renderScene()
 
-renderScene()
+bpy.ops.wm.save_as_mainfile(filepath="data/" + filename + ".blend")
 quit()
 #bpy.ops.export_scene.obj(filepath="data/scene.obj")
 
