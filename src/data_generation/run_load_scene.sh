@@ -1,0 +1,1 @@
+/Applications/blender.app/Contents/MacOS/blender data/blank.blend  -P load_scene.py
