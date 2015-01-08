@@ -2,20 +2,35 @@ import bpy
 import sys, os
 import random
 import string
+import shutil
 
 obj_folderpath = os.path.expanduser('~/projects/shape_sharing/data/meshes/primitives/ply_files/')
 save_path = './data/renders/'
 
 # seeding random
-random.seed(20)
+# random.seed(202)
 
 min_to_load = 3 # in future this will be random number
 max_to_load = 10
+
+camera_names = ['Camera', 'Camera.001', 'Camera.002']
+frames_per_camera = [2, 2, 2]
 
 with open(obj_folderpath + '../all_names.txt', 'r') as f:
     models_to_use = [line.strip() for line in f]
 
 #######################################################
+
+def write_pose(f, camera, frame, pose):
+    '''
+    writes pose to file f in yaml format
+    '''
+    f.write('-  view:   %02d_%04d\n' % (camera, frame))
+    f.write('   camera: %02d\n' % camera)
+    f.write('   frame:  %04d\n' % frame)
+    f.write('   depth_scaling:  %f\n' % 4)
+    pose_string = '   pose:   [%f, %f, %f, %f,  %f, %f, %f, %f,  %f, %f, %f, %f]\n\n' % (pose[0][0], pose[0][1], pose[0][2], pose[0][3], pose[1][0], pose[1][1], pose[1][2], pose[1][3], pose[2][0], pose[2][1], pose[2][2], pose[2][3])
+    f.write(pose_string)
 
 def loadSingleObject(number):
     '''
@@ -30,10 +45,10 @@ def loadSingleObject(number):
     filepath = obj_folderpath + modelname
     print(filepath)
     bpy.ops.import_mesh.ply(filepath=filepath)
-    
+
     # finding which one we just loaded
     imported_object = [obj for obj in bpy.data.objects if obj.tag is False]
-    
+
     # now moving it to a random position
     for obj in imported_object:
         print("Setting location")
@@ -41,7 +56,7 @@ def loadSingleObject(number):
         y = random.random() * 1.2 - 0.6
         obj.location = (x, y, 5) # this will be a random position above the plane
         bpy.context.scene.objects.active = obj
-    
+
     bpy.ops.rigidbody.object_add(type='ACTIVE')
     return imported_object[0]
 
@@ -53,35 +68,34 @@ def renderScene():
     '''
 
     scene = bpy.data.scenes['Scene']
-    camera_names = ['Camera', 'Camera.001', 'Camera.002']
-    frames_per_camera = [2, 2, 2]
 
-    # this is the overall filename
-    name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    # this is the overall filename, a random string of characters
+    name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+    if not os.path.exists(save_path + name):
+        os.makedirs(save_path + name)
 
-    # looping over each elevation setting
-    for count, (camera, frames) in enumerate(zip(camera_names, frames_per_camera)):
+    pose_filename = save_path + name + '/poses.yaml'
+    with open(pose_filename, 'w') as pose_file_handle:
 
-        scene.camera = bpy.data.objects[camera]
-        scene.frame_end = frames
+        # looping over each elevation setting
+        for count, (camera, frames) in enumerate(zip(camera_names, frames_per_camera)):
 
-        # setting the final output filename and rendering
-        #scene.render.filepath = save_path + name + '/' + str(count) + '_####.png'
-        #CompositorNodeOutputFile.base_path = \
-        scene.node_tree.nodes['File Output'].base_path = \
-            save_path + name + '/' + str(count)
-        bpy.ops.render.render( write_still=True, animation=True )
+            scene.camera = bpy.data.objects[camera]
+            scene.frame_end = frames
 
-        # saving the camera poses
-        matrix_out = save_path + name + '/' + str(count) + '.txt'
+            # setting the final output filename and rendering
+            #scene.render.filepath = save_path + name + '/' + str(count) + '_####.png'
+            #CompositorNodeOutputFile.base_path = \
+            scene.node_tree.nodes['File Output'].base_path = \
+                save_path + name + '/' + str(count)
+            bpy.ops.render.render( write_still=True, animation=True )
 
-        with open(matrix_out, 'w') as f:
+            # saving the camera poses
             for frame in range(scene.frame_start, scene.frame_end+1):
                 scene.frame_set(frame)
-                mat = scene.camera.matrix_local
-                write_str = '%f %f %f %f  %f %f %f %f  %f %f %f %f\n' % (mat[0][0], mat[0][1], mat[0][2], mat[0][3], mat[1][0], mat[1][1], mat[1][2], mat[1][3], mat[2][0], mat[2][1], mat[2][2], mat[2][3])
-                f.write(write_str)
-
+                pose_mat = scene.camera.matrix_local
+                write_pose(pose_file_handle, count + 1, frame, pose_mat)
+                
     return name
 
 
@@ -129,15 +143,17 @@ bpy.ops.object.select_all(action='DESELECT')
 for obj in loaded_objs:
     obj.select = True
 
-# applying the visual transform and setting its position to 
 bpy.ops.object.visual_transform_apply()
 
+# need to remove physics from the objects or they will keep moving during the camera motion
 for obj in loaded_objs:
     bpy.context.scene.objects.active = obj
     bpy.ops.rigidbody.object_remove()
-# clearing the cache?
+
+# clearing the cache? (don't think I need to do this)
 #bpy.ops.ptcache.free_bake_all({'scene': bpy.data.scenes['Scene']})
 
+# moving the fish tank and the funnel out the way
 bpy.data.objects['Cube.002'].location = (0, 0, 100)
 bpy.data.objects['Cube.001'].location = (0, 0, 100)
 
@@ -146,7 +162,19 @@ filename = renderScene()
 bpy.ops.wm.save_as_mainfile(filepath=save_path + filename + "/scene.blend")
 
 '''todo here: move the files around to more sensible structure.'''
+for count, frames in enumerate(frames_per_camera):
+    for frame in range(frames):
+
+        # moving the image
+        source_path = save_path + filename + '/%d/Image%04d.png' % (count, frame + 1)
+        dest_path = save_path + filename + '/%02d_%04d.png' % (count + 1, frame + 1)
+
+        print("source path is  " + source_path)
+        print("dest path is  " + dest_path)
+
+        shutil.move(source_path, dest_path)
+
+    os.rmdir(save_path + filename + '/%d/' % count)
 
 quit()
-#bpy.ops.export_scene.obj(filepath="data/scene.obj")
-
+#erg0s0f!
