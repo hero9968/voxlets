@@ -179,6 +179,8 @@ class Camera(object):
 
     def set_extrinsics(self, H):
         '''extrinsics should be the location of the camera relative to the world origin'''
+        '''in fact these seem to be the inverse, 
+        i.e. the matrix used to project the points into the camera'''
         self.H = H
         self.inv_H = np.linalg.inv(H)
 
@@ -252,6 +254,7 @@ class Camera(object):
         temp_trans = self._apply_transformation(temp_xyz, self.K)
         temp_trans[:, 0] /= temp_trans[:, 2]
         temp_trans[:, 1] /= temp_trans[:, 2]
+        #print "In side proj points"
         return temp_trans#[:, 0:2]
 
 
