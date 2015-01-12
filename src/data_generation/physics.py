@@ -26,7 +26,7 @@ def write_pose(f, camera, frame, pose):
     '''
     writes pose to file f in yaml format
     '''
-    f.write('-  image:  %02d_%04d.png\n' % (camera, frame))
+    f.write('-  image:  images/%02d_%04d.png\n' % (camera, frame))
     f.write('   id:     %02d_%04d\n' % (camera, frame))
     f.write('   camera: %02d\n' % camera)
     f.write('   frame:  %04d\n' % frame)
@@ -133,6 +133,7 @@ def renderScene(name):
 filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 if not os.path.exists(save_path + filename):
     os.makedirs(save_path + filename)
+    os.makedirs(save_path + filename + '/images/')
 
 loaded_objs = []
 
@@ -200,7 +201,7 @@ for count, frames in enumerate(frames_per_camera):
 
         # moving the image
         source_path = save_path + filename + '/%d/Image%04d.png' % (count, frame + 1)
-        dest_path = save_path + filename + '/%02d_%04d.png' % (count + 1, frame + 1)
+        dest_path = save_path + filename + '/images/%02d_%04d.png' % (count + 1, frame + 1)
 
         print("source path is  " + source_path)
         print("dest path is  " + dest_path)
