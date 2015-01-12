@@ -9,13 +9,13 @@ save_path = './data/renders/'
 save_path_blender = '//data/renders/'
 
 # seeding random
-random.seed(202)
+random.seed(212)
 
 min_to_load = 3 # in future this will be random number
 max_to_load = 10
 
 camera_names = ['Camera', 'Camera.001', 'Camera.002']
-frames_per_camera = [20, 20, 20]
+frames_per_camera = [20, 20, 10]
 
 with open(obj_folderpath + '../all_names.txt', 'r') as f:
     models_to_use = [line.strip() for line in f]
@@ -85,17 +85,12 @@ def normalise_matrix(M):
         M[i, :] = norm(M[i, :])
     return M
 
-def renderScene():
+def renderScene(name):
     '''
     renders scene from all the rotations of all the cameras 
     also saves the camera pose matrices
     '''
     scene = bpy.data.scenes['Scene']
-
-    # this is the overall filename, a random string of characters
-    name = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-    if not os.path.exists(save_path + name):
-        os.makedirs(save_path + name)
 
     pose_filename = save_path + name + '/poses.yaml'
     with open(pose_filename, 'w') as pose_file_handle:
@@ -130,12 +125,14 @@ def renderScene():
 
                 print(np.linalg.det(pose_mat))
                 write_pose(pose_file_handle, count + 1, frame, pose_mat)
-                
-    return name
 
 
 #######################################################
  
+# this is the overall filename, a random string of characters
+filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+if not os.path.exists(save_path + filename):
+    os.makedirs(save_path + filename)
 
 loaded_objs = []
 
@@ -154,8 +151,9 @@ for ii in range(num_to_load):
 
     obj = loadSingleObject(ii)
 
-    obj.rigid_body.linear_damping = 0.5
-    obj.rigid_body.angular_damping = 0.2
+    # following values chosen by trial and error...
+    obj.rigid_body.linear_damping = 0.6
+    obj.rigid_body.angular_damping = 0.75
     obj.rigid_body.friction = 0.1
     obj.rigid_body.collision_shape='CONVEX_HULL'
 
@@ -192,7 +190,7 @@ for obj in loaded_objs:
 bpy.data.objects['Cube.002'].location = (0, 0, 100)
 bpy.data.objects['Cube.001'].location = (0, 0, 100)
 
-filename = renderScene()
+renderScene(filename)
 
 bpy.ops.wm.save_as_mainfile(filepath=save_path + filename + "/scene.blend")
 
