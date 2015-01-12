@@ -6,15 +6,16 @@ import shutil
 
 obj_folderpath = os.path.expanduser('~/projects/shape_sharing/data/meshes/primitives/ply_files/')
 save_path = './data/renders/'
+save_path_blender = '//data/renders/'
 
 # seeding random
-# random.seed(202)
+random.seed(202)
 
 min_to_load = 3 # in future this will be random number
 max_to_load = 10
 
 camera_names = ['Camera', 'Camera.001', 'Camera.002']
-frames_per_camera = [2, 2, 2]
+frames_per_camera = [2, 1, 1]
 
 with open(obj_folderpath + '../all_names.txt', 'r') as f:
     models_to_use = [line.strip() for line in f]
@@ -25,12 +26,27 @@ def write_pose(f, camera, frame, pose):
     '''
     writes pose to file f in yaml format
     '''
-    f.write('-  view:   %02d_%04d\n' % (camera, frame))
+    f.write('-  image:  %02d_%04d.png\n' % (camera, frame))
+    f.write('   id:     %02d_%04d\n' % (camera, frame))
     f.write('   camera: %02d\n' % camera)
     f.write('   frame:  %04d\n' % frame)
     f.write('   depth_scaling:  %f\n' % 4)
-    pose_string = '   pose:   [%f, %f, %f, %f,  %f, %f, %f, %f,  %f, %f, %f, %f]\n\n' % (pose[0][0], pose[0][1], pose[0][2], pose[0][3], pose[1][0], pose[1][1], pose[1][2], pose[1][3], pose[2][0], pose[2][1], pose[2][2], pose[2][3])
-    f.write(pose_string)
+
+    print(pose)
+    pose_string = '   pose:   ['
+    for ii in range(4):
+        for jj in range(4):
+            pose_string += str(pose[ii][jj]) + ', '
+    f.write(pose_string[:-2] + ']\n')
+
+    # TODO: should instead do: http://blender.stackexchange.com/questions/16472/how-can-i-get-the-cameras-projection-matrix
+    focal_length = 1159.358 # = 640 / tand(57.8deg / 2)
+    dx = 640 # = w/2
+    dy = 480 # = h/2
+    # note that matricies go across first!
+    intrinsics_string = '   intrinsics: [%f, 0, %f,   0, %f, %f,   0, 0, 1]\n\n' % ( focal_length, dx, focal_length, dy)
+    f.write(intrinsics_string)
+
 
 def loadSingleObject(number):
     '''
@@ -66,7 +82,6 @@ def renderScene():
     renders scene from all the rotations of all the cameras 
     also saves the camera pose matrices
     '''
-
     scene = bpy.data.scenes['Scene']
 
     # this is the overall filename, a random string of characters
@@ -88,12 +103,19 @@ def renderScene():
             #CompositorNodeOutputFile.base_path = \
             scene.node_tree.nodes['File Output'].base_path = \
                 save_path + name + '/' + str(count)
+
+            # trying to fix the gamma bug here....
+            scene.sequencer_colorspace_settings.name = 'Raw'
+            scene.view_settings.view_transform = 'Raw'
+
             bpy.ops.render.render( write_still=True, animation=True )
 
             # saving the camera poses
             for frame in range(scene.frame_start, scene.frame_end+1):
                 scene.frame_set(frame)
-                pose_mat = scene.camera.matrix_local
+                scene.camera.select = True
+                bpy.ops.object.visual_transform_apply()
+                pose_mat = scene.camera.matrix_world
                 write_pose(pose_file_handle, count + 1, frame, pose_mat)
                 
     return name
