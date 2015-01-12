@@ -3,7 +3,7 @@ import sys, os
 import random
 import string
 import shutil
-
+import numpy as np
 obj_folderpath = os.path.expanduser('~/projects/shape_sharing/data/meshes/primitives/ply_files/')
 save_path = './data/renders/'
 save_path_blender = '//data/renders/'
@@ -15,7 +15,7 @@ min_to_load = 3 # in future this will be random number
 max_to_load = 10
 
 camera_names = ['Camera', 'Camera.001', 'Camera.002']
-frames_per_camera = [2, 1, 1]
+frames_per_camera = [20, 20, 20]
 
 with open(obj_folderpath + '../all_names.txt', 'r') as f:
     models_to_use = [line.strip() for line in f]
@@ -40,9 +40,9 @@ def write_pose(f, camera, frame, pose):
     f.write(pose_string[:-2] + ']\n')
 
     # TODO: should instead do: http://blender.stackexchange.com/questions/16472/how-can-i-get-the-cameras-projection-matrix
-    focal_length = 1159.358 # = 640 / tand(57.8deg / 2)
-    dx = 640 # = w/2
-    dy = 480 # = h/2
+    focal_length = 579.679 # = 320 / tand(57.8deg / 2)
+    dx = 320 # = w/2
+    dy = 240 # = h/2
     # note that matricies go across first!
     intrinsics_string = '   intrinsics: [%f, 0, %f,   0, %f, %f,   0, 0, 1]\n\n' % ( focal_length, dx, focal_length, dy)
     f.write(intrinsics_string)
@@ -77,6 +77,14 @@ def loadSingleObject(number):
     return imported_object[0]
 
     
+def norm(X):
+    return X / np.sqrt(np.sum(X**2))
+
+def normalise_matrix(M):
+    for i in range(3):
+        M[i, :] = norm(M[i, :])
+    return M
+
 def renderScene():
     '''
     renders scene from all the rotations of all the cameras 
@@ -113,9 +121,14 @@ def renderScene():
             # saving the camera poses
             for frame in range(scene.frame_start, scene.frame_end+1):
                 scene.frame_set(frame)
-                scene.camera.select = True
-                bpy.ops.object.visual_transform_apply()
-                pose_mat = scene.camera.matrix_world
+                pose_mat = np.array(scene.camera.matrix_world)
+
+                # normalise matrix and convert to computer vision coordinate convention
+                pose_mat[0:3, 0:3] = normalise_matrix(pose_mat[0:3, 0:3])
+                pose_mat[0:3, 1] *= -1
+                pose_mat[0:3, 2] *= -1
+
+                print(np.linalg.det(pose_mat))
                 write_pose(pose_file_handle, count + 1, frame, pose_mat)
                 
     return name
