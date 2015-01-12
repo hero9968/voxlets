@@ -5,11 +5,7 @@ import string
 import shutil
 import numpy as np
 obj_folderpath = os.path.expanduser('~/projects/shape_sharing/data/meshes/primitives/ply_files/')
-save_path = './data/renders/'
-save_path_blender = '//data/renders/'
-
-# seeding random
-random.seed(212)
+save_path = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/renders/')
 
 min_to_load = 3 # in future this will be random number
 max_to_load = 10
