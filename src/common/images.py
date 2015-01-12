@@ -15,6 +15,7 @@ import paths
 import mesh
 import features
 
+
 class RGBDImage(object):
 
     def __init__(self):
@@ -504,6 +505,84 @@ class RealRGBD(RGBDImage):
                        self.depth.flatten())).T
 
 
+import yaml
+import os
+import time
+
+class RGBDVideo():
+    '''
+    stores and loads a sequence of RGBD frames
+    '''
+
+    def __init__(self):
+        pass
+        self.reset()
+
+
+    def reset(self):
+        self.frames = []
+
+
+    def load_from_yaml(self, folderpath, yaml_filename):
+        '''
+        loads a sequence based on a yaml file. 
+        Image files assumed to be within the specified folder.
+        A certain format of YAML is expected. See code for details!!
+        '''
+        self.reset()
+        frame_data = yaml.load(open(os.path.join(folderpath, yaml_filename), 'r'))
+
+        for count, frame in enumerate(frame_data):
+
+            # loading the image from file
+            im = RGBDImage()
+            depth_image_path = os.path.join(folderpath, frame['image'])
+            im.load_depth_from_img(depth_image_path)
+
+            # scaling im depth - unsure where I should put this!!
+            print("Max depth is %f" % np.max(im.depth))
+            print("Min depth is %f" % np.min(im.depth))
+            im.depth = im.depth.astype(float)
+            im.depth *= frame['depth_scaling']
+            im.depth /= 2**16
+
+            '''todo: scale the im depth here by the scale factor!'''
+            print("Im min max is: ")
+            print(np.max(im.depth))
+            print(np.min(im.depth))
+
+            # setting the camera intrinsics and extrinsics
+            extrinsics = np.linalg.inv(np.array(frame['pose']).reshape((4, 4)))
+            intrinsics = np.array(frame['intrinsics']).reshape((3, 3))
+
+            cam = mesh.Camera()
+            cam.set_extrinsics(extrinsics)
+            cam.set_intrinsics(intrinsics)
+            im.set_camera(cam)            
+
+            # setting the frame id
+            im.frame_id = frame['id']
+            print im.frame_id
+            im.frame_number = count
+
+            self.frames.append(im)
+
+    def play(self, fps=2.0):
+        '''
+        plays video in a shitty way.
+        Should fix this to be smooth and nice but not sure I can be bothered
+        '''
+        pause = 1.0 / float(fps)
+        
+        plt.ion()
+        fig = plt.figure()
+        im = plt.imshow(self.frames[0].depth)
+
+        for frame in self.frames:
+            im.set_data(frame.depth)
+            fig.canvas.draw()
+            plt.show()
+            time.sleep(pause)
 
 
 class CADRender(RGBDImage):
@@ -581,15 +660,3 @@ def loadcadim():
 
     plt.show()
     im.print_info()
-
-#loadcadim()
-
-#im = MaskedRGBD()
-#im.load_bigbird("coffee_mate_french_vanilla", "NP1_150")
-#im.disp_channels()
-#plt.show()
-
-
-#loadim()
-
-

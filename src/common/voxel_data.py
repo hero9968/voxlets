@@ -13,10 +13,12 @@ import copy
 from numbers import Number
 import sklearn.metrics
 
+
 class Voxels(object):
 	'''
 	voxel data base class - this will be parent of regular voxels and frustrum voxels
 	'''
+
 	def __init__(self, size, datatype):
 		'''initialise the numpy voxel grid to the correct size'''
 		assert np.prod(size) < 500e6    # check to catch excess allocation
@@ -198,6 +200,7 @@ class WorldVoxels(Voxels):
 		the voxel grid is transformed from the origin by a rotation followed by this translation
 		the rotation is a 3x3 matrix R
 		'''
+		origin = np.array(origin)
 		assert origin.shape[0] == 3
 		self.origin = origin
 		assert rotation.shape[0]==3 and rotation.shape[1]==3

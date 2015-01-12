@@ -1,1 +1,1 @@
-/Applications/blender_trunk.app/Contents/MacOS/blender physics_simulation.blend --background --python run_physics_sim.py
+/Applications/blender.app/Contents/MacOS/blender data/blank.blend -b -P physics.py
