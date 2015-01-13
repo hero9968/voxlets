@@ -12,6 +12,33 @@ from scipy.ndimage.morphology import distance_transform_edt
 import copy
 from numbers import Number
 import sklearn.metrics
+import cPickle as pickle
+
+
+def load_voxels(filename):
+	'''
+	function to load a saved voxel file from disk.
+	This function is not a class member to enable it to load an 
+	arbitrary subclass from the voxel data class heirarchy.
+	In effect it is a pickle wrapper.
+	I do not use standard pickle for this as pickle:
+		1) Uses loads of disk space and 
+		2) is slower
+	Instead I store the main voxel data array as a numpy file,
+	and store the rest of the voxel data as a pickled object
+	(The equivalent save routine of course is able to be a class member function,
+	instantiated in the base class 'Voxels')
+	'''
+	with open(filename, 'rb') as f:
+		temp = pickle.load(f)
+
+	with open(filename + '.npy', 'r') as f:
+		temp.V = np.load(f)['V']
+		#print dir(whatis)
+		#print whatis.keys
+		#print whatis.keys()
+
+	return temp
 
 
 class Voxels(object):
@@ -174,6 +201,24 @@ class Voxels(object):
 		'''
 		self.V = self.compute_tsdf(truncation).astype(np.float16)
 
+
+	def save(self, filename):
+		'''
+		serialisation routine.
+		Due to the large numpy array, pickling is very slow and produced large files 
+		Instead, we will save the numpy array as a separate file, then use pickle
+		to save the rest of the file without the voxel data 
+		'''
+		self._clear_cache()
+
+		with open(filename + '.npy', 'wb') as f:
+			np.savez_compressed(f, V=self.V)
+		
+		temp_copy = copy.deepcopy(self)
+		temp_copy.V = []
+
+		with open(filename, 'wb') as f:
+			pickle.dump(temp_copy, f)
 
 
 

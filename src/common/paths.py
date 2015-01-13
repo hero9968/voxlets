@@ -149,3 +149,13 @@ f.close()
 # some helper functions...
 def num_files_in_dir(dirname):
     return len([name for name in os.listdir(dirname) if os.path.isfile(os.path.join(dirname, name))])
+
+
+
+#### Paths for the primitive scenes
+
+scenes_location = os.path.expanduser('~/projects/shape_sharing/src/data_generation/data/renders/')
+
+# generate a list of all directories in the scenes location
+# zeroth element as top level in tree, first element to get the directories
+rendered_primitive_scenes = list(os.walk(scenes_location))[0][1]

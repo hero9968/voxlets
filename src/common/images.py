@@ -567,6 +567,7 @@ class RGBDVideo():
 
             self.frames.append(im)
 
+
     def play(self, fps=2.0):
         '''
         plays video in a shitty way.
@@ -583,6 +584,17 @@ class RGBDVideo():
             fig.canvas.draw()
             plt.show()
             time.sleep(pause)
+
+
+    def subvid(self, frame_numbers):
+        '''
+        returns a copy of this video comprised of just
+        the indicated frame numbers 
+        '''
+        vid_copy = deepcopy(self)
+        vid_copy.frames = [self.frames[frame] for frame in frame_numbers]
+        return vid_copy
+
 
 
 class CADRender(RGBDImage):
