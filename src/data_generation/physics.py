@@ -22,8 +22,8 @@ def write_pose(f, camera, frame, pose):
     '''
     writes pose to file f in yaml format
     '''
-    f.write('-  image:  images/%02d_%04d.png\n' % (camera, frame))
-    f.write('   id:     %02d_%04d\n' % (camera, frame))
+    f.write('-  image:  \'images/%02d_%04d.png\'\n' % (camera, frame))
+    f.write('   id:     \'%02d_%04d\'\n' % (camera, frame))
     f.write('   camera: %02d\n' % camera)
     f.write('   frame:  %04d\n' % frame)
     f.write('   depth_scaling:  %f\n' % 4)

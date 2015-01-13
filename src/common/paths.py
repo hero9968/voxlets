@@ -154,7 +154,7 @@ def num_files_in_dir(dirname):
 
 #### Paths for the primitive scenes
 
-scenes_location = os.path.expanduser('~/projects/shape_sharing/src/data_generation/data/renders/')
+scenes_location = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/renders/')
 
 # generate a list of all directories in the scenes location
 # zeroth element as top level in tree, first element to get the directories
