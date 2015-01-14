@@ -91,11 +91,14 @@ class Carver(VoxelAccumulator):
 class KinfuAccumulator(voxel_data.WorldVoxels):
     '''
     An accumulator which can be used for kinect fusion etc
+    valid_voxels are voxels which have been observed as empty or lie in the
+    narrow band around the surface.
     '''
     def __init__(self, gridsize, dtype=np.float16):
         self.gridsize = gridsize
         self.weights = np.zeros(gridsize, dtype=dtype)
         self.tsdf = np.zeros(gridsize, dtype=dtype)
+        self.valid_voxels = np.zeros(gridsize, dtype=bool)
 
     def update(self, valid_voxels, weight_values, tsdf_values):
         '''
@@ -121,11 +124,15 @@ class KinfuAccumulator(voxel_data.WorldVoxels):
         # assign the updated weights
         self.weights[valid_voxels] = new_weights
 
+        # update the valid voxels matrix
+        self.valid_voxels[valid_voxels] = True
+
     def get_current_tsdf(self):
         '''
         returns the current state of the tsdf
         '''
         self.V = self.tsdf
+        self.V[self.valid_voxels == False] = np.nan
         return self
 
 
@@ -155,6 +162,7 @@ class Fusion(VoxelAccumulator):
         Variables ending in _s are subsets
             i.e. typically of the same size as the number of voxels which ended
             up in the image
+        Todo - should probably incorporate the numpy.ma module
         '''
         # the accumulator, which keeps the rolling average
         accum = KinfuAccumulator(self.voxel_grid.V.shape)
@@ -172,12 +180,21 @@ class Fusion(VoxelAccumulator):
             # camera origin ray (this is *not* how kinfu does it: see ismar2011
             # eqn 6&7 for the real method, which operates along camera rays!)
             surface_to_voxel_dist_s = depth_to_voxels_s - observed_depths_s
-            truncated_distance_s = -self.truncate(surface_to_voxel_dist_s, mu)
 
             # finding indices of voxels which can be legitimately updated,
             # according to eqn 9 and the text after eqn 12
-            valid_voxels_s = surface_to_voxel_dist_s >= -mu
+            valid_voxels_s = surface_to_voxel_dist_s <= mu
 
-            accum.update(inside_image_f, valid_voxels_s, truncated_distance_s)
+            # truncating the distance
+            truncated_distance_s = -self.truncate(surface_to_voxel_dist_s, mu)
+
+            # expanding the valid voxels to be a full grid
+            valid_voxels_f = inside_image_f
+            valid_voxels_f[inside_image_f] = valid_voxels_s
+
+            truncated_distance_ss = truncated_distance_s[valid_voxels_s]
+            valid_voxels_ss = valid_voxels_s[valid_voxels_s]
+
+            accum.update(valid_voxels_f, valid_voxels_ss, truncated_distance_ss)
 
         return accum.get_current_tsdf()
