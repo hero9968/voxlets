@@ -35,10 +35,10 @@ for scenename in paths.rendered_primitive_scenes:
     vox.set_origin((-0.75, -0.75, 0))
 
     print "Performing voxel carving"
-    carver = carving.Carver()
-    carver.set_video(vid.subvid([0, 1]))
+    carver = carving.Fusion()
+    carver.set_video(vid.subvid([0, 1, 2, 3, 4]))
     carver.set_voxel_grid(vox)
-    vox = carver.carve()
+    vox = carver.fuse()
 
     savepath = paths.scenes_location + scenename + '/voxelgrid.pkl'
     print "Saving using custom routine to location %s" % savepath
