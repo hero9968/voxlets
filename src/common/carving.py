@@ -131,9 +131,13 @@ class KinfuAccumulator(voxel_data.WorldVoxels):
         '''
         returns the current state of the tsdf
         '''
-        self.V = self.tsdf
-        self.V[self.valid_voxels == False] = np.nan
-        return self
+        temp = self.copy()
+        temp.weights = []
+        temp.tsdf = []
+        temp.valid_voxels = []
+        temp.V = self.tsdf
+        temp.V[self.valid_voxels == False] = np.nan
+        return temp
 
 
 class Fusion(VoxelAccumulator):
