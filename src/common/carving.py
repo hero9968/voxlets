@@ -92,6 +92,49 @@ class Carver(VoxelAccumulator):
 
 
 
+class KinfuAccumulator(voxel_data.WorldVoxels): #
+    '''
+    An accumulator which can be used for kinect fusion etc
+    '''
+    def __init__(self, gridsize, dtype=np.float16):
+        self.gridsize = gridsize
+        self.weights = np.zeros(gridsize, dtype=dtype)
+        self.tsdf = np.zeros(gridsize, dtype=dtype)
+
+
+    def update(self, valid_voxels, weight_values, tsdf_values):
+        '''
+        updates both the weights and the tsdf with a new set of values
+        '''
+        assert(np.sum(valid_voxels) == weight_values.shape[0])
+        assert(np.sum(valid_voxels) == tsdf_values.shape[0])
+        assert(np.prod(valid_voxels.shape) == np.prod(self.gridsize))
+
+        # update the weights (no temporal smoothing...)
+        valid_voxels = valid_voxels.reshape(self.gridsize)
+        new_weights = self.weights[valid_voxels] + weight_values
+        
+        # tsdf update is more complex
+        # can only update the values of the 'valid voxels' as determined by inputs
+        valid_weights = self.weights[valid_voxels]
+        valid_tsdf = self.tsdf[valid_voxels]
+
+        numerator1 = (valid_weights * valid_tsdf)
+        numerator2 = (weight_values * tsdf_values)
+        self.tsdf[valid_voxels] = (numerator1 + numerator2) / (new_weights)
+
+        # assign the updated weights
+        self.weights[valid_voxels] = new_weights
+
+
+    def get_current_tsdf(self):
+        '''
+        returns the current state of the tsdf
+        '''
+        self.V = self.tsdf
+        return self
+    
+
 
 class Fusion(VoxelAccumulator):
     '''
@@ -99,6 +142,7 @@ class Fusion(VoxelAccumulator):
     largely uses kinect fusion algorithm (ismar2011), with some changes and simplifications
     Note that even ismar2011 do not use bilateral filtering in the fusion stage, 
     see just before section 3.4.
+    Uses a 'weights' matrix to keep a rolling average (see ismar2011 eqn 11 etc) 
     '''
 
     def truncate(self, x, truncation):
@@ -117,25 +161,20 @@ class Fusion(VoxelAccumulator):
         Variables ending in _f are full
             i.e. the same size as the full voxel grid
         Variables ending in _s are subsets
-            i.e. typically of the same size as the number of valid voxels
+            i.e. typically of the same size as the number of voxels which ended up in the image
         '''
+        # the accumulator, which keeps the rolling average        
+        accum = KinfuAccumulator(self.voxel_grid.V.shape)
 
-        # create a 'weights' matrix  (see ismar2011 eqn 11 etc)
-        weights_f = self.voxel_grid.blank_copy()
-        
         for count, im in enumerate(self.video.frames):
 
             print "\nFrame number %d with name %s" % (count, im.frame_id)
 
-            # this will store the TSDF from this image only - i.e this is F_{R_k}
-            temp_volume_f = self.voxel_grid.blank_copy()
-            temp_weights_f = self.voxel_grid.blank_copy()
-         
-            # now work out which voxels are in front of or behind the depth image
+            # work out which voxels are in front of or behind the depth image
             # and location in camera image of each voxel
             inside_image_f, uv_s, depth_to_voxels_s = self.project_voxels(im)
             all_observed_depths_s = im.depth[uv_s[:, 1], uv_s[:, 0]]
-
+ 
             # Distance between depth image and each voxel perpendicular to the camera origin ray (this 
             # is *not* how kinfu does it: see ismar2011 eqn 6&7 for the real method, 
             # which operates along the camera rays!)
@@ -146,16 +185,6 @@ class Fusion(VoxelAccumulator):
             # text after eqn 12
             valid_voxels_s = surface_to_voxel_distance_s >= -mu # i.e. voxels we learn about from this image
 
-            # could do some weight scaling here...
-            temp_weights_f.set_indicated_voxels(inside_image_f, valid_voxels_s)
-            temp_volume_f.set_indicated_voxels(inside_image_f, truncated_distance_s)
+            accum.update(inside_image_f, valid_voxels_s, truncated_distance_s)
 
-            # updating the global weights and volume (eqn 11 and 12)
-            # Assuming static scenes so do not use eqn 13.
-            numerator = ((self.voxel_grid.V * weights_f.V) + (temp_volume_f.V * temp_weights_f.V))
-            denom = (weights_f.V + temp_weights_f.V)
-            valid_voxels_reshaped_f = temp_weights_f.V.reshape(self.voxel_grid.V.shape) == 1
-            self.voxel_grid.V[valid_voxels_reshaped_f] = numerator[valid_voxels_reshaped_f] / denom[valid_voxels_reshaped_f]
-            weights_f.V += temp_weights_f.V
-
-        return self.voxel_grid
+        return accum.get_current_tsdf()
