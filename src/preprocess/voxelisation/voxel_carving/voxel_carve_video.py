@@ -11,6 +11,7 @@ TODO:
 '''
 import sys, os
 import numpy as np
+import scipy.io
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import images
@@ -22,10 +23,9 @@ from common import paths
 for scenename in paths.rendered_primitive_scenes:
 
     input_data_path = paths.scenes_location + scenename
-    pose_filename = 'poses.yaml'
 
     vid = images.RGBDVideo()
-    vid.load_from_yaml(input_data_path, pose_filename)
+    vid.load_from_yaml(input_data_path, 'poses.yaml')
     #vid.play()
 
     # initialise voxel grid (could add a helper function to make this more explicit...?)
@@ -40,6 +40,13 @@ for scenename in paths.rendered_primitive_scenes:
     carver.set_voxel_grid(vox)
     vox = carver.carve()
 
-    print "Saving using custom routine"
     savepath = paths.scenes_location + scenename + '/voxelgrid.pkl'
+    print "Saving using custom routine to location %s" % savepath
     vox.save(savepath)
+
+    savepath = paths.scenes_location + scenename + '/voxelgrid.mat'
+    print "Also saving to %s" % savepath
+    scipy.io.savemat(savepath, dict(V=vox.V))
+
+
+    break

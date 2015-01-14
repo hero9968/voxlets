@@ -159,3 +159,8 @@ scenes_location = os.path.expanduser('~/projects/shape_sharing/data/rendered_arr
 # generate a list of all directories in the scenes location
 # zeroth element as top level in tree, first element to get the directories
 rendered_primitive_scenes = list(os.walk(scenes_location))[0][1]
+
+
+split_save_location = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/splits/')
+train_location = split_save_location + 'train.yaml'
+test_location = split_save_location + 'test.yaml'

@@ -82,6 +82,16 @@ class Voxels(object):
 		self.V[binary_array.reshape(self.V.shape)] = values
 
 
+	def get_indicated_voxels(self, binary_array):
+		'''
+		helper function to set the values in V indicated in 
+		the binary array to the values given in values.
+		Question: Should values == length(binary_array) or 
+		should values == sum(binary_array)??
+		'''
+		return self.V[binary_array.reshape(self.V.shape)]
+
+
 	def get_idxs(self, ijk):
 		'''
 		helper function to get the values indicated in the nx3 ijk array
@@ -386,7 +396,9 @@ class WorldVoxels(Voxels):
 		returns a meshgrid representation of the idx positions of every voxel in grid
 		be careful if doing on large grids as can be memory expensive!
 		'''
-		has_cached = hasattr(self, '_cached_idx_meshgrid') and self._cached_idx_meshgrid.any()
+		has_cached = hasattr(self, '_cached_idx_meshgrid') and \
+			len(self._cached_idx_meshgrid) > 0 and \
+			self._cached_idx_meshgrid.any()
 		if not has_cached:
 			# 0.5 offset beacuse we ant the centre of the voxels
 			A, B, C = np.mgrid[0:self.V.shape[0], 
@@ -405,7 +417,9 @@ class WorldVoxels(Voxels):
 		returns a meshgrid representation of the idx positions of every voxel in grid
 		be careful if doing on large grids as can be memory expensive!
 		'''
-		has_cached = hasattr(self, '_cached_idx_ij_meshgrid') and self._cached_idx_ij_meshgrid.any()
+		has_cached = hasattr(self, '_cached_idx_ij_meshgrid') and \
+			len(self._cached_idx_ij_meshgrid) > 0 and \
+			self._cached_idx_ij_meshgrid.any()
 		if not has_cached:
 			# 0.5 offset beacuse we ant the centre of the voxels
 			A, B = np.mgrid[0:self.V.shape[0], 0:self.V.shape[1]]
@@ -422,7 +436,9 @@ class WorldVoxels(Voxels):
 		in the grid, transformed into world space!
 		Makes use of caching which could be dangerous... be careful!
 		'''
-		has_cached = hasattr(self, '_cached_world_meshgrid') and self._cached_world_meshgrid.any()
+		has_cached = hasattr(self, '_cached_world_meshgrid') and \
+			len(self._cached_world_meshgrid) > 0 and \
+			self._cached_world_meshgrid.any()
 		if not has_cached:
 			idx = self.idx_meshgrid()
 			self._cached_world_meshgrid = self.idx_to_world(idx)
@@ -436,7 +452,9 @@ class WorldVoxels(Voxels):
 		in the grid, transformed into world space!
 		Makes use of caching which could be dangerous... be careful!
 		'''
-		has_cached = hasattr(self, '_cached_world_xy_meshgrid') and self._cached_world_xy_meshgrid.any()
+		has_cached = hasattr(self, '_cached_world_xy_meshgrid') and \
+			len(self._cached_world_xy_meshgrid) > 0 and \
+			self._cached_world_xy_meshgrid.any()
 		if not has_cached:
 			idx = self.idx_ij_meshgrid()
 			self._cached_world_xy_meshgrid = self.idx_to_world(idx)
