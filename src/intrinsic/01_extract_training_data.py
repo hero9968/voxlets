@@ -17,7 +17,7 @@ save_path_template = paths.base_path + '/implicit/bigbird/training_data_rotated/
 
 for modelname in paths.modelnames:
 
-    # load in the ground truth voxel grid 
+    # load in the ground truth voxel grid
     gt_grid = voxel_data.BigBirdVoxels()
     gt_grid.load_bigbird(modelname)
 

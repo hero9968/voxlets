@@ -14,6 +14,7 @@ import numpy as np
 import scipy.io
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic/'))
 from common import images
 from common import voxel_data
 from common import carving
@@ -22,7 +23,7 @@ from common import paths
 # doing a loop here to loop over all possible files...
 for scenename in paths.rendered_primitive_scenes:
 
-    input_data_path = paths.scenes_location + scenename
+    input_data_path = paths.scenes_location + scenename + '/'
 
     vid = images.RGBDVideo()
     vid.load_from_yaml(input_data_path, 'poses.yaml')
@@ -32,21 +33,18 @@ for scenename in paths.rendered_primitive_scenes:
     vox = voxel_data.WorldVoxels()
     vox.V = np.zeros((150, 150, 75), np.float32)
     vox.set_voxel_size(0.01)
-    vox.set_origin((-0.75, -0.75, 0))
+    vox.set_origin((-0.75, -0.75, -0.03))
 
     print "Performing voxel carving"
     carver = carving.Fusion()
-    carver.set_video(vid.subvid([0, 1, 2, 3, 4]))
+    carver.set_video(vid)
     carver.set_voxel_grid(vox)
     vox = carver.fuse()
 
-    savepath = paths.scenes_location + scenename + '/voxelgrid.pkl'
+    savepath = paths.scenes_location + scenename + 'voxelgrid.pkl'
     print "Saving using custom routine to location %s" % savepath
     vox.save(savepath)
 
-    savepath = paths.scenes_location + scenename + '/voxelgrid.mat'
-    print "Also saving to %s" % savepath
-    scipy.io.savemat(savepath, dict(V=vox.V))
-
-
-    break
+    #savepath = paths.scenes_location + scenename + '/voxelgrid2.mat'
+    #print "Also saving to %s" % savepath
+    #scipy.io.savemat(savepath, dict(V=vox.V))
