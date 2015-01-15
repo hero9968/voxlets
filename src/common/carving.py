@@ -170,6 +170,9 @@ class Fusion(VoxelAccumulator):
         '''
         # the accumulator, which keeps the rolling average
         accum = KinfuAccumulator(self.voxel_grid.V.shape)
+        accum.vox_size =self.voxel_grid.vox_size
+        accum.R =self.voxel_grid.R
+        accum.origin =self.voxel_grid.origin
 
         for count, im in enumerate(self.video.frames):
 
@@ -202,3 +205,49 @@ class Fusion(VoxelAccumulator):
             accum.update(valid_voxels_f, valid_voxels_ss, truncated_distance_ss)
 
         return accum.get_current_tsdf()
+
+
+
+class VisibleVoxels(object):
+    '''
+    This class uses a voxel grid to find the visible voxels! This is a new way
+    of doing it...
+    '''
+
+    def __init__(self):
+        pass
+
+    def set_voxel_grid(self, voxel_grid):
+        self.voxel_grid = voxel_grid
+
+    def axis_aligned_zero_crossings(self, V, axis):
+        diff = np.diff(np.sign(V), axis=axis)
+
+        padding = [[0, 0], [0, 0], [0, 0]]
+        padding[axis] = [1, 0]
+        diff1 = np.pad(diff, padding, 'edge')
+
+        padding = [[0, 0], [0, 0], [0, 0]]
+        padding[axis] = [0, 1]
+        diff2 = np.pad(diff, padding, 'edge')
+
+        return np.logical_or(diff1, diff2)
+
+    def find_visible_voxels(self):
+        '''
+        finds all the zero-crossings in the voxel grid
+        must ensure only use zero-crossings in the narrow-band
+        '''
+        dx = self.axis_aligned_zero_crossings(self.voxel_grid.V, axis=0)
+        dy = self.axis_aligned_zero_crossings(self.voxel_grid.V, axis=1)
+        dz = self.axis_aligned_zero_crossings(self.voxel_grid.V, axis=2)
+
+        temp = np.logical_or.reduce((dx, dy, dz))
+        temp[np.isnan(self.voxel_grid.V)] = 0
+        temp[self.voxel_grid.V > 0.02] = 0
+
+        visible_grid = self.voxel_grid.blank_copy()
+        visible_grid.V = temp
+        return visible_grid
+
+
