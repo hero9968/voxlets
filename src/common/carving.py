@@ -176,7 +176,7 @@ class Fusion(VoxelAccumulator):
 
         for count, im in enumerate(self.video.frames):
 
-            print "\nFrame number %d with name %s" % (count, im.frame_id)
+            print "Fusing frame number %d with name %s" % (count, im.frame_id)
 
             # work out which voxels are in front of or behind the depth image
             # and location in camera image of each voxel
