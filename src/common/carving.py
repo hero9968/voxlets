@@ -157,7 +157,7 @@ class Fusion(VoxelAccumulator):
         x[x < -truncation] = -truncation
         return x
 
-    def fuse(self, mu=0.03):
+    def fuse(self, mu):
         '''
         mu is the truncation parameter. Default 0.03 as this is what PCL kinfu
         uses (measured in m).

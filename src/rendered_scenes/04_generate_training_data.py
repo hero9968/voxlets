@@ -38,7 +38,7 @@ for sequence in train_sequences:
 
     # load in the ground truth grid for this scene, and converting nans
     gt_vox = voxel_data.load_voxels(input_data_path + '/voxelgrid.pkl')
-    gt_vox.V[np.isnan(gt_vox.V)] = -0.03
+    gt_vox.V[np.isnan(gt_vox.V)] = -0.1
 
     # do the tsdf fusion from these frames
     # note the slightly strange partial_tsdf copy and overright
@@ -48,7 +48,7 @@ for sequence in train_sequences:
     carver.set_video(vid.subvid(sequence['frames']))
     partial_tsdf = gt_vox.blank_copy()
     carver.set_voxel_grid(partial_tsdf)
-    partial_tsdf = carver.fuse()
+    partial_tsdf = carver.fuse(mu=0.1)
 
     # save the grid
     partial_tsdf.save(seq_foldername + 'input_fusion.pkl')
@@ -68,7 +68,7 @@ for sequence in train_sequences:
 
     X, Y = line_casting.feature_pairs_3d(
         known_empty_voxels, known_full_voxels, gt_vox.V,
-        samples=1000, base_height=0, autorotate=False)
+        samples=10000, base_height=0, autorotate=False)
 
     training_pairs = dict(X=X, Y=Y)
     scipy.io.savemat(seq_foldername + 'training_pairs.mat', training_pairs)

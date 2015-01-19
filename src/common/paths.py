@@ -153,17 +153,19 @@ def num_files_in_dir(dirname):
 
 
 #### Paths for the primitive scenes
-
-scenes_location = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/renders/')
+rendered_arrangements_path = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/')
+scenes_location = rendered_arrangements_path + '/renders/'
 
 # generate a list of all directories in the scenes location
 # zeroth element as top level in tree, first element to get the directories
 rendered_primitive_scenes = list(os.walk(scenes_location))[0][1]
 
 
-split_save_location = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/splits/')
+split_save_location = rendered_arrangements_path + '/splits/'
 yaml_train_location = split_save_location + 'train.yaml'
 yaml_test_location = split_save_location + 'test.yaml'
 
-sequences_save_location = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/sequences/')
+sequences_save_location = rendered_arrangements_path + '/sequences/'
+test_sequences_save_location = rendered_arrangements_path + '/test_sequences/'
+implicit_models_folder = rendered_arrangements_path + '/models/'
 
