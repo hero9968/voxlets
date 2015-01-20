@@ -20,7 +20,7 @@ from common import images
 from features import line_casting
 
 print "Loading the model"
-rf_path = paths.implicit_models_folder + 'full_scan_model.pkl'
+rf_path = paths.implicit_models_folder + 'model.pkl'
 rf = pickle.load(open(rf_path, 'rb'))
 
 with open(paths.yaml_test_location, 'r') as f:
