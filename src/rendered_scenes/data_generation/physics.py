@@ -7,13 +7,13 @@ import numpy as np
 obj_folderpath = os.path.expanduser('~/projects/shape_sharing/data/meshes/primitives/ply_files/')
 save_path = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/renders/')
 
-min_to_load = 3 # in future this will be random number
-max_to_load = 10
+min_to_load = 5 # in future this will be random number
+max_to_load = 5
 
 camera_names = ['Camera', 'Camera.001', 'Camera.002']
 frames_per_camera = [20, 20, 10]
 
-with open(obj_folderpath + '../all_names.txt', 'r') as f:
+with open(obj_folderpath + '../names_to_use.txt', 'r') as f:
     models_to_use = [line.strip() for line in f]
 
 #######################################################
@@ -201,11 +201,15 @@ for count, frames in enumerate(frames_per_camera):
         # moving the image
         source_path = save_path + filename + '/%d/Image%04d.png' % (count, frame + 1)
         dest_path = save_path + filename + '/images/%02d_%04d.png' % (count + 1, frame + 1)
+        shutil.move(source_path, dest_path)
+
+        source_path = save_path + filename + '/%d/ColourImage%04d.png' % (count, frame + 1)
+        dest_path = save_path + filename + '/images/colour_%02d_%04d.png' % (count + 1, frame + 1)
+        shutil.move(source_path, dest_path)
 
         print("source path is  " + source_path)
         print("dest path is  " + dest_path)
 
-        shutil.move(source_path, dest_path)
 
     os.rmdir(save_path + filename + '/%d/' % count)
 
