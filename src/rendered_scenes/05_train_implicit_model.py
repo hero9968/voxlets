@@ -10,19 +10,24 @@ import sklearn.ensemble
 import cPickle as pickle
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic/'))
 from common import paths
+from common import voxel_data
+from common import carving
+from features import line_casting
 
-with open(paths.yaml_train_location, 'r') as f:
-    train_sequences = yaml.load(f)
+print len(paths.rendered_primitive_scenes)
+scene_names_to_use = paths.rendered_primitive_scenes#[:num_scenes_to_use]
 
 all_X = []
 all_Y = []
 
-for sequence in train_sequences:
+for scene_name in scene_names_to_use:
 
-    # loading the data and adding to arrays
-    seq_foldername = paths.sequences_save_location + sequence['name'] + '/'
-    training_pair = scipy.io.loadmat(seq_foldername + 'training_pairs.mat')
+    input_data_path = paths.scenes_location + scene_name
+
+    print "Loading data for %s" % scene_name
+    training_pair = scipy.io.loadmat(input_data_path + '/training_pairs.mat')
 
     all_X.append(training_pair['X'])
     all_Y.append(training_pair['Y'])
@@ -41,4 +46,5 @@ rf = sklearn.ensemble.RandomForestRegressor(
 rf.fit(all_X_np, all_Y_np)
 
 print "Saving the model"
-pickle.dump(rf, open(paths.implicit_models_folder + 'model.pkl', 'wb'))
+with open(paths.implicit_models_folder + 'full_scan_model.pkl', 'wb') as f:
+    pickle.dump(rf, f)

@@ -5,7 +5,7 @@ fusion/carving
 '''
 import numpy as np
 import voxel_data
-
+from copy import deepcopy
 
 class VoxelAccumulator(object):
     '''
@@ -168,11 +168,16 @@ class Fusion(VoxelAccumulator):
             up in the image
         Todo - should probably incorporate the numpy.ma module
         '''
-        # the accumulator, which keeps the rolling average
+        # the kinfu accumulator, which keeps the rolling average
         accum = KinfuAccumulator(self.voxel_grid.V.shape)
-        accum.vox_size =self.voxel_grid.vox_size
-        accum.R =self.voxel_grid.R
-        accum.origin =self.voxel_grid.origin
+        accum.vox_size = self.voxel_grid.vox_size
+        accum.R = self.voxel_grid.R
+        accum.origin = self.voxel_grid.origin
+
+        # another grid to store which voxels are visible, i.e on the surface
+        visible_voxels = self.voxel_grid.blank_copy()
+        visible_voxels.V = visible_voxels.V.astype(bool)
+
 
         for count, im in enumerate(self.video.frames):
 
@@ -196,29 +201,49 @@ class Fusion(VoxelAccumulator):
             truncated_distance_s = -self.truncate(surface_to_voxel_dist_s, mu)
 
             # expanding the valid voxels to be a full grid
-            valid_voxels_f = inside_image_f
+            valid_voxels_f = deepcopy(inside_image_f)
             valid_voxels_f[inside_image_f] = valid_voxels_s
 
             truncated_distance_ss = truncated_distance_s[valid_voxels_s]
             valid_voxels_ss = valid_voxels_s[valid_voxels_s]
 
-            accum.update(valid_voxels_f, valid_voxels_ss, truncated_distance_ss)
+            accum.update(
+                valid_voxels_f, valid_voxels_ss, truncated_distance_ss)
 
-        return accum.get_current_tsdf()
+            # now update the visible voxels - the array which says which voxels
+            # are on the surface. I would like this to be automatically
+            # extracted from the tsdf grid at the end but I failed to get this
+            # to work properly (using the VisibleVoxels class below...) so
+            # instead I will make it work here.
+            voxels_visible_in_image_s = \
+                np.abs(surface_to_voxel_dist_s) < np.sqrt(2) * self.voxel_grid.vox_size
 
+            visible_voxels_f = inside_image_f
+            visible_voxels_f[inside_image_f] = voxels_visible_in_image_s
+
+            visible_voxels.set_indicated_voxels(visible_voxels_f, 1)
+
+        return accum.get_current_tsdf(), visible_voxels
+
+
+import scipy.io
 
 
 class VisibleVoxels(object):
     '''
     This class uses a voxel grid to find the visible voxels! This is a new way
     of doing it...
+    NOTE - it doesn't seem to really work!
     '''
 
     def __init__(self):
+        raise Exception("This class doesn't seem to work"\
+            " so I would not rely on it...")
         pass
 
     def set_voxel_grid(self, voxel_grid):
         self.voxel_grid = voxel_grid
+        self.voxel_grid.V[np.isnan(self.voxel_grid.V)] = 0
 
     def axis_aligned_zero_crossings(self, V, axis):
         diff = np.diff(np.sign(V), axis=axis)
@@ -238,16 +263,18 @@ class VisibleVoxels(object):
         finds all the zero-crossings in the voxel grid
         must ensure only use zero-crossings in the narrow-band
         '''
+        # self.voxel_grid[np.isnan(self.voxel_grid)] =
         dx = self.axis_aligned_zero_crossings(self.voxel_grid.V, axis=0)
         dy = self.axis_aligned_zero_crossings(self.voxel_grid.V, axis=1)
         dz = self.axis_aligned_zero_crossings(self.voxel_grid.V, axis=2)
 
         temp = np.logical_or.reduce((dx, dy, dz))
+        temp[self.voxel_grid.V > 0.09] = 0
+        temp[self.voxel_grid.V < -0.09] = 0
         temp[np.isnan(self.voxel_grid.V)] = 0
-        temp[self.voxel_grid.V > 0.02] = 0
+
+        scipy.io.savemat('/tmp/temp.mat', {'temp': temp.astype(np.float32)})
 
         visible_grid = self.voxel_grid.blank_copy()
         visible_grid.V = temp
-        return visible_grid
-
-
+        return visible_grid, dx, dy, dz

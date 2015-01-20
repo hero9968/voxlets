@@ -173,7 +173,7 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
 
         # dealing with out of range distances
         distances[distances==-1] = out_of_range_value
-        #scipy.io.savemat('/tmp/distances%03d.mat' % count, dict(distances=distances))
+        scipy.io.savemat('/tmp/distances%03d.mat' % count, dict(distances=distances))
 
         if autorotate:
             distances, observed = autorotate_features(distances, observed)
@@ -185,7 +185,9 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
     return all_distances, all_observed
 
 
-def feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf, samples=-1, base_height=0, autorotate=False):
+def feature_pairs_3d(
+    known_empty_voxels, known_full_voxels, gt_tsdf,
+    samples=-1, base_height=0, autorotate=False, all_voxels=False):
     '''
     samples
         is an integer defining how many feature pairs to sample.
@@ -204,12 +206,17 @@ def feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf, samples=-1,
     all_observed_np = np.array(all_observed).astype(np.int16).reshape((N, -1)).T
 
     # get feature pairs from the cast lines
-    unknown_voxel_idxs = np.logical_and(known_empty_voxels.V.flatten() == 0,
-                                        known_full_voxels.V.flatten() == 0)
-    Y = gt_tsdf.flatten()[unknown_voxel_idxs]
+    if all_voxels:
+        voxels_to_use = np.ones(gt_tsdf.flatten().shape, dtype=bool)
+    else:
+        voxels_to_use = np.logical_and(
+            known_empty_voxels.V.flatten() == 0,
+            known_full_voxels.V.flatten() == 0)
 
-    X1 = all_distances_np[unknown_voxel_idxs]
-    X2 = all_observed_np[unknown_voxel_idxs]
+    Y = gt_tsdf.flatten()[voxels_to_use]
+
+    X1 = all_distances_np[voxels_to_use]
+    X2 = all_observed_np[voxels_to_use]
     X = np.concatenate((X1, X2), axis=1)
 
     # subsample if requested

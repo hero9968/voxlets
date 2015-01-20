@@ -51,7 +51,7 @@ def loadSingleObject(number):
     # setting tags of existing objs so we know which object we have loaded in
     for obj in bpy.data.objects:
         obj.tag = True
-    
+
     # loading in the new model
     modelname = random.choice(models_to_use)
     filepath = obj_folderpath + modelname
@@ -72,7 +72,7 @@ def loadSingleObject(number):
     bpy.ops.rigidbody.object_add(type='ACTIVE')
     return imported_object[0]
 
-    
+
 def norm(X):
     return X / np.sqrt(np.sum(X**2))
 
@@ -83,7 +83,7 @@ def normalise_matrix(M):
 
 def renderScene(name):
     '''
-    renders scene from all the rotations of all the cameras 
+    renders scene from all the rotations of all the cameras
     also saves the camera pose matrices
     '''
     scene = bpy.data.scenes['Scene']
@@ -101,6 +101,9 @@ def renderScene(name):
             #scene.render.filepath = save_path + name + '/' + str(count) + '_####.png'
             #CompositorNodeOutputFile.base_path = \
             scene.node_tree.nodes['File Output'].base_path = \
+                save_path + name + '/' + str(count)
+
+            scene.node_tree.nodes['File Output.001'].base_path = \
                 save_path + name + '/' + str(count)
 
             # trying to fix the gamma bug here....
@@ -124,7 +127,7 @@ def renderScene(name):
 
 
 #######################################################
- 
+
 # this is the overall filename, a random string of characters
 filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 if not os.path.exists(save_path + filename):
@@ -144,7 +147,7 @@ for ii in range(num_to_load):
     context = bpy.context # or whatever context you have
     bpy.ops.ptcache.free_bake_all({'scene': bpy.data.scenes['Scene']})
     scene = bpy.context.screen.scene
-    context.scene.frame_set(scene.frame_start)    
+    context.scene.frame_set(scene.frame_start)
 
     obj = loadSingleObject(ii)
 
@@ -165,7 +168,7 @@ bpy.ops.ptcache.bake_all(bake=True)
 # applying the transforms
 scene = bpy.context.screen.scene
 context = bpy.context # or whatever context you have
-context.scene.frame_set(scene.frame_end)    
+context.scene.frame_set(scene.frame_end)
 print(scene.frame_end)
 
 # selecting just the object

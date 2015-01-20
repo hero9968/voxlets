@@ -146,28 +146,24 @@ def inner_loop_3d(
     D = input_im.shape[2]
 
     # special indicator to signify inifinity   np.iinfo(np.int32).max
-    cumsum = -1
+    cumsum = 50
     observed_to_be_full = 0
 
     # doing full check is unnecessary for certain directions - this could be
     # optimised
     while i >= 0 and j >= 0 and k >= 0 and i < H and j < W and k < D:
-        # this is the test which is used to decide when to start counting
+
+        # continue to increase count regardless of where we are...
+        cumsum += 1
+
         if input_im[i, j, k] == 0:
-            # this is voxel known to be empty
-            cumsum = 0
             observed_to_be_full = 0
 
-        else:
-            if cumsum != -1:
-                # voxels either observed to be full OR unknown
-                # check for -1 checks whether should be accumulating or not...
-                cumsum += 1
-
-            if input_im[i, j, k] == 1:
-                # voxel observed by the camera
-                # variable stays true until encounter a voxel known to be empty
-                observed_to_be_full = 1
+        elif input_im[i, j, k] == 1:
+            # voxel observed by the camera
+            # variable stays true until encounter a voxel known to be empty
+            observed_to_be_full = 1
+            cumsum = 0
 
         output_im[i, j, k] = cumsum
         observed_indicator[i, j, k] = observed_to_be_full
