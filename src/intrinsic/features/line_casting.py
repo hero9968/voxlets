@@ -3,7 +3,7 @@ import line_casting_cython
 import itertools
 import copy
 import scipy.ndimage
-out_of_range_value = 100
+out_of_range_value = 500
 
 
 def get_directions_2d():
@@ -24,7 +24,7 @@ def get_directions_2d():
 def get_directions_3d():
     '''
     speed is not an issue here, but clarity and bug-free-ness is
-    Writing this 'by hand' could introduce bugs, so instead make 
+    Writing this 'by hand' could introduce bugs, so instead make
     use of the 2d version with a loop for each z-direction
     '''
     directions_2d = get_directions_2d()
@@ -38,9 +38,9 @@ def get_directions_3d():
 
 def line_features_2d(observed_tsdf, known_filled):
     '''
-    given an input image, computes the line features for each direction 
+    given an input image, computes the line features for each direction
     and concatenates them somehow
-    perhaps give options for how the features get returned, e.g. as 
+    perhaps give options for how the features get returned, e.g. as
     (H*W)*N or as a list...
     '''
 
@@ -67,8 +67,8 @@ def line_features_2d(observed_tsdf, known_filled):
 
 def feature_pairs(observed_tsdf, known_filled,  gt_tsdf, samples=-1):
     '''
-    samples 
-        is an integer defining how many feature pairs to sample. 
+    samples
+        is an integer defining how many feature pairs to sample.
         If samples==-1, all feature pairs are returned
     '''
 
@@ -119,8 +119,9 @@ def autorotate_3d_features(distances, observed):
     hardcodes the ordering of the features so be careful!
     feature parts are: a[0], a[1:9], a[9:17], a[17:25], a[25]
     '''
-    assert(distances.shape[1] == 26)
-    assert(observed.shape[1] == 26) 
+
+    assert(distances.shape[0] == 26)
+    assert(observed.shape[0] == 26)
 
     # extracting the distances which are horizontal
     observed_subpart = observed[:, 9:17]
@@ -128,7 +129,7 @@ def autorotate_3d_features(distances, observed):
 
     # setting those distances which don't hit oberserved geometry to be very large
     distances_subpart[observed_subpart!=1] = 1e6
-    
+
     # find the minimum of all the distances now
     min_direction_idx = np.argmin(distances_subpart, axis=1)
 
@@ -144,12 +145,14 @@ def autorotate_3d_features(distances, observed):
     return distances, observed
 
 
+import scipy.io
+
 def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autorotate=False):
     #Not done yet!
     '''
-    given an input image, computes the line features for each direction 
+    given an input image, computes the line features for each direction
     and concatenates them somehow
-    perhaps give options for how the features get returned, e.g. as 
+    perhaps give options for how the features get returned, e.g. as
     (H*W)*N or as a list...
     autorotate decides if the feature vectors are circshifted so the closest point is at the start...
     '''
@@ -158,6 +161,7 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
     known_full_voxels.V = known_full_voxels.V[:, :, base_height:]
 
     input_im = known_full_voxels.blank_copy()
+    input_im.V = input_im.V.astype(np.int8)
     input_im.V += -1
     input_im.V[known_empty_voxels.V==1] = 0
 
@@ -166,6 +170,8 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
         scipy.ndimage.binary_dilation(known_full_voxels.V).astype(known_full_voxels.V.dtype)
     input_im.V[dilated_known_full_voxels_V==1] = 1
 
+    #scipy.io.savemat('/tmp/input_im.mat', dict(input_im=input_im.V))
+
     # generating numpy array of directions
     # note that in my coordinate system, up is k
     directions = np.array(get_directions_3d()).astype(np.int32)
@@ -173,14 +179,18 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
     # computing the actual features using the cython code
     all_distances = []
     all_observed = []
-    for direction in directions:
+    for count, direction in enumerate(directions):
         distances, observed = line_casting_cython.outer_loop_3d(input_im.V.astype(np.int8), direction)
-        
+
         # scaling distances so they are equal in real-world terms (note np.linalg.norm returns a float)
         distances = (distances.astype(np.float) *  np.linalg.norm(direction)).astype(np.int32)
 
         # dealing with out of range distances
         distances[distances==-1] = out_of_range_value
+        #scipy.io.savemat('/tmp/distances%03d.mat' % count, dict(distances=distances))
+
+        if autorotate:
+            distances, observed = autorotate_features(distances, observed)
 
         all_distances.append(distances)
         all_observed.append(observed)
@@ -191,16 +201,17 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
 
 def feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf, samples=-1, base_height=0, autorotate=False):
     '''
-    samples 
-        is an integer defining how many feature pairs to sample. 
+    samples
+        is an integer defining how many feature pairs to sample.
         If samples==-1, all feature pairs are returned
 
     base_height
         is an integer defining how many voxels to ignore from the base of the grid
     '''
-    
+    base_path = '/Users/Michael/projects/shape_sharing/data/'\
+        'rendered_arrangements/test_sequences/dm779sgmpnihle9x/'
     all_distances, all_observed = line_features_3d(known_empty_voxels, known_full_voxels, autorotate=autorotate)
-
+    #scipy.io.savemat(base_path + 'all_distances.mat', dict(all_distances=all_distances))
     # converting computed features to reshaped numpy arrays
     N = len(all_distances)
     all_distances_np = np.array(all_distances).astype(np.int16).reshape((N, -1)).T

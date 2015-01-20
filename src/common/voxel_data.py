@@ -12,6 +12,33 @@ from scipy.ndimage.morphology import distance_transform_edt
 import copy
 from numbers import Number
 import sklearn.metrics
+import cPickle as pickle
+
+
+def load_voxels(filename):
+	'''
+	function to load a saved voxel file from disk.
+	This function is not a class member to enable it to load an
+	arbitrary subclass from the voxel data class heirarchy.
+	In effect it is a pickle wrapper.
+	I do not use standard pickle for this as pickle:
+		1) Uses loads of disk space and
+		2) is slower
+	Instead I store the main voxel data array as a numpy file,
+	and store the rest of the voxel data as a pickled object
+	(The equivalent save routine of course is able to be a class member function,
+	instantiated in the base class 'Voxels')
+	'''
+	with open(filename, 'rb') as f:
+		temp = pickle.load(f)
+
+	with open(filename + '.npy', 'r') as f:
+		temp.V = np.load(f)['V']
+		#print dir(whatis)
+		#print whatis.keys
+		#print whatis.keys()
+
+	return temp
 
 
 class Voxels(object):
@@ -47,12 +74,22 @@ class Voxels(object):
 
 	def set_indicated_voxels(self, binary_array, values):
 		'''
-		helper function to set the values in V indicated in 
+		helper function to set the values in V indicated in
 		the binary array to the values given in values.
-		Question: Should values == length(binary_array) or 
+		Question: Should values == length(binary_array) or
 		should values == sum(binary_array)??
 		'''
 		self.V[binary_array.reshape(self.V.shape)] = values
+
+
+	def get_indicated_voxels(self, binary_array):
+		'''
+		helper function to set the values in V indicated in
+		the binary array to the values given in values.
+		Question: Should values == length(binary_array) or
+		should values == sum(binary_array)??
+		'''
+		return self.V[binary_array.reshape(self.V.shape)]
 
 
 	def get_idxs(self, ijk):
@@ -94,11 +131,11 @@ class Voxels(object):
 
 	def extract_from_indices(self, idxs, check_bounds=False):
 		'''
-		helper function to extract the points referred 
+		helper function to extract the points referred
 		to by the 3D indices ;idxs
 		If check_bound is true, then will check all the idxs to see if they are valid
 		invalid idxs will get a nan returned
-		(Could also make it so invalid idxs don't get anything returned...) 
+		(Could also make it so invalid idxs don't get anything returned...)
 		'''
 		assert idxs.shape[1] == 3
 
@@ -107,8 +144,8 @@ class Voxels(object):
 			# create output array, find which are valid idxs and look up their values
 			output_array = np.nan(idxs.shape[0], 3)
 			valid_idxs = self.find_valid_idx(idx)
-			output_array[valid_idxs] = self.V[idxs[valid_idxs, 0], 
-											  idxs[valid_idxs, 1], 
+			output_array[valid_idxs] = self.V[idxs[valid_idxs, 0],
+											  idxs[valid_idxs, 1],
 											  idxs[valid_idxs, 2]]
 			return output_array
 		else:
@@ -174,6 +211,24 @@ class Voxels(object):
 		'''
 		self.V = self.compute_tsdf(truncation).astype(np.float16)
 
+
+	def save(self, filename):
+		'''
+		serialisation routine.
+		Due to the large numpy array, pickling is very slow and produced large files
+		Instead, we will save the numpy array as a separate file, then use pickle
+		to save the rest of the file without the voxel data
+		'''
+		self._clear_cache()
+
+		with open(filename + '.npy', 'wb') as f:
+			np.savez_compressed(f, V=self.V)
+
+		temp_copy = copy.deepcopy(self)
+		temp_copy.V = []
+
+		with open(filename, 'wb') as f:
+			pickle.dump(temp_copy, f)
 
 
 
@@ -249,7 +304,7 @@ class WorldVoxels(Voxels):
 		idx = np.array([line.split() for line in f]).astype(int)
 		f.close()
 		self.init_and_populate(idx)
-		
+
 
 	def idx_to_world(self, idx):
 		'''
@@ -265,7 +320,7 @@ class WorldVoxels(Voxels):
 		# rotate the grid points under the rotation R
 #       if (count_grid.R == np.eye(3)).all():
 #           scaled_rotated_idx = scaled_idx
-#       else:   
+#       else:
 		scaled_rotated_idx = np.dot(self.R, scaled_idx.T).T
 
 		# applying the real-world offset
@@ -277,7 +332,7 @@ class WorldVoxels(Voxels):
 	def world_to_idx(self, xyz, detect_out_of_range=False):
 		'''
 		converts an nx3 world coordinates, [x, y, z], to ijk locations
-		if detect_out_of_range is true, then also returns a logical array saying which are 
+		if detect_out_of_range is true, then also returns a logical array saying which are
 		in range of the grid locations
 		'''
 		assert(xyz.shape[1]==3)
@@ -288,7 +343,7 @@ class WorldVoxels(Voxels):
 		# ...scaling
 		scaled_translated_xyz = translated_xyz / self.vox_size - 0.5
 
-		# finally rotating 
+		# finally rotating
 		# note that (doing transpose twice seems to be quicker than np.dot(xyz, inv_R.T) )
 #       if (self.inv_R == np.eye(3)).all():
 #           scaled_translated_rotated_xyz = scaled_translated_xyz
@@ -341,10 +396,12 @@ class WorldVoxels(Voxels):
 		returns a meshgrid representation of the idx positions of every voxel in grid
 		be careful if doing on large grids as can be memory expensive!
 		'''
-		has_cached = hasattr(self, '_cached_idx_meshgrid') and self._cached_idx_meshgrid.any()
+		has_cached = hasattr(self, '_cached_idx_meshgrid') and \
+			len(self._cached_idx_meshgrid) > 0 and \
+			self._cached_idx_meshgrid.any()
 		if not has_cached:
 			# 0.5 offset beacuse we ant the centre of the voxels
-			A, B, C = np.mgrid[0:self.V.shape[0], 
+			A, B, C = np.mgrid[0:self.V.shape[0],
 							   0:self.V.shape[1],
 							   0:self.V.shape[2]]
 
@@ -360,7 +417,9 @@ class WorldVoxels(Voxels):
 		returns a meshgrid representation of the idx positions of every voxel in grid
 		be careful if doing on large grids as can be memory expensive!
 		'''
-		has_cached = hasattr(self, '_cached_idx_ij_meshgrid') and self._cached_idx_ij_meshgrid.any()
+		has_cached = hasattr(self, '_cached_idx_ij_meshgrid') and \
+			len(self._cached_idx_ij_meshgrid) > 0 and \
+			self._cached_idx_ij_meshgrid.any()
 		if not has_cached:
 			# 0.5 offset beacuse we ant the centre of the voxels
 			A, B = np.mgrid[0:self.V.shape[0], 0:self.V.shape[1]]
@@ -377,7 +436,9 @@ class WorldVoxels(Voxels):
 		in the grid, transformed into world space!
 		Makes use of caching which could be dangerous... be careful!
 		'''
-		has_cached = hasattr(self, '_cached_world_meshgrid') and self._cached_world_meshgrid.any()
+		has_cached = hasattr(self, '_cached_world_meshgrid') and \
+			len(self._cached_world_meshgrid) > 0 and \
+			self._cached_world_meshgrid.any()
 		if not has_cached:
 			idx = self.idx_meshgrid()
 			self._cached_world_meshgrid = self.idx_to_world(idx)
@@ -391,7 +452,9 @@ class WorldVoxels(Voxels):
 		in the grid, transformed into world space!
 		Makes use of caching which could be dangerous... be careful!
 		'''
-		has_cached = hasattr(self, '_cached_world_xy_meshgrid') and self._cached_world_xy_meshgrid.any()
+		has_cached = hasattr(self, '_cached_world_xy_meshgrid') and \
+			len(self._cached_world_xy_meshgrid) > 0 and \
+			self._cached_world_xy_meshgrid.any()
 		if not has_cached:
 			idx = self.idx_ij_meshgrid()
 			self._cached_world_xy_meshgrid = self.idx_to_world(idx)
@@ -403,14 +466,14 @@ class WorldVoxels(Voxels):
 	def fill_from_grid(self, input_grid, method='naive', combine='replace'):
 		'''
 		warps input_grid into the world space of self.
-		For all voxels in self.V which input_grid overlaps with, 
+		For all voxels in self.V which input_grid overlaps with,
 		replace the voxel value with the corresponding value in input_grid.V
 		'combine' can be sum (add onto existing elements) or replace (overwirte existing elements)
 		'''
 
 		if method=='naive':
-			'''             
-			This is slow as need to transform twice, 
+			'''
+			This is slow as need to transform twice,
 			and transform *all* the voxels in self
 			'''
 			# 1) Compute world meshgrid for self
@@ -420,15 +483,15 @@ class WorldVoxels(Voxels):
 			# convert the indices to world xyz space
 			#self_grid_in_sbox_idx, valid = input_grid.world_to_idx(self_world_xyz, True)
 			#print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
-	
+
 			#output_idxs = self_grid_in_sbox_idx[valid, :]
 			#occupied_values = input_grid.extract_from_indices(output_idxs)
 
-			# 2) Warp into idx space of input_grid and 
+			# 2) Warp into idx space of input_grid and
 			# 3) See which are valid idxs in input_grid
 			valid_values, valid = input_grid.just_valid_world_to_idx(self_world_xyz)
 			#self.set_indicated_voxels(valid, occupied_values)
-			
+
 			# 4) Replace these values in self
 			if combine == 'sum':
 				addition = self.get_idxs(self_idx[valid, :])
@@ -440,17 +503,17 @@ class WorldVoxels(Voxels):
 
 		elif method=='bounding_box':
 			'''
-			First transform the bounding box of input grid into self to see which 
-			voxels from self need to transform into the space of input grid 
+			First transform the bounding box of input grid into self to see which
+			voxels from self need to transform into the space of input grid
 			'''
 			raise Exception("Not implemented yet")
 
 		elif method=='axis_aligned':
 			'''
-			Assumes transformation is aligned with an axis - 
+			Assumes transformation is aligned with an axis -
 			perhaps always the z-axis.
 			Should end up being efficient as need only to do the complex
-			transformation for one slice, then can re-use this for all the others 
+			transformation for one slice, then can re-use this for all the others
 			'''
 			world_ij = self.idx_ij_meshgrid() # instead, just get an ij slice and convert here...
 
@@ -474,7 +537,7 @@ class WorldVoxels(Voxels):
 			world_k_col, world_z_col = self.get_z_locations()
 
 			# each height in the input grid locations...
-			world_z_in_input_grid_idx = input_grid.world_to_idx(world_z_col) 
+			world_z_in_input_grid_idx = input_grid.world_to_idx(world_z_col)
 
 			# valid denotes which rows in world are happy to be filled by the input grid
 			valid = np.logical_and(world_z_in_input_grid_idx[:, 2] >= 0,
@@ -482,7 +545,7 @@ class WorldVoxels(Voxels):
 
 			# now fill in slice by slice...
 			valid_k_idxs = np.array(np.nonzero(valid)[0])
-			
+
 			# keeps track of what the current slice in the shoebox is
 			current_shoebox_slice = np.nan
 
@@ -493,7 +556,7 @@ class WorldVoxels(Voxels):
 			for world_slice_idx in valid_k_idxs:
 
 				this_z_in_input_grid = world_z_in_input_grid_idx[world_slice_idx, 2]
-				
+
 				# don't bother extracting the data for this slice if we already have it cached in data_to_insert
 				if current_shoebox_slice != this_z_in_input_grid:
 
@@ -520,19 +583,19 @@ class WorldVoxels(Voxels):
 
 				elif combine=='replace':
 					self.set_idxs(valid_ij, data_to_insert)
-					
+
 				else:
 					raise Exception("unknown combine type")
 
-			valid_ij = None # to prevent acciental use again 
-			valid_ij_in_input = None # to prevent acciental use again 
+			valid_ij = None # to prevent acciental use again
+			valid_ij_in_input = None # to prevent acciental use again
 
 		else:
 			raise Exception("Unknown transformation method")
 
 	def get_z_locations(self):
 		'''
-		returns a matrix of all the z locations in this image 
+		returns a matrix of all the z locations in this image
 		'''
 		world_k = np.arange(0, self.V.shape[2])
 		extra_zeros = np.zeros((world_k.shape[0], 2))
@@ -541,7 +604,7 @@ class WorldVoxels(Voxels):
 		world_z_col = self.idx_to_world(world_k_col)
 
 		return world_k_col, world_z_col
-	
+
 
 
 
@@ -616,14 +679,14 @@ class UprightAccumulator(WorldVoxels):
 
 		#print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
 
-		# get the idxs in the output space and the values in the input space        
+		# get the idxs in the output space and the values in the input space
 		#output_idxs = output_grid_in_voxlet_idx[valid, :]
 		#occupied_values = voxlet.extract_from_indices(output_idxs)
-		
+
 		#self.sumV[valid.reshape(self.V.shape)] += occupied_values
 		#self.countV[valid.reshape(self.V.shape)] += 1
 		self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
-		
+
 
 	def compute_average(self, nan_value=0):
 		'''
@@ -661,10 +724,10 @@ class ShoeBox(WorldVoxels):
 
 	def set_p_from_grid_origin(self, p_from_grid_origin):
 		'''
-		the 'p' is an arbitrary position - 
+		the 'p' is an arbitrary position -
 		it does not actually have to be in the centre of the grid!
-		p_from_grid_origin is computed on the unrotated grid, 
-		but in units of world space - 
+		p_from_grid_origin is computed on the unrotated grid,
+		but in units of world space -
 		so could be e.g. [0.2m, 0.2, 0.2m]
 		'''
 		assert p_from_grid_origin.shape[0] == 3
@@ -673,7 +736,7 @@ class ShoeBox(WorldVoxels):
 
 	def initialise_from_point_and_normal(self, point, normal, updir):
 		'''
-		assumes already set 'voxelsize', also 'grid_centre_from_grid_origin', 
+		assumes already set 'voxelsize', also 'grid_centre_from_grid_origin',
 		also the actual size of the grid
 		This is pretty uncharted territory now!
 		'''
@@ -690,7 +753,7 @@ class ShoeBox(WorldVoxels):
 		R = np.vstack((new_x, new_y, new_z)).T
 
 		assert R.shape[0] == 3 and R.shape[1] == 3
-		
+
 		if np.abs(np.linalg.det(R) - 1) > 0.00001:
 			print "R is " + str(R)
 			raise Exception("R has det" % np.linalg.det(R))
@@ -711,7 +774,7 @@ class KinFuVoxels(Voxels):
 
 
 	def read_from_pcd(self, filename):
-		''' 
+		'''
 		reads from an ascii pcd file
 		'''
 		fid = open(filename, 'r')
@@ -777,7 +840,7 @@ class FrustumGrid(Voxels):
 		#ax2 = np.arange(self.V.shape[2]) * self.m + self.d_front
 
 		# 0.5 offset beacuse we ant the centre of the voxels
-		A, B, C = np.mgrid[0.5:self.V.shape[0]+0.5, 
+		A, B, C = np.mgrid[0.5:self.V.shape[0]+0.5,
 						   0.5:self.V.shape[1]+0.5,
 						   0.5:self.V.shape[2]+0.5]
 
@@ -787,7 +850,7 @@ class FrustumGrid(Voxels):
 
 
 	def depth_to_index(self, depth):
-		''' 
+		'''
 		for a given real-world depth, computes the voxel index in the z direction, in {0,1,...,m}
 		if the depth is out of range, returns -1
 		'''
@@ -840,9 +903,9 @@ class FrustumGrid(Voxels):
 		output_image_width = scale * (w * self.d_back) / self.focal_length
 		frustum_front_width = scale * (w * self.d_front) / self.focal_length
 
-		pts2 = np.float32([[0,0], 
-						   [output_image_width,0], 
-						   [output_image_width/2 - frustum_front_width/2, output_image_height], 
+		pts2 = np.float32([[0,0],
+						   [output_image_width,0],
+						   [output_image_width/2 - frustum_front_width/2, output_image_height],
 						   [output_image_width/2 + frustum_front_width/2, output_image_height]])
 
 		M = cv2.getPerspectiveTransform(pts1,pts2)
@@ -857,7 +920,7 @@ class FrustumGrid(Voxels):
 
 class SliceFiller(object):
 	'''
-	fills a slice of voxels 
+	fills a slice of voxels
 	not really sure what I'm doing here but something might work out..
 	'''
 
@@ -888,8 +951,8 @@ class SliceFiller(object):
 		#max_depth_so_far = 0
 		#min_depth_so_far = 10000
 
-		# to do 
-		# 1) use indices of the mask 
+		# to do
+		# 1) use indices of the mask
 		# 2) convert front and back render to voxel coords before loop
 		# 3) check for inside and outside the volume before the loop
 
@@ -907,7 +970,7 @@ class SliceFiller(object):
 
 					back_vox_depth = round((thickness) / scale_factor)
 					thisslice[int(front_vox_depth):int(front_vox_depth+back_vox_depth), colidx] += 1
-			
+
 			# adding gt
 			if False:# any(gt):
 				thickness = gt[colidx]
@@ -987,19 +1050,19 @@ class VoxMetricsTSDF(object):
 	def compute_tpr_fpr(self, thresholds):
 
 		pos = np.sum(np.logical_and(self.gt>=0.5, self.valid_points==1))
-		neg = np.sum(np.logical_and(self.gt<0.5, self.valid_points==1)) 
+		neg = np.sum(np.logical_and(self.gt<0.5, self.valid_points==1))
 
 		fpr = []
 		tpr = []
-		
+
 		for thres in thresholds:
 
-			tp = np.sum(np.logical_and.reduce((self.pred>thres, 
-												self.gt>0.5, 
+			tp = np.sum(np.logical_and.reduce((self.pred>thres,
+												self.gt>0.5,
 												self.valid_points==1)))
 			tpr.append(float(tp)/float(pos))
 
-			fp = np.sum(np.logical_and.reduce((self.pred>thres, 
+			fp = np.sum(np.logical_and.reduce((self.pred>thres,
 												self.gt<0.5,
 												self.valid_points==1)))
 			fpr.append(float(fp)/float(neg))
@@ -1061,9 +1124,9 @@ def expanded_grid_accum(original_grid, expand_amount=0.05):
 
 
 def get_known_empty_grid(im, vgrid, known_full_grid=None):
-	''' 
-	returns a copy of voxel grid vgrid, such that voxels 
-	known to be empty (from depth image im) have value 1, 
+	'''
+	returns a copy of voxel grid vgrid, such that voxels
+	known to be empty (from depth image im) have value 1,
 	while voxels with unknown state have value 0
 	'''
 
@@ -1092,9 +1155,9 @@ def get_known_empty_grid(im, vgrid, known_full_grid=None):
 
 
 def get_known_full_grid(im, vgrid):
-	''' 
-	returns a copy of voxel grid vgrid, such that voxels 
-	known to be full (from depth image im) have value 1, 
+	'''
+	returns a copy of voxel grid vgrid, such that voxels
+	known to be full (from depth image im) have value 1,
 	while voxels with unknown state have value 0
 	'''
 

@@ -523,7 +523,7 @@ class RGBDVideo():
         self.frames = []
 
 
-    def load_from_yaml(self, folderpath, yaml_filename):
+    def load_from_yaml(self, folderpath, yaml_filename='poses.yaml', frames=None):
         '''
         loads a sequence based on a yaml file. 
         Image files assumed to be within the specified folder.
@@ -531,6 +531,9 @@ class RGBDVideo():
         '''
         self.reset()
         frame_data = yaml.load(open(os.path.join(folderpath, yaml_filename), 'r'))
+
+        if frames != None:
+            frame_data = [frame_data[frame] for frame in frames]
 
         for count, frame in enumerate(frame_data):
 
@@ -540,16 +543,9 @@ class RGBDVideo():
             im.load_depth_from_img(depth_image_path)
 
             # scaling im depth - unsure where I should put this!!
-            print("Max depth is %f" % np.max(im.depth))
-            print("Min depth is %f" % np.min(im.depth))
             im.depth = im.depth.astype(float)
             im.depth *= frame['depth_scaling']
             im.depth /= 2**16
-
-            '''todo: scale the im depth here by the scale factor!'''
-            print("Im min max is: ")
-            print(np.max(im.depth))
-            print(np.min(im.depth))
 
             # setting the camera intrinsics and extrinsics
             extrinsics = np.linalg.inv(np.array(frame['pose']).reshape((4, 4)))
@@ -562,10 +558,10 @@ class RGBDVideo():
 
             # setting the frame id
             im.frame_id = frame['id']
-            print im.frame_id
             im.frame_number = count
 
             self.frames.append(im)
+
 
     def play(self, fps=2.0):
         '''
@@ -583,6 +579,17 @@ class RGBDVideo():
             fig.canvas.draw()
             plt.show()
             time.sleep(pause)
+
+
+    def subvid(self, frame_numbers):
+        '''
+        returns a copy of this video comprised of just
+        the indicated frame numbers 
+        '''
+        vid_copy = deepcopy(self)
+        vid_copy.frames = [self.frames[frame] for frame in frame_numbers]
+        return vid_copy
+
 
 
 class CADRender(RGBDImage):

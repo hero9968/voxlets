@@ -2,18 +2,18 @@ import numpy as np
 #https://github.com/dranjan/python-plyfile
 import paths
 import h5py
+from skimage.measure import marching_cubes
+
 
 class Mesh(object):
     '''
     class for storing mesh data eg as read from a ply file
     '''
-    
 
     def __init__(self):
         self.vertices = []
         self.faces = []
         self.norms = []
-
 
     def load_from_ply(self, filename):
         '''
@@ -24,7 +24,6 @@ class Mesh(object):
         plydata = PlyData.read(f)
         f.close()
         self.vertices, self.faces = self._extract_plydata(plydata)
-
 
     def write_to_obj(self, filename):
 
@@ -38,7 +37,6 @@ class Mesh(object):
 
             for face in self.faces:
                 f.write("f " + str(face[0]+1) + " " + str(face[1]+1) + " " + str(face[2]+1) + "\n")
-
 
     def read_from_obj(self, filename):
         '''
@@ -65,13 +63,11 @@ class Mesh(object):
                 #else:
                 #    print "Unknown line: " + line
 
-
     def scale_mesh(self, scale):
         '''
         applys a scaling factor to the mesh vertices
         '''
         self.vertices *= scale
-
 
     def centre_mesh(self):
         '''
@@ -80,20 +76,18 @@ class Mesh(object):
         self.vertices = np.array(self.vertices)
         self.vertices -= np.mean(self.vertices, axis=0)
 
-
     def _extract_plydata(self, plydata):
         '''
         unpacks the structured array into standard np arrays
-        ''' 
+        '''
         vertices = plydata['vertex'].data
         np_vertex_data = vertices.view(np.float32).reshape(vertices.shape + (-1,))
-        
+
         faces = np.zeros((plydata['face'].data.shape[0], 3), dtype=np.int32)
         for idx, t in enumerate(plydata['face'].data):
             faces[idx, :] = t[0]
-            
-        return np_vertex_data, faces
 
+        return np_vertex_data, faces
 
     def apply_transformation(self, trans):
         '''
@@ -106,39 +100,36 @@ class Mesh(object):
             temp_transformed[:, idx] /= temp_transformed[:, 3]
         self.vertices = temp_transformed[:, :3]
 
-
     def _normalize_v3(self, arr):
         ''' Normalize a numpy array of 3 component vectors shape=(n,3) '''
-        lens = np.sqrt( arr[:,0]**2 + arr[:,1]**2 + arr[:,2]**2 )
-        arr[:,0] /= lens
-        arr[:,1] /= lens
-        arr[:,2] /= lens                
+        lens = np.sqrt(arr[:, 0]**2 + arr[:, 1]**2 + arr[:, 2]**2)
+        arr[:, 0] /= lens
+        arr[:, 1] /= lens
+        arr[:, 2] /= lens
         return arr
-
 
     def compute_vertex_normals(self):
         '''
         https://sites.google.com/site/dlampetest/python/calculating-normals-of-a-triangle-mesh-using-numpy
         '''
-        norms = np.zeros( self.vertices.shape, dtype=self.vertices.dtype )
+        norms = np.zeros(self.vertices.shape, dtype=self.vertices.dtype)
         #Create an indexed view into the vertex array using the array of three indices for triangles
         tris = self.vertices[self.faces]
-        #Calculate the normal for all the triangles, by taking the cross product of the vectors v1-v0, and v2-v0 in each triangle             
-        n = np.cross( tris[::,1 ] - tris[::,0]  , tris[::,2 ] - tris[::,0] )
-        # n is now an array of normals per triangle. The length of each normal is dependent the vertices, 
+        #Calculate the normal for all the triangles, by taking the cross product of the vectors v1-v0, and v2-v0 in each triangle
+        n = np.cross(tris[::, 1] - tris[::, 0], tris[::, 2] - tris[::, 0])
+        # n is now an array of normals per triangle. The length of each normal is dependent the vertices,
         # we need to normalize these, so that our next step weights each normal equally.
         n = self._normalize_v3(n)
         # now we have a normalized array of normals, one per triangle, i.e., per triangle normals.
-        # But instead of one per triangle (i.e., flat shading), we add to each vertex in that triangle, 
+        # But instead of one per triangle (i.e., flat shading), we add to each vertex in that triangle,
         # the triangles' normal. Multiple triangles would then contribute to every vertex, so we need to normalize again afterwards.
         # The cool part, we can actually add the normals through an indexed view of our (zeroed) per vertex normal array
-        norms[ self.faces[:,0] ] += n
-        norms[ self.faces[:,1] ] += n
-        norms[ self.faces[:,2] ] += n
+        norms[self.faces[:, 0]] += n
+        norms[self.faces[:, 1]] += n
+        norms[self.faces[:, 2]] += n
         norms = self._normalize_v3(norms)
 
         self.norms = norms
-
 
     def range(self):
         '''
@@ -146,9 +137,16 @@ class Mesh(object):
         '''
         return np.max(self.vertices, axis=0) - np.min(self.vertices, axis=0)
 
+    def from_volume(self, voxel_grid, level=0):
+        '''
+        generates a mesh from a volume voxel_grid, using marching cubes
+        voxel_grid should be a voxel grid object.
+        This allows for the coordinates of the found mesh to be in world space.
+        '''
+        temp_verts, temp_faces = marching_cubes(voxel_grid.V, level)
 
-
-        
+        self.vertices = voxel_grid.idx_to_world(temp_verts)
+        self.faces = temp_faces
 
 
 class BigbirdMesh(Mesh):
@@ -171,19 +169,16 @@ class Camera(object):
         self.K = []
         self.H = []
 
-
     def set_intrinsics(self, K):
         self.K = K
         self.inv_K = np.linalg.inv(K)
 
-
     def set_extrinsics(self, H):
         '''extrinsics should be the location of the camera relative to the world origin'''
-        '''in fact these seem to be the inverse, 
+        '''in fact these seem to be the inverse,
         i.e. the matrix used to project the points into the camera'''
         self.H = H
         self.inv_H = np.linalg.inv(H)
-
 
     def load_extrinsics_from_dat(self, filepath):
         '''
@@ -193,11 +188,11 @@ class Camera(object):
         maybe
         '''
         f = open(filepath)
-        f.readline() # throw away
+        f.readline()  # throw away
         T = np.array(f.readline().split(' ')).astype(float)[np.newaxis, :].T
-        f.readline() # throw away
-        R = np.array([f.readline().strip().split(' '), 
-                      f.readline().strip().split(' '), 
+        f.readline()  # throw away
+        R = np.array([f.readline().strip().split(' '),
+                      f.readline().strip().split(' '),
                       f.readline().strip().split(' ')]).astype(float)
         H = np.concatenate((R, T), axis=1)
         H = np.concatenate((H, np.array([0, 0, 0, 1])[np.newaxis, :]), axis=0)
@@ -205,17 +200,15 @@ class Camera(object):
 
         f.close()
 
-
     def adjust_intrinsic_scale(self, scale):
         '''
         changes the scaling, effectivly resixing the output image size
         '''
-        self.K[0, 0] *= scale 
-        self.K[1, 1] *= scale 
-        self.K[0, 2] *= scale 
-        self.K[1, 2] *= scale 
+        self.K[0, 0] *= scale
+        self.K[1, 1] *= scale
+        self.K[0, 2] *= scale
+        self.K[1, 2] *= scale
         self.inv_K = np.linalg.inv(self.K)
-
 
     def load_bigbird_matrices(self, modelname, imagename):
         '''
@@ -233,7 +226,7 @@ class Camera(object):
         np5_to_this_camera = np.array(calib['H_' + cameraname + '_from_NP5'])
         mesh_to_np5 = np.linalg.inv(np.array(pose['H_table_from_reference_camera']))
 
-        intrinsics = np.array(calib[cameraname +'_rgb_K'])
+        intrinsics = np.array(calib[cameraname + '_rgb_K'])
 
         # applying to the camera
         self.set_extrinsics(np5_to_this_camera.dot(mesh_to_np5))
@@ -241,7 +234,6 @@ class Camera(object):
 
         calib.close()
         pose.close()
-
 
     def project_points(self, xyz):
         '''
@@ -255,8 +247,7 @@ class Camera(object):
         temp_trans[:, 0] /= temp_trans[:, 2]
         temp_trans[:, 1] /= temp_trans[:, 2]
         #print "In side proj points"
-        return temp_trans#[:, 0:2]
-
+        return temp_trans  # [:, 0:2]
 
     def inv_project_points(self, uvd):
         '''
@@ -267,7 +258,6 @@ class Camera(object):
 
         # transforming points under the extrinsics
         return self._apply_normalised_homo_transform(xyz_at_cam_loc, self.inv_H)
-
 
     def inv_project_points_cam_coords(self, uvd):
         '''
@@ -286,10 +276,9 @@ class Camera(object):
 
         return xyz_at_cam_loc
 
-
     def inv_transform_normals(self, normals):
         '''
-        Transforms normals under the camera extrinsics, such that they end up 
+        Transforms normals under the camera extrinsics, such that they end up
         pointing the correct way in world space
         '''
         assert normals.shape[1] == 3
@@ -299,15 +288,12 @@ class Camera(object):
         #print np.linalg.inv(self.H)[:3, :3]
         return np.dot(R, normals.T).T
 
-
-
     def _apply_normalised_homo_transform(self, xyz, trans):
         '''
         applies homogeneous transform, and also does the normalising...
         '''
         temp = self._apply_homo_transformation(xyz, trans)
         return temp[:, :3] / temp[:, 3][:, np.newaxis]
-
 
     def _apply_transformation(self, xyz, trans):
         '''
@@ -316,7 +302,7 @@ class Camera(object):
         to_add = np.zeros((3, 1))
         temp_trans = np.concatenate((trans, to_add), axis=1)
         return np.dot(temp_trans, xyz.T).T
-        
+
     def _apply_homo_transformation(self, xyz, trans):
         '''
         apply a 4x4 transformation matrix to the vertices
@@ -325,5 +311,3 @@ class Camera(object):
         temp = np.concatenate((xyz, np.ones((n, 1))), axis=1).T
         temp_transformed = trans.dot(temp).T
         return temp_transformed
-        
-    

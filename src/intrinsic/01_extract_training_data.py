@@ -43,8 +43,14 @@ def pool_helper(view_idx, modelname, gt_grid):
     # now use final_V to extract the 3D features
     gt_tsdf_V = expanded_gt.compute_tsdf(0.03)
 
+<<<<<<< HEAD
     X, Y = line_casting.feature_pairs_3d(known_empty_voxels, known_full_voxels, gt_tsdf_V,
                                          samples=200, base_height=15, autorotate=True)
+=======
+    # load in the ground truth voxel grid
+    gt_grid = voxel_data.BigBirdVoxels()
+    gt_grid.load_bigbird(modelname)
+>>>>>>> 9f97f0cd9424cce5de84a86a554c30873f8e1505
 
     print "Done view " + view_idx + " with shapes " + str(X.shape) + " " + str(Y.shape)
     print "Saving to " + save_name

@@ -39,7 +39,7 @@ if data_type=='bigbird':
     train_names = [line.strip() for line in f]
     train_names = [name for name in train_names if name != 'cup_noodles_shrimp_picante' and name != 'paper_plate' and  name != 'nice_honey_roasted_almonds']
     f.close()
-    
+
     f = open(test_path, 'r')
     test_names = [line.strip() for line in f]
     test_names = [name for name in test_names  if name != 'cup_noodles_shrimp_picante' and name != 'paper_plate' and  name != 'nice_honey_roasted_almonds']
@@ -129,7 +129,7 @@ combined_train_features = combined_features_path + 'train.pkl'
 combined_train_features_small = combined_features_path + 'train_small.pkl'
 
 # paths for the dense predictions
-#dense_predictions = base_path + 
+#dense_predictions = base_path +
 
 # create a dictionary of all the model names - for the synthetic models!
 f = open(models_list, 'r')
@@ -137,8 +137,10 @@ modelname_to_idx = dict()
 modelnames = []
 for idx, line in enumerate(f):
     modelname = line.strip()
+
     if modelname == 'cup_noodles_shrimp_picante' or modelname == 'paper_plate' or modelname == 'nice_honey_roasted_almonds':
         continue    
+
     modelname_to_idx[modelname] = idx
     modelnames.append(modelname)
 f.close()
@@ -149,3 +151,23 @@ f.close()
 # some helper functions...
 def num_files_in_dir(dirname):
     return len([name for name in os.listdir(dirname) if os.path.isfile(os.path.join(dirname, name))])
+
+
+
+#### Paths for the primitive scenes
+rendered_arrangements_path = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/')
+scenes_location = rendered_arrangements_path + '/renders/'
+
+# generate a list of all directories in the scenes location
+# zeroth element as top level in tree, first element to get the directories
+rendered_primitive_scenes = list(os.walk(scenes_location))[0][1]
+
+
+split_save_location = rendered_arrangements_path + '/splits/'
+yaml_train_location = split_save_location + 'train.yaml'
+yaml_test_location = split_save_location + 'test.yaml'
+
+sequences_save_location = rendered_arrangements_path + '/sequences/'
+test_sequences_save_location = rendered_arrangements_path + '/test_sequences/'
+implicit_models_folder = rendered_arrangements_path + '/models/'
+
