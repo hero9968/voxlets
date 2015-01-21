@@ -48,15 +48,10 @@ for sequence in train_sequences:
     carver.set_video(vid.subvid(sequence['frames']))
     partial_tsdf = gt_vox.blank_copy()
     carver.set_voxel_grid(partial_tsdf)
-    partial_tsdf = carver.fuse(mu=0.1)
+    partial_tsdf, visible = carver.fuse(mu=0.1)
 
     # save the grid
     partial_tsdf.save(seq_foldername + 'input_fusion.pkl')
-
-    # find the visible voxels ...? es ok
-    vis = carving.VisibleVoxels()
-    vis.set_voxel_grid(partial_tsdf)
-    visible = vis.find_visible_voxels()
 
     # save the visible voxels
     visible.save(seq_foldername + 'visible_voxels.pkl')

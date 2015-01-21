@@ -85,17 +85,11 @@ for sequence in test_sequences:
     carver.set_video(vid.subvid(sequence['frames']))
     partial_tsdf = gt_vox.blank_copy()
     carver.set_voxel_grid(partial_tsdf)
-    partial_tsdf = carver.fuse(0.1)
-#    print "Warning - test test"
-#    partial_tsdf = gt_vox.copy()
+    partial_tsdf, visible = carver.fuse(0.1)
 
     # save the grid
     partial_tsdf.save(results_foldername + 'input_fusion.pkl')
-
-    # find the visible voxels ...? es ok
-    vis = carving.VisibleVoxels()
-    vis.set_voxel_grid(partial_tsdf)
-    visible = vis.find_visible_voxels()
+    scipy.io.savemat(results_foldername + 'partial_tsdf.mat', {'V': partial_tsdf.V})
 
     # save the visible voxels
     visible.save(results_foldername + 'visible_voxels.pkl')
@@ -121,7 +115,7 @@ for sequence in test_sequences:
     scipy.io.savemat(results_foldername + 'features.mat', dict(X=X, Y=Y))
 
     print "Making prediction"
-    Y_pred = rf.predict(X.astype())
+    Y_pred = rf.predict(X.astype(np.float32))
 
     # now recreate the input image from the predictions
     unknown_voxel_idxs = np.logical_and(
@@ -130,9 +124,13 @@ for sequence in test_sequences:
     unknown_voxel_idxs_full = np.logical_and(
         known_empty_voxels.V == 0,
         known_full_voxels.V == 0)
+    training_pairs = dict(X=X, Y=Y,
+        known_full=known_full_voxels.V.astype(np.float32),
+        known_empty=known_empty_voxels.V.astype(np.float32),
+        gt_vox=gt_vox.V.astype(np.float32))
     scipy.io.savemat(
-        results_foldername+'unknown_voxels.mat',
-        dict(unknown=unknown_voxel_idxs_full.astype(np.float64)))
+        results_foldername+'training_pairs.mat',
+        training_pairs)
     #pred_grid = gt_vox.blank_copy()
     pred_grid = partial_tsdf.copy() #pred_grid.V.astype(np.float64) + 0.03
 

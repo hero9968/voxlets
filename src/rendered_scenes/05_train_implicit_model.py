@@ -21,6 +21,7 @@ all_Y = []
 for sequence in train_sequences:
 
     # loading the data and adding to arrays
+    print "Loading from %s" % sequence['name']
     seq_foldername = paths.sequences_save_location + sequence['name'] + '/'
     training_pair = scipy.io.loadmat(seq_foldername + 'training_pairs.mat')
 

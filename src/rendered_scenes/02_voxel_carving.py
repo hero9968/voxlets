@@ -39,12 +39,12 @@ for scenename in paths.rendered_primitive_scenes:
     carver = carving.Fusion()
     carver.set_video(vid)
     carver.set_voxel_grid(vox)
-    vox = carver.fuse(mu=0.1)
+    vox, visible = carver.fuse(mu=0.1)
 
-    savepath = paths.scenes_location + scenename + 'voxelgrid.pkl'
+    savepath = paths.scenes_location + scenename + '/voxelgrid.pkl'
     print "Saving using custom routine to location %s" % savepath
     vox.save(savepath)
 
-    #savepath = paths.scenes_location + scenename + '/voxelgrid2.mat'
-    #print "Also saving to %s" % savepath
-    #scipy.io.savemat(savepath, dict(V=vox.V))
+    savepath = paths.scenes_location + scenename + '/visiblegrid.pkl'
+    print "Saving using custom routine to location %s" % savepath
+    visible.save(savepath)
