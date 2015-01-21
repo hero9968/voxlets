@@ -68,6 +68,11 @@ for sequence in test_sequences:
     if not os.path.exists(results_foldername):
         os.makedirs(results_foldername)
 
+    # writing the yaml file to the test folder...
+    with open(results_foldername + '/info.yaml', 'w') as f:
+        yaml.dump(sequence, f)
+    break
+
     # this is where to
     input_data_path = paths.scenes_location + sequence['scene']
     vid = images.RGBDVideo()
