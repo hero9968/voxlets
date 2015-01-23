@@ -2,7 +2,8 @@
 What I want to do is to generate a nice sweep-around of the results in blender
 '''
 import subprocess as sp
-import sys, os
+import sys
+import os
 import numpy as np
 import yaml
 import shutil
@@ -18,26 +19,46 @@ from common import voxel_data
 from common import mesh
 
 full = False
-blender_path = "/Applications/blender.app/Contents/MacOS/blender"
 
+if sys.platform == 'darwin':
+    blender_path = "/Applications/blender.app/Contents/MacOS/blender"
+    font_path = "/Library/Fonts/Verdana.ttf"
+elif sys.platform == 'linux2':
+    blender_path = "blender"
+    font_path = "/usr/share/fonts/truetype/msttcorefonts/verdana.ttf"
+else:
+    raise Exception("Unknown platform...")
 
 temp_path = '/tmp/video_images/'
 
-def add_frame(pil_image, frame_num):
+frame_num = 0
+
+
+def add_frame(pil_image):
+    global frame_num
+    frame_num += 1
     print "Adding frame %d" % frame_num
     save_path = temp_path + 'img%03d.png' % frame_num
     print save_path
     img.save(save_path)
-    frame_num += 1
-    return frame_num
 
 
+font = ImageFont.truetype(font_path, 40)
+fontsmall = ImageFont.truetype(font_path, 20)
 
+
+def text_on_image(img, heading="", subhead1="", subhead2=""):
+    draw = ImageDraw.Draw(img)
+    draw.text((0, 0), heading, font=font, fill=255)
+    draw.text((0, 420), subhead1, font=fontsmall, fill=150)
+    draw.text((0, 450), subhead2, font=fontsmall, fill=150)
+    return img
 
 
 with open(paths.yaml_test_location, 'r') as f:
     test_sequences = yaml.load(f)
 
+# main outer loop - doing each sequence
 for sequence in test_sequences:
 
     # creating an empty temporary folder
@@ -45,10 +66,9 @@ for sequence in test_sequences:
         shutil.rmtree(temp_path)
     os.makedirs(temp_path)
 
-    glob_frame_num = 0
-
     # load voxels of the results
-    test_seq_path = '../../data/rendered_arrangements/test_sequences/%s/' % sequence['name']
+    test_seq_path = '../../data/rendered_arrangements/test_sequences/%s/' % \
+        sequence['name']
     scene_path = '../../data/rendered_arrangements/renders/'
 
     git_label = sp.check_output(["git", "describe"]).strip()
@@ -60,39 +80,23 @@ for sequence in test_sequences:
 
     names = ['ground_truth', 'visible_voxels', 'prediction']
     files_to_load = [scene_path + scene_name + '/voxelgrid.pkl',
-                    test_seq_path + 'visible_voxels.pkl',
-                    test_seq_path + 'prediction.pkl']
+                     test_seq_path + 'visible_voxels.pkl',
+                     test_seq_path + 'prediction.pkl']
     levels = [0, 0.5, 0]
-
-    font = ImageFont.truetype("/Library/Fonts/Verdana.ttf", 40)
-    fontsmall = ImageFont.truetype("/Library/Fonts/Verdana.ttf", 20)
-
-    #rate = 3.3
-    #outf = test_seq_path + 'result.mp4'
-
-
-    #for i in range(10):
-        #im = Image.fromarray(np.uint8(np.random.randn(100,100)))
-        #p.stdin.write(im.tostring('jpeg','L'))
 
     # adding input images to file
     with open(scene_path + scene_name + '/poses.yaml', 'r') as f:
         poses = yaml.load(f)
 
-
     for idx, frame in enumerate(sequence_data['frames']):
-        impath = scene_path + scene_name + '/images/colour_' + poses[frame]['id'] + '.png'
-        #temp = (np.asarray(Image.open(impath)).astype(np.float32)/(65525))*255
-        #temp = temp.astype(np.int8)
-        img = Image.open(impath)
-        draw = ImageDraw.Draw(img)
-        #print np.max(temp)
-        #print np.min(temp)
-        #sdf
-        draw.text((0, 0), "Input view %d" % idx, font=font, fill=0)
+        impath = scene_path + scene_name + '/images/colour_' + \
+            poses[frame]['id'] + '.png'
 
-        glob_frame_num = add_frame(img, glob_frame_num)
-        glob_frame_num = add_frame(img, glob_frame_num)
+        img = Image.open(impath)
+        img = text_on_image(img, "Input view %d" % idx)
+
+        add_frame(img)
+        add_frame(img)
 
     for name, filename, level in zip(names, files_to_load, levels):
 
@@ -107,8 +111,8 @@ for sequence in test_sequences:
 
             # run blender, while giving the path to the mesh to load
             print "Rendering"
-            sp.call([blender_path,
-                "spinaround/spin.blend", "-b", "-P", "spinaround/blender_spinaround.py"])
+            sp.call([blender_path, "spinaround/spin.blend",
+                     "-b", "-P", "spinaround/blender_spinaround.py"])
 
         print "Adding text to frames"
 
@@ -117,26 +121,15 @@ for sequence in test_sequences:
             imgfile = "/tmp/%04d.png" % idx
 
             img = Image.open(imgfile).convert('L')
-            draw = ImageDraw.Draw(img)
-
-            draw.text((0, 0), name, font=font, fill=255)
-            draw.text((0, 420), "Sequence: %s" % sequence['name'], font=fontsmall, fill=150)
-            draw.text((0, 450), git_label, font=fontsmall, fill=150)
+            img = text_on_image(
+                img, name, "Sequence: %s" % sequence['name'], git_label)
 
             print "Writing frame %s %s %f" % (name, filename, level)
-            np_array = np.asarray(img)
-            np_array = np_array.astype(np.int8)
-            print np_array.shape
-
-            print np_array.shape
-            img2 = Image.fromarray(np_array)
-            glob_frame_num = add_frame(img, glob_frame_num)
+            add_frame(img)
 
             # repeat first frame a few times
-            if idx == 1 or idx == 21:
-                glob_frame_num = add_frame(img, glob_frame_num)
+            if idx == 1 or idx == 20:
+                add_frame(img)
+                add_frame(img)
 
     break
-
-
-
