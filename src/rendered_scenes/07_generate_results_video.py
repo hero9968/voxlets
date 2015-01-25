@@ -18,7 +18,7 @@ from common import paths
 from common import voxel_data
 from common import mesh
 
-full = False
+full = True
 
 if sys.platform == 'darwin':
     blender_path = "/Applications/blender.app/Contents/MacOS/blender"
@@ -80,9 +80,9 @@ for sequence in test_sequences:
 
     names = ['ground_truth', 'visible_voxels', 'prediction']
     files_to_load = [scene_path + scene_name + '/voxelgrid.pkl',
-                     test_seq_path + 'visible_voxels.pkl',
+                     test_seq_path + 'input_fusion.pkl',
                      test_seq_path + 'prediction.pkl']
-    levels = [0, 0.5, 0]
+    levels = [0, 0, 0]
 
     # adding input images to file
     with open(scene_path + scene_name + '/poses.yaml', 'r') as f:
@@ -108,6 +108,7 @@ for sequence in test_sequences:
             ms = mesh.Mesh()
             ms.from_volume(prediction, level)
             ms.write_to_obj('/tmp/temp.obj')
+            #ms.write_to_obj('/tmp/temp%s.obj' % name)
 
             # run blender, while giving the path to the mesh to load
             print "Rendering"
