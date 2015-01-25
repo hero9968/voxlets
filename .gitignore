@@ -11,6 +11,9 @@ temp.*
 *.pyc
 *.pptx
 *.dylib
+*.blend1
+*.blend2
+*.blend3
 /media/ppt/
 /media/results/
 /media/notes/
