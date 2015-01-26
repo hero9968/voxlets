@@ -139,7 +139,7 @@ for idx, line in enumerate(f):
     modelname = line.strip()
 
     if modelname == 'cup_noodles_shrimp_picante' or modelname == 'paper_plate' or modelname == 'nice_honey_roasted_almonds':
-        continue    
+        continue
 
     modelname_to_idx[modelname] = idx
     modelnames.append(modelname)
@@ -165,9 +165,103 @@ rendered_primitive_scenes = list(os.walk(scenes_location))[0][1]
 
 split_save_location = rendered_arrangements_path + '/splits/'
 yaml_train_location = split_save_location + 'train.yaml'
+yaml_train_location_scene_centric = split_save_location + 'train_scene_centric.yaml'
 yaml_test_location = split_save_location + 'test.yaml'
+yaml_test_location_scene_centric = split_save_location + 'test_scene_centric.yaml'
 
 sequences_save_location = rendered_arrangements_path + '/sequences/'
 test_sequences_save_location = rendered_arrangements_path + '/test_sequences/'
 implicit_models_folder = rendered_arrangements_path + '/models/'
+
+import yaml
+
+class RenderedData(object):
+
+    rendered_arrangements_path = os.path.expanduser(
+        '~/projects/shape_sharing/data/rendered_arrangements/')
+
+    scenes_location = rendered_arrangements_path + '/renders/'
+
+    split_save_location = rendered_arrangements_path + '/splits/'
+
+    yaml_train_location = split_save_location + 'train.yaml'
+    yaml_test_location = split_save_location + 'test.yaml'
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get_scene_list():
+        '''
+        returns a list of all the rendered scenes, based on what is in the
+        scenes directory
+        '''
+        return list(os.walk(scenes_location))[0][1]
+
+    @staticmethod
+    def train_sequence():
+        '''
+        returns a list of dictionaries of training data
+        '''
+        with open(yaml_train_location, 'r') as f:
+            train_data = yaml.load(f)
+
+        return train_data
+
+    @staticmethod
+    def test_sequence():
+        '''
+        returns a list of dictionaries of testing data
+        '''
+        with open(yaml_test_location, 'r') as f:
+            test_data = yaml.load(f)
+
+        return  test_data
+
+    @staticmethod
+    def load_scene_data(scene_name, frame_idxs=[]):
+        '''
+        returns a list of frames from a scene
+        if frames then returns only the specified frame numbers
+        '''
+        with open(scenes_location + scene_name + '/poses.yaml', 'r') as f:
+            frames = yaml.load(f)
+
+        if frame_idxs:
+            if isinstance(frame_idxs, list):
+                frames = [frames[idx] for idx in frame_idxs]
+            else:
+                frames = frames[frame_idxs]
+
+        return frames
+
+    # def populate_sequence(self, sequence):
+    #     '''
+    #     populates a training or test sequence with the real data
+    #     '''
+    #     scenes = get_scene_list()
+    #     for idx in enumerate(sequence):
+    #         sequence[idx]['scene']
+
+    # def load_frame_data():
+    #     '''
+    #     loads the dict about a specific frame from the correct yaml file,
+    #     ready to be used to load in the actual images etc about the frame
+    #     '''
+    #     return 'a'
+
+
+
+    # @staticmethod
+    # def video_data():
+    #     '''
+    #     returns a list of all the frames in
+    # open(os.path.join(folderpath, yaml_filename), 'r') as f:
+    #         video_data = yaml.load(f)
+
+
+
+
+
+
 
