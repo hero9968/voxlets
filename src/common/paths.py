@@ -187,6 +187,11 @@ class RenderedData(object):
     yaml_train_location = split_save_location + 'train.yaml'
     yaml_test_location = split_save_location + 'test.yaml'
 
+    voxlets_path = rendered_arrangements_path + 'voxlets/'
+    voxlets_dictionary_path = voxlets_path + 'dictionary/'
+    voxlets_dict_data_path = voxlets_path + 'dictionary/dict_data/'
+
+
     def __init__(self):
         pass
 

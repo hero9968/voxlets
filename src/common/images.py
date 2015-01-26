@@ -140,7 +140,7 @@ class RGBDImage(object):
                             vs.flatten()*self.depth.flatten(),
                             self.depth.flatten()))
 
-        self.xyz = np.dot(self.inv_K, x)
+        self.xyz = np.dot(self.cam.inv_K, x)
         return self.xyz
 
     def get_uvd(self):
@@ -160,6 +160,9 @@ class RGBDImage(object):
     def get_world_xyz(self):
         return self.cam.inv_project_points(self.get_uvd())
 
+    def get_world_normals(self):
+        return self.cam.inv_transform_normals(self.normals)
+
     def compute_ray_image(self):
         '''
         the ray image is an image where the values represent the
@@ -167,9 +170,7 @@ class RGBDImage(object):
         '''
         self.reproject_3d()
         dists = np.sqrt(np.sum(self.xyz**2, axis=0))
-
-        self.ray_image = np.reshape(dists, self.depth.shape)/1000
-        return self.ray_image
+        return np.reshape(dists, self.depth.shape)/1000
 
     def set_intrinsics(self, K):
         self.K = K
@@ -219,6 +220,11 @@ class RGBDImage(object):
         cam.set_extrinsics(extrinsics)
         cam.set_intrinsics(intrinsics)
         im.set_camera(cam)
+
+        mask_image_path = \
+            scene_folder + '/images/mask_%s.png' % dictionary['id']
+        im.mask = scipy.misc.imread(mask_image_path) == 255
+        print im.mask.dtype
 
         # setting the frame id
         im.frame_id = dictionary['id']
@@ -292,10 +298,6 @@ class MaskedRGBD(RGBDImage):
         arr = np.fromstring(data.pop(0), dtype=np.uint8)
         return np.unpackbits(arr).reshape(dimensions)
 
-    def depth_difference(self, index):
-        '''no back render so will just return a nan for this...'''
-        return np.nan
-
 
 class CroppedRGBD(RGBDImage):
     '''
@@ -313,8 +315,6 @@ class CroppedRGBD(RGBDImage):
         D = scipy.io.loadmat(mat_path)
         self.rgb = D['rgb']
         self.depth = D['depth']     # this is the depth after smoothing
-        # self.frontrender = D['front_render'] # rendered from the voxel data
-        # self.backrender = D['back_render'] # rendered from the voxel data
         self.aabb = D['aabb'].flatten()  # [left, right, top bottom]
         # print D['T']['K_rgb'][0][0]
 
@@ -330,7 +330,7 @@ class CroppedRGBD(RGBDImage):
         # print self.H
         # reshaping the xyz to be row-major... better I think and less likely
         # to break
-        self.mask = D['mask'] == 1  # ~np.isnan(self.frontrender)#D['mask']
+        self.mask = D['mask'] == 1
 
         old_shape = [3, self.mask.shape[1], self.mask.shape[0]]
 
@@ -377,14 +377,6 @@ class CroppedRGBD(RGBDImage):
             plt.subplot(4, 6, idx+1)
             plt.imshow(self.spider_channels[:, :, idx])
 
-    def depth_difference(self, index):
-        '''
-        returns the difference in depth between the front and the back
-        renders at the specified (i, j) index
-        '''
-        return self.backrender[index[0], index[1]] - \
-            self.frontrender[index[0], index[1]]
-
     def get_uvd(self):
         '''
         returns an nx3 numpy array where each row is the (col, row) index
@@ -398,9 +390,6 @@ class CroppedRGBD(RGBDImage):
         return np.vstack((all_cols.flatten(),
                           all_rows.flatten(),
                           self.depth.flatten())).T
-
-    def get_world_normals(self):
-        return self.cam.inv_transform_normals(self.normals)
 
     def get_features(self, idxs):
         '''
@@ -478,12 +467,7 @@ class RealRGBD(RGBDImage):
         H = np.zeros((4, 4))
         H[:3, :3] = R
         H[3, 3] = 1
-
         self.H = H
-
-
-
-        #self.world_xyz = np.dot(R, (self.xyz - T).T).T# +
 
         # world up direction - in world coordinates.
         # this is not the up dir in camera coordinates...
@@ -500,13 +484,13 @@ class RealRGBD(RGBDImage):
         origin_x = np.min(inliers[:, 0])
         origin_y = np.min(inliers[:, 1])
         origin_z = -self.world_updir[3]
-        m = np.array([ origin_x, origin_y, origin_z])
+        m = np.array([origin_x, origin_y, origin_z])
         self.m = deepcopy(m)
         m = np.dot(R, m)
         self.H[:3, 3] = m.T
         cam.set_extrinsics(self.H)
 
-        #cam.load_bigbird_matrices(modelname, viewname)
+        # cam.load_bigbird_matrices(modelname, viewname)
 
     def disp_spider_channels(self):
 
@@ -514,9 +498,6 @@ class RealRGBD(RGBDImage):
         for idx in range(self.spider_channels.shape[2]):
             plt.subplot(4, 6, idx+1)
             plt.imshow(self.spider_channels[:, :, idx])
-
-    def get_world_normals(self):
-        return self.cam.inv_transform_normals(self.normals)
 
     def get_features(self, idxs):
         '''
@@ -530,12 +511,14 @@ class RealRGBD(RGBDImage):
         spider_features = se.compute_spider_features(idxs)
         spider_features = features.replace_nans_with_col_means(spider_features)
 
-        all_features = np.concatenate((patch_features, spider_features), axis=1)
+        all_features = np.concatenate(
+            (patch_features, spider_features), axis=1)
         return all_features
 
     def get_uvd(self):
         '''
-        returns (nxm)x3 matrix of all the u, v coordinates and the depth at eac one
+        returns (nxm)x3 matrix of all the u, v coordinates and the depth at
+        each one
         '''
         h, w = self.depth.shape
         us, vs = np.meshgrid(np.arange(w), np.arange(h))
@@ -604,74 +587,3 @@ class RGBDVideo():
         vid_copy.frames = [self.frames[frame] for frame in frame_numbers]
         return vid_copy
 
-
-class CADRender(RGBDImage):
-    '''
-    class representing a CAD render model
-    perhaps this should inherit from a base rgbd/image class... perhaps not
-    '''
-
-    def __init__(self):
-        '''init with the parent class, but also add the backdepth'''
-        RGBDImage.__init__(self)
-        self.backdepth = np.array([])
-
-    def load_from_cad_set(self, modelname, view_idx):
-        '''loads models from the cad training set'''
-        self.modelname = modelname
-        self.view_idx = view_idx
-
-        self.depth = self.load_frontrender(modelname, view_idx)
-        self.backdepth = self.load_backrender(modelname, view_idx)
-        self.mask = ~np.isnan(self.depth)
-        #self.mask = self.extract_mask(frontrender)
-
-        self.focal_length = 240.0/(np.tan(np.rad2deg(43.0/2.0))) / 2.0
-
-    def load_frontrender(self, modelname, view_idx):
-        fullpath = paths.base_path + 'basis_models/renders/' + modelname + '/depth_' + str(view_idx) + '.mat'
-        return scipy.io.loadmat(fullpath)['depth']
-
-    def load_backrender(self, modelname, view_idx):
-        fullpath = paths.base_path + 'basis_models/render_backface/' + modelname + '/depth_' + str(view_idx) + '.mat'
-        return scipy.io.loadmat(fullpath)['depth']
-
-    def depth_difference(self, index):
-        '''
-        returns the difference in depth between the front and the back
-        renders at the specified (i, j) index
-        '''
-        return self.backdepth[index[0], index[1]] - self.depth[index[0], index[1]]
-
-
-def loadim():
-    image_path = "/Users/Michael/projects/shape_sharing/data/bigbird/coffee_mate_french_vanilla/"
-    image_name = "NP1_150"
-
-    rgb_path = image_path + image_name + '.jpg'
-    depth_path = image_path + image_name + '.h5'
-    mask_path = image_path + "masks/" + image_name + '_mask.pbm'
-
-    im = MaskedRGBD()
-    im.load_depth_from_h5(depth_path)
-    im.load_rgb_from_img(rgb_path, (480, 640))
-    im.load_mask_from_pbm(mask_path, (480, 640))
-    im.print_info()
-    im.disp_channels()
-
-
-def loadcadim():
-    im = CADRender()
-    im.load_from_cad_set(paths.modelnames[30], 30)
-    im.compute_edges_and_angles()
-
-    plt.clf()
-    plt.subplot(121)
-    plt.imshow(im.angles, interpolation='nearest')
-    plt.colorbar()
-    plt.subplot(122)
-    plt.imshow(np.isnan(im.angles).astype(int) - np.isnan(im.depth).astype(int), interpolation='nearest')
-    plt.colorbar()
-
-    plt.show()
-    im.print_info()
