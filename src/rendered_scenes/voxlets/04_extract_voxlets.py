@@ -5,104 +5,96 @@ smaller
 import numpy as np
 import cPickle as pickle
 import sys
-sys.path.append('/Users/Michael/projects/shape_sharing/src/')
-sys.path.append('..')
+import os
+import yaml
+from time import time
+import scipy.io
 
-from shoebox_helpers import *
+sys.path.append('/Users/Michael/projects/shape_sharing/src/')
 from common import paths
 from common import voxel_data
 from common import images
+from common import parameters
+from common import features
+
+# parameters
+number_points_from_each_image = 10
+multiproc = False
+
 
 def pool_helper(index, im, vgrid):
 
-    "Extracting shoeboxes"
     world_xyz = im.get_world_xyz()
     world_norms = im.get_world_normals()
-
 
     # convert to linear idx
     point_idx = index[0] * im.mask.shape[1] + index[1]
 
-    shoebox = voxel_data.ShoeBox(paths.voxlet_shape) # grid size
-    shoebox.set_p_from_grid_origin(np.array(paths.voxlet_centre)) #m
-    shoebox.set_voxel_size(paths.voxlet_size) #m
-    shoebox.initialise_from_point_and_normal(world_xyz[point_idx],
-                                             world_norms[point_idx],
-                                             np.array([0, 0, 1]))
+    shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)  # grid size
+    shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
+    shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+    shoebox.initialise_from_point_and_normal(
+        world_xyz[point_idx], world_norms[point_idx], np.array([0, 0, 1]))
 
     # convert the indices to world xyz space
-    shoebox_xyz_in_world = shoebox.world_meshgrid()
-    shoebox_xyx_in_world_idx, valid = vgrid.world_to_idx(shoebox_xyz_in_world, True)
-
-    sbox_idxs = shoebox_xyx_in_world_idx[valid, :]
-    occupied_values = vgrid.extract_from_indices(sbox_idxs)
-    shoebox.set_indicated_voxels(valid, occupied_values)
-
+    shoebox.fill_from_grid(vgrid)
+    print "Sum is %f" % np.sum(shoebox.V.flatten())
     return shoebox.V.flatten()
 
+# need to import these *after* the pool helper has been defined
+if multiproc:
+    import multiprocessing
+    import functools
+    pool = multiprocessing.Pool(parameters.cores)
 
+for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
-import multiprocessing
-import functools
+    print "Processing " + sequence['name']
 
-# parameters
-number_points_from_each_image = 10
+    # load in the ground truth grid for this scene, and converting nans
+    scene_folder = paths.scenes_location + sequence['scene']
+    gt_vox = voxel_data.load_voxels(scene_folder + '/voxelgrid.pkl')
+    gt_vox.V[np.isnan(gt_vox.V)] = -0.1
+    gt_vox.set_origin(gt_vox.origin)
 
-small_sample = paths.small_sample
-if paths.small_sample:
-    pool = multiprocessing.Pool(4)
-else:
-    pool = multiprocessing.Pool(6)
+    # loading this frame
+    frame_data = paths.RenderedData.load_scene_data(
+        sequence['scene'], sequence['frames'][0])
+    im = images.RGBDImage.load_from_dict(
+        paths.scenes_location + sequence['scene'], frame_data)
 
-if small_sample:
-    print "WARNING: Just computing on a small sample"
+    # computing normals...
+    norm_engine = features.Normals()
+    im.normals = norm_engine.compute_normals(im)
 
-for count, modelname in enumerate(paths.modelnames):
+    "Sampling from image"
+    idxs = im.random_sample_from_mask(number_points_from_each_image)
 
-    # initialise lists
-    shoeboxes = []
-    all_features = []
+    "Extracting features"
+    ce = features.CobwebEngine(t=5, fixed_patch_size=False)
+    ce.set_image(im)
+    np_features = np.array(ce.extract_patches(idxs))
 
-    print "Processing " + modelname
+    "Now try to make this nice and like parrallel or something...?"
+    t1 = time()
+    if multiproc:
+        shoeboxes = pool.map(
+            functools.partial(pool_helper, im=im, vgrid=gt_vox), idxs)
+    else:
+        shoeboxes = [pool_helper(idx, im=im, vgrid=gt_vox) for idx in idxs]
+    print "Took %f s" % (time() - t1)
 
-    savepath = paths.bigbird_training_data_mat % modelname
-
-    if os.path.exists(savepath):
-        print "Skipping " + modelname
-        continue
-
-    vgrid = voxel_data.BigBirdVoxels()
-    vgrid.load_bigbird(modelname)
-
-    for view in paths.views[:45]:
-
-        print '.'
-        im = images.CroppedRGBD()
-        im.load_bigbird_from_mat(modelname, view)
-
-        "Sampling from image"
-        idxs = random_sample_from_mask(im.mask, number_points_from_each_image)
-
-        "Extracting features"
-        all_features.append(im.get_features(idxs))
-
-        "Now try to make this nice and like parrallel or something like what say what?"
-        these_shoeboxes = pool.map(functools.partial(pool_helper, im=im, vgrid=vgrid), idxs)
-        shoeboxes.append(these_shoeboxes)
-
-    # perhaps *HERE* save the data for this model
     np_sboxes = np.array(shoeboxes)
-    np_sboxes = np_sboxes.reshape((-1, np_sboxes.shape[2])) # collapse 1st two dimensions
-
-    np_features = np.array(all_features)
-    np_features = np_features.reshape((-1, np_features.shape[2])) # collapse 1st two dimensions
 
     print "Shoeboxes are shape " + str(np_sboxes.shape)
     print "Features are shape " + str(np_features.shape)
+
     D = dict(shoeboxes=np_sboxes, features=np_features)
+    savepath = paths.RenderedData.voxlets_dict_data_path + \
+        sequence['name'] + '.mat'
+    print savepath
     scipy.io.savemat(savepath, D, do_compression=True)
 
-
-    if count > 4 and small_sample:
+    if count > 4 and paths.small_sample:
         print "Ending now"
         break

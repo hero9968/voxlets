@@ -714,8 +714,8 @@ class ShoeBox(WorldVoxels):
     the rotation is the same for both
     '''
 
-    def __init__(self, gridsize):
-        Voxels.__init__(self, gridsize, np.int8)
+    def __init__(self, gridsize, data_type=np.int8):
+        Voxels.__init__(self, gridsize, data_type)
         self.grid_centre_from_grid_origin = []
 
 
