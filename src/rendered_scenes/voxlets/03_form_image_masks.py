@@ -31,9 +31,16 @@ for scenename in paths.rendered_primitive_scenes:
     # which are within the specified cube...
     for frame in vid.frames:
 
+        # remove points outside the bounding cuboid
         xyz = frame.get_world_xyz()
         inside = np.all(np.logical_and(xyz > grid_min, xyz < grid_max), axis=1)
-        mask = inside.reshape(frame.depth.shape)
+        inside = inside.reshape(frame.depth.shape)
+
+        # also remove points on the floor plane
+        above_floor = np.abs(xyz[:, 2] - 0) > 3e-3
+        above_floor = above_floor.reshape(frame.depth.shape)
+
+        mask = np.logical_and(inside, above_floor)
 
         # choose the save location carefully
         savepath = paths.scenes_location + scenename + \
