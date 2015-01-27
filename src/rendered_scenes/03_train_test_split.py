@@ -13,9 +13,9 @@ sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
 
 # parameters
-num_sequences_per_scene = 10
-num_scenes_to_use = 1
-num_frames_per_sequence = 5
+num_sequences_per_scene = 20
+num_scenes_to_use = 5
+num_frames_per_sequence = 1
 train_test_overlap = True
 if train_test_overlap:
   num_train = 8  # integers as there is an overlap
@@ -24,6 +24,7 @@ if train_test_overlap:
 else:
   train_fraction = 0.6  # direct split, so express as fraction
 
+random.seed(10)
 
 
 def load_scene(scene_name):
@@ -64,7 +65,7 @@ for idx, (scene_name, scene) in enumerate(all_scenes):
                              num_frames_per_sequence)
                              for i in range(num_sequences_per_scene)]
 
-print "There are %d sequences" % len(sequences['YP8G55G2GZ'])
+print "There are %d sequences" % len(sequences)
 
 # making split at a scene level
 if train_test_overlap:
@@ -107,3 +108,22 @@ with open(paths.yaml_train_location, 'w') as f:
 
 with open(paths.yaml_test_location, 'w') as f:
     yaml.dump(test_list, f)
+
+# now recombine the scenes...
+def convert_to_scene_centric(train_or_test_list):
+    scene_centric = {}
+    for train_data in train_or_test_list:
+        to_add = {'frames': train_data['frames'], 'name': train_data['name']}
+
+        if train_data['scene'] in scene_centric:
+            scene_centric[train_data['scene']].append(to_add)
+        else:
+            scene_centric[train_data['scene']] = [to_add]
+
+    return scene_centric
+
+with open(paths.yaml_train_location_scene_centric, 'w') as f:
+    yaml.dump(convert_to_scene_centric(train_list), f)
+
+with open(paths.yaml_test_location_scene_centric, 'w') as f:
+    yaml.dump(convert_to_scene_centric(test_list), f)

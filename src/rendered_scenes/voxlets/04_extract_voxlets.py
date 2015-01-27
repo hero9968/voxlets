@@ -18,7 +18,7 @@ from common import parameters
 from common import features
 
 # parameters
-number_points_from_each_image = 10
+number_points_from_each_image = 50
 multiproc = False
 
 
@@ -30,7 +30,9 @@ def pool_helper(index, im, vgrid):
     # convert to linear idx
     point_idx = index[0] * im.mask.shape[1] + index[1]
 
-    shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)  # grid size
+    shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
+    shoebox.V *= 0
+    shoebox.V += 0.1  # set the outside area to 0.1
     shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
     shoebox.set_voxel_size(parameters.Voxlet.size)  # m
     shoebox.initialise_from_point_and_normal(

@@ -25,8 +25,8 @@ class Voxlet(object):
     # NOTE BE VERY CAREFUL IF EDITING THESE
     one_side_bins = 15
     shape = (one_side_bins, 2*one_side_bins, one_side_bins)
-    size = 0.1/float(one_side_bins)
-    centre = np.array((0.05, 0.025, 0.05))
+    size = 0.2/float(one_side_bins)
+    centre = np.array((0.1, 0.05, 0.1))
 
 
 class RenderedVoxelGrid(object):
