@@ -40,10 +40,10 @@ def cluster_data(X, local_subsample_length, num_clusters):
 
     # take subsample
     if local_subsample_length > X.shape[0]:
-        print "Too long! Making smaller"
         X_subset = X
     else:
-        to_use_for_clustering = np.random.randint(0, X.shape[0], size=(local_subsample_length))
+        to_use_for_clustering = \
+            np.random.randint(0, X.shape[0], size=(local_subsample_length))
         X_subset = X[to_use_for_clustering, :]
 
     print X.shape
@@ -75,7 +75,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     D = scipy.io.loadmat(loadpath)
     shoeboxes.append(D['shoeboxes'].astype(np.float16))
 
-    if count > 2 and parameters.small_sample:
+    if count > 8 and parameters.small_sample:
         print "SMALL SAMPLE: Stopping"
         break
 
