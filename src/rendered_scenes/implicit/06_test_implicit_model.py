@@ -16,7 +16,7 @@ from common import paths
 from common import voxel_data
 from common import carving
 from common import images
-from common import images
+from common import parameters
 from features import line_casting
 
 print "Loading the model"
@@ -80,7 +80,7 @@ for sequence in test_sequences:
 
     # load in the ground truth grid for this scene, and converting nans
     gt_vox = voxel_data.load_voxels(input_data_path + '/voxelgrid.pkl')
-    gt_vox.V[np.isnan(gt_vox.V)] = -0.1#-0.03
+    gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
 
     # do the tsdf fusion from these frames
     # note the slightly strange partial_tsdf copy and overright
@@ -90,7 +90,7 @@ for sequence in test_sequences:
     carver.set_video(vid.subvid(sequence['frames']))
     partial_tsdf = gt_vox.blank_copy()
     carver.set_voxel_grid(partial_tsdf)
-    partial_tsdf, visible = carver.fuse(0.1)
+    partial_tsdf, visible = carver.fuse(parameters.RenderedVoxelGrid.mu)
 
     # save the grid
     partial_tsdf.save(results_foldername + 'input_fusion.pkl')
@@ -136,8 +136,8 @@ for sequence in test_sequences:
     scipy.io.savemat(
         results_foldername+'training_pairs.mat',
         training_pairs)
-    #pred_grid = gt_vox.blank_copy()
-    pred_grid = partial_tsdf.copy() #pred_grid.V.astype(np.float64) + 0.03
+
+    pred_grid = partial_tsdf.copy()
 
     pred_grid.set_indicated_voxels(unknown_voxel_idxs == 1, Y_pred)
 

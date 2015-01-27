@@ -19,6 +19,7 @@ from common import images
 from common import voxel_data
 from common import carving
 from common import paths
+from common import parameters
 
 # doing a loop here to loop over all possible files...
 for scenename in paths.rendered_primitive_scenes:
@@ -29,17 +30,20 @@ for scenename in paths.rendered_primitive_scenes:
     vid.load_from_yaml(input_data_path, 'poses.yaml')
     #vid.play()
 
+    #gt_vox.set_origin(parameters.RenderedVoxelGrid.origin)
+    #gt_vox.set_voxel_size(parameters.RenderedVoxelGrid.voxel_size)
+
     # initialise voxel grid (could add a helper function to make this more explicit...?)
     vox = voxel_data.WorldVoxels()
-    vox.V = np.zeros((150, 150, 75), np.float32)
-    vox.set_voxel_size(0.01)
-    vox.set_origin((-0.75, -0.75, -0.03))
+    vox.V = np.zeros(parameters.RenderedVoxelGrid.shape, np.float32)
+    vox.set_voxel_size(parameters.RenderedVoxelGrid.voxel_size)
+    vox.set_origin(parameters.RenderedVoxelGrid.origin)
 
     print "Performing voxel carving"
     carver = carving.Fusion()
     carver.set_video(vid)
     carver.set_voxel_grid(vox)
-    vox, visible = carver.fuse(mu=0.1)
+    vox, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
 
     savepath = paths.scenes_location + scenename + '/voxelgrid.pkl'
     print "Saving using custom routine to location %s" % savepath

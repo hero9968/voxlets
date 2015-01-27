@@ -17,6 +17,7 @@ from common import paths
 from common import images
 from common import voxel_data
 from common import carving
+from common import parameters
 from features import line_casting
 
 
@@ -38,7 +39,7 @@ for sequence in train_sequences:
 
     # load in the ground truth grid for this scene, and converting nans
     gt_vox = voxel_data.load_voxels(input_data_path + '/voxelgrid.pkl')
-    gt_vox.V[np.isnan(gt_vox.V)] = -0.1
+    gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
 
     # do the tsdf fusion from these frames
     # note the slightly strange partial_tsdf copy and overright
@@ -48,7 +49,7 @@ for sequence in train_sequences:
     carver.set_video(vid.subvid(sequence['frames']))
     partial_tsdf = gt_vox.blank_copy()
     carver.set_voxel_grid(partial_tsdf)
-    partial_tsdf, visible = carver.fuse(mu=0.1)
+    partial_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
 
     # save the grid
     partial_tsdf.save(seq_foldername + 'input_fusion.pkl')

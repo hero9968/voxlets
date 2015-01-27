@@ -32,7 +32,7 @@ def pool_helper(index, im, vgrid):
 
     shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
     shoebox.V *= 0
-    shoebox.V += 0.1  # set the outside area to 0.1
+    shoebox.V += parameters.RenderedVoxelGrid.mu  # set the outside area to mu
     shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
     shoebox.set_voxel_size(parameters.Voxlet.size)  # m
     shoebox.initialise_from_point_and_normal(
@@ -56,7 +56,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     # load in the ground truth grid for this scene, and converting nans
     scene_folder = paths.scenes_location + sequence['scene']
     gt_vox = voxel_data.load_voxels(scene_folder + '/voxelgrid.pkl')
-    gt_vox.V[np.isnan(gt_vox.V)] = -0.1
+    gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
     gt_vox.set_origin(gt_vox.origin)
 
     # loading this frame

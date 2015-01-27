@@ -38,6 +38,8 @@ class RenderedVoxelGrid(object):
     origin = np.array((-0.75, -0.75, -0.03))
     R = np.eye(3)
 
+    mu = 0.05  # truncation parameter for the tsdf
+
     @classmethod
     def aabb(cls):
         '''
