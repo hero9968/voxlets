@@ -224,7 +224,6 @@ class RGBDImage(object):
         mask_image_path = \
             scene_folder + '/images/mask_%s.png' % dictionary['id']
         im.mask = scipy.misc.imread(mask_image_path) == 255
-        print im.mask.dtype
 
         # setting the frame id
         im.frame_id = dictionary['id']

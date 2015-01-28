@@ -190,7 +190,9 @@ class RenderedData(object):
     voxlets_path = rendered_arrangements_path + 'voxlets/'
     voxlets_dictionary_path = voxlets_path + 'dictionary/'
     voxlets_dict_data_path = voxlets_path + 'dictionary/dict_data/'
+    voxlets_data_path = voxlets_path + 'training_voxlets/'
 
+    voxlet_model_oma_path = voxlets_path + 'models/oma.pkl'
 
     def __init__(self):
         pass
@@ -263,10 +265,5 @@ class RenderedData(object):
     #     returns a list of all the frames in
     # open(os.path.join(folderpath, yaml_filename), 'r') as f:
     #         video_data = yaml.load(f)
-
-
-
-
-
 
 
