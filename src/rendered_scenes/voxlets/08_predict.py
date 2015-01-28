@@ -33,24 +33,58 @@ with open(paths.RenderedData.voxlet_model_oma_path, 'rb') as f:
 
 test_types = ['oma']
 
+print "Checking results folders exist, creating if not"
+for test_type in test_types:
+    folder_save_path = paths.voxlet_prediction_folder_path % test_type
+    if not os.path.exists(folder_save_path):
+        os.makedirs(folder_save_path)
 
-def main_pool_helper(image, gt_grid, test_type):
-    '''
-    loads an image and then does the prediction for it
-    '''
-    print "Reconstructing with oma forest"
-    rec = voxlets.Reconstructer(
-        reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
-    rec.set_model(model)
-    rec.set_test_im(image)
-    rec.sample_points(number_samples)
-    rec.initialise_output_grid(gt_grid=gt_grid)
-    accum = rec.fill_in_output_grid_oma()
-    prediction = accum.compute_average(nan_value=0.03)
+print "MAIN LOOP"
+# Note: if parallelising, should either do here (at top level) or at the
+# bottom level, where the predictions are accumulated (although this might be)
+# better off being GPU...)
+for count, sequence in enumerate(paths.RenderedData.test_sequence()):
+
+    # load in the ground truth grid for this scene, and converting nans
+    scene_folder = paths.scenes_location + sequence['scene']
+    gt_vox = voxel_data.load_voxels(scene_folder + '/voxelgrid.pkl')
+    gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
+    gt_vox.set_origin(gt_vox.origin)
+
+    # loading in the image
+    frame_data = paths.RenderedData.load_scene_data(
+        sequence['scene'], sequence['frames'][0])
+    im = images.RGBDImage.load_from_dict(
+        paths.scenes_location + sequence['scene'], frame_data)
+
+    # computing normals...
+    norm_engine = features.Normals()
+    im.normals = norm_engine.compute_normals(im)
+
+    for test_type in test_types:
+
+        print "Reconstructing with oma forest"
+        rec = voxlets.Reconstructer(
+            reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+        rec.set_model(model)
+        rec.set_test_im(im)
+        rec.sample_points(number_samples)
+        rec.initialise_output_grid(gt_grid=gt_vox)
+        accum = rec.fill_in_output_grid_oma()
+        prediction = accum.compute_average(
+            nan_value=parameters.RenderedVoxelGrid.mu)
+
+        print "Saving"
+        savepath = paths.RenderedData.voxlet_prediction_path % \
+            (test_type, sequence['name'])
+        prediction.save(savepath)
+
+        print "Done test type " + test_type
+
+    print "Done sequence %s" % sequence['name']
 
     # "Saving result to disk"
-    #savepath =
-
+    # savepath =
 
     # savepath = paths.voxlet_prediction_path % \
     # (test_type, modelname, test_view)
@@ -73,55 +107,9 @@ def main_pool_helper(image, gt_grid, test_type):
     #     (test_type, modelname, test_view)
     # save_plot_slice(prediction.V, gt, imagesavepath, imtitle=str(auc))
 
-    print "Done view " + image.frame_id
+    # # need to do this here after the pool helper has been defined...
+    # import multiprocessing
+    # import functools
 
-
-def main_loop():
-
-    # need to do this here after the pool helper has been defined...
-    import multiprocessing
-    import functools
-
-    if multiproc:
-        pool = multiprocessing.Pool(parameters.cores)
-
-    print "Checking results folders exist, creating if not"
-    for test_type in test_types:
-        folder_save_path = paths.voxlet_prediction_folder_path % test_type
-        if not os.path.exists(folder_save_path):
-            os.makedirs(folder_save_path)
-
-    print "MAIN LOOP"
-    # Note: if parallelising, should either do here (at top level) or at the
-    # bottom level, where the predictions are accumulated (although this might be)
-    # better off being GPU...)
-    for count, sequence in enumerate(paths.RenderedData.test_sequence()):
-
-        # load in the ground truth grid for this scene, and converting nans
-        scene_folder = paths.scenes_location + sequence['scene']
-        gt_vox = voxel_data.load_voxels(scene_folder + '/voxelgrid.pkl')
-        gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
-        gt_vox.set_origin(gt_vox.origin)
-
-        # loading in the image
-        # loading this frame
-        frame_data = paths.RenderedData.load_scene_data(
-            sequence['scene'], sequence['frames'][0])
-        im = images.RGBDImage.load_from_dict(
-            paths.scenes_location + sequence['scene'], frame_data)
-
-        # computing normals...
-        norm_engine = features.Normals()
-        im.normals = norm_engine.compute_normals(im)
-
-        for test_type in test_types:
-            main_pool_helper(
-                image=im,
-                gt_grid=gt_vox,
-                test_type=test_type)
-            print "Done test type " + test_type
-
-        print "Done sequence " + sequence['name']
-
-if __name__ == '__main__':
-    main_loop()
+    # if multiproc:
+    #     pool = multiprocessing.Pool(parameters.cores)

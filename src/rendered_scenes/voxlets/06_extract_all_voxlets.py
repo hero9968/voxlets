@@ -112,7 +112,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     print savepath
 #    scipy.io.savemat(savepath, D, do_compression=True)
 
-    # if count > 8 and paths.small_sample:
+    # if count > 8 and parameters.small_sample:
     #     print "Ending now"
     #     break
 

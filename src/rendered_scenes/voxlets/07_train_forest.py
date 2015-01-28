@@ -3,13 +3,15 @@ train the model dammit
 '''
 import numpy as np
 import scipy.io
+import cPickle as pickle
 import sys
 import os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
+from common import parameters
 from common import voxlets
 
-if paths.small_sample:
+if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
 
 subsample_length = 10000
@@ -38,7 +40,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     features.append(D['features'])
     pca_representation.append(D['pca_representation'])
 
-    if count > 8 and paths.small_sample:
+    if count > 8 and parameters.small_sample:
         print "SMALL SAMPLE: Stopping"
         break
 

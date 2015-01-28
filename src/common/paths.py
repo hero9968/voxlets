@@ -194,6 +194,9 @@ class RenderedData(object):
 
     voxlet_model_oma_path = voxlets_path + 'models/oma.pkl'
 
+    # first is method, second is the sequence
+    voxlet_prediction_path = voxlets_path + 'predictions/%s/%s.pkl'
+
     def __init__(self):
         pass
 

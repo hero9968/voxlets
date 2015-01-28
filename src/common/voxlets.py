@@ -10,6 +10,7 @@ import os
 import time
 
 import paths
+import parameters
 import voxel_data
 import random_forest_structured as srf
 import features
@@ -66,14 +67,39 @@ class VoxletPredictor(object):
         toc = time.time()
         print "Time to train forest is", toc-tic
 
+        # must save the training data in this class, as the forest only saves
+        # an index into the training set...
+        self.training_Y = Y
+
+    def _medioid(self, data):
+        '''
+        similar to numpy 'mean', but returns the medioid data item
+        '''
+        # finding the distance to the mean
+        mu = data.mean(axis=0)
+        mu_dist = np.sqrt(((data - mu[np.newaxis, ...])**2).sum(axis=1))
+
+        median_item_idx = mu_dist.argmin()
+        return data[median_item_idx]
+
     def predict(self, X):
         '''
         Returns a voxlet prediction for each row in X
         '''
-        Y_pred_compressed = self.forest.test(X)
-        Y_pred = self.pca.inverse_transform(Y_pred_compressed)
-        # should I reshape Y_pred here?
-        return Y_pred
+        # each tree predicts which index in the test set to use...
+        # rows = test data (X), cols = tree
+        index_predictions = self.forest.test(X).astype(int)
+
+        # must extract original test data from the indices
+
+        print index_predictions[0]
+
+        # this is a horrible line and needs changing...
+        Y_pred_compressed = [self._medioid(self.training_Y[pred])
+                             for pred in index_predictions]
+        Y_pred_compressed = np.array(Y_pred_compressed)
+
+        return self.pca.inverse_transform(Y_pred_compressed)
 
     def save(self, savepath):
         '''
@@ -134,7 +160,6 @@ class Reconstructer(object):
         '''
         self.sampled_idxs = self.im.random_sample_from_mask(num_to_sample)
 
-    @profile
     def _initialise_voxlet(self, index):
         '''
         given a point in an image, creates a new voxlet at an appropriate
@@ -164,7 +189,6 @@ class Reconstructer(object):
         self.accum.set_origin(gt_grid.origin)
         self.accum.set_voxel_size(gt_grid.vox_size)
 
-    @profile
     def fill_in_output_grid_oma(self):
         '''
         doing the final reconstruction
@@ -185,7 +209,7 @@ class Reconstructer(object):
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
-            transformed_voxlet.V = voxlet.reshape(paths.voxlet_shape)
+            transformed_voxlet.V = voxlet.reshape(parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
 
             print "Added shoebox " + str(count)
