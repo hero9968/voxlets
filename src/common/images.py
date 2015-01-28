@@ -35,12 +35,12 @@ class RGBDImage(object):
         self.assert_depth_rgb_equal()
 
     def load_depth_from_img(self, depth_path):
-
+        self._clear_cache
         self.depth = scipy.misc.imread(depth_path)
         self.assert_depth_rgb_equal()
 
     def load_depth_from_h5(self, depth_path):
-
+        self._clear_cache
         f = h5py.File(depth_path, 'r')
         self.depth = np.array(f['depth']).astype(np.float32) / 10000
         self.depth[self.depth == 0] = np.nan
@@ -48,7 +48,7 @@ class RGBDImage(object):
 
     def load_depth_from_pgm(self, pgm_path):
         ''' the kinfu routine hack i made does pgm like this'''
-
+        self._clear_cache
         # reading header
         f = open(pgm_path, 'r')
         assert(f.readline().strip() == "P2")
@@ -158,10 +158,22 @@ class RGBDImage(object):
         self.cam = cam_in
 
     def get_world_xyz(self):
-        return self.cam.inv_project_points(self.get_uvd())
+        has_cached = hasattr(self, '_cached_world_xyz')
+        if not has_cached:
+            self._cached_world_xyz = \
+                self.cam.inv_project_points(self.get_uvd())
+        return self._cached_world_xyz
 
     def get_world_normals(self):
-        return self.cam.inv_transform_normals(self.normals)
+        has_cached = hasattr(self, '_cached_world_normals')
+        if not has_cached:
+            self._cached_world_normals = \
+                self.cam.inv_transform_normals(self.normals)
+        return self._cached_world_normals
+
+    def _clear_cache(self):
+        del self._cached_world_normals
+        del self._cached_world_xyz
 
     def compute_ray_image(self):
         '''

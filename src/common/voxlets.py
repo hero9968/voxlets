@@ -11,9 +11,10 @@ import os
 import time
 #import scipy.io
 
-sys.path.append('/Users/Michael/projects/shape_sharing/src/')
-from common import paths
-from common import random_forest_structured as srf
+import paths
+import voxel_data
+import random_forest_structured as srf
+import features
 
 # parameters
 multiproc = False
@@ -71,8 +72,8 @@ class VoxletPredictor(object):
         '''
         Returns a voxlet prediction for each row in X
         '''
-        Y_pred_compressed = self.forest.predict(X)
-        Y_pred = self.pca.transform(Y_pred_compressed)
+        Y_pred_compressed = self.forest.test(X)
+        Y_pred = self.pca.inverse_transform(Y_pred_compressed)
         # should I reshape Y_pred here?
         return Y_pred
 
@@ -112,6 +113,89 @@ class VoxletPredictor(object):
     def _print_shapes(self, X, Y):
         print "X has shape ", X.shape
         print "Y has shape ", Y.shape
+
+
+
+from scipy.stats import mode
+
+class Reconstructer(object):
+    '''
+    does the final prediction
+    '''
+
+    def __init__(self, reconstruction_type, combine_type):
+        self.reconstruction_type = reconstruction_type
+        self.combine_type = combine_type
+
+    def set_model(self, model):
+        self.model = model
+
+    def set_test_im(self, test_im):
+        self.im = test_im
+
+    def sample_points(self, num_to_sample):
+        '''
+        sampling points from the test image
+        '''
+        self.sampled_idxs = self.im.random_sample_from_mask(num_to_sample)
+
+    @profile
+    def _initialise_voxlet(self, index):
+        '''
+        given a point in an image, creates a new voxlet at an appropriate
+        position and rotation in world space
+        '''
+        assert(index.shape[0]==2)
+
+        # getting the xyz and normals in world space
+        world_xyz = self.im.get_world_xyz()
+        world_norms = self.im.get_world_normals()
+
+        # convert to linear idx
+        point_idx = index[0] * self.im.mask.shape[1] + index[1]
+
+        # creating the voxlet
+        shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape) # grid size
+        shoebox.set_p_from_grid_origin(parameters.Voxlet.centre) #m
+        shoebox.set_voxel_size(parameters.Voxlet.size) #m
+        shoebox.initialise_from_point_and_normal(world_xyz[point_idx],
+                                                 world_norms[point_idx],
+                                                 np.array([0, 0, 1]))
+        return shoebox
+
+    def initialise_output_grid(self, gt_grid=None):
+        '''defaulting to initialising from the ground truth grid...'''
+        self.accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
+        self.accum.set_origin(gt_grid.origin)
+        self.accum.set_voxel_size(gt_grid.vox_size)
+
+    @profile
+    def fill_in_output_grid_oma(self):
+        '''
+        doing the final reconstruction
+        '''
+
+        "extract features from test image"
+        ce = features.CobwebEngine(t=5, fixed_patch_size=False)
+        ce.set_image(self.im)
+        np_features = np.array(ce.extract_patches(self.sampled_idxs))
+
+        "classify according to the forest"
+        voxlet_predictions = self.model.predict(np_features)
+        print "Forest predictons has shape " + str(voxlet_predictions.shape)
+
+        "for each forest prediction, do something sensible"
+        for count, (idx, voxlet) in enumerate(
+            zip(self.sampled_idxs, voxlet_predictions)):
+
+            # adding the shoebox into the result
+            transformed_voxlet = self._initialise_voxlet(idx)
+            transformed_voxlet.V = voxlet.reshape(paths.voxlet_shape)
+            self.accum.add_voxlet(transformed_voxlet)
+
+            print "Added shoebox " + str(count)
+
+        return self.accum
 
 
 

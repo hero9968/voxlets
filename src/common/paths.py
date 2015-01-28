@@ -95,10 +95,10 @@ if data_type=='bigbird':
 
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
-    one_side_bins = 15
-    voxlet_shape = (one_side_bins, 2*one_side_bins, one_side_bins)
-    voxlet_size = 0.1/float(one_side_bins)
-    voxlet_centre = np.array((0.05, 0.025, 0.05))
+    # one_side_bins = 15
+    # voxlet_shape = (one_side_bins, 2*one_side_bins, one_side_bins)
+    # voxlet_size = 0.1/float(one_side_bins)
+    # voxlet_centre = np.array((0.05, 0.025, 0.05))
 
     small_sample = (host_name != 'troll')
 
