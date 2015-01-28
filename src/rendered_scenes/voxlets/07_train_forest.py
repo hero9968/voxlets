@@ -18,7 +18,7 @@ if paths.small_sample:
 subsample_length = 10000
 
 ####################################################################
-print "Loading the dictionaries etc"
+print "Loading the dictionaries and PCA"
 ########################################################################
 pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'pca.pkl'
 with open(pca_savepath, 'rb') as f:
@@ -41,46 +41,41 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     features.append(D['features'])
 
     pca_representation.append(D['pca_representation'])
-    # pca_kmeans_idx.append(D['pca_kmeans_idx'])
-    # kmeans_idx.append(D['kmeans_idx'])
 
     if count > 8 and paths.small_sample:
         print "SMALL SAMPLE: Stopping"
         break
 
-np_pca_representation = np.vstack(pca_representation)
-# np_kmeans_idx = np.hstack(kmeans_idx).flatten()
-
 ####################################################################
 print "Subsampling"
 ########################################################################
 
-# np_features = np.array(features).reshape((-1, 56))
-
+np_pca_representation = np.vstack(pca_representation)
 np_features = np.concatenate(features, axis=0)
-to_remove = np.any(np.isnan(np_features), axis=1)
 
 print "Before subsampling"
-print "np_features has shape " + str(np_features.shape)
-print "np_pca_representation has shape " + str(np_pca_representation.shape)
+print "np_features has shape ", np_features.shape
+print "np_pca_representation has shape ", np_pca_representation.shape
 
+to_remove = np.any(np.isnan(np_features), axis=1)
 np_features = np_features[~to_remove, :]
 np_pca_representation = np_pca_representation[~to_remove, :]
 
-print "Before subsampling"
-print "np_features has shape " + str(np_features.shape)
-print "np_pca_representation has shape " + str(np_pca_representation.shape)
+print "After removing nans..."
+print "np_features has shape ", np_features.shape
+print "np_pca_representation has shape ", np_pca_representation.shape
 
-rand_exs = np.sort(np.random.choice(
-    np_features.shape[0],
-    np.minimum(subsample_length, np_features.shape[0]),
-    replace=False))
-np_features = np_features.take(rand_exs, 0)
-np_pca_representation = np_pca_representation.take(rand_exs, 0)
+if subsample_length < np_features.shape[0]:
+    rand_exs = np.sort(np.random.choice(
+        np_features.shape[0],
+        np.minimum(subsample_length, np_features.shape[0]),
+        replace=False))
+    np_features = np_features.take(rand_exs, 0)
+    np_pca_representation = np_pca_representation.take(rand_exs, 0)
 
-print "After subsampling"
-print "np_features has shape " + str(np_features.shape)
-print "np_pca_representation has shape " + str(np_pca_representation.shape)
+print "After removing nans and subsampling"
+print "np_features has shape ", np_features.shape
+print "np_pca_representation has shape ", np_pca_representation.shape
 
 ########################################################################
 print "Training OMA forest"
@@ -91,7 +86,7 @@ forest = srf.Forest(forest_params)
 tic = time.time()
 forest.train(np_features, np_pca_representation)
 toc = time.time()
-print 'train time', toc-tic
+print 'Time to train forest is', toc-tic
 
 print "Combining forest with training data"
 forest_dict = dict(
