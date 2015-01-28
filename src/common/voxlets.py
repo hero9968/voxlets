@@ -7,9 +7,7 @@ import numpy as np
 import cPickle as pickle
 import sys
 import os
-#import yaml
 import time
-#import scipy.io
 
 import paths
 import voxel_data
@@ -115,9 +113,6 @@ class VoxletPredictor(object):
         print "Y has shape ", Y.shape
 
 
-
-from scipy.stats import mode
-
 class Reconstructer(object):
     '''
     does the final prediction
@@ -145,7 +140,7 @@ class Reconstructer(object):
         given a point in an image, creates a new voxlet at an appropriate
         position and rotation in world space
         '''
-        assert(index.shape[0]==2)
+        assert(index.shape[0] == 2)
 
         # getting the xyz and normals in world space
         world_xyz = self.im.get_world_xyz()
@@ -155,9 +150,9 @@ class Reconstructer(object):
         point_idx = index[0] * self.im.mask.shape[1] + index[1]
 
         # creating the voxlet
-        shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape) # grid size
-        shoebox.set_p_from_grid_origin(parameters.Voxlet.centre) #m
-        shoebox.set_voxel_size(parameters.Voxlet.size) #m
+        shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape)  # grid size
+        shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
+        shoebox.set_voxel_size(parameters.Voxlet.size)  # m
         shoebox.initialise_from_point_and_normal(world_xyz[point_idx],
                                                  world_norms[point_idx],
                                                  np.array([0, 0, 1]))
@@ -186,7 +181,7 @@ class Reconstructer(object):
 
         "for each forest prediction, do something sensible"
         for count, (idx, voxlet) in enumerate(
-            zip(self.sampled_idxs, voxlet_predictions)):
+                zip(self.sampled_idxs, voxlet_predictions)):
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
@@ -196,8 +191,6 @@ class Reconstructer(object):
             print "Added shoebox " + str(count)
 
         return self.accum
-
-
 
 # def pool_helper(index, im, vgrid):
 
@@ -239,4 +232,3 @@ class Reconstructer(object):
 
 #     def extract_voxlets(self, num_to_extract):
 #         self
-
