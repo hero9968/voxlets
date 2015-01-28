@@ -2,16 +2,12 @@
 train the model dammit
 '''
 import numpy as np
-import cPickle as pickle
 import scipy.io
 import sys
 import os
-import time
-
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
 from common import voxlets
-from common import random_forest_structured as srf
 
 if paths.small_sample:
     print "WARNING: Just computing on a small sample"
@@ -40,7 +36,6 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
     D = scipy.io.loadmat(loadpath)
     features.append(D['features'])
-
     pca_representation.append(D['pca_representation'])
 
     if count > 8 and paths.small_sample:
