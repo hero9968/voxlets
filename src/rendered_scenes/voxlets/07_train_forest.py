@@ -10,6 +10,7 @@ import time
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
+from common import voxlets
 from common import random_forest_structured as srf
 
 if paths.small_sample:
@@ -46,53 +47,14 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
         print "SMALL SAMPLE: Stopping"
         break
 
-####################################################################
-print "Subsampling"
-########################################################################
-
 np_pca_representation = np.vstack(pca_representation)
 np_features = np.concatenate(features, axis=0)
 
-print "Before subsampling"
-print "np_features has shape ", np_features.shape
-print "np_pca_representation has shape ", np_pca_representation.shape
+####################################################################
+print "Training the model"
+####################################################################
 
-to_remove = np.any(np.isnan(np_features), axis=1)
-np_features = np_features[~to_remove, :]
-np_pca_representation = np_pca_representation[~to_remove, :]
-
-print "After removing nans..."
-print "np_features has shape ", np_features.shape
-print "np_pca_representation has shape ", np_pca_representation.shape
-
-if subsample_length < np_features.shape[0]:
-    rand_exs = np.sort(np.random.choice(
-        np_features.shape[0],
-        np.minimum(subsample_length, np_features.shape[0]),
-        replace=False))
-    np_features = np_features.take(rand_exs, 0)
-    np_pca_representation = np_pca_representation.take(rand_exs, 0)
-
-print "After removing nans and subsampling"
-print "np_features has shape ", np_features.shape
-print "np_pca_representation has shape ", np_pca_representation.shape
-
-########################################################################
-print "Training OMA forest"
-########################################################################
-
-forest_params = srf.ForestParams()
-forest = srf.Forest(forest_params)
-tic = time.time()
-forest.train(np_features, np_pca_representation)
-toc = time.time()
-print 'Time to train forest is', toc-tic
-
-print "Combining forest with training data"
-forest_dict = dict(
-    forest=forest,
-    traindata=np_pca_representation,
-    pca_model=pca)
-
-print "Done training, now saving"
-pickle.dump(forest_dict, open(paths.voxlet_model_oma_path, 'wb'))
+model = voxlets.VoxletPredictor()
+model.train(np_features, np_pca_representation, subsample_length)
+model.set_pca(pca)
+model.save(paths.RenderedData.voxlet_model_oma_path)
