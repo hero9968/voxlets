@@ -115,7 +115,7 @@ class VoxletPredictor(object):
             raise Exception("Forest not trained it seems")
 
         with open(savepath, 'wb') as f:
-            pickle.dump(self, f)
+            pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     def _remove_nans(self, X, Y):
         '''

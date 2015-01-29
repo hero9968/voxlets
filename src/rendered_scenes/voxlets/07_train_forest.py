@@ -10,6 +10,7 @@ sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
 from common import parameters
 from common import voxlets
+import time
 
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
@@ -54,4 +55,5 @@ print "Training the model"
 model = voxlets.VoxletPredictor()
 model.train(np_features, np_pca_representation, subsample_length)
 model.set_pca(pca)
+#t1 = time.time()
 model.save(paths.RenderedData.voxlet_model_oma_path)

@@ -14,32 +14,24 @@ from numbers import Number
 import sklearn.metrics
 import cPickle as pickle
 
-
 def load_voxels(filename):
     '''
     function to load a saved voxel file from disk.
-    This function is not a class member to enable it to load an
-    arbitrary subclass from the voxel data class heirarchy.
-    In effect it is a pickle wrapper.
-    I do not use standard pickle for this as pickle:
-        1) Uses loads of disk space and
-        2) is slower
-    Instead I store the main voxel data array as a numpy file,
-    and store the rest of the voxel data as a pickled object
-    (The equivalent save routine of course is able to be a class member function,
-    instantiated in the base class 'Voxels')
+    NOTE: This is becoming obsolete since I discovered pickling with the
+    updated 'HIGHEST_PROTOCOL'. Now I can just pickle the class and it's all
+    fine.
+    When I have recreated a lot of the data and I am more convinced that the
+    files are all stored in pickle directly, then i will remove this function
+    and replace the calls to it with pickle.load()
     '''
     with open(filename, 'rb') as f:
         temp = pickle.load(f)
 
-    with open(filename + '.npy', 'r') as f:
-        temp.V = np.load(f)['V']
-        #print dir(whatis)
-        #print whatis.keys
-        #print whatis.keys()
+    if temp.V == []:
+        with open(filename + '.npy', 'r') as f:
+            temp.V = np.load(f)['V']
 
     return temp
-
 
 class Voxels(object):
     '''
@@ -222,13 +214,7 @@ class Voxels(object):
         self._clear_cache()
 
         with open(filename + '.npy', 'wb') as f:
-            np.savez_compressed(f, V=self.V)
-
-        temp_copy = copy.deepcopy(self)
-        temp_copy.V = []
-
-        with open(filename, 'wb') as f:
-            pickle.dump(temp_copy, f)
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
 
 class WorldVoxels(Voxels):

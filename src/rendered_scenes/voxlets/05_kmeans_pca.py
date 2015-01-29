@@ -92,11 +92,11 @@ km = cluster_data(np_all_sboxes, subsample_length, number_clusters)
 try:
     print "Saving to " + pca_savepath
     with open(pca_savepath, 'wb') as f:
-        pickle.dump(pca, f)
+        pickle.dump(pca, f, pickle.HIGHEST_PROTOCOL)
 
     print "Saving to " + kmeans_savepath
     with open(kmeans_savepath, 'wb') as f:
-        pickle.dump(km, f)
+        pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
 
 except:
     import pdb; pdb.set_trace()
