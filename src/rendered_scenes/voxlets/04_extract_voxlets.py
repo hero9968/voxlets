@@ -17,10 +17,6 @@ from common import images
 from common import parameters
 from common import features
 
-# parameters
-number_points_from_each_image = 50
-multiproc = False
-
 
 def pool_helper(index, im, vgrid):
 
@@ -44,7 +40,7 @@ def pool_helper(index, im, vgrid):
     return shoebox.V.flatten()
 
 # need to import these *after* the pool helper has been defined
-if multiproc:
+if parameters.multicore:
     import multiprocessing
     import functools
     pool = multiprocessing.Pool(parameters.cores)
@@ -70,16 +66,18 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     im.normals = norm_engine.compute_normals(im)
 
     "Sampling from image"
-    idxs = im.random_sample_from_mask(number_points_from_each_image)
+    idxs = im.random_sample_from_mask(
+        parameters.VoxletTraining.pca_number_points_from_each_image)
 
     "Extracting features"
-    ce = features.CobwebEngine(t=5, fixed_patch_size=False)
+    ce = features.CobwebEngine(
+        t=parameters.VoxletTraining.cobweb_t, fixed_patch_size=False)
     ce.set_image(im)
     np_features = np.array(ce.extract_patches(idxs))
 
     "Now try to make this nice and like parrallel or something...?"
     t1 = time()
-    if multiproc:
+    if parameters.multicore:
         shoeboxes = pool.map(
             functools.partial(pool_helper, im=im, vgrid=gt_vox), idxs)
     else:

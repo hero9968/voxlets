@@ -15,7 +15,6 @@ import time
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
 
-subsample_length = 10000
 
 ####################################################################
 print "Loading the dictionaries and PCA"
@@ -53,7 +52,9 @@ print "Training the model"
 ####################################################################
 
 model = voxlets.VoxletPredictor()
-model.train(np_features, np_pca_representation, subsample_length)
+model.train(
+    np_features,
+    np_pca_representation,
+    parameters.VoxletTraining.forest_subsample_length)
 model.set_pca(pca)
-#t1 = time.time()
 model.save(paths.RenderedData.voxlet_model_oma_path)

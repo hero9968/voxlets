@@ -3,7 +3,6 @@ make predictions for all of bigbird dataset
 using my algorhtm
 saves each prediction to disk
 '''
-njobs = 4
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -12,9 +11,6 @@ import cPickle as pickle
 import sys
 import os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
-import copy
-import sklearn.metrics
-import scipy.io
 
 from common import paths
 from common import parameters
@@ -23,9 +19,6 @@ from common import images
 from common import features
 from common import voxlets
 
-print "Setting parameters"
-number_samples = 200
-multiproc = True
 
 # loading model
 with open(paths.RenderedData.voxlet_model_oma_path, 'rb') as f:
@@ -68,7 +61,7 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
             reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
         rec.set_model(model)
         rec.set_test_im(im)
-        rec.sample_points(number_samples)
+        rec.sample_points(parameters.VoxletPrediction.number_samples)
         rec.initialise_output_grid(gt_grid=gt_vox)
         accum = rec.fill_in_output_grid_oma()
         prediction = accum.compute_average(

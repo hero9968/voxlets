@@ -1,6 +1,5 @@
 '''
-Loads in the combined sboxes and clusters them to form a dictionary
-smaller
+Extracts all the shoeboxes from all the training images
 '''
 import numpy as np
 import cPickle as pickle
@@ -15,10 +14,6 @@ from common import voxel_data
 from common import images
 from common import parameters
 from common import features
-
-# parameters
-number_points_from_each_image = 50
-multiproc = False
 
 pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'pca.pkl'
 with open(pca_savepath, 'rb') as f:
@@ -46,8 +41,8 @@ def pool_helper(index, im, vgrid):
 
     # convert to pca representation
     pca_representation = pca.transform(shoebox.V.flatten())
-    #pca_kmeans_idx = km_pca.predict(pca_representation.flatten())
-    #kmeans_idx = km_standard.predict(shoebox.V.flatten())
+    # pca_kmeans_idx = km_pca.predict(pca_representation.flatten())
+    # kmeans_idx = km_standard.predict(shoebox.V.flatten())
 
     all_representations = dict(pca_representation=pca_representation)
     #                           pca_kmeans_idx=pca_kmeans_idx,
@@ -59,7 +54,7 @@ def pool_helper(index, im, vgrid):
     return all_representations
 
 # need to import these *after* the pool helper has been defined
-if multiproc:
+if parameters.multicore:
     import multiprocessing
     import functools
     pool = multiprocessing.Pool(parameters.cores)
@@ -85,16 +80,18 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     im.normals = norm_engine.compute_normals(im)
 
     "Sampling from image"
-    idxs = im.random_sample_from_mask(number_points_from_each_image)
+    idxs = im.random_sample_from_mask(
+        parameters.VoxletTraining.number_points_from_each_image)
 
     "Extracting features"
-    ce = features.CobwebEngine(t=5, fixed_patch_size=False)
+    ce = features.CobwebEngine(
+        t=parameters.VoxletTraining.cobweb_t, fixed_patch_size=False)
     ce.set_image(im)
     np_features = np.array(ce.extract_patches(idxs))
 
     "Now try to make this nice and like parrallel or something...?"
     t1 = time()
-    if multiproc:
+    if parameters.multicore:
         shoeboxes = pool.map(
             functools.partial(pool_helper, im=im, vgrid=gt_vox), idxs)
     else:
@@ -106,11 +103,11 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     print "Shoeboxes are shape " + str(np_sboxes.shape)
     print "Features are shape " + str(np_features.shape)
 
- #   D = dict(shoeboxes=np_sboxes, features=np_features)
+    #   D = dict(shoeboxes=np_sboxes, features=np_features)
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
     print savepath
-#    scipy.io.savemat(savepath, D, do_compression=True)
+    #    scipy.io.savemat(savepath, D, do_compression=True)
 
     # if count > 8 and parameters.small_sample:
     #     print "Ending now"
@@ -123,10 +120,10 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
         [sbox['pca_representation'] for sbox in shoeboxes])
     np_pca_representation = np_pca_representation.reshape(
         (-1, np_pca_representation.shape[2]))
-#    np_kmeans_idx = np.array(
-#        [sbox['kmeans_idx'] for sbox in shoeboxes]).flatten()
-#    np_pca_kmeans_idx = np.array(
-#        [sbox['pca_kmeans_idx'] for sbox in shoeboxes]).flatten()
+    #    np_kmeans_idx = np.array(
+    #        [sbox['kmeans_idx'] for sbox in shoeboxes]).flatten()
+    #    np_pca_kmeans_idx = np.array(
+    #        [sbox['pca_kmeans_idx'] for sbox in shoeboxes]).flatten()
 
     print "PCA is shape " + str(np_pca_representation.shape)
 #    print "kmeans is shape " + str(np_kmeans_idx.shape)

@@ -8,9 +8,11 @@ host_name = socket.gethostname()
 if host_name == 'troll' or host_name == 'biryani':
     small_sample = False
     cores = 8
+    multicore = True
 else:
     small_sample = True
     cores = 4
+    multicore = False
 
 
 if small_sample:
@@ -49,3 +51,28 @@ class RenderedVoxelGrid(object):
         grid_max = cls.origin + cls.voxel_size * cls.shape
         return grid_min, grid_max
 
+
+class VoxletTraining(object):
+    '''
+    parameters for the training stage of the voxlet algorithm
+    (Although the forest paramters are elsewhere currently)
+    '''
+    cobweb_t = 5  # this is the parameter of the cobweb feature extraction...
+
+    # PCA and kmeans
+    pca_number_points_from_each_image = 50
+    number_pca_dims = 50
+    number_clusters = 150
+    pca_subsample_length = 25000  # max number of examples to use for pca
+
+    # actual voxlet extraction
+    number_points_from_each_image = 100
+
+    forest_subsample_length = 25000  # max num examples to use to train forest
+
+
+class VoxletPrediction(object):
+    '''
+    parameters for prediction stage of voxlet algorithm
+    '''
+    number_samples = 200  # number of points to sample from image

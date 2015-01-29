@@ -37,7 +37,8 @@ for scenename in paths.rendered_primitive_scenes:
         inside = inside.reshape(frame.depth.shape)
 
         # also remove points on the floor plane
-        above_floor = np.abs(xyz[:, 2] - 0) > 3e-3
+        floor_height = parameters.RenderedVoxelGrid.origin[2]
+        above_floor = np.abs(xyz[:, 2] - 0) > floor_height
         above_floor = above_floor.reshape(frame.depth.shape)
 
         mask = np.logical_and(inside, above_floor)

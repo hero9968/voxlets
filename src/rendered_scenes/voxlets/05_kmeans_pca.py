@@ -11,23 +11,16 @@ from sklearn.cluster import MiniBatchKMeans
 from common import paths
 from common import parameters
 
-# parameters
-subsample_length = 25000
-
-# how many points to cluster with
-number_pca_dims = 50
-number_clusters = 30
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
-    subsample_length = 25000
 
 
-def pca_randomized(X_in, num_pca_dims):
+def pca_randomized(X_in, local_subsample_length, num_pca_dims):
 
     # take subsample
     rand_exs = np.sort(np.random.choice(
         X_in.shape[0],
-        np.minimum(subsample_length, X_in.shape[0]),
+        np.minimum(local_subsample_length, X_in.shape[0]),
         replace=False))
     X = X_in.take(rand_exs, 0)
 
@@ -84,10 +77,16 @@ print "All sboxes shape is " + str(np_all_sboxes.shape)
 
 # clustering the sboxes - but only a subsample of them for speed!
 print "Doing PCA"
-pca = pca_randomized(np_all_sboxes, number_pca_dims)
+pca = pca_randomized(
+    np_all_sboxes,
+    parameters.VoxletTraining.pca_subsample_length
+    parameters.VoxletTraining.number_pca_dims)
 
 print "Doing Kmeans"
-km = cluster_data(np_all_sboxes, subsample_length, number_clusters)
+km = cluster_data(
+    np_all_sboxes,
+    parameters.VoxletTraining.pca_subsample_length,
+    parameters.VoxletTraining.number_clusters)
 
 try:
     print "Saving to " + pca_savepath
