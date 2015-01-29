@@ -129,7 +129,7 @@ def renderScene(name):
 #######################################################
 
 # this is the overall filename, a random string of characters
-filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(12)) + '_SCN'
 if not os.path.exists(save_path + filename):
     os.makedirs(save_path + filename)
     os.makedirs(save_path + filename + '/images/')

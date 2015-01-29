@@ -3,6 +3,7 @@ This module is purely here to store the paths to the data associated with all th
 '''
 
 import os
+import sys
 import socket
 import numpy as np
 
@@ -155,23 +156,21 @@ def num_files_in_dir(dirname):
 
 
 #### Paths for the primitive scenes
-rendered_arrangements_path = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/')
-scenes_location = rendered_arrangements_path + '/renders/'
-
-# generate a list of all directories in the scenes location
-# zeroth element as top level in tree, first element to get the directories
-rendered_primitive_scenes = list(os.walk(scenes_location))[0][1]
+# rendered_arrangements_path = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/')
 
 
-split_save_location = rendered_arrangements_path + '/splits/'
-yaml_train_location = split_save_location + 'train.yaml'
-yaml_train_location_scene_centric = split_save_location + 'train_scene_centric.yaml'
-yaml_test_location = split_save_location + 'test.yaml'
-yaml_test_location_scene_centric = split_save_location + 'test_scene_centric.yaml'
+# # generate a list of all directories in the scenes location
+# # zeroth element as top level in tree, first element to get the directories
 
-sequences_save_location = rendered_arrangements_path + '/sequences/'
-test_sequences_save_location = rendered_arrangements_path + '/test_sequences/'
-implicit_models_folder = rendered_arrangements_path + '/models/'
+# split_save_location = rendered_arrangements_path + '/splits/'
+# yaml_train_location = split_save_location + 'train.yaml'
+# yaml_train_location_scene_centric = split_save_location + 'train_scene_centric.yaml'
+# yaml_test_location = split_save_location + 'test.yaml'
+# yaml_test_location_scene_centric = split_save_location + 'test_scene_centric.yaml'
+
+# sequences_save_location = rendered_arrangements_path + '/sequences/'
+# test_sequences_save_location = rendered_arrangements_path + '/test_sequences/'
+# implicit_models_folder = rendered_arrangements_path + '/models/'
 
 import yaml
 
@@ -197,47 +196,70 @@ class RenderedData(object):
     # first is method, second is the sequence
     voxlet_prediction_path = voxlets_path + 'predictions/%s/%s.pkl'
 
+    @classmethod
+    def ground_truth_voxels(cls, scenename):
+        return os.path.join(
+            cls.scenes_location, scenename, 'ground_truth_tsdf.pkl')
+
+    @classmethod
+    def video_yaml(cls, scenename):
+        return os.path.join(cls.scenes_location, scenename, 'poses.yaml')
+
+    @classmethod
+    def scene_dir(cls, scenename):
+        return os.path.join(cls.scenes_location, scenename)
+
+    @classmethod
+    def mask_path(cls, scenename, frame_id):
+        filename = 'mask_%s.png' % frame_id
+        return os.path.join(cls.scenes_location, scenename, 'images', filename)
+
+    @classmethod
+    def visible_voxels(cls, scenename):
+        return os.path.join(cls.scenes_location, scenename, 'visible.pkl')
+
     def __init__(self):
         pass
 
-    @staticmethod
-    def get_scene_list():
+    @classmethod
+    def get_scene_list(cls):
         '''
         returns a list of all the rendered scenes, based on what is in the
         scenes directory
         '''
-        return list(os.walk(scenes_location))[0][1]
+        return list(os.walk(cls.scenes_location))[0][1]
 
-    @staticmethod
-    def train_sequence():
+    @classmethod
+    def train_sequence(cls):
         '''
         returns a list of dictionaries of training data
         '''
-        with open(yaml_train_location, 'r') as f:
+        with open(cls.yaml_train_location, 'r') as f:
             train_data = yaml.load(f)
 
         return train_data
 
-    @staticmethod
-    def test_sequence():
+    @classmethod
+    def test_sequence(cls):
         '''
         returns a list of dictionaries of testing data
         '''
-        with open(yaml_test_location, 'r') as f:
+        with open(cls.yaml_test_location, 'r') as f:
             test_data = yaml.load(f)
 
         return  test_data
 
-    @staticmethod
-    def load_scene_data(scene_name, frame_idxs=[]):
+    @classmethod
+    def load_scene_data(cls, scenename, frame_idxs=None):
         '''
         returns a list of frames from a scene
         if frames then returns only the specified frame numbers
         '''
-        with open(scenes_location + scene_name + '/poses.yaml', 'r') as f:
+        with open(cls.video_yaml(scenename), 'r') as f:
             frames = yaml.load(f)
 
-        if frame_idxs:
+        # Using "!= None" because if I don't and frame_idxs==0 then this fails
+        if frame_idxs != None:
             if isinstance(frame_idxs, list):
                 frames = [frames[idx] for idx in frame_idxs]
             else:

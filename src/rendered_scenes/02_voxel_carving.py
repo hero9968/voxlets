@@ -1,15 +1,11 @@
 '''
 script to voxel carve a scene given a video of depth frames
-in the long run this video should be very short, just with filepaths and paramters
-the meat should be in another place
-
-in the short run this will probably not be the case
 
 TODO:
-- TSDF fusion instead of straight voxel carving?
 - GPU for speed? (probably too much!)
 '''
-import sys, os
+import sys
+import os
 import numpy as np
 import scipy.io
 
@@ -22,18 +18,12 @@ from common import paths
 from common import parameters
 
 # doing a loop here to loop over all possible files...
-for scenename in paths.rendered_primitive_scenes:
-
-    input_data_path = paths.scenes_location + scenename + '/'
+for scenename in paths.RenderedData.get_scene_list():
 
     vid = images.RGBDVideo()
-    vid.load_from_yaml(input_data_path, 'poses.yaml')
-    #vid.play()
+    vid.load_from_yaml(paths.RenderedData.video_yaml(scenename))
 
-    #gt_vox.set_origin(parameters.RenderedVoxelGrid.origin)
-    #gt_vox.set_voxel_size(parameters.RenderedVoxelGrid.voxel_size)
-
-    # initialise voxel grid (could add a helper function to make this more explicit...?)
+    # initialise voxel grid (could add helper function to make it explicit...?)
     vox = voxel_data.WorldVoxels()
     vox.V = np.zeros(parameters.RenderedVoxelGrid.shape, np.float32)
     vox.set_voxel_size(parameters.RenderedVoxelGrid.voxel_size)
@@ -45,10 +35,10 @@ for scenename in paths.rendered_primitive_scenes:
     carver.set_voxel_grid(vox)
     vox, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
 
-    savepath = paths.scenes_location + scenename + '/voxelgrid.pkl'
+    savepath = paths.RenderedData.ground_truth_voxels(scenename)
     print "Saving using custom routine to location %s" % savepath
     vox.save(savepath)
 
-    savepath = paths.scenes_location + scenename + '/visiblegrid.pkl'
+    savepath = paths.RenderedData.visible_voxels(scenename)
     print "Saving using custom routine to location %s" % savepath
     visible.save(savepath)

@@ -7,10 +7,12 @@ host_name = socket.gethostname()
 
 if host_name == 'troll' or host_name == 'biryani':
     small_sample = False
+    max_sequences = float('Inf')  # when in a loop, max num of images to use
     cores = 8
     multicore = True
 else:
     small_sample = True
+    max_sequences = 8
     cores = 4
     multicore = False
 
@@ -19,14 +21,21 @@ if small_sample:
     print "WARNING: Just computing on a small sample"
 
 
-class General(object):
+class RenderData(object):
     '''
     General parameters, e.g. about the overall experiemnts etc
     '''
     if small_sample:
-        scenes_to_render = 4
+        scenes_to_render = 10
+        train_test_max_scenes = 10
     else:
         scenes_to_render = 100
+        train_test_max_scenes = 100
+
+    # train test split parameters
+    frames_per_sequence = 1
+    sequences_per_scene = 5
+    train_fraction = 0.6
 
 
 class Voxlet(object):

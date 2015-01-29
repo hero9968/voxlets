@@ -235,7 +235,9 @@ class RGBDImage(object):
 
         mask_image_path = \
             scene_folder + '/images/mask_%s.png' % dictionary['id']
-        im.mask = scipy.misc.imread(mask_image_path) == 255
+        # only load the mask if it exists...
+        if os.path.exists(mask_image_path):
+            im.mask = scipy.misc.imread(mask_image_path) == 255
 
         # setting the frame id
         im.frame_id = dictionary['id']
@@ -556,19 +558,22 @@ class RGBDVideo():
 
 
     def load_from_yaml(
-            self, folderpath, yaml_filename='poses.yaml', frames=None):
+            self, yamlpath, frames=None):
         '''
         loads a sequence based on a yaml file.
         Image files assumed to be within the specified folder.
         A certain format of YAML is expected. See code for details!!
         '''
         self.reset()
-        frame_data = yaml.load(
-            open(os.path.join(folderpath, yaml_filename), 'r'))
+        with open(yamlpath, 'r') as fid:
+            frame_data = yaml.load(fid)
 
         if frames is not None:
             frame_data = [frame_data[frame] for frame in frames]
 
+        # get the folder in which the yaml file resides...
+        # (paths in the yaml file are defined relative to this dir)
+        folderpath = os.path.dirname(yamlpath)
         self.frames = [RGBDImage.load_from_dict(folderpath, frame)
                         for frame in frame_data]
 

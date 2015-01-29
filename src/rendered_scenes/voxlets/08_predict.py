@@ -28,7 +28,10 @@ test_types = ['oma']
 
 print "Checking results folders exist, creating if not"
 for test_type in test_types:
-    folder_save_path = paths.voxlet_prediction_folder_path % test_type
+    folder_save_path = \
+        paths.RenderedData.voxlet_prediction_path % (test_type, '_')
+    folder_save_path = os.path.dirname(folder_save_path)
+    print folder_save_path
     if not os.path.exists(folder_save_path):
         os.makedirs(folder_save_path)
 
@@ -39,8 +42,8 @@ print "MAIN LOOP"
 for count, sequence in enumerate(paths.RenderedData.test_sequence()):
 
     # load in the ground truth grid for this scene, and converting nans
-    scene_folder = paths.scenes_location + sequence['scene']
-    gt_vox = voxel_data.load_voxels(scene_folder + '/voxelgrid.pkl')
+    vox_location = paths.RenderedData.ground_truth_voxels(sequence['scene'])
+    gt_vox = voxel_data.load_voxels(vox_location)
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
     gt_vox.set_origin(gt_vox.origin)
 
@@ -48,7 +51,8 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
     frame_data = paths.RenderedData.load_scene_data(
         sequence['scene'], sequence['frames'][0])
     im = images.RGBDImage.load_from_dict(
-        paths.scenes_location + sequence['scene'], frame_data)
+        paths.RenderedData.scene_dir(sequence['scene']),
+        frame_data)
 
     # computing normals...
     norm_engine = features.Normals()

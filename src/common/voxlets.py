@@ -113,9 +113,13 @@ class VoxletPredictor(object):
 
         if not hasattr(self, 'forest'):
             raise Exception("Forest not trained it seems")
+        tic = time.time()
 
         with open(savepath, 'wb') as f:
             pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        toc = time.time()
+        print "Time to save forest is", toc-tic
 
     def _remove_nans(self, X, Y):
         '''
@@ -212,7 +216,8 @@ class Reconstructer(object):
             transformed_voxlet.V = voxlet.reshape(parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
 
-            print "Added shoebox " + str(count)
+            sys.stdout.write('.')
+            sys.stdout.flush()
 
         return self.accum
 

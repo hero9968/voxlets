@@ -4,7 +4,7 @@ sys.path.append('/Users/Michael/projects/shape_sharing/src/')
 from common import parameters
 from common import paths
 
-for i in range(parameters.General.scenes_to_render):
+for i in range(parameters.RenderData.scenes_to_render):
     sp.call([
         paths.blender_path,
         "spinaround/spin.blend",

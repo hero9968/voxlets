@@ -15,6 +15,10 @@ import time
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
 
+modelfolder = os.path.dirname(paths.RenderedData.voxlet_model_oma_path)
+if not os.path.exists(modelfolder):
+    os.makedirs(modelfolder)
+
 
 ####################################################################
 print "Loading the dictionaries and PCA"

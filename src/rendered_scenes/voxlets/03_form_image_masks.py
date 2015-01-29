@@ -18,14 +18,12 @@ grid_min, grid_max = parameters.RenderedVoxelGrid.aabb()
 print grid_min, grid_max
 
 # doing a loop here to loop over all possible files...
-for scenename in paths.rendered_primitive_scenes:
+for scenename in paths.RenderedData.get_scene_list():
 
-    print scenename
-
-    input_data_path = paths.scenes_location + scenename + '/'
+    print "Making masks for %s" % scenename
 
     vid = images.RGBDVideo()
-    vid.load_from_yaml(input_data_path, 'poses.yaml')
+    vid.load_from_yaml(paths.RenderedData.video_yaml(scenename))
 
     # now for each frame in the video, project the points into 3D and work out
     # which are within the specified cube...
@@ -38,13 +36,11 @@ for scenename in paths.rendered_primitive_scenes:
 
         # also remove points on the floor plane
         floor_height = parameters.RenderedVoxelGrid.origin[2]
-        above_floor = np.abs(xyz[:, 2] - 0) > floor_height
+        above_floor = np.abs(xyz[:, 2]) > floor_height
         above_floor = above_floor.reshape(frame.depth.shape)
 
         mask = np.logical_and(inside, above_floor)
 
         # choose the save location carefully
-        savepath = paths.scenes_location + scenename + \
-            '/images/mask_%s.png' % frame.frame_id
-
+        savepath = paths.RenderedData.mask_path(scenename, frame.frame_id)
         scipy.misc.imsave(savepath, mask)

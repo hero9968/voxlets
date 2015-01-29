@@ -213,7 +213,7 @@ class Voxels(object):
         '''
         self._clear_cache()
 
-        with open(filename + '.npy', 'wb') as f:
+        with open(filename, 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
 
 

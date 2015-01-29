@@ -68,7 +68,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     D = scipy.io.loadmat(loadpath)
     shoeboxes.append(D['shoeboxes'].astype(np.float16))
 
-    if count > 8 and parameters.small_sample:
+    if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
         break
 
@@ -79,7 +79,7 @@ print "All sboxes shape is " + str(np_all_sboxes.shape)
 print "Doing PCA"
 pca = pca_randomized(
     np_all_sboxes,
-    parameters.VoxletTraining.pca_subsample_length
+    parameters.VoxletTraining.pca_subsample_length,
     parameters.VoxletTraining.number_pca_dims)
 
 print "Doing Kmeans"

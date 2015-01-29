@@ -19,6 +19,9 @@ pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
+if not os.path.exists(paths.RenderedData.voxlets_data_path):
+    os.makedirs(paths.RenderedData.voxlets_data_path)
+
 
 def pool_helper(index, im, vgrid):
 
@@ -64,8 +67,8 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     print "Processing " + sequence['name']
 
     # load in the ground truth grid for this scene, and converting nans
-    scene_folder = paths.scenes_location + sequence['scene']
-    gt_vox = voxel_data.load_voxels(scene_folder + '/voxelgrid.pkl')
+    vox_dir = paths.RenderedData.ground_truth_voxels(sequence['scene'])
+    gt_vox = voxel_data.load_voxels(vox_dir)
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
     gt_vox.set_origin(gt_vox.origin)
 
@@ -73,7 +76,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     frame_data = paths.RenderedData.load_scene_data(
         sequence['scene'], sequence['frames'][0])
     im = images.RGBDImage.load_from_dict(
-        paths.scenes_location + sequence['scene'], frame_data)
+        paths.RenderedData.scene_dir(sequence['scene']), frame_data)
 
     # computing normals...
     norm_engine = features.Normals()
@@ -137,6 +140,6 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
     scipy.io.savemat(savepath, D, do_compression=True)
 
-    if count > 8 and parameters.small_sample:
+    if count > parameters.max_sequences:
         print "Ending now"
         break

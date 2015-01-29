@@ -3,7 +3,8 @@ this script will form the train test split between
 the intrinsic scenes
 '''
 import numpy as np
-import sys, os
+import sys
+import os
 import yaml
 from sklearn.cross_validation import train_test_split
 import random
@@ -11,36 +12,26 @@ import string
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
-
-# parameters
-num_sequences_per_scene = 20
-num_scenes_to_use = 5
-num_frames_per_sequence = 1
-train_test_overlap = True
-if train_test_overlap:
-  num_train = 8  # integers as there is an overlap
-  num_test = 1
-  assert(num_train + num_test <= num_sequences_per_scene * num_scenes_to_use)
-else:
-  train_fraction = 0.6  # direct split, so express as fraction
+from common import parameters
 
 random.seed(10)
 
 
 def load_scene(scene_name):
-    with open(paths.scenes_location + scene_name + '/poses.yaml') as f:
+    scene_yaml_file = paths.RenderedData.video_yaml(scene_name)
+    with open(scene_yaml_file) as f:
         return (scene_name, yaml.load(f))
 
-scene_names_to_use = paths.rendered_primitive_scenes[:num_scenes_to_use]
+scene_names_to_use = paths.RenderedData.get_scene_list()[
+    :parameters.RenderData.train_test_max_scenes]
 print "Using a total of %d scenes" % len(scene_names_to_use)
 
-all_scenes = [load_scene(scene_name)
-              for scene_name in scene_names_to_use]
+all_scenes = [load_scene(scene_name) for scene_name in scene_names_to_use]
 
 
 def random_sequence(length_to_draw_from, number_to_draw):
     '''
-    returns a list of number_to_draw consequtive numbers
+    returns a list of number_to_draw consecutive numbers
     from range(length_to_draw_from)
     '''
     start = np.random.randint(0, length_to_draw_from - number_to_draw)
@@ -48,12 +39,12 @@ def random_sequence(length_to_draw_from, number_to_draw):
     return range(start, end)
 
 
-def random_string(length):
+def random_seq_name(length):
     '''
     returns a string of random characters, of length 'length'
     '''
     return ''.join(random.choice(string.ascii_lowercase + string.digits)
-                   for _ in range(length))
+                   for _ in range(length)) + '_SEQ'
 
 
 # choosing which frames to use from each video
@@ -61,69 +52,37 @@ def random_string(length):
     # choose which frames from this scene are to be used
 sequences = {}
 for idx, (scene_name, scene) in enumerate(all_scenes):
-    sequences[scene_name] = [random_sequence(len(scene),
-                             num_frames_per_sequence)
-                             for i in range(num_sequences_per_scene)]
+    sequences[scene_name] = [
+        random_sequence(len(scene), parameters.RenderData.frames_per_sequence)
+        for i in range(parameters.RenderData.sequences_per_scene)]
 
 print "There are %d sequences" % len(sequences)
 
-# making split at a scene level
-if train_test_overlap:
-    # here there is an overlap, so just take some random sequences from
-    # some random sceens
-    #num_train = np.ceil(train_fraction * len(scene_names_to_use))
-    #num_test = np.ceil((1 - train_fraction) * len(scene_names_to_use))
+# here we are doing a full split between the sides
+train_scenes, test_scenes = train_test_split(
+    scene_names_to_use, train_size=parameters.RenderData.train_fraction)
 
-    all_sequences = [(scene_name, seq)
-                     for seq in sequences[scene_name]
-                     for scene_name in scene_names_to_use]
+print "After split: %d training scenes, %d test scenes" % \
+      (len(train_scenes), len(test_scenes))
 
-    train_sequence, test_sequence = train_test_split(
-        all_sequences, train_size = num_train, test_size = num_test)
-    train_list = [dict(name=random_string(16), scene=seq[0], frames=seq[1])
-                  for seq in train_sequence]
-    test_list = [dict(name=random_string(16), scene=seq[0], frames=seq[1])
-                  for seq in test_sequence]
+# forming the full training and test lists
+test_list = [dict(name=random_seq_name(16), scene=scene_name, frames=s)
+             for scene_name in test_scenes
+             for s in sequences[scene_name]]
 
-else:
-    # here we are doing a full split between the sides
-    train_scenes, test_scenes = train_test_split(
-        scene_names_to_use, train_size=train_fraction)
+train_list = [dict(name=random_seq_name(16), scene=scene_name, frames=s)
+              for scene_name in train_scenes
+              for s in sequences[scene_name]]
 
-    print "After split: %d training scenes, %d test scenes" % \
-          (len(train_scenes), len(test_scenes))
+# checking if output folder exists
+split_save_dir = os.path.dirname(paths.RenderedData.yaml_train_location)
+if not os.path.exists(split_save_dir):
+    os.makedirs(split_save_dir)
 
-    # forming the full training and test lists
-    test_list = [dict(name=random_string(16), scene=scene_name, frames=s)
-                 for scene_name in test_scenes
-                 for s in sequences[scene_name]]
-
-    train_list = [dict(name=random_string(16), scene=scene_name, frames=s)
-                  for scene_name in train_scenes
-                  for s in sequences[scene_name]]
 
 # writing all data to a yaml file
-with open(paths.yaml_train_location, 'w') as f:
+with open(paths.RenderedData.yaml_train_location, 'w') as f:
     yaml.dump(train_list, f)
 
-with open(paths.yaml_test_location, 'w') as f:
+with open(paths.RenderedData.yaml_test_location, 'w') as f:
     yaml.dump(test_list, f)
-
-# now recombine the scenes...
-def convert_to_scene_centric(train_or_test_list):
-    scene_centric = {}
-    for train_data in train_or_test_list:
-        to_add = {'frames': train_data['frames'], 'name': train_data['name']}
-
-        if train_data['scene'] in scene_centric:
-            scene_centric[train_data['scene']].append(to_add)
-        else:
-            scene_centric[train_data['scene']] = [to_add]
-
-    return scene_centric
-
-with open(paths.yaml_train_location_scene_centric, 'w') as f:
-    yaml.dump(convert_to_scene_centric(train_list), f)
-
-with open(paths.yaml_test_location_scene_centric, 'w') as f:
-    yaml.dump(convert_to_scene_centric(test_list), f)
