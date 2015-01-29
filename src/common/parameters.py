@@ -19,6 +19,16 @@ if small_sample:
     print "WARNING: Just computing on a small sample"
 
 
+class General(object):
+    '''
+    General parameters, e.g. about the overall experiemnts etc
+    '''
+    if small_sample:
+        scenes_to_render = 4
+    else:
+        scenes_to_render = 100
+
+
 class Voxlet(object):
     '''
     class for voxlet parameters

@@ -245,6 +245,18 @@ class RenderedData(object):
 
         return frames
 
+# getting the path to blender and to the fonts file etc
+if sys.platform == 'darwin':
+    blender_path = "/Applications/blender.app/Contents/MacOS/blender"
+    font_path = "/Library/Fonts/Verdana.ttf"
+elif sys.platform == 'linux2':
+    blender_path = "blender"
+    font_path = "/usr/share/fonts/truetype/msttcorefonts/verdana.ttf"
+else:
+    raise Exception("Unknown platform...")
+
+
+
     # def populate_sequence(self, sequence):
     #     '''
     #     populates a training or test sequence with the real data

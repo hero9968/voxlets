@@ -20,15 +20,6 @@ from common import mesh
 
 full = True
 
-if sys.platform == 'darwin':
-    blender_path = "/Applications/blender.app/Contents/MacOS/blender"
-    font_path = "/Library/Fonts/Verdana.ttf"
-elif sys.platform == 'linux2':
-    blender_path = "blender"
-    font_path = "/usr/share/fonts/truetype/msttcorefonts/verdana.ttf"
-else:
-    raise Exception("Unknown platform...")
-
 temp_path = '/tmp/video_images/'
 
 frame_num = 0
@@ -43,8 +34,8 @@ def add_frame(pil_image):
     img.save(save_path)
 
 
-font = ImageFont.truetype(font_path, 40)
-fontsmall = ImageFont.truetype(font_path, 20)
+font = ImageFont.truetype(paths.font_path, 40)
+fontsmall = ImageFont.truetype(paths.font_path, 20)
 
 
 def text_on_image(img, heading="", subhead1="", subhead2=""):
@@ -112,7 +103,7 @@ for sequence in test_sequences:
 
             # run blender, while giving the path to the mesh to load
             print "Rendering"
-            sp.call([blender_path, "spinaround/spin.blend",
+            sp.call([paths.blender_path, "spinaround/spin.blend",
                      "-b", "-P", "spinaround/blender_spinaround.py"])
 
         print "Adding text to frames"
