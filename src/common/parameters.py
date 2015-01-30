@@ -28,13 +28,14 @@ class RenderData(object):
     if small_sample:
         scenes_to_render = 10
         train_test_max_scenes = 10
+        sequences_per_scene = 5
     else:
         scenes_to_render = 100
         train_test_max_scenes = 100
+        sequences_per_scene = 20
 
     # train test split parameters
     frames_per_sequence = 1
-    sequences_per_scene = 5
     train_fraction = 0.6
 
 
@@ -85,7 +86,10 @@ class VoxletTraining(object):
     pca_subsample_length = 25000  # max number of examples to use for pca
 
     # actual voxlet extraction
-    number_points_from_each_image = 100
+    if small_sample:
+        number_points_from_each_image = 100
+    else:
+        number_points_from_each_image = 250
 
     forest_subsample_length = 25000  # max num examples to use to train forest
 
@@ -94,4 +98,7 @@ class VoxletPrediction(object):
     '''
     parameters for prediction stage of voxlet algorithm
     '''
-    number_samples = 200  # number of points to sample from image
+    if small_sample:
+        number_samples = 200  # number of points to sample from image
+    else:
+        number_samples = 400
