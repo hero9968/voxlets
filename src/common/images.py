@@ -219,8 +219,7 @@ class RGBDImage(object):
         im.mask = np.abs(im.depth - dictionary['depth_scaling']) < 1e-4
 
         # setting the camera intrinsics and extrinsics
-        extrinsics = \
-            np.linalg.inv(np.array(dictionary['pose']).reshape((4, 4)))
+        extrinsics = np.array(dictionary['pose']).reshape((4, 4))
         intrinsics = np.array(dictionary['intrinsics']).reshape((3, 3))
 
         cam = mesh.Camera()

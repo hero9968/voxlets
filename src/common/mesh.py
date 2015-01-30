@@ -173,9 +173,10 @@ class Camera(object):
         self.inv_K = np.linalg.inv(K)
 
     def set_extrinsics(self, H):
-        '''extrinsics should be the location of the camera relative to the world origin'''
-        '''in fact these seem to be the inverse,
-        i.e. the matrix used to project the points into the camera'''
+        '''
+        Extrinsics are the location of the camera relative to the world origin
+        (This was fixed from being the incorrect way round in Jan 2015)
+        '''
         self.H = H
         self.inv_H = np.linalg.inv(H)
 
@@ -195,7 +196,7 @@ class Camera(object):
         returns their 2D projected location
         '''
         assert(xyz.shape[1] == 3)
-        temp_xyz = self._apply_homo_transformation(xyz, self.H)
+        temp_xyz = self._apply_homo_transformation(xyz, self.inv_H)
         # upon inspection it seems totally cool that self.H is used...
         temp_trans = self._apply_transformation(temp_xyz, self.K)
         temp_trans[:, 0] /= temp_trans[:, 2]
@@ -211,7 +212,7 @@ class Camera(object):
         xyz_at_cam_loc = self.inv_project_points_cam_coords(uvd)
 
         # transforming points under the extrinsics
-        return self._apply_normalised_homo_transform(xyz_at_cam_loc, self.inv_H)
+        return self._apply_normalised_homo_transform(xyz_at_cam_loc, self.H)
 
     def inv_project_points_cam_coords(self, uvd):
         '''
@@ -236,7 +237,7 @@ class Camera(object):
         pointing the correct way in world space
         '''
         assert normals.shape[1] == 3
-        R = np.linalg.inv(self.H[:3, :3])
+        R = np.linalg.inv(self.inv_H[:3, :3])
         #R = self.H[:3, :3]
         #print np.linalg.inv(self.H[:3, :3])
         #print np.linalg.inv(self.H)[:3, :3]
