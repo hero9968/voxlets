@@ -12,6 +12,7 @@ import shutil
 bin_path = '/home/michael/build/pcl/build/bin/'
 kinfu_path = bin_path + 'pcl_kinfu_largeScale'
 convert_path = bin_path + 'pcl_convert_pcd_ascii_binary'
+mesh_convert_path = bin_path + 'pcl_kinfu_largeScale_mesh_output'
 
 out_dir_template = "./saved_%d/"
 
@@ -32,11 +33,19 @@ else:
 # run kinfu
 call(kinfu_path)
 
-# on exit, covnert cloud to ascii
+# on exit, covnrt cloud to ascii and also to mesh
 if os.path.exists('world.pcd'):
 	call((convert_path, 'world.pcd', outdir + 'world_ascii.pcd', '0'))
+	call((mesh_convert_path, 'world.pcd'))
 else:
 	raise Exception('Cannot find world pcd')
+
+# move the mesh to the folder
+if os.path.exists('world.pcd'):
+	shutil.move('mesh_1.ply', outdir)
+else:
+	raise Exception('Cannot find world pcd')
+
 
 # mv snapshots to save
 if os.path.exists('./frames/'):
