@@ -10,7 +10,7 @@ import yaml
 from time import time
 import scipy.io
 
-sys.path.append('/Users/Michael/projects/shape_sharing/src/')
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
 from common import voxel_data
 from common import images

@@ -1,6 +1,7 @@
 import subprocess as sp
 import sys
-sys.path.append('/Users/Michael/projects/shape_sharing/src/')
+import os
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import parameters
 from common import paths
 
