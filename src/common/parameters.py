@@ -76,7 +76,7 @@ class VoxletTraining(object):
     parameters for the training stage of the voxlet algorithm
     (Although the forest paramters are elsewhere currently)
     '''
-    cobweb_t = 5  # this is the parameter of the cobweb feature extraction...
+    cobweb_t = 0.05  # this is the parameter of the cobweb feature extraction
 
     # PCA and kmeans
     pca_number_points_from_each_image = 50

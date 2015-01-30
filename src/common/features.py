@@ -30,7 +30,6 @@ def replace_nans_with_col_means(X):
     return X
 
 
-
 class CobwebEngine(object):
     '''
     A different type of patch engine, only looking at points in the compass directions
@@ -60,20 +59,22 @@ class CobwebEngine(object):
         start_angle = 0#self.im.angles[row, col]
         start_depth = self.im.depth[row, col]
 
+        focal_length = self.im.cam.estimate_focal_length()
         if self.fixed_patch_size:
-            offset_dist = self.t
+            offset_dist = focal_length * self.t
         else:
-            offset_dist = self.t / start_depth
+            offset_dist = (focal_length * self.t) / start_depth
 
         # computing all the offsets and angles efficiently
-        offsets = offset_dist * np.array([1, 2, 3, 4])
+        offsets = offset_dist * np.array([1, 2, 3, 4, 5, 6])
         rad_angles = np.deg2rad(start_angle + np.array(range(0, 360, 45)))
 
         rows_to_take = (float(row) - np.outer(offsets, np.sin(rad_angles))).astype(int).flatten()
         cols_to_take = (float(col) + np.outer(offsets, np.cos(rad_angles))).astype(int).flatten()
 
         # defining the cobweb array ahead of time
-        cobweb = np.nan * np.zeros((32, )).flatten()
+        fv_length = rows_to_take.shape[0]  # == cols_to_take.shape[0]
+        cobweb = np.nan * np.zeros((fv_length, )).flatten()
 
         # working out which indices are within the image bounds
         to_use = np.logical_and.reduce((rows_to_take >= 0,

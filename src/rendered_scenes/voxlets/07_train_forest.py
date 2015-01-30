@@ -44,7 +44,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     features.append(D['features'])
     pca_representation.append(D['pca_representation'])
 
-    if count > 8 and parameters.small_sample:
+    if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
         break
 

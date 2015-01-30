@@ -4,12 +4,13 @@ classes etc for dealing with depth images
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.misc
-import scipy.io
 import scipy.ndimage
 import h5py
-import struct
-from bitarray import bitarray
 import cv2
+from copy import deepcopy
+import yaml
+import os
+import time
 
 import paths
 import mesh
@@ -21,7 +22,6 @@ class RGBDImage(object):
     def __init__(self, dictionary=[]):
         self.rgb = np.array([])
         self.depth = np.array([])
-        self.focal_length = []
 
         if dictionary:
             self.load_from_dict(dictionary)
@@ -78,9 +78,6 @@ class RGBDImage(object):
             assert(self.rgb.shape[0] == self.depth.shape[0])
             assert(self.rgb.shape[1] == self.depth.shape[1])
 
-    def set_focal_length(self, focal_length):
-        self.focal_length = focal_length
-
     def disp_channels(self):
         '''plots both the depth and rgb next to each other'''
         plt.clf()
@@ -105,8 +102,6 @@ class RGBDImage(object):
 
         if hasattr(self, 'mask'):
             print "Mask has shape: " + str(self.mask.shape)
-
-        print "Focal length is " + str(self.focal_length)
 
     def compute_edges_and_angles(self, edge_threshold=0.5):
         '''
@@ -253,296 +248,6 @@ class RGBDImage(object):
         return indices[samples, :]
 
 
-class MaskedRGBD(RGBDImage):
-    '''
-    for objects which have been viewed on a turntable
-    especially good for bigbird etc.
-    '''
-
-    def load_bigbird(self, modelname, viewname):
-        image_path = paths.bigbird_folder + modelname + "/"
-
-        rgb_path = image_path + viewname + '.jpg'
-        depth_path = image_path + viewname + '.h5'
-        mask_path = image_path + "masks/" + viewname + '_mask.pbm'
-
-        self.load_depth_from_h5(depth_path)
-        self.load_rgb_from_img(rgb_path)
-        self.load_mask_from_pbm(mask_path)
-
-        # here I should remove points from the mask which are nan
-        self.mask[np.isnan(self.depth)] = 0
-
-        self.view_idx = viewname
-        self.modelname = modelname
-
-        self.set_focal_length(240.0/(np.tan(np.rad2deg(43.0/2.0))))
-
-        self.camera_id = self.view_idx.split('_')[0]
-        self.load_intrinsics()
-
-    def load_intrinsics(self):
-        '''
-        loads the intrinscis for this camera and this model from the h5 file
-        '''
-        calib_path = paths.bigbird_folder + self.modelname + "/calibration.h5"
-        calib = h5py.File(calib_path, 'r')
-
-        self.set_intrinsics(np.array(calib[self.camera_id + '_depth_K']))
-
-    def load_mask_from_pbm(self, mask_path, scale_factor=[]):
-        self.mask = self.read_pbm(mask_path)
-        if scale_factor:
-            self.mask = scipy.misc.imresize(self.mask, scale_factor)
-
-        # print "Loaded mask of size " + str(self.mask.shape)
-
-    def read_pbm(self, fname):
-        '''
-        reads a pbm image. not tested in the general case but works on the
-        masks
-        '''
-        with open(fname) as f:
-            data = [x for x in f if not x.startswith('#')]  # remove comments
-
-        header = data.pop(0).split()
-        dimensions = [int(header[2]), int(header[1])]
-
-        arr = np.fromstring(data.pop(0), dtype=np.uint8)
-        return np.unpackbits(arr).reshape(dimensions)
-
-
-class CroppedRGBD(RGBDImage):
-    '''
-    rgbd image loaded from matlab mat file, which is already cropped
-    '''
-
-    def load_bigbird_from_mat(self, modelname, viewname):
-        '''
-        loads all the bigbird data from a mat file
-        '''
-        mat_path = paths.base_path + 'bigbird_cropped/' + modelname + '/' + \
-            viewname + '.mat'
-        # mat_path = '/Volumes/HDD/shape_sharing_bits_prob_delete/
-        # bigbird_cropped/' + modelname + '/' + viewname + '.mat'
-        D = scipy.io.loadmat(mat_path)
-        self.rgb = D['rgb']
-        self.depth = D['depth']     # this is the depth after smoothing
-        self.aabb = D['aabb'].flatten()  # [left, right, top bottom]
-        # print D['T']['K_rgb'][0][0]
-
-        # >>> NEW
-        self.set_intrinsics(D['T']['K_rgb'][0][0])  # [1]
-        self.H = D['T']['H_rgb'][0][0]
-        # END NEW
-
-        # [1]
-        # as the depth has been reprojected into the RGB image, don't need the
-        # ir extrinsics or intrinscs
-
-        # print self.H
-        # reshaping the xyz to be row-major... better I think and less likely
-        # to break
-        self.mask = D['mask'] == 1
-
-        old_shape = [3, self.mask.shape[1], self.mask.shape[0]]
-
-        # this is a hack to convert from matlab row-col order to python
-        self.xyz = D['xyz'].T.reshape(old_shape).\
-            transpose((0, 2, 1)).reshape((3, -1)).T
-
-        # loading the spider features
-        # spider_path = '/Volumes/HDD/shape_sharing_bits_prob_delete/
-        # bigbird_cropped/' + modelname + '/' + viewname + '_spider.mat'
-        # D = scipy.io.loadmat(spider_path)
-        self.spider_channels = D['spider']
-
-        # this is a hack to convert from matlab row-col order to python
-        self.normals = D['norms'].T.reshape(old_shape).\
-            transpose((0, 2, 1)).reshape((3, -1)).T
-
-        self.angles = 0*self.depth
-
-        self.view_idx = viewname
-        self.modelname = modelname
-
-        # need here to create the xyz points from the image in world
-        # (not camera) coordinates...
-        R = np.linalg.inv(self.H[:3, :3].T)
-        T = self.H[3, :3]
-        # self.world_xyz = np.dot(R, (self.xyz - T).T).T# +
-
-        # world up direction - in world coordinates.
-        # this is not the up dir in camera coordinates...
-        self.updir = np.array([0, 0, 1])
-
-        # loading the appropriate camera here
-        cam = mesh.Camera()
-        cam.load_bigbird_matrices(modelname, viewname)
-        cam.adjust_intrinsic_scale(0.5) # as the image is half-sized
-
-        self.set_camera(cam)
-
-    def disp_spider_channels(self):
-
-        print self.spider_channels.shape
-        for idx in range(self.spider_channels.shape[2]):
-            plt.subplot(4, 6, idx+1)
-            plt.imshow(self.spider_channels[:, :, idx])
-
-    def get_uvd(self):
-        '''
-        returns an nx3 numpy array where each row is the (col, row) index
-        location in the image, and the depth at that pixel
-        '''
-        cols = np.arange(self.aabb[0], self.aabb[1]+1)
-        rows = np.arange(self.aabb[2], self.aabb[3]+1)
-
-        [all_cols, all_rows] = np.meshgrid(cols, rows)
-
-        return np.vstack((all_cols.flatten(),
-                          all_rows.flatten(),
-                          self.depth.flatten())).T
-
-    def get_features(self, idxs):
-        '''
-        get the features from the channels etc
-        '''
-        ce = features.CobwebEngine(t=5, fixed_patch_size=False)
-        ce.set_image(self)
-        patch_features = ce.extract_patches(idxs)
-
-        se = features.SpiderEngine(self)
-        spider_features = se.compute_spider_features(idxs)
-        spider_features = features.replace_nans_with_col_means(spider_features)
-
-        all_features = np.concatenate(
-            (patch_features, spider_features), axis=1)
-        return all_features
-
-
-from copy import deepcopy
-
-class RealRGBD(RGBDImage):
-    '''
-    rgbd image loaded from matlab mat file, which is a real world image
-    '''
-
-    def load_from_mat(self, name):
-        '''
-        loads all the bigbird data from a mat file
-        '''
-        '''
-        mat_path = paths.base_path + 'other_3D/osd/OSD-0.2-depth/mdf/' +
-            name + ".mat"
-        '''
-        mat_path = paths.base_path + 'voxlets/from_biryani/' + name + ".mat"
-
-        D = scipy.io.loadmat(mat_path)
-        #return D
-        self.rgb = D['rgb']
-        self.depth = D['smoothed_depth']     # this is the depth after smoothing
-        self.set_intrinsics(D['K']) # as the depth has been reprojected into
-        # the RGB image, don't need the ir extrinsics or intrinscs
-        #self.H = D['T_H_rgb']
-        self.mask = D['mask']
-
-
-        # this is a hack to convert from matlab row-col order to python
-        old_shape = [3, self.mask.shape[1], self.mask.shape[0]]
-        self.xyz = D['xyz'].T.reshape(old_shape).\
-            transpose((0, 2, 1)).reshape((3, -1)).T
-
-        # loading the spider features
-        self.spider_channels = D['spider']
-
-        # this is a hack to convert from matlab row-col order to python
-        self.normals = D['norms'].T.reshape(old_shape).\
-            transpose((0, 2, 1)).reshape((3, -1)).T
-
-        self.modelname = name
-
-        # need here to create the xyz points from the image in world
-        # (not camera) coordinates...
-        '''
-        R = np.linalg.inv(self.H[:3, :3].T)
-        T = self.H[3, :3]
-        '''
-        self.world_updir = D['up'][0]
-
-        "Forming the H"
-        new_z = self.world_updir[:3]
-        new_x = np.cross(new_z, np.array([0, 1, 0]))
-        new_x /= np.linalg.norm(new_x)
-        new_y = np.cross(new_z, new_x)
-        new_y /= np.linalg.norm(new_y)
-        R = np.vstack((new_x, new_y, new_z)).T
-        H = np.zeros((4, 4))
-        H[:3, :3] = R
-        H[3, 3] = 1
-        self.H = H
-
-        # world up direction - in world coordinates.
-        # this is not the up dir in camera coordinates...
-        self.updir = np.array([0, 0, 1])
-
-        # loading the appropriate camera here
-        cam = mesh.Camera()
-        cam.set_intrinsics(self.K)
-        cam.set_extrinsics(self.H)
-        self.set_camera(cam)
-
-        "Now able to add the translation part of the H matrix..."
-        inliers = self.get_world_xyz()[self.mask.flatten()==1, :]
-        origin_x = np.min(inliers[:, 0])
-        origin_y = np.min(inliers[:, 1])
-        origin_z = -self.world_updir[3]
-        m = np.array([origin_x, origin_y, origin_z])
-        self.m = deepcopy(m)
-        m = np.dot(R, m)
-        self.H[:3, 3] = m.T
-        cam.set_extrinsics(self.H)
-
-        # cam.load_bigbird_matrices(modelname, viewname)
-
-    def disp_spider_channels(self):
-
-        print self.spider_channels.shape
-        for idx in range(self.spider_channels.shape[2]):
-            plt.subplot(4, 6, idx+1)
-            plt.imshow(self.spider_channels[:, :, idx])
-
-    def get_features(self, idxs):
-        '''
-        get the features from the channels etc
-        '''
-        ce = features.CobwebEngine(t=5, fixed_patch_size=False)
-        ce.set_image(self)
-        patch_features = ce.extract_patches(idxs)
-
-        se = features.SpiderEngine(self)
-        spider_features = se.compute_spider_features(idxs)
-        spider_features = features.replace_nans_with_col_means(spider_features)
-
-        all_features = np.concatenate(
-            (patch_features, spider_features), axis=1)
-        return all_features
-
-    def get_uvd(self):
-        '''
-        returns (nxm)x3 matrix of all the u, v coordinates and the depth at
-        each one
-        '''
-        h, w = self.depth.shape
-        us, vs = np.meshgrid(np.arange(w), np.arange(h))
-        return np.vstack((us.flatten(),
-                       vs.flatten(),
-                       self.depth.flatten())).T
-
-import yaml
-import os
-import time
-
 class RGBDVideo():
     '''
     stores and loads a sequence of RGBD frames
@@ -552,10 +257,8 @@ class RGBDVideo():
         pass
         self.reset()
 
-
     def reset(self):
         self.frames = []
-
 
     def load_from_yaml(
             self, yamlpath, frames=None):

@@ -18,6 +18,7 @@ from common import voxel_data
 from common import images
 from common import features
 from common import voxlets
+from common import carving
 
 
 # loading model
@@ -27,13 +28,16 @@ with open(paths.RenderedData.voxlet_model_oma_path, 'rb') as f:
 test_types = ['oma']
 
 print "Checking results folders exist, creating if not"
-for test_type in test_types:
+for test_type in test_types + ['partial_tsdf', 'visible_voxels']:
+    print test_type
     folder_save_path = \
         paths.RenderedData.voxlet_prediction_path % (test_type, '_')
     folder_save_path = os.path.dirname(folder_save_path)
     print folder_save_path
     if not os.path.exists(folder_save_path):
         os.makedirs(folder_save_path)
+
+
 
 print "MAIN LOOP"
 # Note: if parallelising, should either do here (at top level) or at the
@@ -57,6 +61,23 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
     # computing normals...
     norm_engine = features.Normals()
     im.normals = norm_engine.compute_normals(im)
+
+    # while I'm here - might as well save the image as a voxel grid
+    video = images.RGBDVideo()
+    video.frames = [im]
+    carver = carving.Fusion()
+    carver.set_video(video)
+    carver.set_voxel_grid(gt_vox.blank_copy())
+    partial_tsdf, visible = carver.fuse(parameters.RenderedVoxelGrid.mu)
+
+    # save this as a voxel grid...
+    savepath = paths.RenderedData.voxlet_prediction_path % \
+            ('partial_tsdf', sequence['name'])
+    partial_tsdf.save(savepath)
+
+    savepath = paths.RenderedData.voxlet_prediction_path % \
+            ('visible_voxels', sequence['name'])
+    visible.save(savepath)
 
     for test_type in test_types:
 

@@ -215,6 +215,11 @@ class RenderedData(object):
         return os.path.join(cls.scenes_location, scenename, 'images', filename)
 
     @classmethod
+    def colour_path(cls, scenename, frame_id):
+        filename = 'colour_%s.png' % frame_id
+        return os.path.join(cls.scenes_location, scenename, 'images', filename)
+
+    @classmethod
     def visible_voxels(cls, scenename):
         return os.path.join(cls.scenes_location, scenename, 'visible.pkl')
 

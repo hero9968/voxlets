@@ -158,17 +158,6 @@ class Mesh(object):
         #to_remove = np.any(np.isnan(self.vertices), axis=1)
 
 
-
-class BigbirdMesh(Mesh):
-
-    def load_bigbird(self, objname):
-        '''
-        loads a bigbird mesh
-        '''
-        mesh_path = paths.base_path + "/bigbird_meshes/" + objname + "/meshes/poisson.ply"
-        self.load_from_ply(mesh_path)
-
-
 class Camera(object):
     '''
     this is a projective (depth?) camera class.
@@ -190,26 +179,6 @@ class Camera(object):
         self.H = H
         self.inv_H = np.linalg.inv(H)
 
-    def load_extrinsics_from_dat(self, filepath):
-        '''
-        loads extrinsics from my own shitty dat file.
-        in hindsight I should have written this as a yaml
-        but it's too late now
-        maybe
-        '''
-        f = open(filepath)
-        f.readline()  # throw away
-        T = np.array(f.readline().split(' ')).astype(float)[np.newaxis, :].T
-        f.readline()  # throw away
-        R = np.array([f.readline().strip().split(' '),
-                      f.readline().strip().split(' '),
-                      f.readline().strip().split(' ')]).astype(float)
-        H = np.concatenate((R, T), axis=1)
-        H = np.concatenate((H, np.array([0, 0, 0, 1])[np.newaxis, :]), axis=0)
-        self.set_extrinsics(H)
-
-        f.close()
-
     def adjust_intrinsic_scale(self, scale):
         '''
         changes the scaling, effectivly resixing the output image size
@@ -219,31 +188,6 @@ class Camera(object):
         self.K[0, 2] *= scale
         self.K[1, 2] *= scale
         self.inv_K = np.linalg.inv(self.K)
-
-    def load_bigbird_matrices(self, modelname, imagename):
-        '''
-        loads the extrinsics and intrinsics for a bigbird camera
-        camera name is something like 'NP5'
-        '''
-        cameraname, angle = imagename.split('_')
-
-        # loading the pose and calibration files
-        calib = h5py.File(paths.bigbird_folder + modelname + "/calibration.h5", 'r')
-        pose_path = paths.bigbird_folder + modelname + "/poses/NP5_" + angle + "_pose.h5"
-        pose = h5py.File(pose_path, 'r')
-
-        # extracting extrinsic and intrinsic matrices
-        np5_to_this_camera = np.array(calib['H_' + cameraname + '_from_NP5'])
-        mesh_to_np5 = np.linalg.inv(np.array(pose['H_table_from_reference_camera']))
-
-        intrinsics = np.array(calib[cameraname + '_rgb_K'])
-
-        # applying to the camera
-        self.set_extrinsics(np5_to_this_camera.dot(mesh_to_np5))
-        self.set_intrinsics(intrinsics)
-
-        calib.close()
-        pose.close()
 
     def project_points(self, xyz):
         '''
@@ -321,3 +265,9 @@ class Camera(object):
         temp = np.concatenate((xyz, np.ones((n, 1))), axis=1).T
         temp_transformed = trans.dot(temp).T
         return temp_transformed
+
+    def estimate_focal_length(self):
+        '''
+        trys to guess the focal length from the intrinsics
+        '''
+        return self.K[0, 0]
