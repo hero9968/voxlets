@@ -77,7 +77,7 @@ class VoxletTraining(object):
     parameters for the training stage of the voxlet algorithm
     (Although the forest paramters are elsewhere currently)
     '''
-    cobweb_t = 0.05  # this is the parameter of the cobweb feature extraction
+    cobweb_t = 0.01  # this is the parameter of the cobweb feature extraction
 
     # PCA and kmeans
     pca_number_points_from_each_image = 50
@@ -88,10 +88,12 @@ class VoxletTraining(object):
     # actual voxlet extraction
     if small_sample:
         number_points_from_each_image = 100
+        forest_subsample_length = 25000  # max num examples to use to train forest
     else:
         number_points_from_each_image = 250
+        forest_subsample_length = 50000  # max num examples to use to train forest
 
-    forest_subsample_length = 25000  # max num examples to use to train forest
+
 
 
 class VoxletPrediction(object):

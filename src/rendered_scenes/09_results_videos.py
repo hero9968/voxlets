@@ -33,9 +33,9 @@ test_result_type = 'oma'
 def add_frame(pil_image):
     global frame_num
     frame_num += 1
-    # print "Adding frame %d" % frame_num
+    print "Adding frame %d" % frame_num
     save_path = temp_path + 'img%03d.png' % frame_num
-    # print save_path
+    print save_path
     pil_image.save(save_path)
 
 
@@ -104,8 +104,8 @@ for sequence in paths.RenderedData.test_sequence():
 
             # run blender, while giving the path to the mesh to load
             print "Rendering"
-            sp.call([paths.blender_path, "../spinaround/spin.blend",
-                     "-b", "-P", "../spinaround/blender_spinaround.py"])
+            sp.call([paths.blender_path, "spinaround/spin.blend",
+                     "-b", "-P", "spinaround/blender_spinaround.py"])
 
         print "Adding text to frames"
 
@@ -142,3 +142,5 @@ for sequence in paths.RenderedData.test_sequence():
              "-b:v", "1024k",
              "-vcodec", "mpeg4",
              "-y", moviesavefile))
+
+    break

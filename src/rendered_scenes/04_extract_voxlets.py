@@ -40,7 +40,6 @@ def pool_helper(index, im, vgrid):
 
     # convert the indices to world xyz space
     shoebox.fill_from_grid(vgrid)
-    print "Sum is %f" % np.sum(shoebox.V.flatten())
     return shoebox.V.flatten()
 
 # need to import these *after* the pool helper has been defined
