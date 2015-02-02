@@ -305,3 +305,13 @@ class RGBDVideo():
         vid_copy.frames = [self.frames[frame] for frame in frame_numbers]
         return vid_copy
 
+    @classmethod
+    def init_from_images(cls, ims):
+        '''
+        initialises class from list of images
+        '''
+        vid = cls()
+        vid.frames = ims
+        return vid
+
+
