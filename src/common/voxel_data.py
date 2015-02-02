@@ -14,24 +14,11 @@ from numbers import Number
 import sklearn.metrics
 import cPickle as pickle
 
-def load_voxels(filename):
-    '''
-    function to load a saved voxel file from disk.
-    NOTE: This is becoming obsolete since I discovered pickling with the
-    updated 'HIGHEST_PROTOCOL'. Now I can just pickle the class and it's all
-    fine.
-    When I have recreated a lot of the data and I am more convinced that the
-    files are all stored in pickle directly, then i will remove this function
-    and replace the calls to it with pickle.load()
-    '''
-    with open(filename, 'rb') as f:
-        temp = pickle.load(f)
 
-    if temp.V == []:
-        with open(filename + '.npy', 'r') as f:
-            temp.V = np.load(f)['V']
+def load_voxels(loadpath):
+    with open(loadpath, 'rb') as f:
+        return pickle.load(f)
 
-    return temp
 
 class Voxels(object):
     '''
@@ -43,26 +30,23 @@ class Voxels(object):
         assert np.prod(size) < 500e6    # check to catch excess allocation
         self.V = np.zeros(size, datatype)
 
-
     def copy(self):
         '''
         returns a deep copy of self
         '''
         return copy.deepcopy(self)
 
-
     def blank_copy(self):
         '''
         returns a copy of self, but with all voxels empty
         '''
         temp = copy.deepcopy(self)
-        temp.V *= 0
+        # not using temp.V*=0 in case nans are present
+        temp.V = np.zeros(temp.V.shape, temp.V.dtype)
         return temp
-
 
     def num_voxels(self):
         return np.prod(self.V.shape)
-
 
     def set_indicated_voxels(self, binary_array, values):
         '''
@@ -73,7 +57,6 @@ class Voxels(object):
         '''
         self.V[binary_array.reshape(self.V.shape)] = values
 
-
     def get_indicated_voxels(self, binary_array):
         '''
         helper function to set the values in V indicated in
@@ -83,14 +66,12 @@ class Voxels(object):
         '''
         return self.V[binary_array.reshape(self.V.shape)]
 
-
     def get_idxs(self, ijk):
         '''
         helper function to get the values indicated in the nx3 ijk array
         '''
         assert ijk.shape[1] == 3
         return self.V[ijk[:, 0], ijk[:, 1], ijk[:, 2]]
-
 
     def set_idxs(self, ijk, values, check_bounds=False):
         '''
@@ -102,11 +83,12 @@ class Voxels(object):
 
         if check_bounds:
             valid = self.find_valid_idx(ijk)
-            self.V[ijk[valid, 0], ijk[valid, 1], ijk[valid, 2]] = values
+            if isinstance(values, Number):
+                self.V[ijk[valid, 0], ijk[valid, 1], ijk[valid, 2]] = values
+            else:
+                self.V[ijk[valid, 0], ijk[valid, 1], ijk[valid, 2]] = values[valid]
         else:
             self.V[ijk[:, 0], ijk[:, 1], ijk[:, 2]] = values
-
-
 
     def find_valid_idx(self, idx):
         '''
@@ -119,7 +101,6 @@ class Voxels(object):
                                        idx[:, 1] >= 0,
                                        idx[:, 2] < self.V.shape[2],
                                        idx[:, 2] >= 0))
-
 
     def extract_from_indices(self, idxs, check_bounds=False):
         '''
@@ -143,7 +124,6 @@ class Voxels(object):
         else:
             return self.V[idxs[:, 0], idxs[:, 1], idxs[:, 2]]
 
-
     def get_valid_values(self, idxs):
         '''
         Sees which idxs are in range of the voxel grid.
@@ -151,7 +131,6 @@ class Voxels(object):
         Also returns a binary array indicating which idx it managed to extract from
         '''
         pass
-
 
     def get_corners(self):
         '''
@@ -165,20 +144,14 @@ class Voxels(object):
 
         return self.idx_to_world(np.array(corners))
 
-
     def compute_sdt(self):
         '''
         returns a signed distance transform the same size as V
         uses scipy's Euclidean distance transform
         '''
         trans_inside = distance_transform_edt(self.V.astype(float))
-        #print np.min(trans_inside), np.max(trans_inside)
         trans_outside = distance_transform_edt(1-self.V.astype(float))
-        #print np.min(trans_outside), np.max(trans_outside)
-        #print np.min(trans_outside - trans_inside), np.max(trans_outside - trans_inside)
-
         return trans_outside - trans_inside
-
 
     def compute_tsdf(self, truncation):
         '''
@@ -196,20 +169,16 @@ class Voxels(object):
 
         return sdf
 
-
     def convert_to_tsdf(self, truncation):
         '''
         converts binary grid to a tsdf
         '''
         self.V = self.compute_tsdf(truncation).astype(np.float16)
 
-
     def save(self, filename):
         '''
-        serialisation routine.
-        Due to the large numpy array, pickling is very slow and produced large files
-        Instead, we will save the numpy array as a separate file, then use pickle
-        to save the rest of the file without the voxel data
+        Serialisation routine. Using the highest protocol of pickle makes this
+        quick and efficient. However, must clear the cache first!
         '''
         self._clear_cache()
 
@@ -247,7 +216,6 @@ class WorldVoxels(Voxels):
 
         self._clear_cache()
 
-
     def _clear_cache(self):
         '''
         clears cached items, should call this after a change in origin or rotation etc
@@ -258,7 +226,6 @@ class WorldVoxels(Voxels):
         if hasattr(self, '_cached_idx_meshgrid'):
             self._cached_idx_meshgrid = []
 
-
     def init_and_populate(self, indices):
         '''initialises the grid and populates, based on the indices in idx
         waits until now to initialise so it can be the correct size
@@ -268,7 +235,6 @@ class WorldVoxels(Voxels):
         Voxels.__init__(self, grid_size, np.int8)
         #print indices[:, 0]
         self.V[indices[:, 0], indices[:, 1], indices[:, 2]] = 1
-
 
     def populate_from_vox_file(self, filepath):
         '''
@@ -287,7 +253,6 @@ class WorldVoxels(Voxels):
         idx = np.array([line.split() for line in f]).astype(int)
         f.close()
         self.init_and_populate(idx)
-
 
     def idx_to_world(self, idx):
         '''
@@ -310,7 +275,6 @@ class WorldVoxels(Voxels):
         world_coords = scaled_rotated_idx + self.origin
 
         return world_coords
-
 
     def world_to_idx(self, xyz, detect_out_of_range=False):
         '''
@@ -344,7 +308,6 @@ class WorldVoxels(Voxels):
         else:
             return idx
 
-
     def idx_to_world_transform4x4(self):
         '''
         returns a 4x4 transform from idx to world locations based on the various things
@@ -356,9 +319,6 @@ class WorldVoxels(Voxels):
         half = np.concatenate((scale_factor * self.R, translation.T), axis=1)
         full = np.concatenate((half, np.array([[0, 0, 0, 1]])), axis=0)
         return full
-
-
-
 
     def just_valid_world_to_idx(self, xyz, detect_out_of_range=False):
         '''
@@ -372,7 +332,6 @@ class WorldVoxels(Voxels):
         values = self.get_idxs(valid_idxs)
 
         return values, valid
-
 
     def idx_meshgrid(self):
         '''
@@ -394,7 +353,6 @@ class WorldVoxels(Voxels):
 
         return self._cached_idx_meshgrid
 
-
     def idx_ij_meshgrid(self):
         '''
         returns a meshgrid representation of the idx positions of every voxel in grid
@@ -412,7 +370,6 @@ class WorldVoxels(Voxels):
 
         return self._cached_idx_ij_meshgrid
 
-
     def world_meshgrid(self):
         '''
         returns meshgrid representation of all the xyz positions of every point
@@ -428,7 +385,6 @@ class WorldVoxels(Voxels):
 
         return self._cached_world_meshgrid
 
-
     def world_xy_meshgrid(self):
         '''
         returns meshgrid representation of all the xyz positions of every point
@@ -443,8 +399,6 @@ class WorldVoxels(Voxels):
             self._cached_world_xy_meshgrid = self.idx_to_world(idx)
 
         return self._cached_world_xy_meshgrid
-
-
 
     def fill_from_grid(self, input_grid, method='naive', combine='replace'):
         '''
@@ -481,8 +435,6 @@ class WorldVoxels(Voxels):
                 self.set_idxs(self_idx[valid, :], valid_values+addition)
             else:
                 self.set_idxs(self_idx[valid, :], valid_values)
-
-
 
         elif method=='bounding_box':
             '''
@@ -589,54 +541,6 @@ class WorldVoxels(Voxels):
         return world_k_col, world_z_col
 
 
-
-
-class BigBirdVoxels(WorldVoxels):
-
-    def __init__(self):
-        pass
-        #self.WorldVoxels.__init__(self)
-
-    def load_bigbird(self, modelname):
-        idx_path = paths.base_path + "/bigbird_meshes/" + modelname + "/meshes/voxelised.vox"
-        self.populate_from_vox_file(idx_path)
-
-
-
-class VoxelGridCollection(object):
-    '''
-    class for doing things to a list of same-sized voxelgrids
-    '''
-    def __init__(self):
-        pass
-
-
-    def set_voxel_list(self, voxlist_in):
-        self.voxlist = voxlist_in
-
-
-    def cluster_voxlets(self, num_clusters, subsample_length):
-
-        '''helper function to cluster voxlets'''
-
-        # convert to np array
-        all_sboxes = np.array([sbox.V.flatten() for sbox in self.voxlist]).astype(np.float16)
-
-        # take subsample
-        to_use_for_clustering = np.random.randint(0, all_sboxes.shape[0], size=(subsample_length))
-        all_sboxes_subset = all_sboxes[to_use_for_clustering, :]
-        print all_sboxes_subset.shape
-
-        # doing clustering
-        from sklearn.cluster import MiniBatchKMeans
-        self.km = MiniBatchKMeans(n_clusters=num_clusters)
-        self.km.fit(all_sboxes_subset)
-
-        return self.km
-
-
-
-
 class UprightAccumulator(WorldVoxels):
     '''
     accumulates multiple voxels into one output grid
@@ -650,7 +554,6 @@ class UprightAccumulator(WorldVoxels):
         self.grid_centre_from_grid_origin = []
         self.sumV = (copy.deepcopy(self.V)*0)
         self.countV = (copy.deepcopy(self.V)*0)
-
 
     def add_voxlet(self, voxlet):
         '''
@@ -669,7 +572,6 @@ class UprightAccumulator(WorldVoxels):
         #self.sumV[valid.reshape(self.V.shape)] += occupied_values
         #self.countV[valid.reshape(self.V.shape)] += 1
         self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
-
 
     def compute_average(self, nan_value=0):
         '''
@@ -691,7 +593,6 @@ class UprightAccumulator(WorldVoxels):
         return self
 
 
-
 class ShoeBox(WorldVoxels):
     '''
     class for a 'shoebox' of voxels, which will ultimately surround a point and normal
@@ -704,7 +605,6 @@ class ShoeBox(WorldVoxels):
         Voxels.__init__(self, gridsize, data_type)
         self.grid_centre_from_grid_origin = []
 
-
     def set_p_from_grid_origin(self, p_from_grid_origin):
         '''
         the 'p' is an arbitrary position -
@@ -715,7 +615,6 @@ class ShoeBox(WorldVoxels):
         '''
         assert p_from_grid_origin.shape[0] == 3
         self.p_from_grid_origin = p_from_grid_origin
-
 
     def initialise_from_point_and_normal(self, point, normal, updir):
         '''
@@ -748,257 +647,6 @@ class ShoeBox(WorldVoxels):
         self.set_origin(new_origin, R)
 
 
-class KinFuVoxels(Voxels):
-    '''
-    voxels as computed and save by KinFu
-    '''
-    def __init__(self):
-        Voxels.__init__(self, (512, 512, 512), np.float32)
-
-
-    def read_from_pcd(self, filename):
-        '''
-        reads from an ascii pcd file
-        '''
-        fid = open(filename, 'r')
-
-        # throw out header - doesn't have any interest
-        for idx in range(11):
-            fid.readline()
-
-        # populate voxel grid
-        for line in fid:
-            t = line.split()
-            self.V[int(t[0]), int(t[1]), int(t[2])] = float(t[3])
-
-
-    def fill_full_grid(self):
-        '''
-        fills out the full voxel grid, given just a starting volume
-        '''
-        pass
-
-
-
-
-'''
-To think about - sparse voxel class?
-'''
-
-
-class FrustumGrid(Voxels):
-    '''
-    class for a frustum grid, such as that coming out of a camera
-    For now this is hard-coded as uint8
-    '''
-
-    def __init__(self):
-        pass
-
-
-    def set_params(self, imagesize, d_front, d_back, focal_length):
-        '''
-        sets up the voxel grid. Also computes the number of voxels along the depth direction
-        '''
-        self.d_front = d_front
-        self.d_back = d_back
-        self.focal_length = focal_length
-        self.imagesize = imagesize
-
-        # work out the optimal number of voxels to put along the length
-        self.m = np.ceil(2 * focal_length * (d_back - d_front) / (d_front + d_back))
-        self.depth_vox_size = (d_back - d_front) / self.m
-
-        gridsize = [imagesize[0], imagesize[1], self.m]
-        Voxels.__init__(self, gridsize, np.float32)
-
-
-    def vox_locations_in_camera_coords(self):
-        '''
-        returns a meshgrid representation of the camera coords of every
-        voxel in the grid, in the coordinates of the camera
-        '''
-        #ax0 = np.arange(self.V.shape[0])
-        #ax1 = np.arange(self.V.shape[1])
-        #ax2 = np.arange(self.V.shape[2]) * self.m + self.d_front
-
-        # 0.5 offset beacuse we ant the centre of the voxels
-        A, B, C = np.mgrid[0.5:self.V.shape[0]+0.5,
-                           0.5:self.V.shape[1]+0.5,
-                           0.5:self.V.shape[2]+0.5]
-
-        C = C * self.depth_vox_size + self.d_front # scaling for depth
-        grid = np.vstack((A.flatten(), B.flatten(), C.flatten()))
-        return grid
-
-
-    def depth_to_index(self, depth):
-        '''
-        for a given real-world depth, computes the voxel index in the z direction, in {0,1,...,m}
-        if the depth is out of range, returns -1
-        '''
-        #if depth > self.d_back or depth < self.d_front:
-        #   return -1
-        #else:
-        scaled_depth = (depth - self.d_front) / (self.d_back - self.d_front)
-        index = int(scaled_depth * self.m)
-        #assert index >= 0 and index < self.V.shape[2]
-        return index
-
-
-    def populate(self, frontrender, back_predictions):
-        '''
-        fills the frustum grid with the predictions from the forest output
-        could get this to redefine the d_back and d_front
-        '''
-        assert(frontrender.shape == self.imagesize)
-        assert(back_predictions[0].shape == self.imagesize)
-
-        # this is the addition to occupancy a vote from one tree makes
-        per_tree_contribution = 1/float(len(back_predictions))
-
-        # find the locations in frontrender which are non-nan
-        non_nans = np.array(np.nonzero(~np.isnan(frontrender))).T
-
-        # populate the voxel array
-        for tree in back_predictions:
-            for row, col in non_nans:
-                #print row, col, frontrender[row, col], tree[row, col]
-                start_idx = max(0, self.depth_to_index(frontrender[row, col]))
-                end_idx = min(self.V.shape[2], self.depth_to_index(tree[row, col]))
-
-                if np.isnan(start_idx) or np.isnan(end_idx):
-                    continue
-                self.V[row, col, start_idx:end_idx] += per_tree_contribution
-
-
-    def extract_warped_slice(self, slice_idx, output_image_height=500, gt=None):
-        '''
-        returns a horizontal slice warped to resemble the real-world positions
-        maxdepth is the maximum distance to consider in the real-world coordinates
-        '''
-        # computing the perspective transform between voxel space and output image space
-        h, w, = self.imagesize
-        pts1 = np.float32([[0,0],[w,0],[0,h],[w,h]])
-
-        # change in scale between real-world and this output image
-        scale = output_image_height / (self.d_back - self.d_front)
-        output_image_width = scale * (w * self.d_back) / self.focal_length
-        frustum_front_width = scale * (w * self.d_front) / self.focal_length
-
-        pts2 = np.float32([[0,0],
-                           [output_image_width,0],
-                           [output_image_width/2 - frustum_front_width/2, output_image_height],
-                           [output_image_width/2 + frustum_front_width/2, output_image_height]])
-
-        M = cv2.getPerspectiveTransform(pts1,pts2)
-
-        # extracting and warping slice
-        output_size = (int(output_image_width), int(output_image_height))
-
-        return cv2.warpPerspective(self.V[:, :, slice_idx], M, output_size, borderValue=1)
-
-
-
-
-class SliceFiller(object):
-    '''
-    fills a slice of voxels
-    not really sure what I'm doing here but something might work out..
-    '''
-
-    def __init__(self, front_slice, thickness_predictions, focal_length):
-        self.front_slice = front_slice
-        self.thickness_predictions = thickness_predictions
-        self.focal_length = focal_length
-
-
-    def fill_slice(self, start_depth, end_depth, gt=None):
-        '''
-        similar to fill_voxels but only doing one slice at a time
-        '''
-
-        # finding the start and end depths...
-        #start_depth = self.get_start_depth()
-        #end_depth = self.get_end_depth()
-        scale_factor = (start_depth+end_depth) / (30 * self.focal_length)
-
-        # create the volume...
-        depth_in_voxels = int(np.ceil((end_depth - start_depth) / scale_factor))
-        thisslice = np.zeros((depth_in_voxels, self.front_slice.shape[0]))
-        print "This slice shape is " + str(thisslice.shape)
-        print "Depth in vocels is " + str(depth_in_voxels)
-        print "Start depth is " + str(start_depth)
-        number_trees = self.thickness_predictions.shape[0]
-
-        #max_depth_so_far = 0
-        #min_depth_so_far = 10000
-
-        # to do
-        # 1) use indices of the mask
-        # 2) convert front and back render to voxel coords before loop
-        # 3) check for inside and outside the volume before the loop
-
-        # populate the volume with each depth prediction...
-        row = self.front_slice
-        for colidx, front_val in enumerate(row):
-
-            front_vox_depth = round((front_val - start_depth) / scale_factor)
-
-            for tree_idx in range(number_trees):
-
-                thickness = self.thickness_predictions[tree_idx, 0, colidx]
-
-                if ~np.isnan(front_val) and ~np.isnan(thickness):
-
-                    back_vox_depth = round((thickness) / scale_factor)
-                    thisslice[int(front_vox_depth):int(front_vox_depth+back_vox_depth), colidx] += 1
-
-            # adding gt
-            if False:# any(gt):
-                thickness = gt[colidx]
-
-                if ~np.isnan(front_val) and ~np.isnan(thickness):
-                    back_vox_depth = round((thickness - start_depth) / scale_factor)
-                    thisslice[int(front_vox_depth+back_vox_depth), colidx] = 1.5*number_trees
-                    thisslice[int(front_vox_depth+back_vox_depth+1), colidx] = 1.5*number_trees
-                    thisslice[int(front_vox_depth+back_vox_depth-1), colidx] = 1.5*number_trees
-
-
-        #self.thisslice = vol
-        return thisslice
-
-
-    def extract_warped_slice(self, mindepth, maxdepth, output_image_height=500, gt=None):
-        '''
-        returns a horizontal slice warped to resemble the real-world positions
-        maxdepth is the maximum distance to consider in the real-world coordinates
-        '''
-        #mindepth = self.get_start_depth()
-        #if maxdepth == -1:
-    #       maxdepth = self.get_end_depth()
-        scale_factor = output_image_height / (maxdepth - mindepth)
-        volume_slice = self.fill_slice(mindepth, maxdepth, gt)
-        self.volume_slice = volume_slice
-
-        # computing the perspective transform between voxel space and output image space
-        h = volume_slice.shape[0]
-        w = volume_slice.shape[1]
-        pts1 = np.float32([[0,0],[w,0],[0,h],[w,h]])
-
-        d1 = scale_factor * (mindepth * float(volume_slice.shape[0])/2) / self.focal_length
-        d2 = scale_factor * (maxdepth * float(volume_slice.shape[1])/2) / self.focal_length
-        pts2 = np.float32([[d2-d1,0], [d1+d2,0], [0,output_image_height], [d2*2,output_image_height]])
-
-        M = cv2.getPerspectiveTransform(pts1,pts2)
-
-        # extracting and warping slice
-        output_size = (2*int(d2),int(output_image_height))
-
-        warped_image = cv2.warpPerspective(volume_slice,M,output_size, borderValue=1)
-        return warped_image
-
-
 class VoxMetricsTSDF(object):
     '''
     class to do metrics on the voxel datas
@@ -1028,7 +676,6 @@ class VoxMetricsTSDF(object):
         print "pred top bottom is "
         print np.min(self.pred)
         print np.max(self.pred)
-
 
     def compute_tpr_fpr(self, thresholds):
 
@@ -1061,99 +708,3 @@ class VoxMetricsTSDF(object):
 
     def compute_auc(self):
         return sklearn.metrics.roc_auc_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
-
-
-def expanded_grid(original_grid, expand_amount=0.05):
-    '''
-    returns a grid like the origin but which is expanded by padding amount in each dimension
-    NOTE that this is actually shitty as it also introduces a constant (/2) and other stuff.
-    Try to improve this TODO TODO
-    '''
-
-    # pad the gt grid slightly
-    grid_origin = original_grid.origin - expand_amount
-    grid_end = original_grid.origin + \
-                np.array(original_grid.V.shape).astype(float) * original_grid.vox_size + expand_amount
-
-    voxlet_size = paths.voxlet_size/2.0
-    grid_dims_in_real_world = grid_end - grid_origin
-    V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
-
-    accum = WorldVoxels()
-    accum.V = np.zeros(V_shape, original_grid.V.dtype)
-    accum.set_origin(grid_origin)
-    accum.set_voxel_size(voxlet_size)
-    return accum
-
-
-def expanded_grid_accum(original_grid, expand_amount=0.05):
-    '''
-    returns an accumulator grid like the origin but which is expanded by padding amount in each dimension
-    '''
-
-    # pad the gt grid slightly
-    grid_origin = original_grid.origin - expand_amount
-    grid_end = original_grid.origin + \
-                np.array(original_grid.V.shape).astype(float) * original_grid.vox_size + expand_amount
-
-    voxlet_size = paths.voxlet_size/2.0
-    grid_dims_in_real_world = grid_end - grid_origin
-    V_shape = (grid_dims_in_real_world / (voxlet_size)).astype(int)
-
-    accum = UprightAccumulator(V_shape)
-    accum.set_origin(grid_origin)
-    accum.set_voxel_size(voxlet_size)
-    return accum
-
-
-def get_known_empty_grid(im, vgrid, known_full_grid=None):
-    '''
-    returns a copy of voxel grid vgrid, such that voxels
-    known to be empty (from depth image im) have value 1,
-    while voxels with unknown state have value 0
-    '''
-
-    # get the world meshgrid from the grid and project into the camera
-    grid_in_world = vgrid.world_meshgrid()
-    projected_voxels = im.cam.project_points(grid_in_world)
-    projected_voxels[:, :2] -= np.array([im.aabb[0], im.aabb[2]])
-
-    # now work out which voxels are in front of or behind the depth image
-    # and location in camera image of each voxel
-    uv = np.round(projected_voxels[:, :2]).astype(int)
-    inside_image = np.logical_and.reduce((uv[:, 0] >= 0, uv[:, 1] >= 0, uv[:, 1] < im.mask.shape[0], uv[:, 0] < im.mask.shape[1]))
-    all_observed_depths = im.depth[uv[inside_image, 1], uv[inside_image, 0]]
-    known_to_be_empty = all_observed_depths > projected_voxels[inside_image, 2]
-
-    # reconstructing original voxel grid
-    observed_V = vgrid.blank_copy()
-    observed_V.set_indicated_voxels(inside_image, known_to_be_empty)
-
-    # if we have explicity given a grid of voxels known to be full, we can use this to clean up the output
-    # TODO - make it so we don't have to do this
-    if known_full_grid:
-        observed_V.V[known_full_grid.V==1] = 0
-
-    return observed_V, projected_voxels
-
-
-def get_known_full_grid(im, vgrid):
-    '''
-    returns a copy of voxel grid vgrid, such that voxels
-    known to be full (from depth image im) have value 1,
-    while voxels with unknown state have value 0
-    '''
-
-    # create output grid
-    known_full_V = vgrid.blank_copy()
-
-    # populate the output grid
-    world_xyz = im.get_world_xyz()
-
-    to_ignore = im.normals[:, 2] > -0.5
-    world_xyz = world_xyz[~to_ignore, :]
-
-    idx = known_full_V.world_to_idx(world_xyz)
-    known_full_V.set_idxs(idx, values=1, check_bounds=True)
-
-    return known_full_V
