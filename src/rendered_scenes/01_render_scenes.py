@@ -8,7 +8,6 @@ from common import paths
 for i in range(parameters.RenderData.scenes_to_render):
     sp.call([
         paths.blender_path,
-        "spinaround/spin.blend",
         "data_generation/data/blank.blend",
         "-b",
         "-P",
