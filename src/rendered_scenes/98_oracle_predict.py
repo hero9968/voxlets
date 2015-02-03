@@ -22,7 +22,7 @@ from common import voxlets
 from common import carving
 
 
-test_types = ['kmeans_oracle']
+test_types = ['gt_oracle']
 
 print "Checking results folders exist, creating if not"
 for test_type in test_types + ['partial_tsdf', 'visible_voxels']:
@@ -82,20 +82,18 @@ def reconstruct_grid(idxs, im, blank_vox, sboxes):
         point_idx = idx[0] * im.mask.shape[1] + idx[1]
 
         shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
-        shoebox.V *= 0
-        shoebox.V -= parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
         shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
         shoebox.set_voxel_size(parameters.Voxlet.size)  # m
         shoebox.initialise_from_point_and_normal(
             world_xyz[point_idx], world_norms[point_idx], np.array([0, 0, 1]))
         shoebox.V = sbox.reshape(shoebox.V.shape)
 
-        blank_vox.fill_from_grid(shoebox)
+        blank_vox.add_voxlet(shoebox)
 
         sys.stdout.write('.')
         sys.stdout.flush()
 
-    return blank_vox
+    return blank_vox.compute_average(nan_value = parameters.RenderedVoxelGrid.mu)
 
 
 print "MAIN LOOP"
@@ -138,32 +136,69 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
     #         ('visible_voxels', sequence['name'])
     # visible.save(savepath)
 
-    for test_type in test_types:
+    print "Extracting the ground truth voxlets"
+    idxs = im.random_sample_from_mask(
+        parameters.VoxletTraining.number_points_from_each_image)
 
-        print "Performing test type...", test_type
-
-        print "Extracting the ground truth voxlets"
-        idxs = im.random_sample_from_mask(
-            parameters.VoxletTraining.number_points_from_each_image)
-
-        sboxes = [extract_shoebox(idx, im, gt_vox) for idx in idxs]
-
-        print "Now reconstructing with the ground truth shoeboxes"
-        blank_vox = gt_vox.blank_copy()
-        gt_predict = reconstruct_grid(idxs, im, blank_vox, sboxes)
-
-        print "Saving"
-        savepath = paths.RenderedData.voxlet_prediction_path % \
-            (test_type, sequence['name'])
-        gt_predict.save(savepath)
-
-        print "Now reconstructing with the kmeans oracle shoeboxes"
+    sboxes = [extract_shoebox(idx, im, gt_vox) for idx in idxs]
 
 
+    ##############################################################
+    test_type = 'kmeans_oracle'
+    print "Performing test type...", test_type
+    ##############################################################
 
-        print "Done test type " + test_type
+    kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + 'kmean.pkl'
+    with open(kmeans_savepath, 'rb') as f:
+        km = pickle.load(f)
+
+    kmeans_center_idxs = [km.predict(sbox) for sbox in sboxes]
+    print "Center idxs shape is ", kmeans_center_idxs
+    kmeans_centers = [
+        km.cluster_centers_[c_idx] for c_idx in kmeans_center_idxs]
+    print "Centers shape is ", kmeans_centers[0].shape
+
+    print "Reconstructing"
+    blank_vox = voxel_data.UprightAccumulator(gt_vox.V.shape)
+    blank_vox.origin = gt_vox.origin
+    blank_vox.R = gt_vox.R
+    blank_vox.vox_size = gt_vox.vox_size
+    km_predict = reconstruct_grid(idxs, im, blank_vox, kmeans_centers)
+
+    print "Saving"
+    savepath = paths.RenderedData.voxlet_prediction_path % \
+        (test_type, sequence['name'])
+    km_predict.save(savepath)
+
+    print "Done test type " + test_type
+
+
+    ##############################################################
+    test_type = 'gt_oracle'
+    print "Performing test type...", test_type
+    ##############################################################
+
+    print "Now reconstructing with the ground truth shoeboxes"
+    blank_vox = voxel_data.UprightAccumulator(gt_vox.V.shape)
+    #blank_vox.V = np.zeros(gt_vox.V.shape) + parameters.RenderedVoxelGrid.mu
+    blank_vox.origin = gt_vox.origin
+    blank_vox.R = gt_vox.R
+    blank_vox.vox_size = gt_vox.vox_size
+    gt_predict = reconstruct_grid(idxs, im, blank_vox, sboxes)
+
+    print "Saving"
+    savepath = paths.RenderedData.voxlet_prediction_path % \
+        (test_type, sequence['name'])
+    gt_predict.save(savepath)
+
+    print "Done test type " + test_type
+
+    ##############################################################
 
     print "Done sequence %s" % sequence['name']
+    if count >= 3:
+        print "BREAKING EARLY"
+        break
 
     # "Saving result to disk"
     # savepath =
