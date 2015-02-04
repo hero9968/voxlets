@@ -277,6 +277,7 @@ class Bricks(object):
     models = base + 'models/'
     pca = models + 'pca.pkl'
     kmeans = models + 'kmeans.pkl'
+    prediction = base + 'predictions/%s/%s.pkl'
 
 
 # getting the path to blender and to the fonts file etc
