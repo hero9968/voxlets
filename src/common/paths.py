@@ -272,6 +272,13 @@ class RenderedData(object):
 
         return frames
 
+class Bricks(object):
+    base = os.path.expanduser('~/projects/shape_sharing/data/bricks/')
+    models = base + 'models/'
+    pca = models + 'pca.pkl'
+    kmeans = models + 'kmeans.pkl'
+
+
 # getting the path to blender and to the fonts file etc
 if sys.platform == 'darwin':
     blender_path = "/Applications/blender.app/Contents/MacOS/blender"
