@@ -100,3 +100,33 @@ class Bricks(object):
         applys function func to each brick, returns an array of all the outputs
         '''
         pass
+
+    def get_adjacient_bricks(self, dir):
+        '''
+        return a list of all the adjacient pairs of voxels in the direction
+        specified
+        e.g dir = [0, 0, 1]
+        '''
+        # loop over each voxel
+        base_elements = []
+        transformed_elements = []
+
+        for i in range(self.brick_grid_shape[0]):
+            for j in range(self.brick_grid_shape[1]):
+                for k in range(self.brick_grid_shape[2]):
+                    offset_i = i + dir[0]
+                    offset_j = j + dir[1]
+                    offset_k = k + dir[2]
+                    if (offset_i < self.brick_grid_shape[0] and
+                            offset_j < self.brick_grid_shape[1] and
+                            offset_k < self.brick_grid_shape[2]):
+                            base_elements.append(self.B[i, j, k])
+                            transformed_elements.append(
+                                self.B[offset_i, offset_j, offset_k])
+#                           print self.B[i, j, k].shape
+
+        print len(base_elements)
+        print len(transformed_elements)
+        return base_elements, transformed_elements
+
+        # offset by dir
