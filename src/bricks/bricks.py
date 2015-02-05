@@ -1,95 +1,102 @@
 import numpy as np
 
 
-def divide_up_voxel_grid(grid_in, brick_side):
+class Bricks(object):
     '''
-    Divides up a voxel grid into equal size blocks.
-    If grid is not exact multiple of the brick size, then it shaves off a bit
-    of the grid
+    class to represent a bricks representation of a voxel scene
     '''
-    brick_grid_shape = np.floor(
-        np.array(grid_in.shape) / brick_side).astype(int)
-    brick_shape = np.array([brick_side, brick_side, brick_side])
+    def __init__(self):
+        pass
 
-    full_grid_shape = np.concatenate((brick_grid_shape, brick_shape), axis=0)
+    def from_voxel_grid(self, grid_in, brick_side, pad_or_crop='pad'):
+        '''
+        Divides up a voxel grid into equal size blocks.
+        i.e. transforms from 3D to 6D
+        We have option to pad or crop the grid as we see fit
+        '''
 
-    brick_grid = np.zeros(full_grid_shape)
+        if pad_or_crop == 'pad':
+            brick_grid_shape = np.ceil(
+                np.array(grid_in.shape).astype(float) / brick_side).astype(int)
+            cropped_grid = self._pad(grid_in, brick_grid_shape * brick_side)
 
-    # doing the dividing... should use as_strided but for now...
-    for i_idx in range(full_grid_shape[0]):
-        i = i_idx * brick_side
-        for j_idx in range(full_grid_shape[1]):
-            j = j_idx * brick_side
-            for k_idx in range(full_grid_shape[2]):
-                k = k_idx * brick_side
-                temp = grid_in[i:i+brick_side, j:j+brick_side, k:k+brick_side]
-                brick_grid[i_idx, j_idx, k_idx, :, :, :] = temp
+        elif pad_or_crop == 'crop':
+            brick_grid_shape = np.floor(
+                np.array(grid_in.shape).astype(float) / brick_side).astype(int)
+            cropped_grid = self._crop(grid_in, brick_grid_shape * brick_side)
 
-    return brick_grid
+        intermediate = np.array([brick_grid_shape[0], brick_side,
+                                 brick_grid_shape[1], brick_side,
+                                 brick_grid_shape[2], brick_side])
 
+        brick_grid = \
+            cropped_grid.reshape(intermediate).transpose((0, 2, 4, 1, 3, 5))
 
-def flatten_brick_grid(brick_grid_in):
-    '''
-    takes a NxMxPxIxJxK 6D array, and returns a (N*M*P)x(I*J*K) 2D array
-    '''
-    N = np.prod(brick_grid_in.shape[:3])
-    M = np.prod(brick_grid_in.shape[3:])
-    return brick_grid_in.reshape((N, M))
+        self.B = brick_grid
+        self.brick_grid_shape = brick_grid_shape
+        self.original_shape = grid_in.shape
+        self.brick_side = brick_side
+        self.creation_mode = pad_or_crop
 
+    def to_voxel_grid(self):
+        '''
+        Transforms a 6D brick grid into a 3D voxel grid, of the original size
+        '''
+        # transforming grid shape to be a multiple of brick_side...
+        print self.brick_grid_shape
+        print self.B.shape
+        v_grid = self.B.transpose(
+            (0, 3, 1, 4, 2, 5)).reshape(
+            self.brick_grid_shape * self.brick_side)
 
-def reform_voxel_grid_from_flat_bricks(
-    flat_bricks, brick_grid_shape, brick_side, original_shape=None):
-    '''
-    Divides up a voxel grid into equal size blocks.
-    If grid is not exact multiple of the brick size, then it shaves off a bit
-    of the grid
-    original_shape is the desired shape of the output array - this function
-    will crop or pad the array as needed to achieve the original_shape
-    '''
+        if self.creation_mode == 'pad':
+            '''we will crop!'''
+            v_grid = self._crop(v_grid, self.original_shape)
 
-    # transforming grid shape to be a multiple of brick_side...
+        elif self.creation_mode == 'crop':
+            ''' we will pad!:'''
+            v_grid = self._pad(v_grid, self.original_shape)
 
-    brick_shape = np.array([brick_side, brick_side, brick_side])
-    intermediate_shape = np.concatenate((brick_grid_shape, brick_shape), axis=0)
+        return v_grid
 
-    print "intermediate is ", intermediate_shape
+    def to_flat(self):
+        '''
+        returns a flattened (2D) version of the brick grid, where each row is a
+        brick and each column is an equivalent voxel in the brick
+        '''
+        num_bricks = self.B.shape[0] * self.B.shape[1] * self.B.shape[2]
+        vox_per_brick = self.B.shape[3] * self.B.shape[4] * self.B.shape[5]
+        assert vox_per_brick == self.brick_side**3
+        return self.B.reshape((num_bricks, vox_per_brick))
 
-    intermediate = flat_bricks.reshape(intermediate_shape)
+    def from_flat(self, flat_bricks):
+        '''
+        takes a flattened version of a brick grid, and transforms into the
+        required 6D shape. Uses the built-in parameters for brick side and
+        grid size etc
+        '''
+        brick_shape = self.brick_side * np.ones((3,))
+        intermediate_shape = np.concatenate(
+            (self.brick_grid_shape, brick_shape), axis=0)
+        self.B = flat_bricks.reshape(intermediate_shape)
 
-    full_grid_shape = np.array(brick_grid_shape) * brick_side
-    brick_grid = np.zeros(full_grid_shape)
+    def _crop(self, to_crop, desired_shape):
+        return to_crop[:desired_shape[0],
+                       :desired_shape[1],
+                       :desired_shape[2]]
 
-    # doing the dividing... should use as_strided but for now...
-    for i_idx in range(brick_grid_shape[0]):
-        i = i_idx * brick_side
-        for j_idx in range(brick_grid_shape[1]):
-            j = j_idx * brick_side
-            for k_idx in range(brick_grid_shape[2]):
-                k = k_idx * brick_side
-                temp = intermediate[i_idx, j_idx, k_idx, :, :, :]
-                brick_grid[i:i+brick_side, j:j+brick_side, k:k+brick_side] = temp
+    def _pad(self, to_pad, desired_shape):
+        current = np.array(to_pad.shape)
+        pad_size = np.array(desired_shape) - current
 
-    if original_shape:
-        extra = original_shape[0] - brick_grid.shape[0]
-        if extra < 0:
-            brick_grid = brick_grid[:original_shape[0], :, :]
-        elif extra > 0:
-            brick_grid = np.pad(brick_grid, [[0, extra], [0, 0], [0, 0]],
-                'edge')
+        pad_size2 = [[0, pad_size[0]],
+                     [0, pad_size[1]],
+                     [0, pad_size[2]]]
 
-        extra = original_shape[1] - brick_grid.shape[1]
-        if extra < 0:
-            brick_grid = brick_grid[:, :original_shape[1], :]
-        elif extra > 0:
-            brick_grid = np.pad(brick_grid, [[0, 0], [0, extra], [0, 0]],
-                'edge')
+        return np.pad(to_pad, pad_size2, mode='edge')
 
-        extra = original_shape[2] - brick_grid.shape[2]
-        if extra < 0:
-            brick_grid = brick_grid[:, :, :original_shape[2]]
-        elif extra > 0:
-            brick_grid = np.pad(brick_grid, [[0, 0], [0, 0], [0, extra]],
-                'edge')
-
-    return brick_grid
-
+    def apply_func(self, func):
+        '''
+        applys function func to each brick, returns an array of all the outputs
+        '''
+        pass

@@ -16,7 +16,8 @@ from common import voxel_data
 from common import paths
 from common import parameters
 
-brick_side = 10
+brick_side = 75
+oracle_type = 'pca'
 
 with open(paths.Bricks.pca, 'rb') as f:
     pca = pickle.load(f)
@@ -33,26 +34,30 @@ for scenename in paths.RenderedData.get_scene_list():
     vox = voxel_data.load_voxels(loadpath)
     vox.V[np.isnan(vox.V)] = -parameters.RenderedVoxelGrid.mu
 
-    brick_grid = bricks.divide_up_voxel_grid(vox.V, brick_side)
-    this_scene_examples = bricks.flatten_brick_grid(brick_grid)
+    brick_grid = bricks.Bricks()
+    brick_grid.from_voxel_grid(vox.V, brick_side)
+    this_scene_examples = brick_grid.to_flat()
 
     pca_bricks = pca.transform(this_scene_examples)
-    cluster_idxs = km.predict(pca_bricks)
-    closest_clusters_pca = km.cluster_centers_[cluster_idxs]
-    closest_clusters = pca.inverse_transform(closest_clusters_pca)
+    if oracle_type == 'kmeans':
+        cluster_idxs = km.predict(pca_bricks)
+        closest_clusters_pca = km.cluster_centers_[cluster_idxs]
+        closest_clusters = pca.inverse_transform(closest_clusters_pca)
+    elif oracle_type == 'pca':
+        closest_clusters = pca.inverse_transform(pca_bricks)
 
-    reformed_prediction = bricks.reform_voxel_grid_from_flat_bricks(
-        closest_clusters,
-        brick_grid.shape[:3],
-        brick_side=brick_side,
-        original_shape=vox.V.shape)
+    brick_grid.from_flat(closest_clusters)
+        # closest_clusters,
+        # brick_grid.shape[:3],
+        # brick_side=brick_side,
+        # original_shape=vox.V.shape)
 
-    print reformed_prediction.shape
-    S = reformed_prediction.shape
-    print np.median(np.abs(reformed_prediction - vox.V[:S[0], :S[1], :S[2]]))
+    #print reformed_prediction.shape
+    #S = reformed_prediction.shape
+    #print np.median(np.abs(reformed_prediction - vox.V[:S[0], :S[1], :S[2]]))
 
     # now want to save this grid to disk and render using a video creator...
     savepath = paths.Bricks.prediction % ('oracle', scenename)
     oracle_prediction = vox.blank_copy()
-    oracle_prediction.V = reformed_prediction
+    oracle_prediction.V = brick_grid.to_voxel_grid()
     oracle_prediction.save(savepath)

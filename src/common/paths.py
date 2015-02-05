@@ -279,6 +279,7 @@ class Bricks(object):
     kmeans = models + 'kmeans.pkl'
     prediction = base + 'predictions/%s/%s.pkl'
     prediction_video = base + 'predictions/%s/%s.mp4'
+    prediction_frame = base + 'predictions/%s/%s_%s.png'
 
 
 # getting the path to blender and to the fonts file etc
