@@ -21,7 +21,9 @@ from common import parameters
 from common import random_forest_structured as srf
 
 brick_side = 10
-percent_to_remove = 5.0
+percent_to_remove = 15.0
+render = True
+np.random.seed(10)
 
 offset = [0, 0, 1]
 forest_save_path = paths.Bricks.models + 'z_dir_offset_1.pkl'
@@ -36,6 +38,11 @@ scenename = paths.RenderedData.get_scene_list()[0]
 loadpath = paths.RenderedData.ground_truth_voxels(scenename)
 vox = voxel_data.load_voxels(loadpath)
 vox.V[np.isnan(vox.V)] = -parameters.RenderedVoxelGrid.mu
+
+if render:
+    snp_frame_savepath = paths.Bricks.prediction_frame % \
+        ('snp_prediction', scenename, 'gt')
+    vox.render_view(snp_frame_savepath)
 
 print "Converting to bricks"
 bgrid = bricks.Bricks()
@@ -55,15 +62,15 @@ for i in range(S[0]):
                     removed_idxs.append([i, j, k])
 
 print "Saving this modified voxel grid"
-snp_savepath = paths.Bricks.prediction % ('snp_noise', scenename)
+# snp_savepath = paths.Bricks.prediction % ('snp_noise', scenename)
 brick_vox = vox.blank_copy()
 brick_vox.V = bgrid.to_voxel_grid()
-brick_vox.save(snp_savepath)
+# brick_vox.save(snp_savepath)
 
-# print brick_vox.V.shape
-# ms = mesh.Mesh()
-# ms.from_volume(brick_vox, 0.0)
-# ms.write_to_obj('data/shit.obj')
+if render:
+    snp_frame_savepath = paths.Bricks.prediction_frame % \
+        ('snp_prediction', scenename, 'noisy')
+    brick_vox.render_view(snp_frame_savepath)
 
 print "Attempting to fill in the holes"
 for (i, j, k) in removed_idxs:
@@ -75,14 +82,25 @@ for (i, j, k) in removed_idxs:
     source_k = k - offset[2]
     source_X = bgrid.B[source_i, source_j, source_k].flatten()
 
-    prediction = pca.inverse_transform(rf.predict(pca.transform(source_X)))
+    idxs = rf.test(pca.transform(source_X)).flatten()
+    print "rf data is ", rf.data.shape
+    print "idxs is ", idxs.shape
+    leaf_node_examples = rf.data[idxs.astype(int), :]
+
+    #print temp.shape
+    #print temp
+    all_tree_prediction = pca.inverse_transform(leaf_node_examples)
+    prediction = np.mean(all_tree_prediction, axis=0)
+    print prediction.shape
     bgrid.B[i, j, k] = prediction.reshape((brick_side, brick_side, brick_side))
 
 
-snp_savepath = paths.Bricks.prediction % ('snp_prediction', scenename)
+# snp_savepath = paths.Bricks.prediction % ('snp_prediction', scenename)
 brick_vox = vox.blank_copy()
 brick_vox.V = bgrid.to_voxel_grid()
-brick_vox.save(snp_savepath)
+# brick_vox.save(snp_savepath)
 
-print "Should finally try to render these or something..."
-brick_vox.render(snp_frame_savepath)
+if render:
+    snp_frame_savepath = paths.Bricks.prediction_frame % \
+        ('snp_prediction', scenename, 'result')
+    brick_vox.render_view(snp_frame_savepath)

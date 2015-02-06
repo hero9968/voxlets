@@ -5,15 +5,17 @@ In an ideal world, perhaps should inherit from a more generic voxel class
 I haven't thought about this yet though...
 '''
 
-import cv2
 import numpy as np
-import paths
+import cv2
 from scipy.ndimage.morphology import distance_transform_edt
 import copy
 from numbers import Number
 import sklearn.metrics
 import cPickle as pickle
-
+import subprocess as sp
+import shutil
+import paths
+import mesh
 
 def load_voxels(loadpath):
     with open(loadpath, 'rb') as f:
@@ -540,6 +542,23 @@ class WorldVoxels(Voxels):
 
         return world_k_col, world_z_col
 
+    def render_view(self, savepath):
+        '''
+        render a single view of a voxel grid, using blender...
+        '''
+        ms = mesh.Mesh()
+        ms.from_volume(self, 0)
+        ms.write_to_obj('/tmp/temp.obj')
+
+        print "Rendering"
+        sp.call([paths.blender_path,
+                 "../rendered_scenes/spinaround/spin.blend",
+                 "-b", "-P",
+                 "../rendered_scenes/spinaround/blender_spinaround_frame.py"])
+
+        #now copy file from /tmp/.png to the savepath...
+        shutil.move('/tmp/.png', savepath)
+
 
 class UprightAccumulator(WorldVoxels):
     '''
@@ -708,3 +727,4 @@ class VoxMetricsTSDF(object):
 
     def compute_auc(self):
         return sklearn.metrics.roc_auc_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
+

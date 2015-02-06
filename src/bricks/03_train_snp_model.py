@@ -54,6 +54,10 @@ print "Using OMA forest..."
 
 X = np.vstack(training_X).astype(np.float32)
 Y = np.vstack(training_Y).astype(np.float32)
+X = X.reshape((X.shape[0], -1))
+Y = Y.reshape((Y.shape[0], -1))
+X = pca.transform(X)
+Y = pca.transform(Y)
 
 print X.shape, Y.shape
 
@@ -61,6 +65,7 @@ forest_params = srf.ForestParams()
 forest = srf.Forest(forest_params)
 tic = time.time()
 forest.train(X, Y)
+forest.data = Y
 print "Forest took %fs to train" % (time.time() - tic)
 
 forest_save_path = paths.Bricks.models + 'z_dir_offset_1.pkl'

@@ -11,9 +11,9 @@ class ForestParams:
         self.num_tests = 512
         self.min_sample_cnt = 2
         self.max_depth = 12.0
-        self.num_trees = 50
+        self.num_trees = 10
         self.bag_size = 0.5
-        self.train_parallel = True
+        self.train_parallel = False
 
         # structured learning params
         #self.pca_dims = 5
@@ -235,7 +235,7 @@ class Tree:
 
 ## Parallel training helper - used to train trees in parallel
 def train_forest_helper(t_id, X, Y, params, seed):
-    #print 'tree', t_id
+    print 'tree', t_id
     np.random.seed(seed)
     tree = Tree(t_id, params)
     tree.train(X, Y)

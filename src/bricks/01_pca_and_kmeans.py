@@ -51,7 +51,7 @@ def cluster_data(X, local_subsample_length, num_clusters):
     km.fit(X_subset)
     return km
 
-brick_side = 75
+brick_side = 10
 all_brick_grids = []
 
 print "Loading and dividing all scenes..."
@@ -83,7 +83,7 @@ print "Doing PCA"
 pca = pca_randomized(
     all_brick_grids_np,
     local_subsample_length=1e6,
-    num_pca_dims=20)
+    num_pca_dims=16)
 
 print "Fitting data under the PCA model"
 all_brick_grids_transformed = pca.transform(all_brick_grids_np)
