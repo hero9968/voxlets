@@ -205,6 +205,22 @@ class Normals(object):
 
         return self.normalize_v3(cross.T)
 
+    def compute_curvature(self, im, offset=1):
+
+        Z = im.depth
+
+        Zy, Zx  = np.gradient(Z, offset)
+        Zxy, Zxx = np.gradient(Zx, offset)
+        Zyy, _ = np.gradient(Zy, offset)
+
+        H = (Zx**2 + 1)*Zyy - 2*Zx*Zy*Zxy + (Zy**2 + 1)*Zxx
+
+        H = -H/(2*(Zx**2 + Zy**2 + 1)**(1.5))
+
+        K = (Zxx * Zyy - (Zxy ** 2)) /  (1 + (Zx ** 2) + (Zy **2)) ** 2
+
+        return H, K, Zyy, Zxx
+
 
 # here should probably write some kind of testing routine
 # where an image is loaded, rotated patches are extracted and the gradient of
