@@ -45,7 +45,7 @@ def fill_in_missing(idx_data):
         return np.mean(training_data, axis=0)
     else:
 
-        if real:
+        if real and np.random.rand() > 0.95:
             # if random_nearest_neighbours:
             #     print "Before: ", mask.sum()
             #     mask[mask]
@@ -55,8 +55,8 @@ def fill_in_missing(idx_data):
             nbrs = NearestNeighbors(n_neighbors=1, algorithm='brute')
             nbrs.fit(lookup_table)
             distances, indices = nbrs.kneighbors(data[~mask])
-            print "Real...", indices[0]
-            return training_data[indices[0]]
+            print "Real...", indices[0][0]
+            return training_data[indices[0][0]]
 
         else:
             print "Cheating"
