@@ -1,5 +1,5 @@
 import numpy as np
-
+from copy import deepcopy
 
 class Bricks(object):
     '''
@@ -8,26 +8,30 @@ class Bricks(object):
     def __init__(self):
         pass
 
-    def from_voxel_grid(self, grid_in, brick_side, pad_or_crop='pad'):
+    def from_voxel_grid(self, grid_in, brick_shape, pad_or_crop='pad'):
         '''
         Divides up a voxel grid into equal size blocks.
         i.e. transforms from 3D to 6D
         We have option to pad or crop the grid as we see fit
         '''
+        if not hasattr(brick_shape, "__len__"):
+            brick_shape = np.array([brick_shape, brick_shape, brick_shape])
+        else:
+            brick_shape = np.array(brick_shape)
 
         if pad_or_crop == 'pad':
             brick_grid_shape = np.ceil(
-                np.array(grid_in.shape).astype(float) / brick_side).astype(int)
-            cropped_grid = self._pad(grid_in, brick_grid_shape * brick_side)
+                np.array(grid_in.shape).astype(float) / brick_shape).astype(int)
+            cropped_grid = self._pad(grid_in, brick_grid_shape * brick_shape)
 
         elif pad_or_crop == 'crop':
             brick_grid_shape = np.floor(
-                np.array(grid_in.shape).astype(float) / brick_side).astype(int)
-            cropped_grid = self._crop(grid_in, brick_grid_shape * brick_side)
+                np.array(grid_in.shape).astype(float) / brick_shape).astype(int)
+            cropped_grid = self._crop(grid_in, brick_grid_shape * brick_shape)
 
-        intermediate = np.array([brick_grid_shape[0], brick_side,
-                                 brick_grid_shape[1], brick_side,
-                                 brick_grid_shape[2], brick_side])
+        intermediate = np.array([brick_grid_shape[0], brick_shape[0],
+                                 brick_grid_shape[1], brick_shape[1],
+                                 brick_grid_shape[2], brick_shape[2]])
 
         brick_grid = \
             cropped_grid.reshape(intermediate).transpose((0, 2, 4, 1, 3, 5))
@@ -35,7 +39,7 @@ class Bricks(object):
         self.B = brick_grid
         self.brick_grid_shape = brick_grid_shape
         self.original_shape = grid_in.shape
-        self.brick_side = brick_side
+        self.brick_shape = brick_shape
         self.creation_mode = pad_or_crop
 
     def to_voxel_grid(self):
@@ -47,7 +51,7 @@ class Bricks(object):
         print self.B.shape
         v_grid = self.B.transpose(
             (0, 3, 1, 4, 2, 5)).reshape(
-            self.brick_grid_shape * self.brick_side)
+            self.brick_grid_shape * self.brick_shape)
 
         if self.creation_mode == 'pad':
             '''we will crop!'''
@@ -66,7 +70,7 @@ class Bricks(object):
         '''
         num_bricks = self.B.shape[0] * self.B.shape[1] * self.B.shape[2]
         vox_per_brick = self.B.shape[3] * self.B.shape[4] * self.B.shape[5]
-        assert vox_per_brick == self.brick_side**3
+        assert vox_per_brick == np.prod(self.brick_shape)
         return self.B.reshape((num_bricks, vox_per_brick))
 
     def from_flat(self, flat_bricks):
@@ -75,9 +79,8 @@ class Bricks(object):
         required 6D shape. Uses the built-in parameters for brick side and
         grid size etc
         '''
-        brick_shape = self.brick_side * np.ones((3,))
         intermediate_shape = np.concatenate(
-            (self.brick_grid_shape, brick_shape), axis=0)
+            (self.brick_grid_shape, self.brick_shape), axis=0)
         self.B = flat_bricks.reshape(intermediate_shape)
 
     def _crop(self, to_crop, desired_shape):
@@ -128,5 +131,11 @@ class Bricks(object):
         print len(base_elements)
         print len(transformed_elements)
         return base_elements, transformed_elements
+
+    def blank_copy(self):
+        temp = deepcopy(self)
+        temp.B = None
+        return temp
+
 
         # offset by dir

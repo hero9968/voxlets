@@ -16,8 +16,8 @@ from common import voxel_data
 from common import paths
 from common import parameters
 
-brick_side = 75
-oracle_type = 'pca'
+brick_side = brick_side = (10, 10, 75)
+oracle_type = 'kmeans'
 
 with open(paths.Bricks.pca, 'rb') as f:
     pca = pickle.load(f)

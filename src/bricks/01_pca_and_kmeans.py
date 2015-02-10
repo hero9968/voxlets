@@ -51,7 +51,7 @@ def cluster_data(X, local_subsample_length, num_clusters):
     km.fit(X_subset)
     return km
 
-brick_side = 10
+brick_side = (10, 10, 75)
 all_brick_grids = []
 
 print "Loading and dividing all scenes..."
@@ -83,7 +83,7 @@ print "Doing PCA"
 pca = pca_randomized(
     all_brick_grids_np,
     local_subsample_length=1e6,
-    num_pca_dims=16)
+    num_pca_dims=64)
 
 print "Fitting data under the PCA model"
 all_brick_grids_transformed = pca.transform(all_brick_grids_np)
@@ -94,14 +94,14 @@ with open(paths.Bricks.pca, 'wb') as f:
     pickle.dump(pca, f, pickle.HIGHEST_PROTOCOL)
 
 
-# print "Doing Kmeans"
-# km = cluster_data(
-#     all_brick_grids_transformed,
-#     local_subsample_length=1e6,
-#     num_clusters=500)
+print "Doing Kmeans"
+km = cluster_data(
+    all_brick_grids_transformed,
+    local_subsample_length=1e6,
+    num_clusters=1000)
 
-# print "Now saving..."
+print "Now saving..."
 
-# print "Saving to " + paths.Bricks.kmeans
-# with open(paths.Bricks.kmeans, 'wb') as f:
-#     pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
+print "Saving to " + paths.Bricks.kmeans
+with open(paths.Bricks.kmeans, 'wb') as f:
+    pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
