@@ -46,9 +46,9 @@ class Voxlet(object):
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
     one_side_bins = 15
-    shape = (one_side_bins, 2*one_side_bins, one_side_bins)
-    size = 0.2/float(one_side_bins)
-    centre = np.array((0.1, 0.05, 0.1))
+    shape = (one_side_bins, 2*one_side_bins, 5*one_side_bins)
+    size = 0.2/float(one_side_bins)  # edge size of a single voxel
+    centre = np.array((0.1, 0.05, 0.375))
 
 
 class RenderedVoxelGrid(object):
