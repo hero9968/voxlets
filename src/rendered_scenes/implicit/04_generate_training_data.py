@@ -21,24 +21,21 @@ from common import parameters
 from features import line_casting
 
 
-with open(paths.yaml_train_location, 'r') as f:
-    train_sequences = yaml.load(f)
+for sequence in paths.RenderedData.train_sequence():
 
-for sequence in train_sequences:
-
-    seq_foldername = paths.sequences_save_location + sequence['name'] + '/'
+    seq_foldername = paths.RenderedData.implicit_training_dir % sequence['scene']
     print "Creating %s" % seq_foldername
     if not os.path.exists(seq_foldername):
         os.makedirs(seq_foldername)
 
     # load the full video (in future possibly change this to be able to load
     # a subvideo...)
-    input_data_path = paths.scenes_location + sequence['scene']
     vid = images.RGBDVideo()
-    vid.load_from_yaml(input_data_path, 'poses.yaml')
+    vid.load_from_yaml(paths.RenderedData.video_yaml(sequence['scene']))
 
     # load in the ground truth grid for this scene, and converting nans
-    gt_vox = voxel_data.load_voxels(input_data_path + '/voxelgrid.pkl')
+    gt_vox = voxel_data.load_voxels(
+        paths.RenderedData.ground_truth_voxels(sequence['scene']))
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
 
     # do the tsdf fusion from these frames
@@ -47,8 +44,7 @@ for sequence in train_sequences:
     # to preserve train/test integrity!
     carver = carving.Fusion()
     carver.set_video(vid.subvid(sequence['frames']))
-    partial_tsdf = gt_vox.blank_copy()
-    carver.set_voxel_grid(partial_tsdf)
+    carver.set_voxel_grid(gt_vox.blank_copy())
     partial_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
 
     # save the grid

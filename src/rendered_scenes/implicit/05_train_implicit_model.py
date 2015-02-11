@@ -4,7 +4,6 @@ based on training data
 '''
 import sys, os
 import numpy as np
-import yaml
 import scipy.io
 import sklearn.ensemble
 import cPickle as pickle
@@ -15,17 +14,14 @@ max_training_pairs = 1e6
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
 
-with open(paths.yaml_train_location, 'r') as f:
-    train_sequences = yaml.load(f)
-
 all_X = []
 all_Y = []
 
-for sequence in train_sequences:
+for sequence in paths.RenderedData.train_sequence():
 
     # loading the data and adding to arrays
     print "Loading from %s" % sequence['name']
-    seq_foldername = paths.sequences_save_location + sequence['name'] + '/'
+    seq_foldername = paths.RenderedData.implicit_training_dir % sequence['scene']
     training_pair = scipy.io.loadmat(seq_foldername + 'training_pairs.mat')
 
     all_X.append(training_pair['X'].astype(np.float32))
@@ -48,8 +44,9 @@ print all_Y_np.dtype
 
 print "Training the model"
 rf = sklearn.ensemble.RandomForestRegressor(
-    n_estimators=50, oob_score=True, n_jobs=4, max_depth=14)
+    n_estimators=1, oob_score=True, n_jobs=4, max_depth=12)
 rf.fit(all_X_np, all_Y_np)
 
 print "Saving the model"
-pickle.dump(rf, open(paths.implicit_models_folder + 'model.pkl', 'wb'))
+with open(paths.RenderedData.implicit_models_dir + 'model.pkl', 'wb') as f:
+    pickle.dump(rf, f, protocol=pickle.HIGHEST_PROTOCOL)

@@ -193,6 +193,12 @@ class RenderedData(object):
 
     voxlet_model_oma_path = voxlets_path + 'models/oma.pkl'
 
+    implicit_training_dir = rendered_arrangements_path + 'implicit/training/%s/'
+    implicit_training_file = implicit_training_dir + '%s.pkl'
+    implicit_models_dir = rendered_arrangements_path + 'implicit/models/'
+    implicit_prediction_dir = rendered_arrangements_path + 'implicit/predictions/%s/'
+    implicit_prediction_path = implicit_prediction_dir + '%s.pkl'
+
     # first is method, second is the sequence
     voxlet_prediction_path = voxlets_path + 'predictions/%s/%s.pkl'
 

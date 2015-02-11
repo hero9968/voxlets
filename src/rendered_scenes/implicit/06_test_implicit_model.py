@@ -20,11 +20,10 @@ from common import parameters
 from features import line_casting
 
 print "Loading the model"
-rf_path = paths.implicit_models_folder + 'model.pkl'
-rf = pickle.load(open(rf_path, 'rb'))
+with open(paths.RenderedData.implicit_models_dir + 'model.pkl', 'rb') as f:
+    rf = pickle.load(f)
 
-with open(paths.yaml_test_location, 'r') as f:
-    test_sequences = yaml.load(f)
+render = True
 
 
 def plot_slice(V):
@@ -57,13 +56,13 @@ def save_plot_slice(V, GT_V, imagesavepath, imtitle=""):
     plt.savefig(imagesavepath, bbox_inches='tight')
 
 
-for sequence in test_sequences:
+for sequence in paths.RenderedData.test_sequence():
 
     print "Loading sequence %s" % sequence
 
     # this is where to save the results...
     results_foldername = \
-        paths.test_sequences_save_location + sequence['name'] + '/'
+        paths.RenderedData.implicit_prediction_dir % sequence['name']
     print "Creating %s" % results_foldername
     if not os.path.exists(results_foldername):
         os.makedirs(results_foldername)
@@ -71,15 +70,14 @@ for sequence in test_sequences:
     # writing the yaml file to the test folder...
     with open(results_foldername + '/info.yaml', 'w') as f:
         yaml.dump(sequence, f)
-    break
 
     # this is where to
-    input_data_path = paths.scenes_location + sequence['scene']
     vid = images.RGBDVideo()
-    vid.load_from_yaml(input_data_path, 'poses.yaml')
+    vid.load_from_yaml(paths.RenderedData.video_yaml(sequence['scene']))
 
     # load in the ground truth grid for this scene, and converting nans
-    gt_vox = voxel_data.load_voxels(input_data_path + '/voxelgrid.pkl')
+    gt_vox = voxel_data.load_voxels(
+        paths.RenderedData.ground_truth_voxels(sequence['scene']))
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
 
     # do the tsdf fusion from these frames
@@ -148,6 +146,10 @@ for sequence in test_sequences:
         results_foldername + 'prediction.mat',
         dict(gt=gt_vox.V, pred=pred_grid.V, partial=partial_tsdf.V),
         do_compression=True)
+
+    if render:
+        pred_grid.render_view(results_foldername + 'prediction_render.png')
+        visible.render_view(results_foldername + 'visible_render.png')
 
     img_savepath = results_foldername + 'prediction.png'
     save_plot_slice(pred_grid.V, gt_vox.V, img_savepath, imtitle="")
