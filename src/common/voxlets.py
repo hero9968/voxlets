@@ -221,6 +221,39 @@ class Reconstructer(object):
 
         return self.accum
 
+
+class VoxelGridCollection(object):
+    '''
+    class for doing things to a list of same-sized voxelgrids
+    Not ready to use yet - but might be good one day!
+    '''
+    def __init__(self):
+        raise Exception("Not ready to use!")
+
+    def set_voxelgrids(self, voxgrids_in):
+        self.voxgrids = voxgrids_in
+
+    def cluster_voxlets(self, num_clusters, subsample_length):
+
+        '''helper function to cluster voxlets'''
+
+        # convert to np array
+        np_all_sboxes = np.concatenate(shoeboxes, axis=0)
+        all_sboxes = np.array([sbox.V.flatten() for sbox in self.voxlist]).astype(np.float16)
+
+        # take subsample
+        if local_subsample_length > X.shape[0]:
+            X_subset = X
+        else:
+            to_use_for_clustering = \
+                np.random.randint(0, X.shape[0], size=(local_subsample_length))
+            X_subset = X[to_use_for_clustering, :]
+
+        # doing clustering
+        km = MiniBatchKMeans(n_clusters=num_clusters)
+        km.fit(X_subset)
+
+
 # def pool_helper(index, im, vgrid):
 
 #     world_xyz = im.get_world_xyz()
