@@ -153,9 +153,23 @@ class Mesh(object):
         '''
         Removes the nan vertices.
         Quite hard as must preserve the face indexing...
+
+        Currently we just remove the faces which are attached to nan vertices
+        We do not renumber face indices, so we cannot remove the nan vertices.
         '''
-        raise Exception("Not yet implemented")
-        #to_remove = np.any(np.isnan(self.vertices), axis=1)
+
+        verts_to_remove = np.any(np.isnan(self.vertices), axis=1)
+
+        # generate a dictionary of verts to remove
+        to_remove_dict = {vert: 1 for vert in np.where(verts_to_remove)[0]}
+
+        faces_to_remove = np.zeros((self.faces.shape[0], ), dtype=np.bool)
+        for idx, face in enumerate(self.faces):
+            faces_to_remove[idx] = (face[0] in to_remove_dict or
+                                    face[1] in to_remove_dict or
+                                    face[2] in to_remove_dict)
+
+        self.faces = self.faces[~faces_to_remove, :]
 
 
 class Camera(object):

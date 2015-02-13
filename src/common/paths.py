@@ -201,6 +201,7 @@ class RenderedData(object):
 
     # first is method, second is the sequence
     voxlet_prediction_path = voxlets_path + 'predictions/%s/%s.pkl'
+    voxlet_prediction_img_path = voxlets_path + 'predictions/%s/%s.png'
 
     @classmethod
     def ground_truth_voxels(cls, scenename):

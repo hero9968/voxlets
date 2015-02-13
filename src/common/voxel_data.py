@@ -546,8 +546,14 @@ class WorldVoxels(Voxels):
         '''
         render a single view of a voxel grid, using blender...
         '''
+        # convert nans to the minimum
+        temp = self.copy()
+        #temp.V[np.isnan(temp.V)] = temp.V[~np.isnan(temp.V)].min()
+        print temp.V.shape
+
         ms = mesh.Mesh()
-        ms.from_volume(self, 0)
+        ms.from_volume(temp, 0)
+        ms.remove_nan_vertices()
         ms.write_to_obj('/tmp/temp.obj')
 
         print "Rendering"

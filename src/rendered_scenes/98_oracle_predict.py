@@ -20,9 +20,10 @@ from common import images
 from common import features
 from common import voxlets
 from common import carving
+from common import mesh
 
 
-test_types = ['gt_oracle']
+test_types = ['tall_gt_oracle']
 
 print "Checking results folders exist, creating if not"
 for test_type in test_types + ['partial_tsdf', 'visible_voxels']:
@@ -48,9 +49,14 @@ def extract_shoebox(index, im, vgrid):
     shoebox.V -= parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
     shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
     shoebox.set_voxel_size(parameters.Voxlet.size)  # m
-    shoebox.initialise_from_point_and_normal(
-        world_xyz[point_idx], world_norms[point_idx], np.array([0, 0, 1]))
 
+    start_x = world_xyz[point_idx, 0]
+    start_y = world_xyz[point_idx, 1]
+    start_z = parameters.Voxlet.centre[2]
+    shoebox.initialise_from_point_and_normal(
+        np.array([start_x, start_y, start_z]),
+        world_norms[point_idx],
+        np.array([0, 0, 1]))
 
     # convert the indices to world xyz space
     shoebox.fill_from_grid(vgrid)
@@ -84,8 +90,15 @@ def reconstruct_grid(idxs, im, blank_vox, sboxes):
         shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
         shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
         shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+
+        start_x = world_xyz[point_idx, 0]
+        start_y = world_xyz[point_idx, 1]
+        start_z = parameters.Voxlet.centre[2]
         shoebox.initialise_from_point_and_normal(
-            world_xyz[point_idx], world_norms[point_idx], np.array([0, 0, 1]))
+            np.array([start_x, start_y, start_z]),
+            world_norms[point_idx],
+            np.array([0, 0, 1]))
+
         shoebox.V = sbox.reshape(shoebox.V.shape)
 
         blank_vox.add_voxlet(shoebox)
@@ -104,7 +117,6 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
 
     # load in the ground truth grid for this scene, and converting nans
     vox_location = paths.RenderedData.ground_truth_voxels(sequence['scene'])
-    print vox_location
     gt_vox = voxel_data.load_voxels(vox_location)
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
     gt_vox.set_origin(gt_vox.origin)
@@ -120,21 +132,17 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
     norm_engine = features.Normals()
     im.normals = norm_engine.compute_normals(im)
 
-    # # while I'm here - might as well save the image as a voxel grid
-    # video = images.RGBDVideo.init_from_images([im])
-    # carver = carving.Fusion()
-    # carver.set_video(video)
-    # carver.set_voxel_grid(gt_vox.blank_copy())
-    # partial_tsdf, visible = carver.fuse(parameters.RenderedVoxelGrid.mu)
+    # while I'm here - might as well save the image as a voxel grid
+    video = images.RGBDVideo.init_from_images([im])
+    carver = carving.Fusion()
+    carver.set_video(video)
+    carver.set_voxel_grid(gt_vox.blank_copy())
+    partial_tsdf, visible = carver.fuse(parameters.RenderedVoxelGrid.mu)
 
     # # save this as a voxel grid...
-    # savepath = paths.RenderedData.voxlet_prediction_path % \
-    #         ('partial_tsdf', sequence['name'])
-    # partial_tsdf.save(savepath)
-
-    # savepath = paths.RenderedData.voxlet_prediction_path % \
-    #         ('visible_voxels', sequence['name'])
-    # visible.save(savepath)
+    render_savepath = paths.RenderedData.voxlet_prediction_img_path % \
+            ('partial_tsdf', sequence['name'])
+    partial_tsdf.render_view(render_savepath)
 
     print "Extracting the ground truth voxlets"
     idxs = im.random_sample_from_mask(
@@ -153,7 +161,6 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
         km = pickle.load(f)
 
     kmeans_center_idxs = [km.predict(sbox) for sbox in sboxes]
-    print "Center idxs shape is ", kmeans_center_idxs
     kmeans_centers = [
         km.cluster_centers_[c_idx] for c_idx in kmeans_center_idxs]
     print "Centers shape is ", kmeans_centers[0].shape
@@ -170,8 +177,12 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
         (test_type, sequence['name'])
     km_predict.save(savepath)
 
-    print "Done test type " + test_type
+    print "Rendering"
+    render_savepath = paths.RenderedData.voxlet_prediction_img_path % \
+        (test_type, sequence['name'])
+    km_predict.render_view(render_savepath)
 
+    print "Done test type " + test_type
 
     ##############################################################
     test_type = 'gt_oracle'
@@ -190,6 +201,11 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
     savepath = paths.RenderedData.voxlet_prediction_path % \
         (test_type, sequence['name'])
     gt_predict.save(savepath)
+
+    print "Rendering"
+    render_savepath = paths.RenderedData.voxlet_prediction_img_path % \
+        (test_type, sequence['name'])
+    gt_predict.render_view(render_savepath)
 
     print "Done test type " + test_type
 

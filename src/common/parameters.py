@@ -47,8 +47,9 @@ class Voxlet(object):
     # NOTE BE VERY CAREFUL IF EDITING THESE
     one_side_bins = 15
     shape = (one_side_bins, 2*one_side_bins, 5*one_side_bins)
-    size = 0.2/float(one_side_bins)  # edge size of a single voxel
-    centre = np.array((0.1, 0.05, 0.375))
+    size = 0.01  # edge size of a single voxel
+    # z height of centre takes into account the origin offset
+    centre = np.array((0.1, 0.05, 0.375-0.03))
 
 
 class RenderedVoxelGrid(object):
@@ -87,7 +88,7 @@ class VoxletTraining(object):
 
     # actual voxlet extraction
     if small_sample:
-        number_points_from_each_image = 100
+        number_points_from_each_image = 400
         forest_subsample_length = 25000  # max num examples to use to train forest
     else:
         number_points_from_each_image = 250
