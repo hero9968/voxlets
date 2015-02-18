@@ -10,7 +10,7 @@ from sklearn.cluster import MiniBatchKMeans
 
 from common import paths
 from common import parameters
-
+import gauss
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
 
@@ -50,6 +50,7 @@ def cluster_data(X, local_subsample_length, num_clusters):
 
 pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'pca.pkl'
 kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + 'kmean.pkl'
+gauss_savepath = paths.RenderedData.voxlets_dictionary_path + 'gauss.pkl'
 
 # save path (open here so if an error is thrown I can catch it early...)
 
@@ -88,6 +89,10 @@ km = cluster_data(
     parameters.VoxletTraining.pca_subsample_length,
     parameters.VoxletTraining.number_clusters)
 
+print "Fitting Gaussian"
+gs = gauss.GaussImpute()
+gs.fit(np_all_sboxes)
+
 try:
     print "Saving to " + pca_savepath
     with open(pca_savepath, 'wb') as f:
@@ -96,6 +101,10 @@ try:
     print "Saving to " + kmeans_savepath
     with open(kmeans_savepath, 'wb') as f:
         pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
+
+    print "Saving to " + gauss_savepath
+    with open(gauss_savepath, 'wb') as f:
+        pickle.dump(gs, f, pickle.HIGHEST_PROTOCOL)
 
 except:
     import pdb; pdb.set_trace()
