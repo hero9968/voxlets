@@ -6,6 +6,7 @@ import os
 import sys
 import socket
 import numpy as np
+import parameters
 
 # per-view data paths
 host_name = socket.gethostname()
@@ -249,7 +250,11 @@ class RenderedData(object):
         with open(cls.yaml_train_location, 'r') as f:
             train_data = yaml.load(f)
 
-        return train_data
+        if parameters.max_sequences < len(train_data):
+            print "Warning - training on a subset"
+            return train_data[:parameters.max_sequences]
+        else:
+            return train_data
 
     @classmethod
     def test_sequence(cls):

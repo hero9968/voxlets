@@ -69,16 +69,7 @@ def decimate(X):
     return X_sub.flatten()
 
 
-if parameters.multicore:
-    # need to import these *after* pool_helper has been defined
-    import multiprocessing
-    pool = multiprocessing.Pool(parameters.cores)
-    mapper = pool.map
-else:
-    mapper = map
-
-
-for count, sequence in enumerate(paths.RenderedData.train_sequence()):
+def process_sequence(sequence):
 
     print "\nProcessing " + sequence['name']
 
@@ -106,16 +97,14 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     carver = carving.Fusion()
     carver.set_video(video)
     carver.set_voxel_grid(gt_vox)
-    rendered_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
+    im_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
 
     print "-> Extracting shoeboxes and features..."
     t1 = time()
-    gt_shoeboxes = mapper(
-        functools.partial(pool_helper, im=im, vgrid=gt_vox,
-                          post_transform=pca_flatten), idxs)
-    view_shoeboxes = mapper(
-        functools.partial(pool_helper, im=im, vgrid=rendered_tsdf,
-                          post_transform=decimate), idxs)
+    gt_shoeboxes = [pool_helper(
+        idx, im=im, vgrid=gt_vox, post_transform=pca_flatten) for idx in idxs]
+    view_shoeboxes = [pool_helper(
+        idx, im=im, vgrid=im_tsdf, post_transform=decimate) for idx in idxs]
     print "\n-> ...Took %f s" % (time() - t1)
 
     np_sboxes = np.vstack(gt_shoeboxes)
@@ -130,6 +119,18 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     D = dict(shoeboxes=np_sboxes, features=np_features)
     scipy.io.savemat(savepath, D, do_compression=True)
 
-    if count > parameters.max_sequences:
-        print "Ending now"
-        break
+
+if parameters.multicore:
+    # need to import these *after* pool_helper has been defined
+    import multiprocessing
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+
+if __name__ == "__main__":
+
+    tic = time()
+    mapper(process_sequence, paths.RenderedData.train_sequence())
+    print "In total took %f s" % (time() - tic)
