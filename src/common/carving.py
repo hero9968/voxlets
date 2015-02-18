@@ -172,6 +172,7 @@ class Fusion(VoxelAccumulator):
         accum = KinfuAccumulator(self.voxel_grid.V.shape)
         accum.vox_size = self.voxel_grid.vox_size
         accum.R = self.voxel_grid.R
+        accum.inv_R = self.voxel_grid.inv_R
         accum.origin = self.voxel_grid.origin
 
         # another grid to store which voxels are visible, i.e on the surface

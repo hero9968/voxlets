@@ -603,7 +603,6 @@ class UprightAccumulator(WorldVoxels):
         computes a grid of the average values, stores in V
         '''
         nan_locations = self.countV==0
-        print np.sum(nan_locations)
         temp_countV = copy.deepcopy(self.countV)
         temp_countV[nan_locations] = 100  # to avoid div by zero error
         self.V = self.sumV / temp_countV

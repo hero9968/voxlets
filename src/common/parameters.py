@@ -45,7 +45,7 @@ class Voxlet(object):
     '''
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
-    one_side_bins = 15
+    one_side_bins = 10
     shape = (one_side_bins, 2*one_side_bins, 5*one_side_bins)
     size = 0.01  # edge size of a single voxel
     # z height of centre takes into account the origin offset
@@ -93,6 +93,8 @@ class VoxletTraining(object):
     else:
         number_points_from_each_image = 250
         forest_subsample_length = 50000  # max num examples to use to train forest
+
+    decimation_rate = 4
 
 
 

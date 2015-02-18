@@ -92,8 +92,6 @@ class VoxletPredictor(object):
 
         # must extract original test data from the indices
 
-        print index_predictions[0]
-
         # this is a horrible line and needs changing...
         Y_pred_compressed = [self._medioid(self.training_Y[pred])
                              for pred in index_predictions]
@@ -158,6 +156,12 @@ class Reconstructer(object):
     def set_test_im(self, test_im):
         self.im = test_im
 
+    def set_rendered_tsdf(self, tsdf):
+        '''
+        setting the tsdf as computed from the image
+        '''
+        self.tsdf = tsdf
+
     def sample_points(self, num_to_sample):
         '''
         sampling points from the test image
@@ -182,9 +186,15 @@ class Reconstructer(object):
         shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape)  # grid size
         shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
         shoebox.set_voxel_size(parameters.Voxlet.size)  # m
-        shoebox.initialise_from_point_and_normal(world_xyz[point_idx],
-                                                 world_norms[point_idx],
-                                                 np.array([0, 0, 1]))
+
+        start_x = world_xyz[point_idx, 0]
+        start_y = world_xyz[point_idx, 1]
+        start_z = 0.375
+        shoebox.initialise_from_point_and_normal(
+            np.array([start_x, start_y, start_z]),
+            world_norms[point_idx],
+            np.array([0, 0, 1]))
+
         return shoebox
 
     def initialise_output_grid(self, gt_grid=None):
@@ -195,31 +205,40 @@ class Reconstructer(object):
 
     def fill_in_output_grid_oma(self):
         '''
-        doing the final reconstruction
+        Doing the final reconstruction
+        In future, for this method could not use the image at all, but instead
+        could make it so that the points and the normals are extracted directly
+        from the tsdf
         '''
 
-        "extract features from test image"
-        ce = features.CobwebEngine(t=5, fixed_patch_size=False)
-        ce.set_image(self.im)
-        np_features = np.array(ce.extract_patches(self.sampled_idxs))
+        "extract features from each shoebox..."
+        for count, idx in enumerate(self.sampled_idxs):
 
-        "classify according to the forest"
-        voxlet_predictions = self.model.predict(np_features)
-        print "Forest predictons has shape " + str(voxlet_predictions.shape)
+            # extract features from the tsdf volume
+            features_voxlet = self._initialise_voxlet(idx)
+            features_voxlet.fill_from_grid(self.tsdf)
+            feature_vector = self._voxlet_decimate(features_voxlet.V)
 
-        "for each forest prediction, do something sensible"
-        for count, (idx, voxlet) in enumerate(
-                zip(self.sampled_idxs, voxlet_predictions)):
+            "classify according to the forest"
+            voxlet_prediction = self.model.predict(
+                np.atleast_2d(feature_vector))
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
-            transformed_voxlet.V = voxlet.reshape(parameters.Voxlet.shape)
+            transformed_voxlet.V = voxlet_prediction.reshape(
+                parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
 
             sys.stdout.write('.')
             sys.stdout.flush()
 
         return self.accum
+
+    def _voxlet_decimate(self, X):
+        """Applied to the feature shoeboxes after extraction"""
+        rate = parameters.VoxletTraining.decimation_rate
+        X_sub = X[::rate, ::rate, ::rate]
+        return X_sub.flatten()
 
 
 class VoxelGridCollection(object):

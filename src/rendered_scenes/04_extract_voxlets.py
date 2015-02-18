@@ -16,6 +16,7 @@ from common import voxel_data
 from common import images
 from common import parameters
 from common import features
+from common import carving
 
 if not os.path.exists(paths.RenderedData.voxlets_dict_data_path):
     os.makedirs(paths.RenderedData.voxlets_dict_data_path)
@@ -78,27 +79,41 @@ def do_main():
         idxs = im.random_sample_from_mask(
             parameters.VoxletTraining.pca_number_points_from_each_image)
 
-        "Extracting features"
-        ce = features.CobwebEngine(
-            t=parameters.VoxletTraining.cobweb_t, fixed_patch_size=False)
-        ce.set_image(im)
-        np_features = np.array(ce.extract_patches(idxs))
+        print "Performing voxel carving"
+        video = images.RGBDVideo.init_from_images([im])
+        carver = carving.Fusion()
+        carver.set_video(video)
+        carver.set_voxel_grid(gt_vox)
+        rendered_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
+
+        # "Extracting features"
+        # ce = features.CobwebEngine(
+        #     t=parameters.VoxletTraining.cobweb_t, fixed_patch_size=False)
+        # ce.set_image(im)
+        # np_features = np.array(ce.extract_patches(idxs))
 
         "Now try to make this nice and like parrallel or something...?"
         t1 = time()
         if parameters.multicore:
-            shoeboxes = pool.map(
+            gt_shoeboxes = pool.map(
                 functools.partial(pool_helper, im=im, vgrid=gt_vox), idxs)
+            view_shoeboxes = pool.map(
+                functools.partial(pool_helper, im=im, vgrid=rendered_tsdf),
+                idxs)
         else:
-            shoeboxes = [pool_helper(idx, im=im, vgrid=gt_vox) for idx in idxs]
+            gt_shoeboxes = [
+                pool_helper(idx, im=im, vgrid=gt_vox) for idx in idxs]
+            view_shoeboxes = [
+                pool_helper(idx, im=im, vgrid=rendered_tsdf) for idx in idxs]
         print "Took %f s" % (time() - t1)
 
-        np_sboxes = np.array(shoeboxes)
+        np_gt_sboxes = np.array(gt_shoeboxes)
+        np_view_sboxes = np.array(view_shoeboxes)
 
-        print "Shoeboxes are shape " + str(np_sboxes.shape)
-        print "Features are shape " + str(np_features.shape)
+        print "Shoeboxes are shape " + str(np_gt_sboxes.shape)
+        print "Features are shape " + str(np_view_sboxes.shape)
 
-        D = dict(shoeboxes=np_sboxes, features=np_features)
+        D = dict(shoeboxes=np_gt_sboxes, features=np_view_sboxes)
         savepath = paths.RenderedData.voxlets_dict_data_path + \
             sequence['name'] + '.mat'
         print savepath

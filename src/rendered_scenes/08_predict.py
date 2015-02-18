@@ -38,7 +38,6 @@ for test_type in test_types + ['partial_tsdf', 'visible_voxels']:
         os.makedirs(folder_save_path)
 
 
-
 print "MAIN LOOP"
 # Note: if parallelising, should either do here (at top level) or at the
 # bottom level, where the predictions are accumulated (although this might be)
@@ -72,32 +71,41 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
 
     # save this as a voxel grid...
     savepath = paths.RenderedData.voxlet_prediction_path % \
-            ('partial_tsdf', sequence['name'])
+        ('partial_tsdf', sequence['name'])
     partial_tsdf.save(savepath)
 
     savepath = paths.RenderedData.voxlet_prediction_path % \
-            ('visible_voxels', sequence['name'])
+        ('visible_voxels', sequence['name'])
+    rendersavepath = paths.RenderedData.voxlet_prediction_img_path % \
+        ('visible_voxels', sequence['name'])
     visible.save(savepath)
+    visible.render_view(rendersavepath)
 
     for test_type in test_types:
 
-        print "Reconstructing with oma forest"
+        print "-> Reconstructing with oma forest"
         rec = voxlets.Reconstructer(
             reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
         rec.set_model(model)
         rec.set_test_im(im)
+        rec.set_rendered_tsdf(partial_tsdf)
         rec.sample_points(parameters.VoxletPrediction.number_samples)
         rec.initialise_output_grid(gt_grid=gt_vox)
         accum = rec.fill_in_output_grid_oma()
         prediction = accum.compute_average(
             nan_value=parameters.RenderedVoxelGrid.mu)
 
-        print "Saving"
+        print "\-> Saving"
         savepath = paths.RenderedData.voxlet_prediction_path % \
             (test_type, sequence['name'])
         prediction.save(savepath)
 
-        print "Done test type " + test_type
+        print "-> Rendering"
+        renderpath = paths.RenderedData.voxlet_prediction_img_path % \
+            (test_type, sequence['name'])
+        prediction.render_view(renderpath)
+
+        print "-> Done test type " + test_type
 
     print "Done sequence %s" % sequence['name']
 
