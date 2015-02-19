@@ -93,6 +93,7 @@ def process_sequence(sequence):
     carver.set_video(video)
     carver.set_voxel_grid(gt_vox)
     im_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
+    im_tsdf.V[np.isnan(im_tsdf.V)] = -parameters.RenderedVoxelGrid.mu
 
     logging.debug("Extracting shoeboxes and features...")
     t1 = time()

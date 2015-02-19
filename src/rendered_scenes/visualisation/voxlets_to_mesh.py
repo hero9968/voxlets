@@ -16,14 +16,14 @@ from common import parameters
 
 plt.close('all')
 save_dir = paths.RenderedData.voxlets_dictionary_path + '/visualisation/kmeans/'
-kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + 'kmean.pkl'
+kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_kmean.pkl'
 with open(kmeans_savepath, 'rb') as f:
     clusters = pickle.load(f)
 level = 0.0
 
 plot_it = False
 save_to_disk = True
-pad_vol = True
+pad_vol = False
 vis_style = 'marching_cubes'  # 'voxels' or 'marching_cubes'
 
 print clusters.cluster_centers_.shape
@@ -42,6 +42,7 @@ for count, c in enumerate(clusters.cluster_centers_):
         if vis_style == 'voxels':
             verts, faces = vu.create_voxel_grid(vol, level)
         else:
+            vol[:, :, -2:] = parameters.RenderedVoxelGrid.mu
             verts, faces = measure.marching_cubes(vol, level)
 
         if pad_vol:
@@ -67,7 +68,10 @@ for count, c in enumerate(clusters.cluster_centers_):
 
             plt.show()
 
-        verts = verts / 10.0  # so its a reasonable scale for blender
+        
+        verts *= parameters.Voxlet.size
+        verts *= 10.0  # so its a reasonable scale for blender
+        print verts.min(axis=0), verts.max(axis=0)
         vu.write_obj(verts, faces, save_dir + str(count)+ '_' + vis_style + '.obj')
 
     else:

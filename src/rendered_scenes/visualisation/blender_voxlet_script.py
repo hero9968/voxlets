@@ -51,6 +51,7 @@ try:
         bpy.ops.object.delete()
 
 except:
+    print("Failed...")
     quit()
 quit()
     #erg0s0f!
