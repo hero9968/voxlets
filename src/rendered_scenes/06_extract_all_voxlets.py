@@ -7,7 +7,8 @@ import sys
 import os
 from time import time
 import scipy.io
-import functools
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
@@ -50,10 +51,6 @@ def pool_helper(index, im, vgrid, post_transform=None):
     # convert the indices to world xyz space
     shoebox.fill_from_grid(vgrid)
 
-    # print a dot each time the function is run, without a new line
-    # sys.stdout.write('.')
-    # sys.stdout.flush()
-
     return post_transform(shoebox.V)
 
 
@@ -71,9 +68,9 @@ def decimate(X):
 
 def process_sequence(sequence):
 
-    print "\nProcessing " + sequence['name']
+    logging.info("Processing " + sequence['name'])
 
-    print "-> Loading ground truth grid and image data"
+    logging.debug("Loading ground truth grid and image data")
     vox_dir = paths.RenderedData.ground_truth_voxels(sequence['scene'])
     gt_vox = voxel_data.load_voxels(vox_dir)
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
@@ -83,39 +80,37 @@ def process_sequence(sequence):
         sequence['scene'], sequence['frames'][0])
     im = images.RGBDImage.load_from_dict(
         paths.RenderedData.scene_dir(sequence['scene']), frame_data)
-
-    print "-> Computing normals"
     norm_engine = features.Normals()
     im.normals = norm_engine.compute_normals(im)
 
-    print "-> Sampling from image"
+    logging.debug("Sampling from image")
     idxs = im.random_sample_from_mask(
         parameters.VoxletTraining.number_points_from_each_image)
 
-    print "-> Voxel carving"
+    logging.debug("Voxel carving")
     video = images.RGBDVideo.init_from_images([im])
     carver = carving.Fusion()
     carver.set_video(video)
     carver.set_voxel_grid(gt_vox)
     im_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
 
-    print "-> Extracting shoeboxes and features..."
+    logging.debug("Extracting shoeboxes and features...")
     t1 = time()
     gt_shoeboxes = [pool_helper(
         idx, im=im, vgrid=gt_vox, post_transform=pca_flatten) for idx in idxs]
     view_shoeboxes = [pool_helper(
         idx, im=im, vgrid=im_tsdf, post_transform=decimate) for idx in idxs]
-    print "\n-> ...Took %f s" % (time() - t1)
+    logging.debug("\n-> ...Took %f s" % (time() - t1))
 
     np_sboxes = np.vstack(gt_shoeboxes)
     np_features = np.array(view_shoeboxes)
 
-    print "-> ...Shoeboxes are shape " + str(np_sboxes.shape)
-    print "-> ...Features are shape " + str(np_features.shape)
+    logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
+    logging.debug("...Features are shape " + str(np_features.shape))
 
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
-    print "-> Saving to " + savepath
+    logging.debug("Saving to " + savepath)
     D = dict(shoeboxes=np_sboxes, features=np_features)
     scipy.io.savemat(savepath, D, do_compression=True)
 
