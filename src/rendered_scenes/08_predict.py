@@ -42,7 +42,7 @@ print "MAIN LOOP"
 # Note: if parallelising, should either do here (at top level) or at the
 # bottom level, where the predictions are accumulated (although this might be)
 # better off being GPU...)
-for count, sequence in enumerate(paths.RenderedData.test_sequence()):
+def process_sequence(sequence):
 
     # load in the ground truth grid for this scene, and converting nans
     vox_location = paths.RenderedData.ground_truth_voxels(sequence['scene'])
@@ -108,6 +108,23 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
         print "-> Done test type " + test_type
 
     print "Done sequence %s" % sequence['name']
+
+
+# need to import these *after* the pool helper has been defined
+if parameters.multicore:
+    import multiprocessing
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+
+if __name__ == '__main__':
+
+    tic = time()
+    mapper(process_sequence, paths.RenderedData.test_sequence()[:5])
+    print "In total took %f s" % (time() - tic)
+
 
     # "Saving result to disk"
     # savepath =

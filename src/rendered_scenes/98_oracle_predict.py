@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import cPickle as pickle
 import sys
 import os
+from time import time
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 
 from common import paths
@@ -109,11 +110,11 @@ def reconstruct_grid(idxs, im, blank_vox, sboxes):
     return blank_vox.compute_average(nan_value = parameters.RenderedVoxelGrid.mu)
 
 
-print "MAIN LOOP"
+
 # Note: if parallelising, should either do here (at top level) or at the
 # bottom level, where the predictions are accumulated (although this might be)
 # better off being GPU...)
-for count, sequence in enumerate(paths.RenderedData.test_sequence()):
+def process_sequence(sequence):
 
     # load in the ground truth grid for this scene, and converting nans
     vox_location = paths.RenderedData.ground_truth_voxels(sequence['scene'])
@@ -156,7 +157,7 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
     print "Performing test type...", test_type
     ##############################################################
 
-    kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + 'kmean.pkl'
+    kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_kmean.pkl'
     with open(kmeans_savepath, 'rb') as f:
         km = pickle.load(f)
 
@@ -212,9 +213,23 @@ for count, sequence in enumerate(paths.RenderedData.test_sequence()):
     ##############################################################
 
     print "Done sequence %s" % sequence['name']
-    if count >= 3:
-        print "BREAKING EARLY"
-        break
+
+
+# need to import these *after* the pool helper has been defined
+if False:#parameters.multicore:
+    import multiprocessing
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+
+if __name__ == '__main__':
+
+    tic = time()
+    mapper(process_sequence, paths.RenderedData.test_sequence()[:5])
+    print "In total took %f s" % (time() - tic)
+
 
     # "Saving result to disk"
     # savepath =
