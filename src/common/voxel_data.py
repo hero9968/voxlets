@@ -16,6 +16,7 @@ import subprocess as sp
 import shutil
 import paths
 import mesh
+import os
 
 def load_voxels(loadpath):
     with open(loadpath, 'rb') as f:
@@ -549,20 +550,21 @@ class WorldVoxels(Voxels):
         # convert nans to the minimum
         temp = self.copy()
         #temp.V[np.isnan(temp.V)] = temp.V[~np.isnan(temp.V)].min()
-        print temp.V.shape
 
         ms = mesh.Mesh()
         ms.from_volume(temp, 0)
         ms.remove_nan_vertices()
         ms.write_to_obj('/tmp/temp.obj')
 
-        print "Rendering"
         sp.call([paths.blender_path,
                  "../rendered_scenes/spinaround/spin.blend",
                  "-b", "-P",
-                 "../rendered_scenes/spinaround/blender_spinaround_frame.py"])
+                 "../rendered_scenes/spinaround/blender_spinaround_frame.py"],
+                 stdout=open(os.devnull, 'w'),
+                 close_fds=True)
 
         #now copy file from /tmp/.png to the savepath...
+        print "Moving render to " + savepath
         shutil.move('/tmp/.png', savepath)
 
 

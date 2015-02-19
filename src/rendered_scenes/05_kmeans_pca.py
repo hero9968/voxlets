@@ -10,7 +10,6 @@ from sklearn.cluster import MiniBatchKMeans
 
 from common import paths
 from common import parameters
-import gauss
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
 
