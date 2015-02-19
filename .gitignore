@@ -8,12 +8,14 @@ todo.md
 temp.*
 *.o
 *.vdb
+*.so
 *.pyc
 *.pptx
 *.dylib
 *.blend1
 *.blend2
 *.blend3
+*.lprof
 /media/ppt/
 /media/results/
 /media/notes/
