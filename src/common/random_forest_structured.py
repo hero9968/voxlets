@@ -60,6 +60,14 @@ class Node:
         elif child_type == 'right':
             self.right_node = Node(2*self.node_id+2, inds, impurity, prob, med_id)
 
+    def get_leaf_nodes(self):
+        # returns list of all leaf nodes below this node
+        if self.is_leaf:
+            return [self]
+        else:
+            return self.right_node.get_leaf_nodes() + \
+                   self.left_node.get_leaf_nodes()
+
     def test(self, X):
         return X[self.test_ind1] < self.test_thresh
 
@@ -152,6 +160,10 @@ class Tree:
             # return medoid id
             op[ex_id] = node.medoid_id
         return op
+
+    def leaf_nodes(self):
+        '''returns list of all leaf nodes'''
+        return self.root.get_leaf_nodes()
 
     def calc_impurity(self, node_id, y_bin, test_res, num_exs):
         # TODO currently num_exs is changed to deal with divide by zero, fix this

@@ -8,12 +8,19 @@ import cPickle as pickle
 import sys
 import os
 import time
+import shutil
 
 import paths
 import parameters
 import voxel_data
 import random_forest_structured as srf
 import features
+from skimage import measure
+import subprocess as sp
+
+sys.path.append(os.path.expanduser(
+    '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
+import voxel_utils as vu
 
 # parameters
 multiproc = False
@@ -139,6 +146,60 @@ class VoxletPredictor(object):
     def _print_shapes(self, X, Y):
         print "X has shape ", X.shape
         print "Y has shape ", Y.shape
+
+    def render_leaf_nodes(self, folder_path, tree_id=0):
+        '''
+        renders all the voxlets at leaf nodes of a tree to a folder
+        '''
+        leaf_nodes = self.forest.trees[tree_id].leaf_nodes()
+
+        print len(leaf_nodes)
+
+        print "\n Sum of all leaf nodes is:"
+        print sum([node.num_exs for node in leaf_nodes])
+
+        print self.training_Y.shape
+
+        if not os.path.exists(folder_path):
+            raise Exception("Could not find path %s" % folder_path)
+
+        print "Leaf node shapes are:"
+        for node in leaf_nodes:
+            print node.node_id, '\t', node.num_exs
+            leaf_folder_path = folder_path + '/' + str(node.node_id) + '/'
+
+            if not os.path.exists(leaf_folder_path):
+                print "Creating folder %s" % leaf_folder_path
+                os.makedirs(leaf_folder_path)
+
+            for count, example_id in enumerate(node.exs_at_node):
+                V = self.pca.inverse_transform(self.training_Y[example_id])
+                self._render_single_voxlet(V.reshape(parameters.Voxlet.shape),
+                    leaf_folder_path + str(count) + '.png')
+
+    def _render_single_voxlet(self, V, savepath, level=0):
+
+        # renders a voxlet using the .blend file...
+        temp = V.copy()
+
+        V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
+        verts, faces = measure.marching_cubes(V, level)
+
+        verts *= parameters.Voxlet.size
+        verts *= 10.0  # so its a reasonable scale for blender
+        print verts.min(axis=0), verts.max(axis=0)
+        vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
+
+        sp.call([paths.blender_path,
+                 "../rendered_scenes/visualisation/voxlet_render_quick.blend",
+                 "-b", "-P",
+                 "../rendered_scenes/visualisation/single_voxlet_blender_render.py"]),
+                 stdout=open(os.devnull, 'w'),
+                 close_fds=True)
+
+        #now copy file from /tmp/.png to the savepath...
+        print "Moving render to " + savepath
+        shutil.move('/tmp/temp_voxlet.png', savepath)
 
 
 class Reconstructer(object):
