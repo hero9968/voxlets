@@ -50,7 +50,7 @@ class Voxlet(object):
     size = 0.015  # edge size of a single voxel
     # centre is relative to the ijk origin at the bottom corner of the voxlet
     # z height of centre takes into account the origin offset
-    centre = np.array((0.1, 0.05, 0.375+0.03))
+    centre = np.array((0.075, 0.15, 0.375+0.03))
 
 
 class RenderedVoxelGrid(object):

@@ -45,8 +45,14 @@ def pool_helper(index, im, vgrid, post_transform=None):
     shoebox.V -= parameters.RenderedVoxelGrid.mu  # set the outside area to mu
     shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
     shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+    
+    start_x = world_xyz[point_idx, 0]
+    start_y = world_xyz[point_idx, 1]
+    start_z = 0.375
     shoebox.initialise_from_point_and_normal(
-        world_xyz[point_idx], world_norms[point_idx], np.array([0, 0, 1]))
+        np.array([start_x, start_y, start_z]),
+        world_norms[point_idx],
+        np.array([0, 0, 1]))
 
     # convert the indices to world xyz space
     shoebox.fill_from_grid(vgrid)
