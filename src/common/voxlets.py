@@ -147,7 +147,7 @@ class VoxletPredictor(object):
         print "X has shape ", X.shape
         print "Y has shape ", Y.shape
 
-    def render_leaf_nodes(self, folder_path, tree_id=0):
+    def render_leaf_nodes(self, folder_path, max_per_leaf=10, tree_id=0):
         '''
         renders all the voxlets at leaf nodes of a tree to a folder
         '''
@@ -172,7 +172,12 @@ class VoxletPredictor(object):
                 print "Creating folder %s" % leaf_folder_path
                 os.makedirs(leaf_folder_path)
 
-            for count, example_id in enumerate(node.exs_at_node):
+            if len(node.exs_at_node) > max_per_leaf:
+                ids_to_render = node.exs_at_node[:max_per_leaf]
+            else:
+                ids_to_render = node.exs_at_node
+
+            for count, example_id in enumerate(ids_to_render):
                 V = self.pca.inverse_transform(self.training_Y[example_id])
                 self._render_single_voxlet(V.reshape(parameters.Voxlet.shape),
                     leaf_folder_path + str(count) + '.png')
@@ -182,7 +187,7 @@ class VoxletPredictor(object):
         # renders a voxlet using the .blend file...
         temp = V.copy()
 
-        V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
+        #V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
         verts, faces = measure.marching_cubes(V, level)
 
         verts *= parameters.Voxlet.size
@@ -191,11 +196,11 @@ class VoxletPredictor(object):
         vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
 
         sp.call([paths.blender_path,
-                 "../rendered_scenes/visualisation/voxlet_render_quick.blend",
+                 paths.RenderedData.voxlet_render_blend,
                  "-b", "-P",
-                 "../rendered_scenes/visualisation/single_voxlet_blender_render.py"]),
-                 stdout=open(os.devnull, 'w'),
-                 close_fds=True)
+                 paths.RenderedData.voxlet_render_script])#,
+                 #stdout=open(os.devnull, 'w'),
+                 #close_fds=True)
 
         #now copy file from /tmp/.png to the savepath...
         print "Moving render to " + savepath
@@ -243,7 +248,7 @@ class Reconstructer(object):
         # convert to linear idx
         point_idx = index[0] * self.im.mask.shape[1] + index[1]
 
-        # creating the voxlet
+        # creating the voxlett10
         shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape)  # grid size
         shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
         shoebox.set_voxel_size(parameters.Voxlet.size)  # m
@@ -286,7 +291,7 @@ class Reconstructer(object):
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
-            transformed_voxlet.V = voxlet_prediction.reshape(
+            transformed_voxlet.V = features_voxlet.V.reshape(
                 parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
 

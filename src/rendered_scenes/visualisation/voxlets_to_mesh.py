@@ -28,7 +28,7 @@ vis_style = 'marching_cubes'  # 'voxels' or 'marching_cubes'
 
 print clusters.cluster_centers_.shape
 
-for count, c in enumerate(clusters.cluster_centers_):
+for count, c in enumerate(clusters.cluster_centers_[:150]):
     print count
     vol = c.reshape(parameters.Voxlet.shape)
 
@@ -68,6 +68,7 @@ for count, c in enumerate(clusters.cluster_centers_):
 
             plt.show()
 
+        print vol.shape
         
         verts *= parameters.Voxlet.size
         verts *= 10.0  # so its a reasonable scale for blender
