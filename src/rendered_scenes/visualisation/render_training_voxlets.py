@@ -47,9 +47,6 @@ def render_single_voxlet(V, savepath, level=0):
 features = []
 pca_representation = []
 
-features = []
-pca_representation = []
-
 for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
     # loading the data
