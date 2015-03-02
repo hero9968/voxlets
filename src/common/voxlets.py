@@ -9,7 +9,7 @@ import sys
 import os
 import time
 import shutil
-
+import copy
 import paths
 import parameters
 import voxel_data
@@ -24,6 +24,34 @@ import voxel_utils as vu
 
 # parameters
 multiproc = False
+
+
+def render_single_voxlet(V, savepath, level=0):
+
+    assert V.ndim == 3
+    print V.min(), V.max(), V.shape
+
+    # renders a voxlet using the .blend file...
+    temp = V.copy()
+
+    V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
+    verts, faces = measure.marching_cubes(V, level)
+
+    verts *= parameters.Voxlet.size
+    verts *= 10.0  # so its a reasonable scale for blender
+    print verts.min(axis=0), verts.max(axis=0)
+    vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
+
+    sp.call([paths.blender_path,
+         "../rendered_scenes/visualisation/voxlet_render_quick.blend",
+         "-b", "-P",
+         "../rendered_scenes/visualisation/single_voxlet_blender_render.py"])#,
+         #stdout=open(os.devnull, 'w'),
+         #close_fds=True)
+
+    #now copy file from /tmp/.png to the savepath...
+    print "Moving render to " + savepath
+    shutil.move('/tmp/temp_voxlet.png', savepath)
 
 
 class VoxletPredictor(object):
@@ -174,32 +202,8 @@ class VoxletPredictor(object):
 
             for count, example_id in enumerate(node.exs_at_node):
                 V = self.pca.inverse_transform(self.training_Y[example_id])
-                self._render_single_voxlet(V.reshape(parameters.Voxlet.shape),
+                render_single_voxlet(V.reshape(parameters.Voxlet.shape),
                     leaf_folder_path + str(count) + '.png')
-
-    def _render_single_voxlet(self, V, savepath, level=0):
-
-        # renders a voxlet using the .blend file...
-        temp = V.copy()
-
-        V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
-        verts, faces = measure.marching_cubes(V, level)
-
-        verts *= parameters.Voxlet.size
-        verts *= 10.0  # so its a reasonable scale for blender
-        print verts.min(axis=0), verts.max(axis=0)
-        vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
-
-        sp.call([paths.blender_path,
-                 "../rendered_scenes/visualisation/voxlet_render_quick.blend",
-                 "-b", "-P",
-                 "../rendered_scenes/visualisation/single_voxlet_blender_render.py"]),
-                 stdout=open(os.devnull, 'w'),
-                 close_fds=True)
-
-        #now copy file from /tmp/.png to the savepath...
-        print "Moving render to " + savepath
-        shutil.move('/tmp/temp_voxlet.png', savepath)
 
 
 class Reconstructer(object):
@@ -244,9 +248,11 @@ class Reconstructer(object):
         point_idx = index[0] * self.im.mask.shape[1] + index[1]
 
         # creating the voxlet
-        shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape)  # grid size
+        shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)  # grid size
         shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
         shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+
+        print shoebox.V.dtype
 
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
@@ -264,7 +270,7 @@ class Reconstructer(object):
         self.accum.set_origin(gt_grid.origin)
         self.accum.set_voxel_size(gt_grid.vox_size)
 
-    def fill_in_output_grid_oma(self):
+    def fill_in_output_grid_oma(self, render_savepath=None):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -272,8 +278,18 @@ class Reconstructer(object):
         from the tsdf
         '''
 
+        # saving
+        with open('/tmp/grid.pkl', 'wb') as f:
+            pickle.dump(self.tsdf, f)
+
+        with open('/tmp/im.pkl', 'wb') as f:
+            pickle.dump(self.im, f)
+
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
+
+            temp = copy.deepcopy(self.tsdf.V)
+            temp[np.isnan(temp)] = 0
 
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)
@@ -289,6 +305,19 @@ class Reconstructer(object):
             transformed_voxlet.V = voxlet_prediction.reshape(
                 parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
+
+            if render_savepath:
+
+                # create a path of where to save the rendering
+                savepath = render_savepath + '/%03d_%s.png'
+
+                # doing rendering of the extracted grid
+                render_single_voxlet(features_voxlet.V,
+                    savepath % (count, 'extracted'))
+
+                # doing rendering of the predicted grid
+                render_single_voxlet(transformed_voxlet.V,
+                    savepath % (count, 'predicted'))
 
             sys.stdout.write('.')
             sys.stdout.flush()

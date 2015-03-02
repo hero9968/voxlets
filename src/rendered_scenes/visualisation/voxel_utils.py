@@ -16,8 +16,8 @@ def write_obj(verts, faces, filename):
     obj_file.write('\n')
     faces_p = faces + 1
     for ff in range(faces_p.shape[0]):
-        #obj_file.write('f ' + str(faces_p[ff, 0]) + ' ' + str(faces_p[ff, 1]) + ' ' + str(faces_p[ff, 2]) + '\n')
-        obj_file.write('f ' + str(faces_p[ff, 0]) + '//' + str(faces_p[ff, 0]) + ' ' + str(faces_p[ff, 1]) + '//' + str(faces_p[ff, 1]) + ' ' + str(faces_p[ff, 2]) + '//' + str(faces_p[ff, 2]) + '\n')
+        obj_file.write('f ' + str(faces_p[ff, 0]) + ' ' + str(faces_p[ff, 1]) + ' ' + str(faces_p[ff, 2]) + '\n')
+        #obj_file.write('f ' + str(faces_p[ff, 0]) + '//' + str(faces_p[ff, 0]) + ' ' + str(faces_p[ff, 1]) + '//' + str(faces_p[ff, 1]) + ' ' + str(faces_p[ff, 2]) + '//' + str(faces_p[ff, 2]) + '\n')
     obj_file.close()
 
 

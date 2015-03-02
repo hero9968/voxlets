@@ -11,6 +11,7 @@ import cPickle as pickle
 import sys
 import os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
+from time import time
 
 from common import paths
 from common import parameters
@@ -19,6 +20,7 @@ from common import images
 from common import features
 from common import voxlets
 from common import carving
+
 
 
 # loading model
@@ -81,31 +83,31 @@ def process_sequence(sequence):
     visible.save(savepath)
     visible.render_view(rendersavepath)
 
-    for test_type in test_types:
+    test_type = 'oma'
 
-        print "-> Reconstructing with oma forest"
-        rec = voxlets.Reconstructer(
-            reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
-        rec.set_model(model)
-        rec.set_test_im(im)
-        rec.set_rendered_tsdf(partial_tsdf)
-        rec.sample_points(parameters.VoxletPrediction.number_samples)
-        rec.initialise_output_grid(gt_grid=gt_vox)
-        accum = rec.fill_in_output_grid_oma()
-        prediction = accum.compute_average(
-            nan_value=parameters.RenderedVoxelGrid.mu)
+    print "-> Reconstructing with oma forest"
+    rec = voxlets.Reconstructer(
+        reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+    rec.set_model(model)
+    rec.set_test_im(im)
+    rec.set_rendered_tsdf(partial_tsdf)
+    rec.sample_points(parameters.VoxletPrediction.number_samples)
+    rec.initialise_output_grid(gt_grid=gt_vox)
+    accum = rec.fill_in_output_grid_oma('/tmp/renders/')
+    prediction = accum.compute_average(
+        nan_value=parameters.RenderedVoxelGrid.mu)
 
-        print "\-> Saving"
-        savepath = paths.RenderedData.voxlet_prediction_path % \
-            (test_type, sequence['name'])
-        prediction.save(savepath)
+    print "\-> Saving"
+    savepath = paths.RenderedData.voxlet_prediction_path % \
+        (test_type, sequence['name'])
+    prediction.save(savepath)
 
-        print "-> Rendering"
-        renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'])
-        prediction.render_view(renderpath)
+    print "-> Rendering"
+    renderpath = paths.RenderedData.voxlet_prediction_img_path % \
+        (test_type, sequence['name'])
+    prediction.render_view(renderpath)
 
-        print "-> Done test type " + test_type
+    print "-> Done test type " + test_type
 
     print "Done sequence %s" % sequence['name']
 
