@@ -17,6 +17,11 @@ import random_forest_structured as srf
 import features
 from skimage import measure
 import subprocess as sp
+from sklearn.neighbors import NearestNeighbors
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
@@ -33,6 +38,8 @@ def render_single_voxlet(V, savepath, level=0):
 
     # renders a voxlet using the .blend file...
     temp = V.copy()
+    print savepath
+    print "Minmax is ", temp.min(), temp.max()
 
     V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
     verts, faces = measure.marching_cubes(V, level)
@@ -45,11 +52,15 @@ def render_single_voxlet(V, savepath, level=0):
     sp.call([paths.blender_path,
          "../rendered_scenes/visualisation/voxlet_render_quick.blend",
          "-b", "-P",
-         "../rendered_scenes/visualisation/single_voxlet_blender_render.py"])#,
-         #stdout=open(os.devnull, 'w'),
-         #close_fds=True)
+         "../rendered_scenes/visualisation/single_voxlet_blender_render.py"],
+         stdout=open(os.devnull, 'w'),
+         close_fds=True)
 
     #now copy file from /tmp/.png to the savepath...
+    folderpath = os.path.split(savepath)[0]
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
     print "Moving render to " + savepath
     shutil.move('/tmp/temp_voxlet.png', savepath)
 
@@ -91,7 +102,7 @@ class VoxletPredictor(object):
         if subsample_length > 0 and subsample_length < X.shape[0]:
             X, Y = self._subsample(X, Y, subsample_length)
 
-        print "After subsampling and removing nans..."
+        print "After subsampling and removing nans...", subsample_length
         self._print_shapes(X, Y)
 
         print "Training forest"
@@ -105,6 +116,7 @@ class VoxletPredictor(object):
         # must save the training data in this class, as the forest only saves
         # an index into the training set...
         self.training_Y = Y
+        self.training_X = X
 
     def _medioid(self, data):
         '''
@@ -223,6 +235,8 @@ class Reconstructer(object):
     def set_model(self, model):
         self.model = model
 
+        self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_X)
+
     def set_test_im(self, test_im):
         self.im = test_im
 
@@ -303,6 +317,8 @@ class Reconstructer(object):
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(self.tsdf)
             feature_vector = self._voxlet_decimate(features_voxlet.V)
+            feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
+
 
             "classify according to the forest"
             voxlet_prediction = self.model.predict(
@@ -310,7 +326,7 @@ class Reconstructer(object):
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
-            transformed_voxlet.V = features_voxlet.V.reshape(
+            transformed_voxlet.V = voxlet_prediction.reshape(
                 parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
 
@@ -327,6 +343,40 @@ class Reconstructer(object):
                 render_single_voxlet(transformed_voxlet.V,
                     savepath % (count, 'predicted'))
 
+                mu = parameters.RenderedVoxelGrid.mu
+
+                # Here want to now save slices at the corect high
+                # in the extracted and predicted voxlets
+                sf_x, sf_y = 2, 2
+                plt.subplot(sf_x, sf_y, 1)
+                plt.imshow(feature_vector.reshape(parameters.Voxlet.shape[:2]), interpolation='nearest')
+                plt.clim((-mu, mu))
+                plt.title('Features voxlet')
+
+                plt.subplot(sf_x, sf_y, 2)
+                plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
+                plt.clim((-mu, mu))
+                plt.title('Forest prediction')
+
+                plt.subplot(sf_x, sf_y, 3)
+                # extracting the nearest training neighbour
+                ans, indices = self.nbrs.kneighbors(feature_vector)
+                NN = self.model.training_X[indices[0], :].reshape(parameters.Voxlet.shape[:2])
+                plt.imshow(NN, interpolation='nearest')
+                plt.clim((-mu, mu))
+                plt.title('Nearest neighbour (X)')
+
+                plt.subplot(sf_x, sf_y, 4)
+                # extracting the nearest training neighbour
+
+                NN_Y = self.model.pca.inverse_transform(self.model.training_Y[indices[0], :])
+                NN_Y = NN_Y.reshape(parameters.Voxlet.shape)[:, :, 15]
+                plt.imshow(NN_Y, interpolation='nearest')
+                plt.clim((-mu, mu))
+                plt.title('Nearest neighbour (Y)')
+
+                plt.savefig(savepath % (count, 'slice'))
+
             sys.stdout.write('.')
             sys.stdout.flush()
 
@@ -335,7 +385,8 @@ class Reconstructer(object):
     def _voxlet_decimate(self, X):
         """Applied to the feature shoeboxes after extraction"""
         rate = parameters.VoxletTraining.decimation_rate
-        X_sub = X[::rate, ::rate, ::rate]
+        #X_sub = X[::rate, ::rate, ::rate]
+        X_sub = X[:, :, 15]
         return X_sub.flatten()
 
 
