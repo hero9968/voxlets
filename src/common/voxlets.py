@@ -17,6 +17,11 @@ import random_forest_structured as srf
 import features
 from skimage import measure
 import subprocess as sp
+from sklearn.neighbors import NearestNeighbors
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
@@ -33,9 +38,14 @@ def render_single_voxlet(V, savepath, level=0):
 
     # renders a voxlet using the .blend file...
     temp = V.copy()
+    print savepath
+    print "Minmax is ", temp.min(), temp.max()
 
     V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
     verts, faces = measure.marching_cubes(V, level)
+
+    if np.any(np.isnan(verts)):
+        import pdb; pdb.set_trace()
 
     verts *= parameters.Voxlet.size
     verts *= 10.0  # so its a reasonable scale for blender
@@ -95,7 +105,7 @@ class VoxletPredictor(object):
         if subsample_length > 0 and subsample_length < X.shape[0]:
             X, Y = self._subsample(X, Y, subsample_length)
 
-        print "After subsampling and removing nans..."
+        print "After subsampling and removing nans...", subsample_length
         self._print_shapes(X, Y)
 
         print "Training forest"
@@ -228,6 +238,8 @@ class Reconstructer(object):
     def set_model(self, model):
         self.model = model
 
+        self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_X)
+
     def set_test_im(self, test_im):
         self.im = test_im
 
@@ -307,6 +319,7 @@ class Reconstructer(object):
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(self.tsdf)
+            features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
             feature_vector = self._voxlet_decimate(features_voxlet.V)
             feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
 
@@ -333,6 +346,41 @@ class Reconstructer(object):
                 render_single_voxlet(transformed_voxlet.V,
                     savepath % (count, 'predicted'))
 
+                mu = parameters.RenderedVoxelGrid.mu
+
+                if False:
+                    # Here want to now save slices at the corect high
+                    # in the extracted and predicted voxlets
+                    sf_x, sf_y = 2, 2
+                    plt.subplot(sf_x, sf_y, 1)
+                    plt.imshow(feature_vector.reshape(parameters.Voxlet.shape[:2]), interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Features voxlet')
+
+                    plt.subplot(sf_x, sf_y, 2)
+                    plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Forest prediction')
+
+                    plt.subplot(sf_x, sf_y, 3)
+                    # extracting the nearest training neighbour
+                    ans, indices = self.nbrs.kneighbors(feature_vector)
+                    NN = self.model.training_X[indices[0], :].reshape(parameters.Voxlet.shape[:2])
+                    plt.imshow(NN, interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Nearest neighbour (X)')
+
+                    plt.subplot(sf_x, sf_y, 4)
+                    # extracting the nearest training neighbour
+
+                    NN_Y = self.model.pca.inverse_transform(self.model.training_Y[indices[0], :])
+                    NN_Y = NN_Y.reshape(parameters.Voxlet.shape)[:, :, 15]
+                    plt.imshow(NN_Y, interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Nearest neighbour (Y)')
+
+                    plt.savefig(savepath % (count, 'slice'))
+
             sys.stdout.write('.')
             sys.stdout.flush()
 
@@ -342,6 +390,7 @@ class Reconstructer(object):
         """Applied to the feature shoeboxes after extraction"""
         rate = parameters.VoxletTraining.decimation_rate
         X_sub = X[::rate, ::rate, ::rate]
+        #X_sub = X[:, :, 15]
         return X_sub.flatten()
 
 

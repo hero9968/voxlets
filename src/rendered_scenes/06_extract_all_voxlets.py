@@ -69,6 +69,7 @@ def decimate(X):
     """Applied to the feature shoeboxes after extraction"""
     rate = parameters.VoxletTraining.decimation_rate
     X_sub = X[::rate, ::rate, ::rate]
+    #X_sub = X[:, :, 15]
     return X_sub.flatten()
 
 
