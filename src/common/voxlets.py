@@ -44,6 +44,9 @@ def render_single_voxlet(V, savepath, level=0):
     V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
     verts, faces = measure.marching_cubes(V, level)
 
+    if np.any(np.isnan(verts)):
+        import pdb; pdb.set_trace()
+
     verts *= parameters.Voxlet.size
     verts *= 10.0  # so its a reasonable scale for blender
     print verts.min(axis=0), verts.max(axis=0)
@@ -316,9 +319,8 @@ class Reconstructer(object):
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(self.tsdf)
+            features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
             feature_vector = self._voxlet_decimate(features_voxlet.V)
-            feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
-
 
             "classify according to the forest"
             voxlet_prediction = self.model.predict(
@@ -345,37 +347,38 @@ class Reconstructer(object):
 
                 mu = parameters.RenderedVoxelGrid.mu
 
-                # Here want to now save slices at the corect high
-                # in the extracted and predicted voxlets
-                sf_x, sf_y = 2, 2
-                plt.subplot(sf_x, sf_y, 1)
-                plt.imshow(feature_vector.reshape(parameters.Voxlet.shape[:2]), interpolation='nearest')
-                plt.clim((-mu, mu))
-                plt.title('Features voxlet')
+                if False:
+                    # Here want to now save slices at the corect high
+                    # in the extracted and predicted voxlets
+                    sf_x, sf_y = 2, 2
+                    plt.subplot(sf_x, sf_y, 1)
+                    plt.imshow(feature_vector.reshape(parameters.Voxlet.shape[:2]), interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Features voxlet')
 
-                plt.subplot(sf_x, sf_y, 2)
-                plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
-                plt.clim((-mu, mu))
-                plt.title('Forest prediction')
+                    plt.subplot(sf_x, sf_y, 2)
+                    plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Forest prediction')
 
-                plt.subplot(sf_x, sf_y, 3)
-                # extracting the nearest training neighbour
-                ans, indices = self.nbrs.kneighbors(feature_vector)
-                NN = self.model.training_X[indices[0], :].reshape(parameters.Voxlet.shape[:2])
-                plt.imshow(NN, interpolation='nearest')
-                plt.clim((-mu, mu))
-                plt.title('Nearest neighbour (X)')
+                    plt.subplot(sf_x, sf_y, 3)
+                    # extracting the nearest training neighbour
+                    ans, indices = self.nbrs.kneighbors(feature_vector)
+                    NN = self.model.training_X[indices[0], :].reshape(parameters.Voxlet.shape[:2])
+                    plt.imshow(NN, interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Nearest neighbour (X)')
 
-                plt.subplot(sf_x, sf_y, 4)
-                # extracting the nearest training neighbour
+                    plt.subplot(sf_x, sf_y, 4)
+                    # extracting the nearest training neighbour
 
-                NN_Y = self.model.pca.inverse_transform(self.model.training_Y[indices[0], :])
-                NN_Y = NN_Y.reshape(parameters.Voxlet.shape)[:, :, 15]
-                plt.imshow(NN_Y, interpolation='nearest')
-                plt.clim((-mu, mu))
-                plt.title('Nearest neighbour (Y)')
+                    NN_Y = self.model.pca.inverse_transform(self.model.training_Y[indices[0], :])
+                    NN_Y = NN_Y.reshape(parameters.Voxlet.shape)[:, :, 15]
+                    plt.imshow(NN_Y, interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Nearest neighbour (Y)')
 
-                plt.savefig(savepath % (count, 'slice'))
+                    plt.savefig(savepath % (count, 'slice'))
 
             sys.stdout.write('.')
             sys.stdout.flush()
@@ -385,8 +388,8 @@ class Reconstructer(object):
     def _voxlet_decimate(self, X):
         """Applied to the feature shoeboxes after extraction"""
         rate = parameters.VoxletTraining.decimation_rate
-        #X_sub = X[::rate, ::rate, ::rate]
-        X_sub = X[:, :, 15]
+        X_sub = X[::rate, ::rate, ::rate]
+        #X_sub = X[:, :, 15]
         return X_sub.flatten()
 
 
