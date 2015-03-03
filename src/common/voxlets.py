@@ -45,11 +45,15 @@ def render_single_voxlet(V, savepath, level=0):
     sp.call([paths.blender_path,
          "../rendered_scenes/visualisation/voxlet_render_quick.blend",
          "-b", "-P",
-         "../rendered_scenes/visualisation/single_voxlet_blender_render.py"])#,
-         #stdout=open(os.devnull, 'w'),
-         #close_fds=True)
+         "../rendered_scenes/visualisation/single_voxlet_blender_render.py"],
+         stdout=open(os.devnull, 'w'),
+         close_fds=True)
 
     #now copy file from /tmp/.png to the savepath...
+    folderpath = os.path.split(savepath)[0]
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
     print "Moving render to " + savepath
     shutil.move('/tmp/temp_voxlet.png', savepath)
 
@@ -105,6 +109,7 @@ class VoxletPredictor(object):
         # must save the training data in this class, as the forest only saves
         # an index into the training set...
         self.training_Y = Y
+        self.training_X = X
 
     def _medioid(self, data):
         '''
@@ -303,6 +308,7 @@ class Reconstructer(object):
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(self.tsdf)
             feature_vector = self._voxlet_decimate(features_voxlet.V)
+            feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
 
             "classify according to the forest"
             voxlet_prediction = self.model.predict(
@@ -310,7 +316,7 @@ class Reconstructer(object):
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
-            transformed_voxlet.V = features_voxlet.V.reshape(
+            transformed_voxlet.V = voxlet_prediction.reshape(
                 parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
 
