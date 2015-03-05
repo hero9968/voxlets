@@ -7,7 +7,7 @@ host_name = socket.gethostname()
 
 if host_name == 'troll' or host_name == 'biryani':
     small_sample = False
-    max_sequences = float('Inf')  # when in a loop, max num of images to use
+    max_sequences = 250  # float('Inf')  # when in a loop, max num of images to use
     cores = 8
     multicore = True
 else:
@@ -86,23 +86,22 @@ class VoxletTraining(object):
     parameters for the training stage of the voxlet algorithm
     (Although the forest paramters are elsewhere currently)
     '''
-    cobweb_t = 0.01  # this is the parameter of the cobweb feature extraction
 
     # PCA and kmeans
-    pca_number_points_from_each_image = 50
-    number_pca_dims = 50
+    pca_number_points_from_each_image = 100
+    number_pca_dims = 60
     number_clusters = 250
     pca_subsample_length = 25000  # max number of examples to use for pca
 
     # actual voxlet extraction
     if small_sample:
         number_points_from_each_image = 400
-        forest_subsample_length = 25000  # max num examples to use to train forest
+        forest_subsample_length = 2500  # max num examples to use to train forest
     else:
         number_points_from_each_image = 250
-        forest_subsample_length = 50000  # max num examples to use to train forest
+        forest_subsample_length = 250000  # max num examples to use to train forest
 
-    decimation_rate = 4
+    decimation_rate = 2
 
 
 class VoxletPrediction(object):
