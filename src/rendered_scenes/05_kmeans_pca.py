@@ -10,7 +10,6 @@ from sklearn.cluster import MiniBatchKMeans
 
 from common import paths
 from common import parameters
-import gauss
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
 
@@ -47,15 +46,11 @@ def cluster_data(X, local_subsample_length, num_clusters):
     km.fit(X_subset)
     return km
 
-
-pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'pca.pkl'
-kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + 'kmean.pkl'
-gauss_savepath = paths.RenderedData.voxlets_dictionary_path + 'gauss.pkl'
-
 # save path (open here so if an error is thrown I can catch it early...)
 
 # initialise lists
 shoeboxes = []
+features = []
 
 for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
@@ -68,43 +63,49 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
     D = scipy.io.loadmat(loadpath)
     shoeboxes.append(D['shoeboxes'].astype(np.float16))
+    features.append(D['features'].astype(np.float16))
 
     if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
         break
 
 np_all_sboxes = np.concatenate(shoeboxes, axis=0)
+np_all_features = np.concatenate(features, axis=0)
 print "All sboxes shape is " + str(np_all_sboxes.shape)
+print "Features shape is " + str(np_all_features.shape)
 
-# clustering the sboxes - but only a subsample of them for speed!
-print "Doing PCA"
-pca = pca_randomized(
-    np_all_sboxes,
-    parameters.VoxletTraining.pca_subsample_length,
-    parameters.VoxletTraining.number_pca_dims)
+# Replacing nans with a low number in the features, hopefully will work...
+np_all_features[np.isnan(np_all_features)] = -parameters.RenderedVoxelGrid.mu
 
-print "Doing Kmeans"
-km = cluster_data(
-    np_all_sboxes,
-    parameters.VoxletTraining.pca_subsample_length,
-    parameters.VoxletTraining.number_clusters)
+for name, np_array in zip(
+        ('shoeboxes', 'features'), (np_all_sboxes, np_all_features)):
 
-print "Fitting Gaussian"
-gs = gauss.GaussImpute()
-gs.fit(np_all_sboxes)
+    # clustering the sboxes - but only a subsample of them for speed!
+    print "Doing PCA"
+    pca = pca_randomized(
+        np_array,
+        parameters.VoxletTraining.pca_subsample_length,
+        parameters.VoxletTraining.number_pca_dims)
 
-try:
-    print "Saving to " + pca_savepath
-    with open(pca_savepath, 'wb') as f:
-        pickle.dump(pca, f, pickle.HIGHEST_PROTOCOL)
+    print "Doing Kmeans"
+    km = cluster_data(
+        np_array,
+        parameters.VoxletTraining.pca_subsample_length,
+        parameters.VoxletTraining.number_clusters)
 
-    print "Saving to " + kmeans_savepath
-    with open(kmeans_savepath, 'wb') as f:
-        pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
+    try:
+        pca_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
+            '_pca.pkl'
+        kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
+            '_kmean.pkl'
 
-    print "Saving to " + gauss_savepath
-    with open(gauss_savepath, 'wb') as f:
-        pickle.dump(gs, f, pickle.HIGHEST_PROTOCOL)
+        print "Saving to " + pca_savepath
+        with open(pca_savepath, 'wb') as f:
+            pickle.dump(pca, f, pickle.HIGHEST_PROTOCOL)
 
-except:
-    import pdb; pdb.set_trace()
+        print "Saving to " + kmeans_savepath
+        with open(kmeans_savepath, 'wb') as f:
+            pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
+
+    except:
+        import pdb; pdb.set_trace()

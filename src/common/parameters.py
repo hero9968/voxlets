@@ -7,7 +7,7 @@ host_name = socket.gethostname()
 
 if host_name == 'troll' or host_name == 'biryani':
     small_sample = False
-    max_sequences = float('Inf')  # when in a loop, max num of images to use
+    max_sequences = 250  # float('Inf')  # when in a loop, max num of images to use
     cores = 8
     multicore = True
 else:
@@ -45,11 +45,19 @@ class Voxlet(object):
     '''
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
-    one_side_bins = 15
-    shape = (one_side_bins, 2*one_side_bins, 5*one_side_bins)
-    size = 0.01  # edge size of a single voxel
+    tall_voxlet = True
+
+    one_side_bins = 10
+    shape = (one_side_bins, 2*one_side_bins, 2*one_side_bins)
+    size = 0.035  # edge size of a single voxel
+    # centre is relative to the ijk origin at the bottom corner of the voxlet
     # z height of centre takes into account the origin offset
-    centre = np.array((0.1, 0.05, 0.375-0.03))
+    actual_size = np.array(shape) * size
+    centre = np.array((actual_size[0] * 0.5,
+                       actual_size[1] * 0.25,
+                       0.375+0.03))
+
+    tall_voxlet_height = 0.375
 
 
 class RenderedVoxelGrid(object):
@@ -78,23 +86,22 @@ class VoxletTraining(object):
     parameters for the training stage of the voxlet algorithm
     (Although the forest paramters are elsewhere currently)
     '''
-    cobweb_t = 0.01  # this is the parameter of the cobweb feature extraction
 
     # PCA and kmeans
-    pca_number_points_from_each_image = 50
-    number_pca_dims = 50
+    pca_number_points_from_each_image = 100
+    number_pca_dims = 60
     number_clusters = 250
     pca_subsample_length = 25000  # max number of examples to use for pca
 
     # actual voxlet extraction
     if small_sample:
         number_points_from_each_image = 400
-        forest_subsample_length = 25000  # max num examples to use to train forest
+        forest_subsample_length = 2500  # max num examples to use to train forest
     else:
         number_points_from_each_image = 250
-        forest_subsample_length = 50000  # max num examples to use to train forest
+        forest_subsample_length = 250000  # max num examples to use to train forest
 
-
+    decimation_rate = 2
 
 
 class VoxletPrediction(object):

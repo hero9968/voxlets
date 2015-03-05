@@ -23,7 +23,7 @@ if not os.path.exists(modelfolder):
 ####################################################################
 print "Loading the dictionaries and PCA"
 ########################################################################
-pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'pca.pkl'
+pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
@@ -42,7 +42,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
     D = scipy.io.loadmat(loadpath)
     features.append(D['features'])
-    pca_representation.append(D['pca_representation'])
+    pca_representation.append(D['shoeboxes'])
 
     if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
@@ -50,6 +50,9 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
 np_pca_representation = np.vstack(pca_representation)
 np_features = np.concatenate(features, axis=0)
+
+print np_pca_representation.shape
+print np_features.shape
 
 ####################################################################
 print "Training the model"

@@ -6,6 +6,7 @@ import os
 import sys
 import socket
 import numpy as np
+import parameters
 
 # per-view data paths
 host_name = socket.gethostname()
@@ -203,6 +204,12 @@ class RenderedData(object):
     voxlet_prediction_path = voxlets_path + 'predictions/%s/%s.pkl'
     voxlet_prediction_img_path = voxlets_path + 'predictions/%s/%s.png'
 
+    # these are important as they refer to the location of fixed files...
+    voxlet_render_blend = os.path.expanduser(
+        '~/projects/shape_sharing/src/rendered_scenes/visualisation/voxlet_render_quick.blend')
+    voxlet_render_script = os.path.expanduser(
+        '~/projects/shape_sharing/src/rendered_scenes/visualisation/single_voxlet_blender_render.py')
+
     @classmethod
     def ground_truth_voxels(cls, scenename):
         return os.path.join(
@@ -249,7 +256,11 @@ class RenderedData(object):
         with open(cls.yaml_train_location, 'r') as f:
             train_data = yaml.load(f)
 
-        return train_data
+        if parameters.max_sequences < len(train_data):
+            print "Warning - training on a subset"
+            return train_data[:parameters.max_sequences]
+        else:
+            return train_data
 
     @classmethod
     def test_sequence(cls):
