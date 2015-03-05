@@ -24,7 +24,7 @@ WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
 #include <stdlib.h>
 #include <math.h>
 #include <strings.h>
-#include <ply_io.h>
+#include "ply_io.h"
 
 
 /* user's vertex and face definitions for a polygonal object */
