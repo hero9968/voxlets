@@ -27,6 +27,10 @@ pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
+features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
+with open(features_pca_savepath, 'rb') as f:
+    features_pca = pickle.load(f)
+
 ####################################################################
 print "Loading in all the data..."
 ########################################################################
@@ -64,4 +68,5 @@ model.train(
     np_pca_representation,
     parameters.VoxletTraining.forest_subsample_length)
 model.set_pca(pca)
+model.set_features_pca(features_pca)
 model.save(paths.RenderedData.voxlet_model_oma_path)

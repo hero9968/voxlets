@@ -107,6 +107,10 @@ class VoxletPredictor(object):
     def set_pca(self, pca_in):
         self.pca = pca_in
 
+    def set_feature_pca(self, feature_pca_in):
+        self.feature_pca = feature_pca_in
+
+
     def train(self, X, Y, subsample_length=-1):
         '''
         Runs the OMA forest code
@@ -452,12 +456,17 @@ class Reconstructer(object):
 
         return self.accum
 
-    def _voxlet_decimate(self, X):
+    def feature_collapse(self, X):
         """Applied to the feature shoeboxes after extraction"""
-        rate = parameters.VoxletTraining.decimation_rate
-        X_sub = X[::rate, ::rate, ::rate]
-        #X_sub = X[:, :, 15]
-        return X_sub.flatten()
+
+        if parameters.VoxletTraining.feature_transform == 'pca':
+            return self.model.feature_pca.transform(X.flatten())
+
+        elif parameters.VoxletTraining.feature_transform == 'decimate':
+            rate = parameters.VoxletTraining.decimation_rate
+            X_sub = X[::rate, ::rate, ::rate]
+            return X_sub.flatten()
+
 
 
 class VoxelGridCollection(object):

@@ -22,6 +22,10 @@ pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
+features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
+with open(features_pca_savepath, 'rb') as f:
+    features_pca = pickle.load(f)
+
 if not os.path.exists(paths.RenderedData.voxlets_data_path):
     os.makedirs(paths.RenderedData.voxlets_data_path)
 
@@ -70,12 +74,16 @@ def pca_flatten(X):
     return pca.transform(X.flatten())
 
 
-def decimate(X):
+def feature_transform(X):
     """Applied to the feature shoeboxes after extraction"""
-    rate = parameters.VoxletTraining.decimation_rate
-    X_sub = X[::rate, ::rate, ::rate]
-    #X_sub = X[:, :, 15]
-    return X_sub.flatten()
+
+    if parameters.VoxletTraining.feature_transform == 'pca':
+        return feature_pca.transform(X.flatten())
+
+    elif parameters.VoxletTraining.feature_transform == 'decimate':
+        rate = parameters.VoxletTraining.decimation_rate
+        X_sub = X[::rate, ::rate, ::rate]
+        return X_sub.flatten()
 
 
 def process_sequence(sequence):
@@ -112,7 +120,7 @@ def process_sequence(sequence):
     gt_shoeboxes = [pool_helper(
         idx, im=im, vgrid=gt_vox, post_transform=pca_flatten) for idx in idxs]
     view_shoeboxes = [pool_helper(
-        idx, im=im, vgrid=im_tsdf, post_transform=decimate) for idx in idxs]
+        idx, im=im, vgrid=im_tsdf, post_transform=feature_transform) for idx in idxs]
     logging.debug("\n-> ...Took %f s" % (time() - t1))
 
     np_sboxes = np.vstack(gt_shoeboxes)
