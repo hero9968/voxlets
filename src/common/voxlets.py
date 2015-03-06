@@ -349,7 +349,7 @@ class Reconstructer(object):
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(self.tsdf)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
-            feature_vector = self._voxlet_decimate(features_voxlet.V)
+            feature_vector = self._feature_collapse(features_voxlet.V)
             feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
 
             "classify according to the forest"
@@ -456,7 +456,7 @@ class Reconstructer(object):
 
         return self.accum
 
-    def feature_collapse(self, X):
+    def _feature_collapse(self, X):
         """Applied to the feature shoeboxes after extraction"""
 
         if parameters.VoxletTraining.feature_transform == 'pca':

@@ -45,7 +45,7 @@ class Voxlet(object):
     '''
     # setting some voxlet params here
     # NOTE BE VERY CAREFUL IF EDITING THESE
-    tall_voxlet = True
+    tall_voxlets = True
 
     one_side_bins = 10
     shape = (one_side_bins, 2*one_side_bins, 2*one_side_bins)

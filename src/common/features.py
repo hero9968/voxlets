@@ -9,7 +9,6 @@ Patches should be able to vary to be constant-size in real-world coordinates
 import numpy as np
 import scipy.stats
 import scipy.io
-import cv2
 from numbers import Number
 import scipy.stats as stats
 
