@@ -6,7 +6,6 @@ I haven't thought about this yet though...
 '''
 
 import numpy as np
-import cv2
 from scipy.ndimage.morphology import distance_transform_edt
 import copy
 from numbers import Number

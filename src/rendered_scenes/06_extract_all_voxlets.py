@@ -26,6 +26,9 @@ features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_p
 with open(features_pca_savepath, 'rb') as f:
     features_pca = pickle.load(f)
 
+print "PCA components is shape ", pca.components_.shape
+print "Features PCA components is shape ", features_pca.components_.shape
+
 if not os.path.exists(paths.RenderedData.voxlets_data_path):
     os.makedirs(paths.RenderedData.voxlets_data_path)
 
@@ -78,7 +81,7 @@ def feature_transform(X):
     """Applied to the feature shoeboxes after extraction"""
 
     if parameters.VoxletTraining.feature_transform == 'pca':
-        return feature_pca.transform(X.flatten())
+        return features_pca.transform(X.flatten())
 
     elif parameters.VoxletTraining.feature_transform == 'decimate':
         rate = parameters.VoxletTraining.decimation_rate
