@@ -19,7 +19,7 @@ from common import paths
 from common import voxel_data
 from common import mesh
 
-full = False  # do we do all the voxel grid saving etc?
+full = True  # do we do all the voxel grid saving etc?
 
 temp_path = '/tmp/video_images/'
 
@@ -69,10 +69,11 @@ for sequence in paths.RenderedData.test_sequence():
     # load voxels of the results
 
     # getting the paths to the different things to load:
-    names = ['ground_truth', 'visible_voxels', 'prediction']
+    names = ['ground_truth', 'visible_voxels', 'prediction', 'prediction_keep_existing']
     files_to_load = [paths.RenderedData.ground_truth_voxels(sequence['scene']),
                      sequence_path('visible_voxels', sequence['name']),
-                     sequence_path(test_result_type, sequence['name'])]
+                     sequence_path(test_result_type, sequence['name']),
+                     sequence_path(test_result_type, sequence['name'] + '_keep_existing')]
     levels = [0.0, 0.0, 0.0]
 
     # adding input images to file

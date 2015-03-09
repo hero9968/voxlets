@@ -62,6 +62,7 @@ def process_sequence(sequence):
     # loading in the image
     frame_data = paths.RenderedData.load_scene_data(
         sequence['scene'], sequence['frames'][0])
+
     im = images.RGBDImage.load_from_dict(
         paths.RenderedData.scene_dir(sequence['scene']),
         frame_data)
@@ -103,16 +104,22 @@ def process_sequence(sequence):
     accum = rec.fill_in_output_grid_oma(render_type=['matplotlib'], render_savepath='/tmp/renders/')
     prediction = accum.compute_average(
         nan_value=parameters.RenderedVoxelGrid.mu)
+    prediction_keeping_exisiting = rec.keeping_existing
 
     print "\-> Saving"
     savepath = paths.RenderedData.voxlet_prediction_path % \
         (test_type, sequence['name'])
     prediction.save(savepath)
+    savepath = paths.RenderedData.voxlet_prediction_path % \
+        (test_type, sequence['name'] + '_keep_existing')
+    prediction_keeping_exisiting.save(savepath)
 
     print "-> Rendering"
     renderpath = paths.RenderedData.voxlet_prediction_img_path % \
         (test_type, sequence['name'])
-    prediction.render_view(renderpath)
+    renderpath = paths.RenderedData.voxlet_prediction_img_path % \
+        (test_type, sequence['name'] + '_keep_existing')
+    prediction_keeping_exisiting.render_view(renderpath)
 
     print "-> Done test type " + test_type
 

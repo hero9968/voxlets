@@ -454,6 +454,15 @@ class Reconstructer(object):
             sys.stdout.write('.')
             sys.stdout.flush()
 
+        # creating a final output which preserves the existing geometry
+        keeping_existing = self.tsdf.copy()
+        to_use_prediction = np.isnan(keeping_existing.V)
+        print "There are %d nans in the input tsdf" % to_use_prediction.sum()
+        keeping_existing.V[to_use_prediction] = \
+            self.accum.V[to_use_prediction]
+
+        self.keeping_existing = keeping_existing
+
         return self.accum
 
     def _feature_collapse(self, X):

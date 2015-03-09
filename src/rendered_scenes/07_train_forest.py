@@ -48,6 +48,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     features.append(D['features'])
     pca_representation.append(D['shoeboxes'])
 
+    print D['features'].shape, D['shoeboxes'].shape
     if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
         break
@@ -68,5 +69,5 @@ model.train(
     np_pca_representation,
     parameters.VoxletTraining.forest_subsample_length)
 model.set_pca(pca)
-model.set_features_pca(features_pca)
+model.set_feature_pca(features_pca)
 model.save(paths.RenderedData.voxlet_model_oma_path)

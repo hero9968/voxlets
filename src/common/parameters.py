@@ -7,7 +7,7 @@ host_name = socket.gethostname()
 
 if host_name == 'troll' or host_name == 'biryani':
     small_sample = False
-    max_sequences = 250  # float('Inf')  # when in a loop, max num of images to use
+    max_sequences = 500  # float('Inf')  # when in a loop, max num of images to use
     cores = 8
     multicore = True
 else:
@@ -35,7 +35,7 @@ class RenderData(object):
         sequences_per_scene = 20
 
     # train test split parameters
-    frames_per_sequence = 1
+    frames_per_sequence = 5
     train_fraction = 0.6
 
 

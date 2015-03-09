@@ -242,7 +242,9 @@ class RGBDImage(object):
         '''
         returns indices into the mask
         '''
-        indices = np.array(np.nonzero(self.mask)).T
+        temp_mask = np.logical_and(self.mask, 
+            self.get_world_normals()[:, 2].reshape(self.mask.shape) < 0.9)
+        indices = np.array(np.nonzero(temp_mask)).T
         samples = np.random.randint(0, indices.shape[0], num_samples)
         return indices[samples, :]
 

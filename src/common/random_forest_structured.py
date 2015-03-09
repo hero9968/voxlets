@@ -9,9 +9,9 @@ from sklearn.decomposition import RandomizedPCA
 class ForestParams:
     def __init__(self):
         self.num_tests = 2000
-        self.min_sample_cnt = 2
-        self.max_depth = 14.0
-        self.num_trees = 100
+        self.min_sample_cnt = 5
+        self.max_depth = 12
+        self.num_trees = 50
         self.bag_size = 0.5
         self.train_parallel = True
 
@@ -23,7 +23,6 @@ class ForestParams:
 
         self.oob_score = False
         self.oob_importance = False
-        self.importance = True
 
 
 class Node:

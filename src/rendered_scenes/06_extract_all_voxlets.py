@@ -127,7 +127,7 @@ def process_sequence(sequence):
     logging.debug("\n-> ...Took %f s" % (time() - t1))
 
     np_sboxes = np.vstack(gt_shoeboxes)
-    np_features = np.array(view_shoeboxes)
+    np_features = np.vstack(view_shoeboxes)
 
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
     logging.debug("...Features are shape " + str(np_features.shape))
