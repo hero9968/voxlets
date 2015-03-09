@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.misc
 import scipy.ndimage
-import h5py
+#import h5py
 import cv2
 from copy import deepcopy
 import yaml
