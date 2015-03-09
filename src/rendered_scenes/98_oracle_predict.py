@@ -53,7 +53,12 @@ def extract_shoebox(index, im, vgrid):
 
     start_x = world_xyz[point_idx, 0]
     start_y = world_xyz[point_idx, 1]
-    start_z = parameters.Voxlet.centre[2]
+
+    if parameters.Voxlet.tall_voxlets:
+        start_z = parameters.Voxlet.tall_voxlet_height
+    else:
+        start_z = world_xyz[point_idx, 2]
+
     shoebox.initialise_from_point_and_normal(
         np.array([start_x, start_y, start_z]),
         world_norms[point_idx],

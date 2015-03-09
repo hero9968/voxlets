@@ -27,6 +27,13 @@ from common import carving
 with open(paths.RenderedData.voxlet_model_oma_path, 'rb') as f:
     model = pickle.load(f)
 
+
+for count, tree in enumerate(model.forest.trees):
+    print count, len(tree.leaf_nodes())
+    lengths = np.array([len(leaf.exs_at_node) for leaf in tree.leaf_nodes()])
+    print np.sum(lengths<10), np.sum(np.logical_and(lengths>10, lengths<50)), np.sum(lengths>50)
+
+
 test_types = ['oma']
 
 print "Checking results folders exist, creating if not"
@@ -55,6 +62,7 @@ def process_sequence(sequence):
     # loading in the image
     frame_data = paths.RenderedData.load_scene_data(
         sequence['scene'], sequence['frames'][0])
+
     im = images.RGBDImage.load_from_dict(
         paths.RenderedData.scene_dir(sequence['scene']),
         frame_data)
@@ -93,19 +101,25 @@ def process_sequence(sequence):
     rec.set_rendered_tsdf(partial_tsdf)
     rec.sample_points(parameters.VoxletPrediction.number_samples)
     rec.initialise_output_grid(gt_grid=gt_vox)
-    accum = rec.fill_in_output_grid_oma('/tmp/renders/')
+    accum = rec.fill_in_output_grid_oma(render_type=['matplotlib'], render_savepath='/tmp/renders/')
     prediction = accum.compute_average(
         nan_value=parameters.RenderedVoxelGrid.mu)
+    prediction_keeping_exisiting = rec.keeping_existing
 
     print "\-> Saving"
     savepath = paths.RenderedData.voxlet_prediction_path % \
         (test_type, sequence['name'])
     prediction.save(savepath)
+    savepath = paths.RenderedData.voxlet_prediction_path % \
+        (test_type, sequence['name'] + '_keep_existing')
+    prediction_keeping_exisiting.save(savepath)
 
     print "-> Rendering"
     renderpath = paths.RenderedData.voxlet_prediction_img_path % \
         (test_type, sequence['name'])
-    prediction.render_view(renderpath)
+    renderpath = paths.RenderedData.voxlet_prediction_img_path % \
+        (test_type, sequence['name'] + '_keep_existing')
+    prediction_keeping_exisiting.render_view(renderpath)
 
     print "-> Done test type " + test_type
 
@@ -113,7 +127,7 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if parameters.multicore:
+if False: #parameters.multicore:
     import multiprocessing
     pool = multiprocessing.Pool(parameters.cores)
     mapper = pool.map

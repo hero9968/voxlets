@@ -22,6 +22,13 @@ pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
+features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
+with open(features_pca_savepath, 'rb') as f:
+    features_pca = pickle.load(f)
+
+print "PCA components is shape ", pca.components_.shape
+print "Features PCA components is shape ", features_pca.components_.shape
+
 if not os.path.exists(paths.RenderedData.voxlets_data_path):
     os.makedirs(paths.RenderedData.voxlets_data_path)
 
@@ -48,7 +55,12 @@ def pool_helper(index, im, vgrid, post_transform=None):
     
     start_x = world_xyz[point_idx, 0]
     start_y = world_xyz[point_idx, 1]
-    start_z = 0.375
+    
+    if parameters.Voxlet.tall_voxlets:
+        start_z = parameters.Voxlet.tall_voxlet_height
+    else:
+        start_z = world_xyz[point_idx, 2]
+
     shoebox.initialise_from_point_and_normal(
         np.array([start_x, start_y, start_z]),
         world_norms[point_idx],
@@ -65,12 +77,16 @@ def pca_flatten(X):
     return pca.transform(X.flatten())
 
 
-def decimate(X):
+def feature_transform(X):
     """Applied to the feature shoeboxes after extraction"""
-    rate = parameters.VoxletTraining.decimation_rate
-    X_sub = X[::rate, ::rate, ::rate]
-    #X_sub = X[:, :, 15]
-    return X_sub.flatten()
+
+    if parameters.VoxletTraining.feature_transform == 'pca':
+        return features_pca.transform(X.flatten())
+
+    elif parameters.VoxletTraining.feature_transform == 'decimate':
+        rate = parameters.VoxletTraining.decimation_rate
+        X_sub = X[::rate, ::rate, ::rate]
+        return X_sub.flatten()
 
 
 def process_sequence(sequence):
@@ -107,11 +123,11 @@ def process_sequence(sequence):
     gt_shoeboxes = [pool_helper(
         idx, im=im, vgrid=gt_vox, post_transform=pca_flatten) for idx in idxs]
     view_shoeboxes = [pool_helper(
-        idx, im=im, vgrid=im_tsdf, post_transform=decimate) for idx in idxs]
+        idx, im=im, vgrid=im_tsdf, post_transform=feature_transform) for idx in idxs]
     logging.debug("\n-> ...Took %f s" % (time() - t1))
 
     np_sboxes = np.vstack(gt_shoeboxes)
-    np_features = np.array(view_shoeboxes)
+    np_features = np.vstack(view_shoeboxes)
 
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
     logging.debug("...Features are shape " + str(np_features.shape))

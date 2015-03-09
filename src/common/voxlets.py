@@ -23,12 +23,28 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
 sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
 import voxel_utils as vu
 
 # parameters
 multiproc = False
+
+
+def plot_mesh(verts, faces, ax):
+    mesh = Poly3DCollection(verts[faces])
+    mesh.set_alpha(0.8)
+    mesh.set_edgecolor((1.0, 0.5, 0.5))
+    ax.add_collection3d(mesh)
+
+    ax.set_aspect('equal')
+    MAX = 20
+    for direction in (0, 1):
+        for point in np.diag(direction * MAX * np.array([1,1,1])):
+            ax.plot([point[0]], [point[1]], [point[2]], 'w')
+    ax.axis('off')
 
 
 def render_single_voxlet(V, savepath, level=0):
@@ -46,6 +62,10 @@ def render_single_voxlet(V, savepath, level=0):
 
     if np.any(np.isnan(verts)):
         import pdb; pdb.set_trace()
+
+    D = dict(verts=verts, faces=faces)
+    with open('/tmp/vertsfaces.pkl', 'wb') as f:
+        pickle.dump(D, f)
 
     verts *= parameters.Voxlet.size
     verts *= 10.0  # so its a reasonable scale for blender
@@ -89,6 +109,10 @@ class VoxletPredictor(object):
 
     def set_pca(self, pca_in):
         self.pca = pca_in
+
+    def set_feature_pca(self, feature_pca_in):
+        self.feature_pca = feature_pca_in
+
 
     def train(self, X, Y, subsample_length=-1):
         '''
@@ -280,11 +304,14 @@ class Reconstructer(object):
         shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
         shoebox.set_voxel_size(parameters.Voxlet.size)  # m
 
-        print shoebox.V.dtype
-
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
-        start_z = 0.375
+
+        if parameters.Voxlet.tall_voxlets:
+            start_z = parameters.Voxlet.tall_voxlet_height
+        else:
+            start_z = world_xyz[point_idx, 2]
+
         shoebox.initialise_from_point_and_normal(
             np.array([start_x, start_y, start_z]),
             world_norms[point_idx],
@@ -301,7 +328,7 @@ class Reconstructer(object):
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
 
-    def fill_in_output_grid_oma(self, render_savepath=None):
+    def fill_in_output_grid_oma(self, render_type, render_savepath=None):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -326,7 +353,7 @@ class Reconstructer(object):
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(self.tsdf)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
-            feature_vector = self._voxlet_decimate(features_voxlet.V)
+            feature_vector = self._feature_collapse(features_voxlet.V)
             feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
 
             "classify according to the forest"
@@ -339,7 +366,18 @@ class Reconstructer(object):
                 parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
 
-            if render_savepath:
+            # getting the GT voxlet
+            gt_voxlet = self._initialise_voxlet(idx)
+            gt_voxlet.fill_from_grid(self.gt_grid)
+
+            # getting the closest match in the training data...
+            ans, indices = self.nbrs.kneighbors(feature_vector)
+            closest_training_X = self.model.training_X[indices[0], :]
+            closest_training_Y = self.model.pca.inverse_transform(
+                self.model.training_Y[indices[0], :])
+            print closest_training_X.shape, closest_training_Y.shape
+
+            if 'blender' in render_type and render_savepath:
 
                 # create a path of where to save the rendering
                 savepath = render_savepath + '/%03d_%s.png'
@@ -363,53 +401,92 @@ class Reconstructer(object):
                 render_single_voxlet(best_voxlet_V,
                     savepath % (count, 'gt'))
 
-
                 mu = parameters.RenderedVoxelGrid.mu
 
-                if False:
-                    # Here want to now save slices at the corect high
-                    # in the extracted and predicted voxlets
-                    sf_x, sf_y = 2, 2
-                    plt.subplot(sf_x, sf_y, 1)
-                    plt.imshow(feature_vector.reshape(parameters.Voxlet.shape[:2]), interpolation='nearest')
-                    plt.clim((-mu, mu))
-                    plt.title('Features voxlet')
+            if 'slice' in render_type:
+                '''Plotting slices'''
+                # Here want to now save slices at the corect high
+                # in the extracted and predicted voxlets
+                sf_x, sf_y = 2, 2
+                plt.subplot(sf_x, sf_y, 1)
+                plt.imshow(feature_vector.reshape(parameters.Voxlet.shape[:2]), interpolation='nearest')
+                plt.clim((-mu, mu))
+                plt.title('Features voxlet')
 
-                    plt.subplot(sf_x, sf_y, 2)
-                    plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
-                    plt.clim((-mu, mu))
-                    plt.title('Forest prediction')
+                plt.subplot(sf_x, sf_y, 2)
+                plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
+                plt.clim((-mu, mu))
+                plt.title('Forest prediction')
 
-                    plt.subplot(sf_x, sf_y, 3)
-                    # extracting the nearest training neighbour
-                    ans, indices = self.nbrs.kneighbors(feature_vector)
-                    NN = self.model.training_X[indices[0], :].reshape(parameters.Voxlet.shape[:2])
-                    plt.imshow(NN, interpolation='nearest')
-                    plt.clim((-mu, mu))
-                    plt.title('Nearest neighbour (X)')
+                plt.subplot(sf_x, sf_y, 3)
+                # extracting the nearest training neighbour
+                ans, indices = self.nbrs.kneighbors(feature_vector)
+                NN = self.model.training_X[indices[0], :].reshape(parameters.Voxlet.shape[:2])
+                plt.imshow(NN, interpolation='nearest')
+                plt.clim((-mu, mu))
+                plt.title('Nearest neighbour (X)')
 
-                    plt.subplot(sf_x, sf_y, 4)
-                    # extracting the nearest training neighbour
+                plt.subplot(sf_x, sf_y, 4)
+                # extracting the nearest training neighbour
 
-                    NN_Y = self.model.pca.inverse_transform(self.model.training_Y[indices[0], :])
-                    NN_Y = NN_Y.reshape(parameters.Voxlet.shape)[:, :, 15]
-                    plt.imshow(NN_Y, interpolation='nearest')
-                    plt.clim((-mu, mu))
-                    plt.title('Nearest neighbour (Y)')
+                NN_Y = self.model.pca.inverse_transform(self.model.training_Y[indices[0], :])
+                NN_Y = NN_Y.reshape(parameters.Voxlet.shape)[:, :, 15]
+                plt.imshow(NN_Y, interpolation='nearest')
+                plt.clim((-mu, mu))
+                plt.title('Nearest neighbour (Y)')
 
-                    plt.savefig(savepath % (count, 'slice'))
+                plt.savefig(savepath % (count, 'slice'))
+
+            if 'matplotlib' in render_type:
+
+                '''matplotlib 3d plots in subfigs'''
+
+                plt.clf()
+                fig = plt.figure(1, figsize=(18, 18))
+
+                '''create range of items'''
+                vols = ((features_voxlet.V, 'Observed'),
+                           (transformed_voxlet.V, 'Predicted'),
+                           (gt_voxlet.V, 'gt'),
+                           (closest_training_Y, 'closest training Y'))
+
+                for vol_count, (V, title) in enumerate(vols):
+
+                    verts, faces = measure.marching_cubes(V.reshape(parameters.Voxlet.shape), 0)
+
+                    ax = fig.add_subplot(2, 2, vol_count+1, projection='3d', aspect='equal')
+                    plot_mesh(verts, faces, ax)
+                    plt.title(title)
+
+                plt.tight_layout()
+                savepath = render_savepath + '/compiled_%03d.png' % count
+                plt.savefig(savepath)
 
             sys.stdout.write('.')
             sys.stdout.flush()
 
+        # creating a final output which preserves the existing geometry
+        keeping_existing = self.tsdf.copy()
+        to_use_prediction = np.isnan(keeping_existing.V)
+        print "There are %d nans in the input tsdf" % to_use_prediction.sum()
+        keeping_existing.V[to_use_prediction] = \
+            self.accum.V[to_use_prediction]
+
+        self.keeping_existing = keeping_existing
+
         return self.accum
 
-    def _voxlet_decimate(self, X):
+    def _feature_collapse(self, X):
         """Applied to the feature shoeboxes after extraction"""
-        rate = parameters.VoxletTraining.decimation_rate
-        X_sub = X[::rate, ::rate, ::rate]
-        #X_sub = X[:, :, 15]
-        return X_sub.flatten()
+
+        if parameters.VoxletTraining.feature_transform == 'pca':
+            return self.model.feature_pca.transform(X.flatten())
+
+        elif parameters.VoxletTraining.feature_transform == 'decimate':
+            rate = parameters.VoxletTraining.decimation_rate
+            X_sub = X[::rate, ::rate, ::rate]
+            return X_sub.flatten()
+
 
 
 class VoxelGridCollection(object):

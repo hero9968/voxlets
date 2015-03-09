@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.misc
 import scipy.ndimage
-#import h5py
-import cv2
 from copy import deepcopy
 import yaml
 import os
@@ -113,8 +111,9 @@ class RGBDImage(object):
         temp_depth[np.isnan(temp_depth)] = 10.0
         # import pdb; pdb.set_trace()
 
-        Ix = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
-        Iy = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
+        #Ix = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
+        #Iy = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
+        raise Exception('Need to replace these with skimage alternatives...')
 
         self.angles = np.rad2deg(np.arctan2(Iy, Ix))
         self.angles[np.isnan(self.depth)] = np.nan
@@ -242,7 +241,9 @@ class RGBDImage(object):
         '''
         returns indices into the mask
         '''
-        indices = np.array(np.nonzero(self.mask)).T
+        temp_mask = np.logical_and(self.mask,
+            self.get_world_normals()[:, 2].reshape(self.mask.shape) < 0.9)
+        indices = np.array(np.nonzero(temp_mask)).T
         samples = np.random.randint(0, indices.shape[0], num_samples)
         return indices[samples, :]
 

@@ -8,18 +8,21 @@ from sklearn.decomposition import RandomizedPCA
 
 class ForestParams:
     def __init__(self):
-        self.num_tests = 512
-        self.min_sample_cnt = 2
-        self.max_depth = 12.0
-        self.num_trees = 10
+        self.num_tests = 2000
+        self.min_sample_cnt = 5
+        self.max_depth = 12
+        self.num_trees = 50
         self.bag_size = 0.5
-        self.train_parallel = False
+        self.train_parallel = True
 
         # structured learning params
         #self.pca_dims = 5
-        self.num_dims_for_pca = 20 # number of dimensions that pca gets reduced to
+        self.num_dims_for_pca = 50 # number of dimensions that pca gets reduced to
         self.sub_sample_exs_pca = True  # can also subsample the number of exs we use for PCA
         self.num_exs_for_pca = 5000
+
+        self.oob_score = False
+        self.oob_importance = False
 
 
 class Node:
@@ -126,7 +129,7 @@ class Tree:
         #exs_at_node = np.arange(Y.shape[0])
 
         # bagging
-        exs_at_node = np.random.choice(Y.shape[0], int(Y.shape[0]*self.tree_params.bag_size), replace=False)
+        exs_at_node = np.random.choice(Y.shape[0], int(Y.shape[0]*self.tree_params.bag_size), replace=True)
         exs_at_node.sort()
 
         # compute impurity
@@ -144,6 +147,80 @@ class Tree:
 
         # build tree
         self.build_tree(X, Y, self.root)
+
+        self.num_feature_dims = X.shape[1]
+
+        if self.tree_params.oob_score:
+
+            # oob score is cooefficient of determintion R^2 of the prediction
+            # oob score is in [0, 1], lower values are worse
+            # Make predictions for examples not in the bag
+            oob_exes = np.setdiff1d(np.arange(Y.shape[0]), exs_at_node)
+            pred_idxs = self.test(X[oob_exes, :])
+
+            # Compare the prediction to the GT (must be careful - as only indices returned)
+            pred_Y = Y[pred_idxs.astype(np.int32), :]
+            gt_Y = Y[oob_exes, :]
+
+            u = ((pred_Y - gt_Y)**2).sum()
+            v = ((gt_Y - gt_Y.mean(axis=0))**2).sum()
+            self.oob_score = (1- u/v)
+
+            print self.oob_score
+
+    def calc_importance(self):
+        ''' borrows from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/tree/_tree.pyx
+        '''
+
+        self.feature_importance = np.zeros(self.num_feature_dims)
+
+        '''visit each node...'''
+        stack = []
+        node = self.root
+        while stack or not node.is_leaf:
+
+            if node.is_leaf:
+                node = stack.pop()
+            else:
+                left = node.left_node
+                right = node.right_node
+
+                if not right.is_leaf and not left.is_leaf:
+                    self.feature_importance[node.test_ind1] += \
+                        (node.num_exs * node.impurity -
+                        right.num_exs * right.impurity -
+                        left.num_exs * left.impurity)
+
+                if not right.is_leaf:
+                    stack.append(right)
+                node = left
+
+        self.feature_importance /= self.feature_importance.sum()
+        return self.feature_importance
+            # oob_exes = np.setdiff1d(np.arange(Y.shape[0]), exs_at_node)
+            # self.oob_importance = np.zeros((X.shape[1]))
+
+            # # Take each feature dimension in turn
+            # for feature_idx in range(X.shape[1]):
+
+            #     # permute this column
+            #     to_use = np.random.choice(oob_exes, 100)
+            #     this_X = X.copy()[to_use, :]
+
+            #     permutation = np.random.permutation(this_X.shape[0])
+            #     this_X[:, feature_idx] = this_X[permutation, feature_idx]
+
+            #     # Compare the prediction to the GT (must be careful - as only indices returned)
+            #     pred_Y = Y[self.test(this_X).astype(np.int32), :]
+            #     gt_Y = Y[to_use, :]
+
+            #     # maybe here do ssd? Not normalised but could be ok...
+            #     self.oob_importance[feature_idx] = \
+            #         ((pred_Y - gt_Y)**2).sum(axis=1).mean()
+
+            # print self.oob_importance
+
+
 
     def test(self, X):
         op = np.zeros(X.shape[0])
@@ -266,6 +343,13 @@ class Forest:
         #    cPickle.dump(self, fid)
 
     def train(self, X, Y):
+
+        if np.any(np.isnan(X)):
+            raise Exception('nans should not be present in training X')
+
+        if np.any(np.isnan(Y)):
+            raise Exception('nans should not be present in training Y')
+
         if self.params.train_parallel:
             # TODO Can I make this faster by sharing the data?
             #print 'Parallel training'
@@ -283,6 +367,9 @@ class Forest:
         #print 'num trees ', len(self.trees)
 
     def test(self, X):
+        if np.any(np.isnan(X)):
+            raise Exception('nans should not be present in test X')
+
         # return the medoid id at each leaf
         op = np.zeros((X.shape[0], len(self.trees)))
         for tt, tree in enumerate(self.trees):
@@ -291,3 +378,7 @@ class Forest:
 
     def delete_trees(self):
         del self.trees[:]
+
+    def calc_importance(self):
+        imp = [tree.calc_importance() for tree in self.trees]
+        return np.vstack(imp).mean(axis=0)
