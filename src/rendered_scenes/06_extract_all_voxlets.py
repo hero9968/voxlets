@@ -7,6 +7,8 @@ import sys
 import os
 from time import time
 import scipy.io
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
@@ -14,8 +16,9 @@ from common import voxel_data
 from common import images
 from common import parameters
 from common import features
+from common import carving
 
-pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'pca.pkl'
+pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
@@ -23,7 +26,13 @@ if not os.path.exists(paths.RenderedData.voxlets_data_path):
     os.makedirs(paths.RenderedData.voxlets_data_path)
 
 
-def pool_helper(index, im, vgrid):
+def pool_helper(index, im, vgrid, post_transform=None):
+    '''
+    Helper function to extract shoeboxes from specified locations in voxel
+    grid.
+    post_transform is a function which is applied to each shoebox
+    after extraction
+    '''
 
     world_xyz = im.get_world_xyz()
     world_norms = im.get_world_normals()
@@ -36,110 +45,95 @@ def pool_helper(index, im, vgrid):
     shoebox.V -= parameters.RenderedVoxelGrid.mu  # set the outside area to mu
     shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
     shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+    
+    start_x = world_xyz[point_idx, 0]
+    start_y = world_xyz[point_idx, 1]
+    start_z = 0.375
     shoebox.initialise_from_point_and_normal(
-        world_xyz[point_idx], world_norms[point_idx], np.array([0, 0, 1]))
+        np.array([start_x, start_y, start_z]),
+        world_norms[point_idx],
+        np.array([0, 0, 1]))
 
     # convert the indices to world xyz space
     shoebox.fill_from_grid(vgrid)
 
-    # convert to pca representation
-    pca_representation = pca.transform(shoebox.V.flatten())
-    # pca_kmeans_idx = km_pca.predict(pca_representation.flatten())
-    # kmeans_idx = km_standard.predict(shoebox.V.flatten())
+    return post_transform(shoebox.V)
 
-    all_representations = dict(pca_representation=pca_representation)
-    #                           pca_kmeans_idx=pca_kmeans_idx,
-    #                           kmeans_idx=kmeans_idx)
 
-    # print a dot each time the function is run, without a new line
-    sys.stdout.write('.')
-    sys.stdout.flush()
-    return all_representations
+def pca_flatten(X):
+    """Applied to the GT shoeboxes after extraction"""
+    return pca.transform(X.flatten())
 
-# need to import these *after* the pool helper has been defined
-if parameters.multicore:
-    import multiprocessing
-    import functools
-    pool = multiprocessing.Pool(parameters.cores)
 
-for count, sequence in enumerate(paths.RenderedData.train_sequence()):
+def decimate(X):
+    """Applied to the feature shoeboxes after extraction"""
+    rate = parameters.VoxletTraining.decimation_rate
+    X_sub = X[::rate, ::rate, ::rate]
+    #X_sub = X[:, :, 15]
+    return X_sub.flatten()
 
-    print "Processing " + sequence['name']
 
-    # load in the ground truth grid for this scene, and converting nans
+def process_sequence(sequence):
+
+    logging.info("Processing " + sequence['name'])
+
+    logging.debug("Loading ground truth grid and image data")
     vox_dir = paths.RenderedData.ground_truth_voxels(sequence['scene'])
     gt_vox = voxel_data.load_voxels(vox_dir)
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
     gt_vox.set_origin(gt_vox.origin)
 
-    # loading this frame
     frame_data = paths.RenderedData.load_scene_data(
         sequence['scene'], sequence['frames'][0])
     im = images.RGBDImage.load_from_dict(
         paths.RenderedData.scene_dir(sequence['scene']), frame_data)
-
-    # computing normals...
     norm_engine = features.Normals()
     im.normals = norm_engine.compute_normals(im)
 
-    "Sampling from image"
+    logging.debug("Sampling from image")
     idxs = im.random_sample_from_mask(
         parameters.VoxletTraining.number_points_from_each_image)
 
-    "Extracting features"
-    ce = features.CobwebEngine(
-        t=parameters.VoxletTraining.cobweb_t, fixed_patch_size=False)
-    ce.set_image(im)
-    np_features = np.array(ce.extract_patches(idxs))
+    logging.debug("Voxel carving")
+    video = images.RGBDVideo.init_from_images([im])
+    carver = carving.Fusion()
+    carver.set_video(video)
+    carver.set_voxel_grid(gt_vox)
+    im_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
+    im_tsdf.V[np.isnan(im_tsdf.V)] = -parameters.RenderedVoxelGrid.mu
 
-    "Now try to make this nice and like parrallel or something...?"
+    logging.debug("Extracting shoeboxes and features...")
     t1 = time()
-    if parameters.multicore:
-        shoeboxes = pool.map(
-            functools.partial(pool_helper, im=im, vgrid=gt_vox), idxs)
-    else:
-        shoeboxes = [pool_helper(idx, im=im, vgrid=gt_vox) for idx in idxs]
-    print "Took %f s" % (time() - t1)
+    gt_shoeboxes = [pool_helper(
+        idx, im=im, vgrid=gt_vox, post_transform=pca_flatten) for idx in idxs]
+    view_shoeboxes = [pool_helper(
+        idx, im=im, vgrid=im_tsdf, post_transform=decimate) for idx in idxs]
+    logging.debug("\n-> ...Took %f s" % (time() - t1))
 
-    np_sboxes = np.array(shoeboxes)
+    np_sboxes = np.vstack(gt_shoeboxes)
+    np_features = np.array(view_shoeboxes)
 
-    print "Shoeboxes are shape " + str(np_sboxes.shape)
-    print "Features are shape " + str(np_features.shape)
+    logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
+    logging.debug("...Features are shape " + str(np_features.shape))
 
-    #   D = dict(shoeboxes=np_sboxes, features=np_features)
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
-    print savepath
-    #    scipy.io.savemat(savepath, D, do_compression=True)
-
-    # if count > 8 and parameters.small_sample:
-    #     print "Ending now"
-    #     break
-
-    print "np+features shape is", np_features.shape
-
-    # convert the shoeboxes to individual components
-    np_pca_representation = np.array(
-        [sbox['pca_representation'] for sbox in shoeboxes])
-    np_pca_representation = np_pca_representation.reshape(
-        (-1, np_pca_representation.shape[2]))
-    #    np_kmeans_idx = np.array(
-    #        [sbox['kmeans_idx'] for sbox in shoeboxes]).flatten()
-    #    np_pca_kmeans_idx = np.array(
-    #        [sbox['pca_kmeans_idx'] for sbox in shoeboxes]).flatten()
-
-    print "PCA is shape " + str(np_pca_representation.shape)
-#    print "kmeans is shape " + str(np_kmeans_idx.shape)
-#    print "pca kmeans is shape " + str(np_pca_kmeans_idx.shape)
-
-    print "Features are shape " + str(np_features.shape)
-    D = dict(pca_representation=np_pca_representation,
-             features=np_features)
-#             pca_kmeans_idx=np_pca_kmeans_idx,
-#             kmeans_idx=np_kmeans_idx,
-
+    logging.debug("Saving to " + savepath)
+    D = dict(shoeboxes=np_sboxes, features=np_features)
     scipy.io.savemat(savepath, D, do_compression=True)
 
-    if count > parameters.max_sequences:
-        print "Ending now"
-        break
+
+if parameters.multicore:
+    # need to import these *after* pool_helper has been defined
+    import multiprocessing
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+
+if __name__ == "__main__":
+
+    tic = time()
+    mapper(process_sequence, paths.RenderedData.train_sequence())
+    print "In total took %f s" % (time() - tic)

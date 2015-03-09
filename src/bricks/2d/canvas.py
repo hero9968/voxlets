@@ -7,10 +7,10 @@ from scipy.ndimage.morphology import distance_transform_edt
 from sklearn.neighbors import NearestNeighbors
 
 # Set some parameters here
-box_size = (5, 25)
-circle_size = (15, 15)
-canvas_size = (50, 50)
-pad_region = 20
+box_size = (5, 10)
+circle_size = (10, 10)
+canvas_size = (25, 25)
+pad_region = 5
 
 class Canvas(object):
     def __init__(self):
@@ -58,7 +58,7 @@ class Canvas(object):
                 raise Exception("Couldn't generate a canvas")
             count += 1
 
-        print count
+        #print count
         self.im = canvas > 0.5
         self.im = np.pad(
             self.im, [[pad_region, pad_region], [pad_region, pad_region]],

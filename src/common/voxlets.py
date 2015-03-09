@@ -8,15 +8,67 @@ import cPickle as pickle
 import sys
 import os
 import time
-
+import shutil
+import copy
 import paths
 import parameters
 import voxel_data
 import random_forest_structured as srf
 import features
+from skimage import measure
+import subprocess as sp
+from sklearn.neighbors import NearestNeighbors
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+sys.path.append(os.path.expanduser(
+    '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
+import voxel_utils as vu
 
 # parameters
 multiproc = False
+
+
+def render_single_voxlet(V, savepath, level=0):
+
+    assert V.ndim == 3
+    print V.min(), V.max(), V.shape
+
+    # renders a voxlet using the .blend file...
+    temp = V.copy()
+    print savepath
+    print "Minmax is ", temp.min(), temp.max()
+
+    V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
+    verts, faces = measure.marching_cubes(V, level)
+
+    if np.any(np.isnan(verts)):
+        import pdb; pdb.set_trace()
+
+    verts *= parameters.Voxlet.size
+    verts *= 10.0  # so its a reasonable scale for blender
+    print verts.min(axis=0), verts.max(axis=0)
+    D = dict(verts=verts, faces=faces)
+    with open('/tmp/vertsfaces.pkl', 'wb') as f:
+        pickle.dump(D, f)
+    vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
+
+    sp.call([paths.blender_path,
+         "../rendered_scenes/visualisation/voxlet_render_quick.blend",
+         "-b", "-P",
+         "../rendered_scenes/visualisation/single_voxlet_blender_render.py"],
+         stdout=open(os.devnull, 'w'),
+         close_fds=True)
+
+    #now copy file from /tmp/.png to the savepath...
+    folderpath = os.path.split(savepath)[0]
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    print "Moving render to " + savepath
+    shutil.move('/tmp/temp_voxlet.png', savepath)
 
 
 class VoxletPredictor(object):
@@ -56,7 +108,7 @@ class VoxletPredictor(object):
         if subsample_length > 0 and subsample_length < X.shape[0]:
             X, Y = self._subsample(X, Y, subsample_length)
 
-        print "After subsampling and removing nans..."
+        print "After subsampling and removing nans...", subsample_length
         self._print_shapes(X, Y)
 
         print "Training forest"
@@ -70,6 +122,7 @@ class VoxletPredictor(object):
         # must save the training data in this class, as the forest only saves
         # an index into the training set...
         self.training_Y = Y
+        self.training_X = X
 
     def _medioid(self, data):
         '''
@@ -91,8 +144,6 @@ class VoxletPredictor(object):
         index_predictions = self.forest.test(X).astype(int)
 
         # must extract original test data from the indices
-
-        print index_predictions[0]
 
         # this is a horrible line and needs changing...
         Y_pred_compressed = [self._medioid(self.training_Y[pred])
@@ -142,6 +193,41 @@ class VoxletPredictor(object):
         print "X has shape ", X.shape
         print "Y has shape ", Y.shape
 
+    def render_leaf_nodes(self, folder_path, max_per_leaf=10, tree_id=0):
+        '''
+        renders all the voxlets at leaf nodes of a tree to a folder
+        '''
+        leaf_nodes = self.forest.trees[tree_id].leaf_nodes()
+
+        print len(leaf_nodes)
+
+        print "\n Sum of all leaf nodes is:"
+        print sum([node.num_exs for node in leaf_nodes])
+
+        print self.training_Y.shape
+
+        if not os.path.exists(folder_path):
+            raise Exception("Could not find path %s" % folder_path)
+
+        print "Leaf node shapes are:"
+        for node in leaf_nodes:
+            print node.node_id, '\t', node.num_exs
+            leaf_folder_path = folder_path + '/' + str(node.node_id) + '/'
+
+            if not os.path.exists(leaf_folder_path):
+                print "Creating folder %s" % leaf_folder_path
+                os.makedirs(leaf_folder_path)
+
+            if len(node.exs_at_node) > max_per_leaf:
+                ids_to_render = node.exs_at_node[:max_per_leaf]
+            else:
+                ids_to_render = node.exs_at_node
+
+            for count, example_id in enumerate(ids_to_render):
+                V = self.pca.inverse_transform(self.training_Y[example_id])
+                render_single_voxlet(V.reshape(parameters.Voxlet.shape),
+                    leaf_folder_path + str(count) + '.png')
+
 
 class Reconstructer(object):
     '''
@@ -155,8 +241,16 @@ class Reconstructer(object):
     def set_model(self, model):
         self.model = model
 
+        self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_X)
+
     def set_test_im(self, test_im):
         self.im = test_im
+
+    def set_rendered_tsdf(self, tsdf):
+        '''
+        setting the tsdf as computed from the image
+        '''
+        self.tsdf = tsdf
 
     def sample_points(self, num_to_sample):
         '''
@@ -178,13 +272,24 @@ class Reconstructer(object):
         # convert to linear idx
         point_idx = index[0] * self.im.mask.shape[1] + index[1]
 
-        # creating the voxlet
+        # creating the voxlett10
         shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape)  # grid size
+
+        # creating the voxlet
+        shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)  # grid size
         shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
         shoebox.set_voxel_size(parameters.Voxlet.size)  # m
-        shoebox.initialise_from_point_and_normal(world_xyz[point_idx],
-                                                 world_norms[point_idx],
-                                                 np.array([0, 0, 1]))
+
+        print shoebox.V.dtype
+
+        start_x = world_xyz[point_idx, 0]
+        start_y = world_xyz[point_idx, 1]
+        start_z = 0.375
+        shoebox.initialise_from_point_and_normal(
+            np.array([start_x, start_y, start_z]),
+            world_norms[point_idx],
+            np.array([0, 0, 1]))
+
         return shoebox
 
     def initialise_output_grid(self, gt_grid=None):
@@ -193,33 +298,118 @@ class Reconstructer(object):
         self.accum.set_origin(gt_grid.origin)
         self.accum.set_voxel_size(gt_grid.vox_size)
 
-    def fill_in_output_grid_oma(self):
+        # during testing it makes sense to save the GT grid, for visualisation
+        self.gt_grid = gt_grid
+
+    def fill_in_output_grid_oma(self, render_savepath=None):
         '''
-        doing the final reconstruction
+        Doing the final reconstruction
+        In future, for this method could not use the image at all, but instead
+        could make it so that the points and the normals are extracted directly
+        from the tsdf
         '''
 
-        "extract features from test image"
-        ce = features.CobwebEngine(t=5, fixed_patch_size=False)
-        ce.set_image(self.im)
-        np_features = np.array(ce.extract_patches(self.sampled_idxs))
+        # saving
+        with open('/tmp/grid.pkl', 'wb') as f:
+            pickle.dump(self.tsdf, f)
 
-        "classify according to the forest"
-        voxlet_predictions = self.model.predict(np_features)
-        print "Forest predictons has shape " + str(voxlet_predictions.shape)
+        with open('/tmp/im.pkl', 'wb') as f:
+            pickle.dump(self.im, f)
 
-        "for each forest prediction, do something sensible"
-        for count, (idx, voxlet) in enumerate(
-                zip(self.sampled_idxs, voxlet_predictions)):
+        "extract features from each shoebox..."
+        for count, idx in enumerate(self.sampled_idxs):
+
+            temp = copy.deepcopy(self.tsdf.V)
+            temp[np.isnan(temp)] = 0
+
+            # extract features from the tsdf volume
+            features_voxlet = self._initialise_voxlet(idx)
+            features_voxlet.fill_from_grid(self.tsdf)
+            features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
+            feature_vector = self._voxlet_decimate(features_voxlet.V)
+            feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
+
+            "classify according to the forest"
+            voxlet_prediction = self.model.predict(
+                np.atleast_2d(feature_vector))
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
-            transformed_voxlet.V = voxlet.reshape(parameters.Voxlet.shape)
+            transformed_voxlet.V = voxlet_prediction.reshape(
+                parameters.Voxlet.shape)
             self.accum.add_voxlet(transformed_voxlet)
+
+            if render_savepath:
+
+                # create a path of where to save the rendering
+                savepath = render_savepath + '/%03d_%s.png'
+
+                # doing rendering of the extracted grid
+                render_single_voxlet(features_voxlet.V,
+                    savepath % (count, 'extracted'))
+
+                # doing rendering of the predicted grid
+                render_single_voxlet(transformed_voxlet.V,
+                    savepath % (count, 'predicted'))
+
+                # doing rendering of the ground truth grid
+                gt_voxlet = self._initialise_voxlet(idx)
+                gt_voxlet.fill_from_grid(self.gt_grid)
+                render_single_voxlet(gt_voxlet.V,
+                    savepath % (count, 'gt'))
+
+                # render the closest voxlet in all of the leaf nodes to the GT
+
+                render_single_voxlet(best_voxlet_V,
+                    savepath % (count, 'gt'))
+
+
+                mu = parameters.RenderedVoxelGrid.mu
+
+                if False:
+                    # Here want to now save slices at the corect high
+                    # in the extracted and predicted voxlets
+                    sf_x, sf_y = 2, 2
+                    plt.subplot(sf_x, sf_y, 1)
+                    plt.imshow(feature_vector.reshape(parameters.Voxlet.shape[:2]), interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Features voxlet')
+
+                    plt.subplot(sf_x, sf_y, 2)
+                    plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Forest prediction')
+
+                    plt.subplot(sf_x, sf_y, 3)
+                    # extracting the nearest training neighbour
+                    ans, indices = self.nbrs.kneighbors(feature_vector)
+                    NN = self.model.training_X[indices[0], :].reshape(parameters.Voxlet.shape[:2])
+                    plt.imshow(NN, interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Nearest neighbour (X)')
+
+                    plt.subplot(sf_x, sf_y, 4)
+                    # extracting the nearest training neighbour
+
+                    NN_Y = self.model.pca.inverse_transform(self.model.training_Y[indices[0], :])
+                    NN_Y = NN_Y.reshape(parameters.Voxlet.shape)[:, :, 15]
+                    plt.imshow(NN_Y, interpolation='nearest')
+                    plt.clim((-mu, mu))
+                    plt.title('Nearest neighbour (Y)')
+
+                    plt.savefig(savepath % (count, 'slice'))
 
             sys.stdout.write('.')
             sys.stdout.flush()
 
         return self.accum
+
+    def _voxlet_decimate(self, X):
+        """Applied to the feature shoeboxes after extraction"""
+        rate = parameters.VoxletTraining.decimation_rate
+        X_sub = X[::rate, ::rate, ::rate]
+        #X_sub = X[:, :, 15]
+        return X_sub.flatten()
 
 
 class VoxelGridCollection(object):

@@ -1,7 +1,6 @@
 import numpy as np
 #https://github.com/dranjan/python-plyfile
 import paths
-import h5py
 from skimage.measure import marching_cubes
 
 
