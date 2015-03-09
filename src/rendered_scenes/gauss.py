@@ -121,16 +121,19 @@ class FAGaussImpute(object):
         self.fa = FactorAnalysis(n_components=n_components)
         self.fa.fit(X)
 
-    def predict(self, X, mask):
+    def predict(self, X, missing_values_mask, max_known_dims=-1):
         '''
         guesses the missing values in X, as defined by the true entries in mask
+        max_known_dims is the maximum number of known dimensions to use.
+        Setting to a low number, e.g. 150, improves speed (smaller matrix to invert)
+        at the cost of accuracy
         '''
         #print np.all(X.shape == mask.shape)
-        assert np.all(X.shape == mask.shape)
-        assert mask.dtype == np.bool
+        assert np.all(X.shape == missing_values_mask.shape)
+        assert missing_values_mask.dtype == np.bool
 
         X = np.atleast_2d(X)
-        mask = np.atleast_2d(mask)
+        mask = np.atleast_2d(missing_values_mask)
 
         pred_means, pred_covs = [], []
 
@@ -140,23 +143,32 @@ class FAGaussImpute(object):
             # doing the conditional gaussian distribution
             # Notation is as used in the prince book, section 5.5 (p73)
 
-            X_row = deepcopy(X_row_t)
-            x_2 = X_row[~mask_row]
+            known_dims = np.where(~mask_row)[0]
 
-            mu_2 = self.fa.mean_[~mask_row]
+            if max_known_dims > 0 and max_known_dims < known_dims.shape[0]:
+                known_dims = np.random.choice(known_dims, max_known_dims)
+
+            X_row = deepcopy(X_row_t)
+            x_2 = X_row[known_dims]
+
+            mu_2 = self.fa.mean_[known_dims]
             mu_1 = self.fa.mean_[mask_row]
 
             the1 = self.fa.components_[:, mask_row].T
-            the2 = self.fa.components_[:, ~mask_row].T
+            the2 = self.fa.components_[:, known_dims].T
 
             noise_1 = np.diag(self.fa.noise_variance_[mask_row])
-            noise_2 = np.diag(self.fa.noise_variance_[~mask_row])
+            noise_2 = np.diag(self.fa.noise_variance_[known_dims])
 
             cov_11 = np.dot(the1, the1.T) + noise_1
             cov_21 = np.dot(the2, the1.T)
             cov_22 = np.dot(the2, the2.T) +  noise_2
 
+            print cov_11.shape, cov_21.shape, cov_22.shape
+
             cov_21_T_times_cov_22_inv = cov_21.T.dot(np.linalg.inv(cov_22))
+
+            print cov_21_T_times_cov_22_inv.shape
 
             temp_mean = mu_1 + cov_21_T_times_cov_22_inv.dot(x_2 - mu_2)
             temp_cov = cov_11 - cov_21_T_times_cov_22_inv.dot(cov_21)

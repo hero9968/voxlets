@@ -50,6 +50,9 @@ def render_single_voxlet(V, savepath, level=0):
     verts *= parameters.Voxlet.size
     verts *= 10.0  # so its a reasonable scale for blender
     print verts.min(axis=0), verts.max(axis=0)
+    D = dict(verts=verts, faces=faces)
+    with open('/tmp/vertsfaces.pkl', 'wb') as f:
+        pickle.dump(D, f)
     vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
 
     sp.call([paths.blender_path,
@@ -295,6 +298,9 @@ class Reconstructer(object):
         self.accum.set_origin(gt_grid.origin)
         self.accum.set_voxel_size(gt_grid.vox_size)
 
+        # during testing it makes sense to save the GT grid, for visualisation
+        self.gt_grid = gt_grid
+
     def fill_in_output_grid_oma(self, render_savepath=None):
         '''
         Doing the final reconstruction
@@ -345,6 +351,18 @@ class Reconstructer(object):
                 # doing rendering of the predicted grid
                 render_single_voxlet(transformed_voxlet.V,
                     savepath % (count, 'predicted'))
+
+                # doing rendering of the ground truth grid
+                gt_voxlet = self._initialise_voxlet(idx)
+                gt_voxlet.fill_from_grid(self.gt_grid)
+                render_single_voxlet(gt_voxlet.V,
+                    savepath % (count, 'gt'))
+
+                # render the closest voxlet in all of the leaf nodes to the GT
+
+                render_single_voxlet(best_voxlet_V,
+                    savepath % (count, 'gt'))
+
 
                 mu = parameters.RenderedVoxelGrid.mu
 
