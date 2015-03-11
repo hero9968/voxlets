@@ -214,9 +214,6 @@ class RGBDImage(object):
         im.depth *= dictionary['depth_scaling']
         im.depth /= 2**16
 
-        # forming the mask
-        im.mask = np.abs(im.depth - dictionary['depth_scaling']) < 1e-4
-
         # setting the camera intrinsics and extrinsics
         extrinsics = np.array(dictionary['pose']).reshape((4, 4))
         intrinsics = np.array(dictionary['intrinsics']).reshape((3, 3))
@@ -228,9 +225,7 @@ class RGBDImage(object):
 
         mask_image_path = \
             scene_folder + '/images/mask_%s.png' % dictionary['id']
-        # only load the mask if it exists...
-        if os.path.exists(mask_image_path):
-            im.mask = scipy.misc.imread(mask_image_path) == 255
+        im.mask = scipy.misc.imread(mask_image_path) == 255
 
         # setting the frame id
         im.frame_id = dictionary['id']

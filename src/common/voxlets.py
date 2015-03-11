@@ -19,9 +19,9 @@ from skimage import measure
 import subprocess as sp
 from sklearn.neighbors import NearestNeighbors
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+# import matplotlib
+# matplotlib.use('Agg')
+# import matplotlib.pyplot as plt
 
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
@@ -29,16 +29,15 @@ sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
 import voxel_utils as vu
 
-# parameters
-multiproc = False
 
-
-def extract_single_voxlet(index, im, vgrid, post_transform=None):
+def extract_single_voxlet(index, im, vgrid, labels_grids, post_transform=None):
     '''
     Helper function to extract shoeboxes from specified locations in voxel
     grid.
     post_transform is a function which is applied to each shoebox
     after extraction
+    In this code I am assuming that the voxel grid and image have
+    both got label attributes.
     '''
     world_xyz = im.get_world_xyz()
     world_norms = im.get_world_normals()
@@ -52,6 +51,8 @@ def extract_single_voxlet(index, im, vgrid, post_transform=None):
     shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
     shoebox.set_voxel_size(parameters.Voxlet.size)  # m
 
+    this_point_label = im.labels[index[0], index[1]]
+
     start_x = world_xyz[point_idx, 0]
     start_y = world_xyz[point_idx, 1]
 
@@ -64,6 +65,10 @@ def extract_single_voxlet(index, im, vgrid, post_transform=None):
         np.array([start_x, start_y, start_z]),
         world_norms[point_idx],
         np.array([0, 0, 1]))
+
+    # getting a copy of the voxelgrid, in which only the specified label exists
+    temp_vgrid = labels_grids[this_point_label]
+    shoebox.fill_from_grid(temp_vgrid)
 
     # convert the indices to world xyz space
     if post_transform:

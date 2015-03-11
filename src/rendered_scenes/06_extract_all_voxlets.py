@@ -60,6 +60,15 @@ def process_sequence(sequence):
     gt_vox = voxel_data.load_voxels(vox_dir)
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
     gt_vox.set_origin(gt_vox.origin)
+    gt_vox.segment_project_2d(z_threshold=2, floor_height=4)
+
+    # Move this into the voxel grid class?
+    # gt_vox.label_grid(3) # returns a copy of the gt_vox but as if only label 3 exists...
+    labels_grids = {}
+    for idx in np.unique(gt_vox.labels):
+        temp = gt_vox.copy()
+        temp.V[gt_vox.labels != idx] = parameters.RenderedVoxelGrid.mu
+        labels_grids[idx] = temp
 
     frame_data = paths.RenderedData.load_scene_data(
         sequence['scene'], sequence['frames'][0])
@@ -67,6 +76,7 @@ def process_sequence(sequence):
         paths.RenderedData.scene_dir(sequence['scene']), frame_data)
     norm_engine = features.Normals()
     im.normals = norm_engine.compute_normals(im)
+    im.label_from_grid(gt_vox)
 
     logging.debug("Sampling from image")
     idxs = im.random_sample_from_mask(
@@ -79,13 +89,14 @@ def process_sequence(sequence):
     carver.set_voxel_grid(gt_vox)
     im_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
     im_tsdf.V[np.isnan(im_tsdf.V)] = -parameters.RenderedVoxelGrid.mu
+    im_tsdf.labels = gt_vox.labels
 
     logging.debug("Extracting shoeboxes and features...")
     t1 = time()
     gt_shoeboxes = [voxlets.extract_single_voxlet(
-        idx, im=im, vgrid=gt_vox, post_transform=pca_flatten) for idx in idxs]
+        idx, im, gt_vox, labels_grids, pca_flatten) for idx in idxs]
     view_shoeboxes = [voxlets.extract_single_voxlet(
-        idx, im=im, vgrid=im_tsdf, post_transform=feature_transform) for idx in idxs]
+        idx, im, im_tsdf, labels_grids, feature_transform) for idx in idxs]
     logging.debug("\n-> ...Took %f s" % (time() - t1))
 
     np_sboxes = np.vstack(gt_shoeboxes)

@@ -36,12 +36,22 @@ def process_sequence(sequence):
         paths.RenderedData.ground_truth_voxels(sequence['scene']))
     gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
     gt_vox.set_origin(gt_vox.origin)
+    gt_vox.segment_project_2d(z_threshold=2, floor_height=4)
+
+    # Move this into the voxel grid class?
+    # gt_vox.label_grid(3) # returns a copy of the gt_vox but as if only label 3 exists...
+    labels_grids = {}
+    for idx in np.unique(gt_vox.labels):
+        temp = gt_vox.copy()
+        temp.V[gt_vox.labels != idx] = parameters.RenderedVoxelGrid.mu
+        labels_grids[idx] = temp
 
     # loading this frame
     frame_data = paths.RenderedData.load_scene_data(
         sequence['scene'], sequence['frames'][0])
     im = images.RGBDImage.load_from_dict(
         paths.RenderedData.scene_dir(sequence['scene']), frame_data)
+    im.label_from_grid(gt_vox)
 
     # computing normals...
     norm_engine = features.Normals()
@@ -58,13 +68,14 @@ def process_sequence(sequence):
     carver.set_voxel_grid(gt_vox)
     im_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
     im_tsdf.V[np.isnan(im_tsdf.V)] = -parameters.RenderedVoxelGrid.mu
+    im_tsdf.labels = gt_vox.labels
 
     "Now try to make this nice and like parrallel or something...?"
     t1 = time()
-    gt_shoeboxes = [
-        voxlets.extract_single_voxlet(idx, im, gt_vox, flatten_sbox) for idx in idxs]
-    view_shoeboxes = [
-        voxlets.extract_single_voxlet(idx, im, im_tsdf, flatten_sbox) for idx in idxs]
+    gt_shoeboxes = [voxlets.extract_single_voxlet(
+        idx, im, gt_vox, labels_grids, flatten_sbox) for idx in idxs]
+    view_shoeboxes = [voxlets.extract_single_voxlet(
+        idx, im, im_tsdf, labels_grids, flatten_sbox) for idx in idxs]
     print "Took %f s" % (time() - t1)
 
     np_gt_sboxes = np.array(gt_shoeboxes)
