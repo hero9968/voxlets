@@ -33,6 +33,45 @@ import voxel_utils as vu
 multiproc = False
 
 
+def extract_single_voxlet(index, im, vgrid, post_transform=None):
+    '''
+    Helper function to extract shoeboxes from specified locations in voxel
+    grid.
+    post_transform is a function which is applied to each shoebox
+    after extraction
+    '''
+    world_xyz = im.get_world_xyz()
+    world_norms = im.get_world_normals()
+
+    # convert to linear idx
+    point_idx = index[0] * im.mask.shape[1] + index[1]
+
+    shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
+    shoebox.V *= 0
+    shoebox.V -= parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
+    shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
+    shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+
+    start_x = world_xyz[point_idx, 0]
+    start_y = world_xyz[point_idx, 1]
+
+    if parameters.Voxlet.tall_voxlets:
+        start_z = parameters.Voxlet.tall_voxlet_height
+    else:
+        start_z = world_xyz[point_idx, 2]
+
+    shoebox.initialise_from_point_and_normal(
+        np.array([start_x, start_y, start_z]),
+        world_norms[point_idx],
+        np.array([0, 0, 1]))
+
+    # convert the indices to world xyz space
+    if post_transform:
+        return post_transform(shoebox)
+    else:
+        return shoebox
+
+
 def plot_mesh(verts, faces, ax):
     mesh = Poly3DCollection(verts[faces])
     mesh.set_alpha(0.8)
