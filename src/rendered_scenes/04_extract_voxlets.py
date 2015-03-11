@@ -17,41 +17,14 @@ from common import images
 from common import parameters
 from common import features
 from common import carving
+from common import voxlets
 
 if not os.path.exists(paths.RenderedData.voxlets_dict_data_path):
     os.makedirs(paths.RenderedData.voxlets_dict_data_path)
 
 
-def pool_helper(index, im, vgrid):
-
-    world_xyz = im.get_world_xyz()
-    world_norms = im.get_world_normals()
-
-    # convert to linear idx
-    point_idx = index[0] * im.mask.shape[1] + index[1]
-
-    shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
-    shoebox.V *= 0
-    shoebox.V -= parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
-    shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
-    shoebox.set_voxel_size(parameters.Voxlet.size)  # m
-
-    start_x = world_xyz[point_idx, 0]
-    start_y = world_xyz[point_idx, 1]
-
-    if parameters.Voxlet.tall_voxlets:
-        start_z = 0.375
-    else:
-        start_z = world_xyz[point_idx, 2]
-
-    shoebox.initialise_from_point_and_normal(
-        np.array([start_x, start_y, start_z]),
-        world_norms[point_idx],
-        np.array([0, 0, 1]))
-
-    # convert the indices to world xyz space
-    shoebox.fill_from_grid(vgrid)
-    return shoebox.V.flatten()
+def flatten_sbox(sbox):
+    return sbox.V.flatten()
 
 
 def process_sequence(sequence):
@@ -88,8 +61,10 @@ def process_sequence(sequence):
 
     "Now try to make this nice and like parrallel or something...?"
     t1 = time()
-    gt_shoeboxes = [pool_helper(idx, im=im, vgrid=gt_vox) for idx in idxs]
-    view_shoeboxes = [pool_helper(idx, im=im, vgrid=im_tsdf) for idx in idxs]
+    gt_shoeboxes = [
+        voxlets.extract_single_voxlet(idx, im, gt_vox, flatten_sbox) for idx in idxs]
+    view_shoeboxes = [
+        voxlets.extract_single_voxlet(idx, im, im_tsdf, flatten_sbox) for idx in idxs]
     print "Took %f s" % (time() - t1)
 
     np_gt_sboxes = np.array(gt_shoeboxes)

@@ -17,6 +17,7 @@ from common import images
 from common import parameters
 from common import features
 from common import carving
+from common import voxlets
 
 pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
@@ -33,59 +34,20 @@ if not os.path.exists(paths.RenderedData.voxlets_data_path):
     os.makedirs(paths.RenderedData.voxlets_data_path)
 
 
-def pool_helper(index, im, vgrid, post_transform=None):
-    '''
-    Helper function to extract shoeboxes from specified locations in voxel
-    grid.
-    post_transform is a function which is applied to each shoebox
-    after extraction
-    '''
-
-    world_xyz = im.get_world_xyz()
-    world_norms = im.get_world_normals()
-
-    # convert to linear idx
-    point_idx = index[0] * im.mask.shape[1] + index[1]
-
-    shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
-    shoebox.V *= 0
-    shoebox.V -= parameters.RenderedVoxelGrid.mu  # set the outside area to mu
-    shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
-    shoebox.set_voxel_size(parameters.Voxlet.size)  # m
-    
-    start_x = world_xyz[point_idx, 0]
-    start_y = world_xyz[point_idx, 1]
-    
-    if parameters.Voxlet.tall_voxlets:
-        start_z = parameters.Voxlet.tall_voxlet_height
-    else:
-        start_z = world_xyz[point_idx, 2]
-
-    shoebox.initialise_from_point_and_normal(
-        np.array([start_x, start_y, start_z]),
-        world_norms[point_idx],
-        np.array([0, 0, 1]))
-
-    # convert the indices to world xyz space
-    shoebox.fill_from_grid(vgrid)
-
-    return post_transform(shoebox.V)
-
-
-def pca_flatten(X):
+def pca_flatten(sbox):
     """Applied to the GT shoeboxes after extraction"""
-    return pca.transform(X.flatten())
+    return pca.transform(sbox.V.flatten())
 
 
-def feature_transform(X):
+def feature_transform(sbox):
     """Applied to the feature shoeboxes after extraction"""
 
     if parameters.VoxletTraining.feature_transform == 'pca':
-        return features_pca.transform(X.flatten())
+        return features_pca.transform(sbox.V.flatten())
 
     elif parameters.VoxletTraining.feature_transform == 'decimate':
         rate = parameters.VoxletTraining.decimation_rate
-        X_sub = X[::rate, ::rate, ::rate]
+        X_sub = sbox.V[::rate, ::rate, ::rate]
         return X_sub.flatten()
 
 
@@ -120,9 +82,9 @@ def process_sequence(sequence):
 
     logging.debug("Extracting shoeboxes and features...")
     t1 = time()
-    gt_shoeboxes = [pool_helper(
+    gt_shoeboxes = [voxlets.extract_single_voxlet(
         idx, im=im, vgrid=gt_vox, post_transform=pca_flatten) for idx in idxs]
-    view_shoeboxes = [pool_helper(
+    view_shoeboxes = [voxlets.extract_single_voxlet(
         idx, im=im, vgrid=im_tsdf, post_transform=feature_transform) for idx in idxs]
     logging.debug("\n-> ...Took %f s" % (time() - t1))
 
