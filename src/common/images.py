@@ -247,6 +247,32 @@ class RGBDImage(object):
         samples = np.random.randint(0, indices.shape[0], num_samples)
         return indices[samples, :]
 
+    def label_from_grid(self, vgrid, use_mask=True):
+        '''
+        create a labels attribute, assigning to each pixel the labels in the
+        labels attribute of vgrid, according to where each projected xyz
+        point is in the voxel grid
+        '''
+        xyz = self.get_world_xyz()
+
+        # if use_mask:
+        #     xyz = xyz[self.mask.flatten(), :]
+
+        im_idx = vgrid.world_to_idx(xyz)
+
+        # It's irritating that I can't use get_idx here.
+        # Perhaps I *should* have a voxeldata superclass, which contains
+        # instances of labels voxegrid, sdf voxelgrid etc...?
+        to_use = np.logical_and.reduce((
+            im_idx[:, 0] > 0, im_idx[:, 0] < vgrid.labels.shape[0],
+            im_idx[:, 1] > 0, im_idx[:, 1] < vgrid.labels.shape[1],
+            im_idx[:, 2] > 0, im_idx[:, 2] < vgrid.labels.shape[2]))
+        temp_labels = \
+            vgrid.labels[im_idx[to_use, 0], im_idx[to_use, 1], im_idx[to_use, 2]]
+
+        self.labels = deepcopy(self.mask).astype(int)
+        self.labels[to_use.reshape(self.mask.shape)] = temp_labels
+
 
 class RGBDVideo():
     '''

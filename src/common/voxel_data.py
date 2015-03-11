@@ -7,6 +7,8 @@ I haven't thought about this yet though...
 
 import numpy as np
 from scipy.ndimage.morphology import distance_transform_edt
+from skimage.morphology import binary_erosion, binary_dilation, disk
+import skimage.measure
 import copy
 from numbers import Number
 import sklearn.metrics
@@ -16,6 +18,8 @@ import shutil
 import paths
 import mesh
 import os
+
+import parameters
 
 def load_voxels(loadpath):
     with open(loadpath, 'rb') as f:
@@ -565,6 +569,37 @@ class WorldVoxels(Voxels):
         #now copy file from /tmp/.png to the savepath...
         print "Moving render to " + savepath
         shutil.move('/tmp/.png', savepath)
+
+    def segment_project_2d(self, z_threshold, floor_height):
+        '''
+        segments a voxel grid by projecting full voxels onto the xy
+        plane and segmenting in 2D. Naive but good for testing
+
+        z_threshold is the number of full voxels in z-dir needed in order
+            to be considered a full pixel in xy projection
+
+        floor_height is in voxels
+
+        NOTE: I considered returing a copy of this grid where the voxels are
+        the labels. Currently I am storing the labels in the grid...
+        '''
+        xy_proj = np.sum(self.V[:, :, floor_height:] < 0, axis=2) > z_threshold
+        xy_proj = binary_erosion(xy_proj)
+        labels = skimage.measure.label(xy_proj).astype(np.int16)
+
+        # dilate each of the labels
+        el = disk(3)
+        for idx in range(1, labels.max()+1):
+            labels[binary_dilation(labels == idx, el)] = idx
+
+        self.temp_2d_labels = labels
+
+        # propagate these labels back the to the voxels...
+        labels3d = np.expand_dims(labels, axis=2)
+        labels3d = np.tile(labels3d, (1, 1, self.V.shape[2]))
+        labels3d[self.V > parameters.RenderedVoxelGrid.mu] = 0
+
+        self.labels = labels3d
 
 
 class UprightAccumulator(WorldVoxels):

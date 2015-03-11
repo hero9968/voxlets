@@ -27,8 +27,8 @@ class RenderData(object):
     '''
     if small_sample:
         scenes_to_render = 10
-        train_test_max_scenes = 10
-        sequences_per_scene = 5
+        train_test_max_scenes = 30
+        sequences_per_scene = 1
     else:
         scenes_to_render = 100
         train_test_max_scenes = 100
