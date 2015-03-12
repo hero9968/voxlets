@@ -268,6 +268,12 @@ class RGBDImage(object):
         self.labels = deepcopy(self.mask).astype(int)
         self.labels[to_use.reshape(self.mask.shape)] = temp_labels
 
+    def find_points_inside_image(self, uv):
+        # now label each point with the label of the segment it falls into...
+        return np.logical_and.reduce((
+            uv[:, 0] >= 0, uv[:, 0] < self.depth.shape[1],
+            uv[:, 1] >= 0, uv[:, 1] < self.depth.shape[0]))
+
 
 class RGBDVideo():
     '''

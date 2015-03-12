@@ -601,6 +601,13 @@ class WorldVoxels(Voxels):
 
         self.labels = labels3d
 
+    def project_unobserved_voxels(self, im):
+        # project the nan voxels from grid into the image...
+        to_project_idxs = np.where(self.V.flatten() != np.nanmax(self.V))[0]
+        nan_xyz = self.world_meshgrid()[to_project_idxs]
+        return im.cam.project_points(nan_xyz).astype(np.int32), to_project_idxs
+
+
 
 class UprightAccumulator(WorldVoxels):
     '''

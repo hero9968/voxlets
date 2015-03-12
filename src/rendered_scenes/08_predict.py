@@ -62,7 +62,6 @@ def process_sequence(sequence):
     # loading in the image
     frame_data = paths.RenderedData.load_scene_data(
         sequence['scene'], sequence['frames'][0])
-
     im = images.RGBDImage.load_from_dict(
         paths.RenderedData.scene_dir(sequence['scene']),
         frame_data)
@@ -78,7 +77,20 @@ def process_sequence(sequence):
     carver.set_video(video)
     carver.set_voxel_grid(gt_vox.blank_copy())
     partial_tsdf, visible = carver.fuse(parameters.RenderedVoxelGrid.mu)
+    partial_tsdf.segment_project_2d(z_threshold=2, floor_height=4)
 
+    # here need to construct the label grids - but this time we do not have a full
+    # voxel grid, so the same segmentation may not work so well
+    labels_grids = {}
+    for idx in np.unique(partial_tsdf.labels):
+        temp = partial_tsdf.copy()
+        temp.V[partial_tsdf.labels != idx] = parameters.RenderedVoxelGrid.mu
+        labels_grids[idx] = temp
+    im.label_from_grid(partial_tsdf)
+
+    with open('/tmp/partial_segmented.pkl', 'w') as f:
+        pickle.dump(dict(labels_grids=labels_grids, partial_tsdf=partial_tsdf, image=im), f, protocol=pickle.HIGHEST_PROTOCOL)
+    quit()
     # save this as a voxel grid...
     savepath = paths.RenderedData.voxlet_prediction_path % \
         ('partial_tsdf', sequence['name'])
@@ -99,6 +111,7 @@ def process_sequence(sequence):
     rec.set_model(model)
     rec.set_test_im(im)
     rec.set_rendered_tsdf(partial_tsdf)
+    rec.set_voxel_labels(labels_grids)
     rec.sample_points(parameters.VoxletPrediction.number_samples)
     rec.initialise_output_grid(gt_grid=gt_vox)
     accum = rec.fill_in_output_grid_oma(render_type=['matplotlib'], render_savepath='/tmp/renders/')

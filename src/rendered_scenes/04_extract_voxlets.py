@@ -39,12 +39,11 @@ def process_sequence(sequence):
     gt_vox.segment_project_2d(z_threshold=2, floor_height=4)
 
     # Move this into the voxel grid class?
-    # gt_vox.label_grid(3) # returns a copy of the gt_vox but as if only label 3 exists...
-    labels_grids = {}
+    gt_vox_tsdfs_seg = {}
     for idx in np.unique(gt_vox.labels):
         temp = gt_vox.copy()
         temp.V[gt_vox.labels != idx] = parameters.RenderedVoxelGrid.mu
-        labels_grids[idx] = temp
+        gt_vox_tsdfs_seg[idx] = temp
 
     # loading this frame
     frame_data = paths.RenderedData.load_scene_data(
@@ -68,14 +67,36 @@ def process_sequence(sequence):
     carver.set_voxel_grid(gt_vox)
     im_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
     im_tsdf.V[np.isnan(im_tsdf.V)] = -parameters.RenderedVoxelGrid.mu
+
+    print "WARNING - this is a big hack here! What I should do is to segment on the visible grid ONLY"
+    print "I don't have code for this at the moment, so it was a bit silly to bother writing segmentation"
+    print "code for the gt grid, I should just have segmentation for the visible grid, as this "
+    print "will keep train/test partity"
     im_tsdf.labels = gt_vox.labels
+
+    print "Doing the labels on the partial tsdf"
+    uv, to_project_idxs = im_tsdf.project_unobserved_voxels(im)
+    inside_image = im.find_points_inside_image(uv)
+
+    # labels of all the non-nan voxels inside the image...
+    vox_labels = im.labels[uv[inside_image, 1], uv[inside_image, 0]]
+
+    # now propograte these labels back to the main grid
+    temp = to_project_idxs[inside_image]
+    im_tsdf.labels.ravel()[temp] = vox_labels
+
+
+    print "Separate out the partial tsdf into different 'layers' in a grid..."
+    labels_grids = voxlets.separate_binary_grids(im_tsdf.labels, True)
+    im_tsdf_grids = \
+        voxlets.label_grids_to_tsdf_grids(im_tsdf, labels_grids)
 
     "Now try to make this nice and like parrallel or something...?"
     t1 = time()
     gt_shoeboxes = [voxlets.extract_single_voxlet(
-        idx, im, gt_vox, labels_grids, flatten_sbox) for idx in idxs]
+        idx, im, gt_vox, gt_vox_tsdfs_seg, flatten_sbox) for idx in idxs]
     view_shoeboxes = [voxlets.extract_single_voxlet(
-        idx, im, im_tsdf, labels_grids, flatten_sbox) for idx in idxs]
+        idx, im, gt_vox, im_tsdf_grids, flatten_sbox) for idx in idxs]
     print "Took %f s" % (time() - t1)
 
     np_gt_sboxes = np.array(gt_shoeboxes)

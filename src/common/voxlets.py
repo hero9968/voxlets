@@ -30,6 +30,41 @@ sys.path.append(os.path.expanduser(
 import voxel_utils as vu
 
 
+def separate_binary_grids(vox_labels, flatten_labels_down):
+    '''
+    takes a 3D array of labels, and returns a dict
+    where keys are labels and values are a 3D boolean
+    array with one where that label is true
+    If flatten_labels_down == True, then cumsums along
+    the -ve z axis.
+    '''
+    each_label_region = {}
+
+    for idx in np.unique(vox_labels):
+        label_temp = vox_labels == idx
+
+        if flatten_labels_down:
+            label_temp = np.cumsum(
+                label_temp[:, :, ::-1], axis=2)[:, :, ::-1]
+
+        each_label_region[idx] = label_temp > 0
+
+    return each_label_region
+
+
+def label_grids_to_tsdf_grids(tsdf, binary_grids):
+    '''
+    extracts the tsdf corresponding to each of the binary grids
+    '''
+    tsdf_grids = {}
+    for idx, reg in binary_grids.iteritems():
+        temp = tsdf.copy()
+        temp.V[~reg] = np.nanmax(tsdf.V)
+        tsdf_grids[idx] = temp
+
+    return tsdf_grids
+
+
 def extract_single_voxlet(index, im, vgrid, labels_grids, post_transform=None):
     '''
     Helper function to extract shoeboxes from specified locations in voxel
@@ -65,6 +100,10 @@ def extract_single_voxlet(index, im, vgrid, labels_grids, post_transform=None):
         np.array([start_x, start_y, start_z]),
         world_norms[point_idx],
         np.array([0, 0, 1]))
+
+    #pickle.dump(shoebox, open('/tmp/sbox.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
+
+    print "Extracting point with idx ", this_point_label
 
     # getting a copy of the voxelgrid, in which only the specified label exists
     temp_vgrid = labels_grids[this_point_label]
@@ -320,6 +359,9 @@ class Reconstructer(object):
         '''
         self.tsdf = tsdf
 
+    def set_label_grids(self, label_grids):
+        self.label_grids = label_grids
+
     def sample_points(self, num_to_sample):
         '''
         sampling points from the test image
@@ -347,6 +389,8 @@ class Reconstructer(object):
         shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)  # grid size
         shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
         shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+        shoebox.V *= 0
+        shoebox.V += parameters.RenderedVoxelGrid.mu  # set the outside area to mu
 
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
@@ -390,12 +434,15 @@ class Reconstructer(object):
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
 
-            temp = copy.deepcopy(self.tsdf.V)
-            temp[np.isnan(temp)] = 0
+            # find the segment index of this voxlet
+            this_point_label = im.labels[idx[0], idx[1]]
+            # get the voxel grid of tsdf associated with this label
+            # BUT at test time how to get this segmented grid? We need a similar type thing to before...
+            #this_idx_grid = labels_grids[this_point_label]
 
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)
-            features_voxlet.fill_from_grid(self.tsdf)
+            features_voxlet.fill_from_grid(this_idx_grid)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
             feature_vector = self._feature_collapse(features_voxlet.V)
             feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
