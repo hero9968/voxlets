@@ -47,7 +47,7 @@ def extract_single_voxlet(index, im, vgrid, labels_grids, post_transform=None):
 
     shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
     shoebox.V *= 0
-    shoebox.V -= parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
+    shoebox.V += parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
     shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
     shoebox.set_voxel_size(parameters.Voxlet.size)  # m
 
