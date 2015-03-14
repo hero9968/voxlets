@@ -30,41 +30,6 @@ sys.path.append(os.path.expanduser(
 import voxel_utils as vu
 
 
-def separate_binary_grids(vox_labels, flatten_labels_down):
-    '''
-    takes a 3D array of labels, and returns a dict
-    where keys are labels and values are a 3D boolean
-    array with one where that label is true
-    If flatten_labels_down == True, then cumsums along
-    the -ve z axis.
-    '''
-    each_label_region = {}
-
-    for idx in np.unique(vox_labels):
-        label_temp = vox_labels == idx
-
-        if flatten_labels_down:
-            label_temp = np.cumsum(
-                label_temp[:, :, ::-1], axis=2)[:, :, ::-1]
-
-        each_label_region[idx] = label_temp > 0
-
-    return each_label_region
-
-
-def label_grids_to_tsdf_grids(tsdf, binary_grids):
-    '''
-    extracts the tsdf corresponding to each of the binary grids
-    '''
-    tsdf_grids = {}
-    for idx, reg in binary_grids.iteritems():
-        temp = tsdf.copy()
-        temp.V[~reg] = np.nanmax(tsdf.V)
-        tsdf_grids[idx] = temp
-
-    return tsdf_grids
-
-
 def extract_single_voxlet(index, im, vgrid, labels_grids, post_transform=None):
     '''
     Helper function to extract shoeboxes from specified locations in voxel
@@ -359,8 +324,8 @@ class Reconstructer(object):
         '''
         self.tsdf = tsdf
 
-    def set_label_grids(self, label_grids):
-        self.label_grids = label_grids
+    def set_label_grid_tsdf(self, label_grid_tsdf):
+        self.label_grid_tsdf = label_grid_tsdf
 
     def sample_points(self, num_to_sample):
         '''
@@ -435,10 +400,10 @@ class Reconstructer(object):
         for count, idx in enumerate(self.sampled_idxs):
 
             # find the segment index of this voxlet
-            this_point_label = im.labels[idx[0], idx[1]]
+            this_point_label = self.im.labels[idx[0], idx[1]]
             # get the voxel grid of tsdf associated with this label
             # BUT at test time how to get this segmented grid? We need a similar type thing to before...
-            #this_idx_grid = labels_grids[this_point_label]
+            this_idx_grid = self.label_grid_tsdf[this_point_label]
 
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)

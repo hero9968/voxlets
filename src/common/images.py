@@ -259,11 +259,11 @@ class RGBDImage(object):
         # Perhaps I *should* have a voxeldata superclass, which contains
         # instances of labels voxegrid, sdf voxelgrid etc...?
         to_use = np.logical_and.reduce((
-            im_idx[:, 0] > 0, im_idx[:, 0] < vgrid.labels.shape[0],
-            im_idx[:, 1] > 0, im_idx[:, 1] < vgrid.labels.shape[1],
-            im_idx[:, 2] > 0, im_idx[:, 2] < vgrid.labels.shape[2]))
+            im_idx[:, 0] > 0, im_idx[:, 0] < vgrid.V.shape[0],
+            im_idx[:, 1] > 0, im_idx[:, 1] < vgrid.V.shape[1],
+            im_idx[:, 2] > 0, im_idx[:, 2] < vgrid.V.shape[2]))
         temp_labels = \
-            vgrid.labels[im_idx[to_use, 0], im_idx[to_use, 1], im_idx[to_use, 2]]
+            vgrid.V[im_idx[to_use, 0], im_idx[to_use, 1], im_idx[to_use, 2]]
 
         self.labels = deepcopy(self.mask).astype(int)
         self.labels[to_use.reshape(self.mask.shape)] = temp_labels

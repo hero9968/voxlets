@@ -15,23 +15,18 @@ from time import time
 
 from common import paths
 from common import parameters
-from common import voxel_data
-from common import images
-from common import features
 from common import voxlets
-from common import carving
-
+from common import scene
 
 
 # loading model
 with open(paths.RenderedData.voxlet_model_oma_path, 'rb') as f:
     model = pickle.load(f)
 
-
-for count, tree in enumerate(model.forest.trees):
-    print count, len(tree.leaf_nodes())
-    lengths = np.array([len(leaf.exs_at_node) for leaf in tree.leaf_nodes()])
-    print np.sum(lengths<10), np.sum(np.logical_and(lengths>10, lengths<50)), np.sum(lengths>50)
+# for count, tree in enumerate(model.forest.trees):
+#     print count, len(tree.leaf_nodes())
+#     lengths = np.array([len(leaf.exs_at_node) for leaf in tree.leaf_nodes()])
+#     print np.sum(lengths<10), np.sum(np.logical_and(lengths>10, lengths<50)), np.sum(lengths>50)
 
 
 test_types = ['oma']
@@ -53,55 +48,9 @@ print "MAIN LOOP"
 # better off being GPU...)
 def process_sequence(sequence):
 
-    # load in the ground truth grid for this scene, and converting nans
-    vox_location = paths.RenderedData.ground_truth_voxels(sequence['scene'])
-    gt_vox = voxel_data.load_voxels(vox_location)
-    gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
-    gt_vox.set_origin(gt_vox.origin)
-
-    # loading in the image
-    frame_data = paths.RenderedData.load_scene_data(
-        sequence['scene'], sequence['frames'][0])
-    im = images.RGBDImage.load_from_dict(
-        paths.RenderedData.scene_dir(sequence['scene']),
-        frame_data)
-
-    # computing normals...
-    norm_engine = features.Normals()
-    im.normals = norm_engine.compute_normals(im)
-
-    # while I'm here - might as well save the image as a voxel grid
-    video = images.RGBDVideo()
-    video.frames = [im]
-    carver = carving.Fusion()
-    carver.set_video(video)
-    carver.set_voxel_grid(gt_vox.blank_copy())
-    partial_tsdf, visible = carver.fuse(parameters.RenderedVoxelGrid.mu)
-    partial_tsdf.segment_project_2d(z_threshold=2, floor_height=4)
-
-    # here need to construct the label grids - but this time we do not have a full
-    # voxel grid, so the same segmentation may not work so well
-    labels_grids = {}
-    for idx in np.unique(partial_tsdf.labels):
-        temp = partial_tsdf.copy()
-        temp.V[partial_tsdf.labels != idx] = parameters.RenderedVoxelGrid.mu
-        labels_grids[idx] = temp
-    im.label_from_grid(partial_tsdf)
-
-    with open('/tmp/partial_segmented.pkl', 'w') as f:
-        pickle.dump(dict(labels_grids=labels_grids, partial_tsdf=partial_tsdf, image=im), f, protocol=pickle.HIGHEST_PROTOCOL)
-    quit()
-    # save this as a voxel grid...
-    savepath = paths.RenderedData.voxlet_prediction_path % \
-        ('partial_tsdf', sequence['name'])
-    partial_tsdf.save(savepath)
-
-    savepath = paths.RenderedData.voxlet_prediction_path % \
-        ('visible_voxels', sequence['name'])
-    rendersavepath = paths.RenderedData.voxlet_prediction_img_path % \
-        ('visible_voxels', sequence['name'])
-    visible.save(savepath)
-    visible.render_view(rendersavepath)
+    sc = scene.Scene()
+    sc.load_sequence(sequence, frame_nos=0, save_grids=False)
+    #sc.santity_render(save_folder='/tmp/')
 
     test_type = 'oma'
 
@@ -109,17 +58,18 @@ def process_sequence(sequence):
     rec = voxlets.Reconstructer(
         reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_model(model)
-    rec.set_test_im(im)
-    rec.set_rendered_tsdf(partial_tsdf)
-    rec.set_voxel_labels(labels_grids)
+    rec.set_test_im(sc.im)
+    rec.set_rendered_tsdf(sc.im_tsdf)
+    rec.set_label_grid_tsdf(sc.label_grid_tsdf)
     rec.sample_points(parameters.VoxletPrediction.number_samples)
-    rec.initialise_output_grid(gt_grid=gt_vox)
-    accum = rec.fill_in_output_grid_oma(render_type=['matplotlib'], render_savepath='/tmp/renders/')
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    accum = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
+        render_savepath='/tmp/renders/')
     prediction = accum.compute_average(
         nan_value=parameters.RenderedVoxelGrid.mu)
     prediction_keeping_exisiting = rec.keeping_existing
 
-    print "\-> Saving"
+    print "-> Saving"
     savepath = paths.RenderedData.voxlet_prediction_path % \
         (test_type, sequence['name'])
     prediction.save(savepath)
@@ -155,33 +105,3 @@ if __name__ == '__main__':
     print "In total took %f s" % (time() - tic)
 
 
-    # "Saving result to disk"
-    # savepath =
-
-    # savepath = paths.voxlet_prediction_path % \
-    # (test_type, modelname, test_view)
-    # D = dict(prediction=prediction.V, gt=gt)
-    # scipy.io.savemat(savepath, D, do_compression=True)
-
-    # "Now also save to a pickle file so have the original data..."
-    # savepathpickle = paths.voxlet_prediction_path_pkl % \
-    #     (test_type, modelname, test_view)
-    # pickle.dump(prediction, open(savepathpickle, 'wb'))
-
-    # "Computing the auc score"
-    # gt_occ = ((gt + 0.03) / 0.06).astype(int)
-    # prediction_occ = (prediction.V + 0.03) / 0.06
-    # auc = sklearn.metrics.roc_auc_score(
-    #     gt_occ.flatten(), prediction_occ.flatten())
-
-    # "Filling the figure"
-    # imagesavepath = paths.voxlet_prediction_image_path % \
-    #     (test_type, modelname, test_view)
-    # save_plot_slice(prediction.V, gt, imagesavepath, imtitle=str(auc))
-
-    # # need to do this here after the pool helper has been defined...
-    # import multiprocessing
-    # import functools
-
-    # if multiproc:
-    #     pool = multiprocessing.Pool(parameters.cores)
