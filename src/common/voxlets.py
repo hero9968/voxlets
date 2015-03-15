@@ -30,7 +30,7 @@ sys.path.append(os.path.expanduser(
 import voxel_utils as vu
 
 
-def extract_single_voxlet(index, im, vgrid, labels_grids, post_transform=None):
+def extract_single_voxlet(index, im, image_grid, labels_grids, post_transform=None):
     '''
     Helper function to extract shoeboxes from specified locations in voxel
     grid.

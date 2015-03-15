@@ -152,6 +152,65 @@ class Scene(object):
             self.im_visible.save(savepath)
             self.im_visible.render_view(rendersavepath)
 
+    def extract_single_voxlet(self, index, extract_from, post_transform=None):
+        '''
+        Helper function to extract shoeboxes from specified locations in voxel
+        grid.
+        post_transform is a function which is applied to each shoebox
+        after extraction
+        In this code I am assuming that the voxel grid and image have
+        both got label attributes.
+        '''
+        world_xyz = self.im.get_world_xyz()
+        world_norms = self.im.get_world_normals()
+
+        # convert to linear idx
+        point_idx = index[0] * self.im.mask.shape[1] + index[1]
+
+        shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
+        shoebox.V *= 0
+        shoebox.V += parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
+        shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
+        shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+
+        start_x = world_xyz[point_idx, 0]
+        start_y = world_xyz[point_idx, 1]
+
+        if parameters.Voxlet.tall_voxlets:
+            start_z = parameters.Voxlet.tall_voxlet_height
+        else:
+            start_z = world_xyz[point_idx, 2]
+
+        shoebox.initialise_from_point_and_normal(
+            np.array([start_x, start_y, start_z]),
+            world_norms[point_idx],
+            np.array([0, 0, 1]))
+
+        #pickle.dump(shoebox, open('/tmp/sbox.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
+
+        # getting a copy of the voxelgrid, in which only the specified label exists
+        if extract_from == 'gt_tsdf':
+
+            this_point_label = self.gt_im_label[index[0], index[1]]
+            temp_vgrid = self.gt_tsdf_separate[this_point_label]
+            shoebox.fill_from_grid(temp_vgrid)
+
+        elif extract_from == 'visible_tsdf':
+
+            this_point_label = self.visible_im_label[index[0], index[1]]
+            temp_vgrid = self.visible_tsdf_separate[this_point_label]
+            shoebox.fill_from_grid(temp_vgrid)
+
+        else:
+            raise Exception("Don't know how to extract from %s" % extract_from)
+
+        print "Extracted point with idx ", this_point_label
+
+        # convert the indices to world xyz space
+        if post_transform:
+            return post_transform(shoebox)
+        else:
+            return shoebox
 
     def set_gt_tsdf(self, tsdf_in):
         self.gt_tsdf = tsdf_in
@@ -231,7 +290,7 @@ class Scene(object):
         # GT tsdf? It doesn't really make any sense as I will never have the GT
         # tsdf at training or at test...?
         xy_proj = np.sum(tsdf.V[:, :, floor_height:] < 0, axis=2) > z_threshold
-        #xy_proj = binary_erosion(xy_proj)
+        xy_proj = binary_erosion(xy_proj)
         labels = skimage.measure.label(xy_proj).astype(np.int16)
 
         # dilate each of the labels

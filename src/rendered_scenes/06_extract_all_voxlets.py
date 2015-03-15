@@ -12,12 +12,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
-from common import voxel_data
-from common import images
 from common import parameters
-from common import features
-from common import carving
-from common import voxlets
+from common import scene
 
 pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
@@ -55,49 +51,20 @@ def process_sequence(sequence):
 
     logging.info("Processing " + sequence['name'])
 
-    logging.debug("Loading ground truth grid and image data")
-    vox_dir = paths.RenderedData.ground_truth_voxels(sequence['scene'])
-    gt_vox = voxel_data.load_voxels(vox_dir)
-    gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
-    gt_vox.set_origin(gt_vox.origin)
-    gt_vox.segment_project_2d(z_threshold=2, floor_height=4)
+    sc = scene.Scene()
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
+    sc.santity_render(save_folder='/tmp/')
 
-    # Move this into the voxel grid class?
-    # gt_vox.label_grid(3) # returns a copy of the gt_vox but as if only label 3 exists...
-    labels_grids = {}
-    for idx in np.unique(gt_vox.labels):
-        temp = gt_vox.copy()
-        temp.V[gt_vox.labels != idx] = parameters.RenderedVoxelGrid.mu
-        labels_grids[idx] = temp
-
-    frame_data = paths.RenderedData.load_scene_data(
-        sequence['scene'], sequence['frames'][0])
-    im = images.RGBDImage.load_from_dict(
-        paths.RenderedData.scene_dir(sequence['scene']), frame_data)
-    norm_engine = features.Normals()
-    im.normals = norm_engine.compute_normals(im)
-    im.label_from_grid(gt_vox)
-
-    logging.debug("Sampling from image")
-    idxs = im.random_sample_from_mask(
-        parameters.VoxletTraining.number_points_from_each_image)
-
-    logging.debug("Voxel carving")
-    video = images.RGBDVideo.init_from_images([im])
-    carver = carving.Fusion()
-    carver.set_video(video)
-    carver.set_voxel_grid(gt_vox)
-    im_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
-    im_tsdf.V[np.isnan(im_tsdf.V)] = -parameters.RenderedVoxelGrid.mu
-    im_tsdf.labels = gt_vox.labels
+    idxs = sc.im.random_sample_from_mask(
+        parameters.VoxletTraining.pca_number_points_from_each_image)
 
     logging.debug("Extracting shoeboxes and features...")
     t1 = time()
-    gt_shoeboxes = [voxlets.extract_single_voxlet(
-        idx, im, gt_vox, labels_grids, pca_flatten) for idx in idxs]
-    view_shoeboxes = [voxlets.extract_single_voxlet(
-        idx, im, im_tsdf, labels_grids, feature_transform) for idx in idxs]
-    logging.debug("\n-> ...Took %f s" % (time() - t1))
+    gt_shoeboxes = [sc.extract_single_voxlet(
+        idx, extract_from='gt_tsdf', post_transform=pca_flatten) for idx in idxs]
+    view_shoeboxes = [sc.extract_single_voxlet(
+        idx, extract_from='visible_tsdf', post_transform=feature_transform) for idx in idxs]
+    print "Took %f s" % (time() - t1)
 
     np_sboxes = np.vstack(gt_shoeboxes)
     np_features = np.vstack(view_shoeboxes)
