@@ -30,56 +30,6 @@ sys.path.append(os.path.expanduser(
 import voxel_utils as vu
 
 
-def extract_single_voxlet(index, im, image_grid, labels_grids, post_transform=None):
-    '''
-    Helper function to extract shoeboxes from specified locations in voxel
-    grid.
-    post_transform is a function which is applied to each shoebox
-    after extraction
-    In this code I am assuming that the voxel grid and image have
-    both got label attributes.
-    '''
-    world_xyz = im.get_world_xyz()
-    world_norms = im.get_world_normals()
-
-    # convert to linear idx
-    point_idx = index[0] * im.mask.shape[1] + index[1]
-
-    shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
-    shoebox.V *= 0
-    shoebox.V += parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
-    shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
-    shoebox.set_voxel_size(parameters.Voxlet.size)  # m
-
-    this_point_label = im.labels[index[0], index[1]]
-
-    start_x = world_xyz[point_idx, 0]
-    start_y = world_xyz[point_idx, 1]
-
-    if parameters.Voxlet.tall_voxlets:
-        start_z = parameters.Voxlet.tall_voxlet_height
-    else:
-        start_z = world_xyz[point_idx, 2]
-
-    shoebox.initialise_from_point_and_normal(
-        np.array([start_x, start_y, start_z]),
-        world_norms[point_idx],
-        np.array([0, 0, 1]))
-
-    #pickle.dump(shoebox, open('/tmp/sbox.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
-
-    print "Extracting point with idx ", this_point_label
-
-    # getting a copy of the voxelgrid, in which only the specified label exists
-    temp_vgrid = labels_grids[this_point_label]
-    shoebox.fill_from_grid(temp_vgrid)
-
-    # convert the indices to world xyz space
-    if post_transform:
-        return post_transform(shoebox)
-    else:
-        return shoebox
-
 
 def plot_mesh(verts, faces, ax):
     mesh = Poly3DCollection(verts[faces])
@@ -315,23 +265,14 @@ class Reconstructer(object):
 
         self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_X)
 
-    def set_test_im(self, test_im):
-        self.im = test_im
-
-    def set_rendered_tsdf(self, tsdf):
-        '''
-        setting the tsdf as computed from the image
-        '''
-        self.tsdf = tsdf
-
-    def set_label_grid_tsdf(self, label_grid_tsdf):
-        self.label_grid_tsdf = label_grid_tsdf
+    def set_scene(self, sc_in):
+        self.sc = sc_in
 
     def sample_points(self, num_to_sample):
         '''
         sampling points from the test image
         '''
-        self.sampled_idxs = self.im.random_sample_from_mask(num_to_sample)
+        self.sampled_idxs = self.sc.im.random_sample_from_mask(num_to_sample)
 
     def _initialise_voxlet(self, index):
         '''
@@ -341,11 +282,11 @@ class Reconstructer(object):
         assert(index.shape[0] == 2)
 
         # getting the xyz and normals in world space
-        world_xyz = self.im.get_world_xyz()
-        world_norms = self.im.get_world_normals()
+        world_xyz = self.sc.im.get_world_xyz()
+        world_norms = self.sc.im.get_world_normals()
 
         # convert to linear idx
-        point_idx = index[0] * self.im.mask.shape[1] + index[1]
+        point_idx = index[0] * self.sc.im.mask.shape[1] + index[1]
 
         # creating the voxlett10
         shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape)  # grid size
@@ -391,19 +332,19 @@ class Reconstructer(object):
 
         # saving
         with open('/tmp/grid.pkl', 'wb') as f:
-            pickle.dump(self.tsdf, f)
+            pickle.dump(self.sc.gt_tsdf, f)
 
         with open('/tmp/im.pkl', 'wb') as f:
-            pickle.dump(self.im, f)
+            pickle.dump(self.sc.im, f)
 
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
 
             # find the segment index of this voxlet
-            this_point_label = self.im.labels[idx[0], idx[1]]
+            this_point_label = self.sc.visible_im_label[idx[0], idx[1]]
             # get the voxel grid of tsdf associated with this label
             # BUT at test time how to get this segmented grid? We need a similar type thing to before...
-            this_idx_grid = self.label_grid_tsdf[this_point_label]
+            this_idx_grid = self.sc.visible_tsdf_separate[this_point_label]
 
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)
@@ -424,7 +365,7 @@ class Reconstructer(object):
 
             # getting the GT voxlet
             gt_voxlet = self._initialise_voxlet(idx)
-            gt_voxlet.fill_from_grid(self.gt_grid)
+            gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
 
             # getting the closest match in the training data...
             ans, indices = self.nbrs.kneighbors(feature_vector)
@@ -448,7 +389,7 @@ class Reconstructer(object):
 
                 # doing rendering of the ground truth grid
                 gt_voxlet = self._initialise_voxlet(idx)
-                gt_voxlet.fill_from_grid(self.gt_grid)
+                gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
                 render_single_voxlet(gt_voxlet.V,
                     savepath % (count, 'gt'))
 
@@ -522,7 +463,7 @@ class Reconstructer(object):
             sys.stdout.flush()
 
         # creating a final output which preserves the existing geometry
-        keeping_existing = self.tsdf.copy()
+        keeping_existing = self.sc.im_tsdf.copy()
         to_use_prediction = np.isnan(keeping_existing.V)
         print "There are %d nans in the input tsdf" % to_use_prediction.sum()
         keeping_existing.V[to_use_prediction] = \

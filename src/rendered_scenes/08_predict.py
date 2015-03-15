@@ -52,16 +52,13 @@ def process_sequence(sequence):
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
     sc.santity_render(save_folder='/tmp/')
 
-    quit()
     test_type = 'oma'
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
         reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_model(model)
-    rec.set_test_im(sc.im)
-    rec.set_rendered_tsdf(sc.im_tsdf)
-    rec.set_label_grid_tsdf(sc.label_grid_tsdf)
+    rec.set_scene(sc)
     rec.sample_points(parameters.VoxletPrediction.number_samples)
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     accum = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
