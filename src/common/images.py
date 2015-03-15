@@ -244,7 +244,7 @@ class RGBDImage(object):
 
     def label_from_grid(self, vgrid, use_mask=True):
         '''
-        create a labels attribute, assigning to each pixel the labels in the
+        returns a labels grid, assigning to each pixel the labels in the
         labels attribute of vgrid, according to where each projected xyz
         point is in the voxel grid
         '''
@@ -265,8 +265,9 @@ class RGBDImage(object):
         temp_labels = \
             vgrid.V[im_idx[to_use, 0], im_idx[to_use, 1], im_idx[to_use, 2]]
 
-        self.labels = deepcopy(self.mask).astype(int)
-        self.labels[to_use.reshape(self.mask.shape)] = temp_labels
+        labels = deepcopy(self.mask).astype(int)
+        labels[to_use.reshape(self.mask.shape)] = temp_labels
+        return labels
 
     def find_points_inside_image(self, uv):
         # now label each point with the label of the segment it falls into...

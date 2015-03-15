@@ -49,9 +49,10 @@ print "MAIN LOOP"
 def process_sequence(sequence):
 
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, save_grids=False)
-    #sc.santity_render(save_folder='/tmp/')
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
+    sc.santity_render(save_folder='/tmp/')
 
+    quit()
     test_type = 'oma'
 
     print "-> Reconstructing with oma forest"

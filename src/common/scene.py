@@ -13,6 +13,11 @@ import images
 import features
 import carving
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+
 class Scene(object):
     '''
     stores voxel grid, also labels and perhaps the video of depth images
@@ -23,11 +28,13 @@ class Scene(object):
         self.im_tsdf = None
         self.im = None
 
-    def load_sequence(self, sequence, frame_nos, save_grids=False):
+    def load_sequence(self, sequence, frame_nos, segment_with_gt, save_grids=False):
         '''
         loads a sequence of images, the associated gt voxel grid,
         carves the visible tsdf from the images, does segmentation
         '''
+
+        self.sequence = sequence
 
         # load in the ground truth grid for this scene, and converting nans
         vox_location = paths.RenderedData.ground_truth_voxels(sequence['scene'])
@@ -57,28 +64,79 @@ class Scene(object):
         carver.set_voxel_grid(self.gt_tsdf.blank_copy())
         self.im_tsdf, self.im_visible = \
             carver.fuse(parameters.RenderedVoxelGrid.mu)
-        self.labels = \
-            self._segment_tsdf_project_2d(z_threshold=2, floor_height=4)
 
-        self.separated_labels = self._separate_binary_grids(self.labels.V, True)
-        self.label_grid_tsdf = \
-            self._label_grids_to_tsdf_grids(self.im_tsdf, self.separated_labels)
 
-        # # here need to construct the label grids - but this time we do not have
-        # # a full voxel grid, so the same segmentation may not work so well
-        # labels_grids = {}
-        # for idx in np.unique(self.im_tsdf.labels):
-        #     temp = self.im_tsdf.copy()
-        #     temp.V[self.im_tsdf.labels != idx] = parameters.RenderedVoxelGrid.mu
-        #     labels_grids[idx] = temp
+        '''
+        HERE SEGMENTING USING THE GROUND TRUTH
+        Want:
+            - gt_labels
+            - gt_labels_separate
+            - gt_tsdf_separate
+        Don't need to bother labelling the image using the GT, as this isn't
+        needed
+        '''
 
-        # transfer the labels from the voxel grid tothe image
-        self.im.label_from_grid(self.labels)
+        if segment_with_gt:
 
-        # with open('/tmp/partial_segmented.pkl', 'w') as f:
-        #     pickle.dump(dict(labels_grids=labels_grids,
-        #     partial_tsdf=partial_tsdf, image=im),
-        #     f, protocol=pickle.HIGHEST_PROTOCOL)
+            self.gt_labels = self._segment_tsdf_project_2d(
+                self.gt_tsdf, z_threshold=2, floor_height=4)
+
+            self.gt_labels_separate = \
+                self._separate_binary_grids(self.gt_labels.V, True)
+
+            self.gt_tsdf_separate = \
+                self._label_grids_to_tsdf_grids(self.gt_tsdf, self.gt_labels_separate)
+
+            self.gt_im_label = self.im.label_from_grid(self.gt_labels)
+
+        '''
+        HERE SEGMENTING USING JUST WHAT IS VISIBLE FROM THE INPUT IMAGE
+        Want:
+            - visible_labels  # original labels, extended using the projection back into the camera image
+            - visible_labels_separate  # This will be projected down and separated into separate binary grids
+            - visible_tsdf_separate     # separate tsdf for each label
+
+            - image_labels ???
+        '''
+
+        # segmenting with just the visible voxels
+        self.visible_labels = self._segment_tsdf_project_2d(
+            self.im_tsdf, z_threshold=2, floor_height=4)
+
+        # #### >> transfer the labels from the voxel grid to the image
+        self.visible_im_label = self.im.label_from_grid(self.visible_labels)
+
+        # expanding these labels to also cover all the unobserved regions
+        uv, to_project_idxs = self.im_tsdf.project_unobserved_voxels(self.im)
+        inside_image = self.im.find_points_inside_image(uv)
+
+        # labels of all the non-nan voxels inside the image...
+        vox_labels = self.visible_im_label[
+            uv[inside_image, 1], uv[inside_image, 0]]
+
+        # now propograte these labels back to the main grid
+        temp = to_project_idxs[inside_image]
+        self.visible_labels.V.ravel()[temp] = vox_labels
+        # << ####
+
+        print "Separate out the partial tsdf into different 'layers' in a grid..."
+
+        self.visible_labels_separate = \
+            self._separate_binary_grids(self.visible_labels.V, True)
+
+        temp = self.im_tsdf.copy()
+        temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
+
+        self.visible_tsdf_separate = \
+            self._label_grids_to_tsdf_grids(temp, self.visible_labels_separate)
+
+
+        # # transfer the labels from the voxel grid tothe image
+        # self.im.label_from_grid(self.gt_labels)
+
+        # temp = self.im_tsdf.copy()
+        # temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
+
 
         if save_grids:
 
@@ -94,6 +152,7 @@ class Scene(object):
             self.im_visible.save(savepath)
             self.im_visible.render_view(rendersavepath)
 
+
     def set_gt_tsdf(self, tsdf_in):
         self.gt_tsdf = tsdf_in
 
@@ -107,7 +166,56 @@ class Scene(object):
     def set_im(self, im):
         self.im = im
 
-    def _segment_tsdf_project_2d(self, z_threshold, floor_height):
+    def santity_render(self, save_folder):
+        '''
+        renders slices though the channels of the scenes
+        '''
+        u, v = 2, 3
+
+        # Slice though the gt tsdf
+        plt.subplot(u, v, 1)
+        plt.imshow(self.gt_tsdf.V[:, :, 15])
+        plt.title('GT')
+
+        # Slice through the visible labels
+        plt.subplot(u, v, 2)
+        plt.imshow(self.visible_labels.V[:, :, 15])
+        plt.title('Visible Labels')
+
+        # Slice through the gt labels
+        plt.subplot(u, v, 3)
+        plt.imshow(self.gt_labels.V[:, :, 15])
+        plt.title('GT Labels')
+
+        # Slice though the visible tsdf
+        plt.subplot(u, v, 4)
+        temp = self.im_tsdf.copy()
+        temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
+        plt.imshow(temp.V[:, :, 15])
+        plt.title('Visible TSDF')
+
+        # Image
+        plt.subplot(u, v, 5)
+        plt.imshow(self.visible_im_label)
+        plt.title('Visible image labels')
+
+        # Image
+        plt.subplot(u, v, 6)
+        plt.imshow(self.gt_im_label)
+        plt.title('GT Image labels')
+
+        #
+
+        # for idx in [5, 6, 7, 8, 9, 10, 11]:
+        #     plt.subplot(u, v, idx)
+        #     temp = self.label_grid_tsdf[idx-5]
+        #     temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
+        #     plt.imshow(temp.V[:, :, 15])
+        #     #label_grid_tsdf
+
+        plt.savefig(save_folder + '/' + self.sequence['name'] + '.png')
+
+    def _segment_tsdf_project_2d(self, tsdf, z_threshold, floor_height):
         '''
         segments a voxel grid by projecting full voxels onto the xy
         plane and segmenting in 2D. Naive but good for testing
@@ -122,8 +230,8 @@ class Scene(object):
         # using partial_tsdf as I don't think I should ever be using the
         # GT tsdf? It doesn't really make any sense as I will never have the GT
         # tsdf at training or at test...?
-        xy_proj = np.sum(self.im_tsdf.V[:, :, floor_height:] < 0, axis=2) > z_threshold
-        xy_proj = binary_erosion(xy_proj)
+        xy_proj = np.sum(tsdf.V[:, :, floor_height:] < 0, axis=2) > z_threshold
+        #xy_proj = binary_erosion(xy_proj)
         labels = skimage.measure.label(xy_proj).astype(np.int16)
 
         # dilate each of the labels
@@ -135,11 +243,12 @@ class Scene(object):
 
         # propagate these labels back the to the voxels...
         labels3d = np.expand_dims(labels, axis=2)
-        labels3d = np.tile(labels3d, (1, 1, self.im_tsdf.V.shape[2]))
-        labels3d[self.im_tsdf.V > parameters.RenderedVoxelGrid.mu] = 0
+        labels3d = np.tile(labels3d, (1, 1, tsdf.V.shape[2]))
+        labels3d[tsdf.V > parameters.RenderedVoxelGrid.mu] = 0
 
-        labels_3d_grid = self.gt_tsdf.copy()
+        labels_3d_grid = tsdf.copy()
         labels_3d_grid.V = labels3d
+        labels_3d_grid.V[:, :, :floor_height] = 0
 
         return labels_3d_grid
 
@@ -154,8 +263,7 @@ class Scene(object):
             temp.V[~reg] = np.nanmax(tsdf.V)
             tsdf_grids[idx] = temp
 
-        self.tsdf_grids = tsdf_grids
-        return self.tsdf_grids
+        return tsdf_grids
 
     def _separate_binary_grids(self, vox_labels, flatten_labels_down=True):
         '''
