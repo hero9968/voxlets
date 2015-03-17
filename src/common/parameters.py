@@ -12,7 +12,7 @@ if host_name == 'troll' or host_name == 'biryani':
     multicore = True
 else:
     small_sample = True
-    max_sequences = 8
+    max_sequences = 20
     cores = 4
     multicore = False
 
@@ -26,9 +26,9 @@ class RenderData(object):
     General parameters, e.g. about the overall experiemnts etc
     '''
     if small_sample:
-        scenes_to_render = 10
+        scenes_to_render = 20
         train_test_max_scenes = 30
-        sequences_per_scene = 1
+        sequences_per_scene = 5
     else:
         scenes_to_render = 100
         train_test_max_scenes = 100
@@ -96,7 +96,7 @@ class VoxletTraining(object):
     # actual voxlet extraction
     if small_sample:
         number_points_from_each_image = 400
-        forest_subsample_length = 2500  # max num examples to use to train forest
+        forest_subsample_length = 25000  # max num examples to use to train forest
     else:
         number_points_from_each_image = 250
         forest_subsample_length = 250000  # max num examples to use to train forest
@@ -110,6 +110,6 @@ class VoxletPrediction(object):
     parameters for prediction stage of voxlet algorithm
     '''
     if small_sample:
-        number_samples = 200  # number of points to sample from image
+        number_samples = 400  # number of points to sample from image
     else:
         number_samples = 400
