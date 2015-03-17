@@ -49,8 +49,9 @@ print "MAIN LOOP"
 def process_sequence(sequence):
 
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=True)
     sc.santity_render(save_folder='/tmp/')
+
 
     test_type = 'oma'
 
@@ -60,12 +61,18 @@ def process_sequence(sequence):
     rec.set_model(model)
     rec.set_scene(sc)
     rec.sample_points(parameters.VoxletPrediction.number_samples)
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    rec.initialise_output_grids(gt_grid=sc.gt_tsdf)
     accum = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
         render_savepath='/tmp/renders/')
-    prediction = accum.compute_average(
-        nan_value=parameters.RenderedVoxelGrid.mu)
+    prediction = accum
+#    prediction = accum.compute_average(
+ #       nan_value=parameters.RenderedVoxelGrid.mu)
     prediction_keeping_exisiting = rec.keeping_existing
+
+    # Hack to put in a floor
+    prediction_keeping_exisiting.V[:, :, :4] = -1
+    prediction.V[:, :, :4] = -1
+
 
     print "-> Saving"
     savepath = paths.RenderedData.voxlet_prediction_path % \

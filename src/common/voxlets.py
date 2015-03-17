@@ -313,14 +313,26 @@ class Reconstructer(object):
 
         return shoebox
 
-    def initialise_output_grid(self, gt_grid=None):
+    def create_one_output_grid(self, gt_grid=None):
         '''defaulting to initialising from the ground truth grid...'''
-        self.accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
-        self.accum.set_origin(gt_grid.origin)
-        self.accum.set_voxel_size(gt_grid.vox_size)
+        accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
+        accum.set_origin(gt_grid.origin)
+        accum.set_voxel_size(gt_grid.vox_size)
 
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
+
+        return accum
+
+    def initialise_output_grids(self, gt_grid=None):
+
+        # create a dictionary of output grids
+        self.accums = {seg_idx: self.create_one_output_grid(gt_grid)
+            for seg_idx in self.sc.visible_tsdf_separate.keys()}
+
+            # print "Creating output grid for key: ", segment_idx
+            # self.accums[segment_idx] = create_one_output_grid()
+
 
     def fill_in_output_grid_oma(self, render_type, render_savepath=None):
         '''
@@ -361,7 +373,7 @@ class Reconstructer(object):
             transformed_voxlet = self._initialise_voxlet(idx)
             transformed_voxlet.V = voxlet_prediction.reshape(
                 parameters.Voxlet.shape)
-            self.accum.add_voxlet(transformed_voxlet)
+            self.accums[this_point_label].add_voxlet(transformed_voxlet)
 
             # getting the GT voxlet
             gt_voxlet = self._initialise_voxlet(idx)
@@ -461,6 +473,37 @@ class Reconstructer(object):
 
             sys.stdout.write('.')
             sys.stdout.flush()
+
+        # doing a <strike>noisy or</strike> weighted average on all the
+        # different predictions from the segments
+        sum_grid = self.create_one_output_grid(self.gt_grid)
+        count_grid = self.create_one_output_grid(self.gt_grid)
+        print "Sums are : ", sum_grid.V.sum(), count_grid.V.sum()
+
+        print len(list(self.accums.values()))
+        print len(list(self.sc.visible_labels_separate.items()))
+
+        for accum, segment in zip(self.accums.values(),
+                self.sc.visible_labels_separate.iteritems()):
+#            if segment[0] == 0:
+#                continue
+            try:
+                temp = accum.compute_average().V[segment[1]]
+                temp[temp==0] = parameters.RenderedVoxelGrid.mu
+                sum_grid.V[segment[1]] += temp
+                count_grid.V[segment[1]] += 1
+                print "Sums are : ", segment[1].sum(), sum_grid.V.sum(), count_grid.V.sum()
+                #import pdb; pdb.set_trace()
+
+
+            except:
+                import pdb; pdb.set_trace()
+
+        self.accum = sum_grid
+        self.accum.V /= count_grid.V
+        self.accum.V[np.isnan(self.accum.V)] = 0
+        self.accum.V[np.isnan(self.accum.V)] = 0
+        pickle.dump(dict(count=count_grid, sums=sum_grid), open('/tmp/count_sum.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
 
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
