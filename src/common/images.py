@@ -26,7 +26,7 @@ class RGBDImage(object):
 
     def load_rgb_from_img(self, rgb_path, scale_factor=[]):
 
-        self.rgb = scipy.misc.imread(rgb_path)
+        self.rgb = scipy.misc.imread(rgb_path)[:, :, :3]
         if scale_factor:
             self.rgb = scipy.misc.imresize(self.rgb, scale_factor)
         assert(self.rgb.shape[2] == 3)
@@ -213,6 +213,9 @@ class RGBDImage(object):
         im.depth = im.depth.astype(float)
         im.depth *= dictionary['depth_scaling']
         im.depth /= 2**16
+
+        rgb_image_path = os.path.join(scene_folder, dictionary['image'].replace('/', '/colour_'))
+        im.load_rgb_from_img(rgb_image_path)
 
         # setting the camera intrinsics and extrinsics
         extrinsics = np.array(dictionary['pose']).reshape((4, 4))

@@ -23,7 +23,7 @@ full = True  # do we do all the voxel grid saving etc?
 
 temp_path = '/tmp/video_images/'
 
-frame_num = 0  # counter for which frame we are on
+
 
 git_label = sp.check_output(["git", "describe"]).strip()
 
@@ -60,6 +60,8 @@ def sequence_path(test_type, seq_name):
 
 # main outer loop - doing each sequence
 for sequence in paths.RenderedData.test_sequence():
+
+    frame_num = 0  # counter for which frame we are on
 
     # creating an empty temporary folder
     if os.path.isdir(temp_path):
@@ -101,7 +103,7 @@ for sequence in paths.RenderedData.test_sequence():
             ms = mesh.Mesh()
             ms.from_volume(prediction, level)
             ms.write_to_obj('/tmp/temp.obj')
-            # ms.write_to_obj('/tmp/temp%s.obj' % name)
+            ms.write_to_obj('/tmp/temp%s.obj' % name)
 
             # run blender, while giving the path to the mesh to load
             print "Rendering"
@@ -143,5 +145,3 @@ for sequence in paths.RenderedData.test_sequence():
              "-b:v", "1024k",
              "-vcodec", "mpeg4",
              "-y", moviesavefile))
-
-    break

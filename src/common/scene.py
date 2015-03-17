@@ -229,38 +229,49 @@ class Scene(object):
         '''
         renders slices though the channels of the scenes
         '''
-        u, v = 2, 3
+        u, v = 2, 4
 
         # Slice though the gt tsdf
         plt.subplot(u, v, 1)
+        plt.imshow(self.im.rgb)
+        plt.axis('off')
+        plt.title('Input RGB image')
+
+        plt.subplot(u, v, 2)
         plt.imshow(self.gt_tsdf.V[:, :, 15])
-        plt.title('GT')
+        plt.axis('off')
+        plt.title('Ground truth voxel grid')
 
         # Slice through the visible labels
-        plt.subplot(u, v, 2)
+        plt.subplot(u, v, 3)
         plt.imshow(self.visible_labels.V[:, :, 15])
+        plt.axis('off')
         plt.title('Visible Labels')
 
         # Slice through the gt labels
-        plt.subplot(u, v, 3)
+        plt.subplot(u, v, 4)
         plt.imshow(self.gt_labels.V[:, :, 15])
-        plt.title('GT Labels')
+        plt.axis('off')
+        plt.title('Segmentation of GT grid')
 
         # Slice though the visible tsdf
-        plt.subplot(u, v, 4)
+        plt.subplot(u, v, 6)
         temp = self.im_tsdf.copy()
         temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
         plt.imshow(temp.V[:, :, 15])
+        plt.axis('off')
         plt.title('Visible TSDF')
 
         # Image
-        plt.subplot(u, v, 5)
+        plt.subplot(u, v, 7)
         plt.imshow(self.visible_im_label)
+        plt.axis('off')
         plt.title('Visible image labels')
 
         # Image
-        plt.subplot(u, v, 6)
+        plt.subplot(u, v, 8)
         plt.imshow(self.gt_im_label)
+        plt.axis('off')
         plt.title('GT Image labels')
 
         #
