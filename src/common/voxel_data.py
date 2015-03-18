@@ -553,9 +553,10 @@ class WorldVoxels(Voxels):
         # convert nans to the minimum
         temp = self.copy()
         #temp.V[np.isnan(temp.V)] = temp.V[~np.isnan(temp.V)].min()
-
+        pickle.dump(self, open('/tmp/temp_voxel_grid.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
         ms = mesh.Mesh()
         ms.from_volume(temp, 0)
+        pickle.dump(ms, open('/tmp/temp_mesh.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
         ms.remove_nan_vertices()
         ms.write_to_obj('/tmp/temp.obj')
 
@@ -618,7 +619,7 @@ class UprightAccumulator(WorldVoxels):
         temp_countV = copy.deepcopy(self.countV)
         temp_countV[nan_locations] = 100  # to avoid div by zero error
         self.V = self.sumV / temp_countV
-        self.V[nan_locations] = nan_value
+        self.V[nan_locations] = np.nan #nan_value
         #self.V[np.isinf(self.V)] = np.nan
 
         # clear these grid for memory reasons

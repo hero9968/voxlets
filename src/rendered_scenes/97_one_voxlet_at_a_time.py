@@ -50,7 +50,7 @@ print "MAIN LOOP"
 def process_sequence(sequence):
 
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=True)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
     sc.santity_render(save_folder='/tmp/')
 
 
@@ -62,9 +62,12 @@ def process_sequence(sequence):
     rec.set_model(model)
     rec.set_scene(sc)
     rec.sample_points(parameters.VoxletPrediction.number_samples)
-    rec.initialise_output_grids(gt_grid=sc.gt_tsdf)
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
 
     blank_rec = copy.deepcopy(rec)
+
+    print "About to render scene..."
+    sc.im_tsdf.render_view('/tmp/im_tsdf.png')
 
     # Here just complete one voxlet at a time...
     sampled_idxs = rec.sampled_idxs
@@ -80,8 +83,9 @@ def process_sequence(sequence):
         # Rendering the prediction
         renderpath = paths.RenderedData.voxlet_prediction_img_path % \
             (test_type, sequence['name'] + '_voxlet_number_%d' % count)
-        #prediction_keeping_exisiting.render_view(renderpath)
-        prediction.render_view(renderpath)
+        prediction_keeping_exisiting.render_view(renderpath)
+        print "About to render..."
+        #prediction.render_view(renderpath)
 
         # Rendering the extracted voxlet and also the predicted voxlet
         prediction_voxlet_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
@@ -96,7 +100,6 @@ def process_sequence(sequence):
         voxlets.render_single_voxlet(
             rec.cached_feature_voxlet.reshape(parameters.Voxlet.shape),
             feature_voxlet_renderpath)
-
 
     # Hack to put in a floor
     prediction_keeping_exisiting.V[:, :, :4] = -1

@@ -313,25 +313,14 @@ class Reconstructer(object):
 
         return shoebox
 
-    def create_one_output_grid(self, gt_grid=None):
+    def initialise_output_grid(self, gt_grid=None):
         '''defaulting to initialising from the ground truth grid...'''
-        accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
-        accum.set_origin(gt_grid.origin)
-        accum.set_voxel_size(gt_grid.vox_size)
+        self.accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
+        self.accum.set_origin(gt_grid.origin)
+        self.accum.set_voxel_size(gt_grid.vox_size)
 
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
-
-        return accum
-
-    def initialise_output_grids(self, gt_grid=None):
-
-        # create a dictionary of output grids
-        self.accums = {seg_idx: self.create_one_output_grid(gt_grid)
-            for seg_idx in self.sc.visible_tsdf_separate.keys()}
-
-            # print "Creating output grid for key: ", segment_idx
-            # self.accums[segment_idx] = create_one_output_grid()
 
     def fill_in_output_grid_oma(self, render_type, render_savepath=None):
         '''
@@ -362,7 +351,6 @@ class Reconstructer(object):
             features_voxlet.fill_from_grid(this_idx_grid)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
             self.cached_feature_voxlet = features_voxlet.V
-
             feature_vector = self._feature_collapse(features_voxlet.V)
             feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
 
@@ -375,7 +363,7 @@ class Reconstructer(object):
             transformed_voxlet = self._initialise_voxlet(idx)
             transformed_voxlet.V = voxlet_prediction.reshape(
                 parameters.Voxlet.shape)
-            self.accums[this_point_label].add_voxlet(transformed_voxlet)
+            self.accum.add_voxlet(transformed_voxlet)
 
             # getting the GT voxlet
             gt_voxlet = self._initialise_voxlet(idx)
@@ -476,46 +464,16 @@ class Reconstructer(object):
             sys.stdout.write('.')
             sys.stdout.flush()
 
-        # doing a <strike>noisy or</strike> weighted average on all the
-        # different predictions from the segments
-        sum_grid = self.create_one_output_grid(self.gt_grid)
-        count_grid = self.create_one_output_grid(self.gt_grid)
-        print "Sums are : ", sum_grid.V.sum(), count_grid.V.sum()
-
-        print len(list(self.accums.values()))
-        print len(list(self.sc.visible_labels_separate.items()))
-
-        for accum, segment in zip(self.accums.values(),
-                self.sc.visible_labels_separate.iteritems()):
-#            if segment[0] == 0:
-#                continue
-            try:
-                temp = accum.compute_average().V[segment[1]]
-                temp[temp==0] = parameters.RenderedVoxelGrid.mu
-                sum_grid.V[segment[1]] += temp
-                count_grid.V[segment[1]] += 1
-                print "Sums are : ", segment[1].sum(), sum_grid.V.sum(), count_grid.V.sum()
-                #import pdb; pdb.set_trace()
-
-            except:
-                import pdb; pdb.set_trace()
-
-        self.accum = sum_grid
-        self.accum.V /= count_grid.V
-        self.accum.V[np.isnan(self.accum.V)] = 0
-        self.accum.V[np.isnan(self.accum.V)] = 0
-        #pickle.dump(dict(count=count_grid, sums=sum_grid), open('/tmp/count_sum.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
-
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
         to_use_prediction = np.isnan(keeping_existing.V)
         print "There are %d nans in the input tsdf" % to_use_prediction.sum()
         keeping_existing.V[to_use_prediction] = \
-            self.accum.V[to_use_prediction]
+            self.accum.compute_average().V[to_use_prediction]
 
         self.keeping_existing = keeping_existing
 
-        return self.accum
+        return self.accum.compute_average()
 
     def _feature_collapse(self, X):
         """Applied to the feature shoeboxes after extraction"""
