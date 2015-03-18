@@ -333,7 +333,6 @@ class Reconstructer(object):
             # print "Creating output grid for key: ", segment_idx
             # self.accums[segment_idx] = create_one_output_grid()
 
-
     def fill_in_output_grid_oma(self, render_type, render_savepath=None):
         '''
         Doing the final reconstruction
@@ -362,12 +361,15 @@ class Reconstructer(object):
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(this_idx_grid)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
+            self.cached_feature_voxlet = features_voxlet.V
+
             feature_vector = self._feature_collapse(features_voxlet.V)
             feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
 
             "classify according to the forest"
             voxlet_prediction = self.model.predict(
                 np.atleast_2d(feature_vector))
+            self.cached_voxlet_prediction = voxlet_prediction
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
@@ -495,7 +497,6 @@ class Reconstructer(object):
                 print "Sums are : ", segment[1].sum(), sum_grid.V.sum(), count_grid.V.sum()
                 #import pdb; pdb.set_trace()
 
-
             except:
                 import pdb; pdb.set_trace()
 
@@ -503,7 +504,7 @@ class Reconstructer(object):
         self.accum.V /= count_grid.V
         self.accum.V[np.isnan(self.accum.V)] = 0
         self.accum.V[np.isnan(self.accum.V)] = 0
-        pickle.dump(dict(count=count_grid, sums=sum_grid), open('/tmp/count_sum.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
+        #pickle.dump(dict(count=count_grid, sums=sum_grid), open('/tmp/count_sum.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
 
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
