@@ -86,6 +86,7 @@ def process_sequence(sequence):
         prediction_keeping_exisiting.render_view(renderpath)
         print "About to render..."
         #prediction.render_view(renderpath)
+        voxlets.render_diff_view(prediction_keeping_exisiting, prediction, '/tmp/trial.png')
 
         # Rendering the extracted voxlet and also the predicted voxlet
         prediction_voxlet_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
