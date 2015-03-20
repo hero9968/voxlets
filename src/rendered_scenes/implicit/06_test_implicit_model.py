@@ -6,6 +6,7 @@ import scipy.io
 import sklearn.ensemble
 import cPickle as pickle
 import scipy.misc  # for saving images
+from time import time
 
 import matplotlib
 matplotlib.use('Agg')
@@ -58,7 +59,7 @@ def save_plot_slice(V, GT_V, imagesavepath, imtitle=""):
     plt.savefig(imagesavepath, bbox_inches='tight')
 
 
-for sequence in paths.RenderedData.test_sequence()[:10]:
+def process_sequence(sequence):
 
     print "Loading sequence %s" % sequence
 
@@ -134,9 +135,26 @@ for sequence in paths.RenderedData.test_sequence()[:10]:
     if render:
         pred_grid.render_view(results_foldername + 'prediction_render.png')
         sc.im_tsdf.render_view(results_foldername + 'visible_render.png')
+        sc.gt_tsdf.render_view(results_foldername + 'gt_render.png')
 
     img_savepath = results_foldername + 'prediction.png'
     save_plot_slice(pred_grid.V, sc.gt_tsdf.V, img_savepath, imtitle="")
 
     print "Done "
 
+
+# need to import these *after* the pool helper has been defined
+if parameters.multicore:
+    import multiprocessing
+    import functools
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+
+if __name__ == '__main__':
+
+    tic = time()
+    mapper(process_sequence, paths.RenderedData.test_sequence()[50:200:10])
+    print "In total took %f s" % (time() - tic)

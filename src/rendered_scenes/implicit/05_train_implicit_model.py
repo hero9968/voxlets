@@ -18,6 +18,10 @@ from common import parameters
 all_X = []
 all_Y = []
 
+print "Creating the save location"
+if not os.path.exists(paths.RenderedData.implicit_models_dir):
+    os.makedirs(paths.RenderedData.implicit_models_dir)
+
 for sequence in paths.RenderedData.train_sequence():
 
     # loading the data and adding to arrays
