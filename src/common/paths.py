@@ -206,8 +206,10 @@ class RenderedData(object):
     implicit_prediction_path = implicit_prediction_dir + '%s.pkl'
 
     # first is method, second is the sequence
-    voxlet_prediction_path = voxlets_path + 'predictions/%s/%s.pkl'
-    voxlet_prediction_img_path = voxlets_path + 'predictions/%s/%s.png'
+    voxlet_prediction_folderpath = voxlets_path + 'predictions/%s/%s/'
+    voxlet_prediction_path = voxlets_path + 'predictions/%s/%s/%s.pkl'
+    voxlet_prediction_path_short = voxlets_path + 'predictions/%s/%s.pkl'
+    voxlet_prediction_img_path = voxlets_path + 'predictions/%s/%s/%s.png'
 
     # these are important as they refer to the location of fixed files...
     voxlet_render_blend = os.path.expanduser(

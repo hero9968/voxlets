@@ -23,6 +23,7 @@ features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_p
 with open(features_pca_savepath, 'rb') as f:
     features_pca = pickle.load(f)
 
+
 print "PCA components is shape ", pca.components_.shape
 print "Features PCA components is shape ", features_pca.components_.shape
 
@@ -35,16 +36,10 @@ def pca_flatten(sbox):
     return pca.transform(sbox.V.flatten())
 
 
-def feature_transform(sbox):
-    """Applied to the feature shoeboxes after extraction"""
+def sbox_flatten(sbox):
+    """Applied to the GT shoeboxes after extraction"""
+    return sbox.V.flatten()
 
-    if parameters.VoxletTraining.feature_transform == 'pca':
-        return features_pca.transform(sbox.V.flatten())
-
-    elif parameters.VoxletTraining.feature_transform == 'decimate':
-        rate = parameters.VoxletTraining.decimation_rate
-        X_sub = sbox.V[::rate, ::rate, ::rate]
-        return X_sub.flatten()
 
 
 def process_sequence(sequence):
@@ -52,7 +47,7 @@ def process_sequence(sequence):
     logging.info("Processing " + sequence['name'])
 
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False, load_implicit=True)
     sc.santity_render(save_folder='/tmp/')
 
     idxs = sc.im.random_sample_from_mask(
@@ -63,19 +58,30 @@ def process_sequence(sequence):
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=pca_flatten) for idx in idxs]
     view_shoeboxes = [sc.extract_single_voxlet(
-        idx, extract_from='visible_tsdf', post_transform=feature_transform) for idx in idxs]
+        idx, extract_from='visible_tsdf', post_transform=sbox_flatten) for idx in idxs]
+    implicit_sboxes = [sc.extract_single_voxlet(
+        idx, extract_from='implicit_tsdf', post_transform=sbox_flatten) for idx in idxs]
     print "Took %f s" % (time() - t1)
 
     np_sboxes = np.vstack(gt_shoeboxes)
-    np_features = np.vstack(view_shoeboxes)
+    np_view = np.vstack(view_shoeboxes)
+    np_implicit = np.vstack(implicit_sboxes)
+
+    '''replace all the nans in the shoeboxes from the image view'''
+    np_view[np.isnan(np_view)] = -parameters.RenderedVoxelGrid.mu
 
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
-    logging.debug("...Features are shape " + str(np_features.shape))
+    logging.debug("...Features are shape " + str(np_view.shape))
+    logging.debug("...Implicit is shape " + str(np_implicit.shape))
+
+    print np.isnan(np_view).sum(), np.isnan(np_implicit).sum()
+
+    np_features = features_pca.transform(np.concatenate((np_view, np_implicit), axis=1))
 
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
     logging.debug("Saving to " + savepath)
-    D = dict(shoeboxes=np_sboxes, features=np_features)
+    D = dict(shoeboxes=np_sboxes, features=np_features, implicit=np_implicit)
     scipy.io.savemat(savepath, D, do_compression=True)
 
 

@@ -12,6 +12,7 @@ import sys
 import os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from time import time
+import scipy.misc  # for image saving
 
 from common import paths
 from common import parameters
@@ -29,17 +30,17 @@ with open(paths.RenderedData.voxlet_model_oma_path, 'rb') as f:
 #     print np.sum(lengths<10), np.sum(np.logical_and(lengths>10, lengths<50)), np.sum(lengths>50)
 
 
-test_types = ['oma']
+test_types = ['oma_implicit']
 
-print "Checking results folders exist, creating if not"
-for test_type in test_types + ['partial_tsdf', 'visible_voxels']:
-    print test_type
-    folder_save_path = \
-        paths.RenderedData.voxlet_prediction_path % (test_type, '_')
-    folder_save_path = os.path.dirname(folder_save_path)
-    print folder_save_path
-    if not os.path.exists(folder_save_path):
-        os.makedirs(folder_save_path)
+# print "Checking results folders exist, creating if not"
+# for test_type in test_types + ['partial_tsdf', 'visible_voxels']:
+#     print test_type
+#     folder_save_path = \
+#         paths.RenderedData.voxlet_prediction_path % (test_type, '_')
+#     folder_save_path = os.path.dirname(folder_save_path)
+#     print folder_save_path
+#     if not os.path.exists(folder_save_path):
+#         os.makedirs(folder_save_path)
 
 
 print "MAIN LOOP"
@@ -49,11 +50,10 @@ print "MAIN LOOP"
 def process_sequence(sequence):
 
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=True)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False, load_implicit=True)
     sc.santity_render(save_folder='/tmp/')
 
-
-    test_type = 'oma'
+    test_type = 'oma_implicit'
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
@@ -74,20 +74,53 @@ def process_sequence(sequence):
     prediction.V[:, :, :4] = -1
 
 
-    print "-> Saving"
-    savepath = paths.RenderedData.voxlet_prediction_path % \
+    print "-> Creating folder"
+    fpath = paths.RenderedData.voxlet_prediction_folderpath % \
         (test_type, sequence['name'])
-    prediction.save(savepath)
-    savepath = paths.RenderedData.voxlet_prediction_path % \
-        (test_type, sequence['name'] + '_keep_existing')
-    prediction_keeping_exisiting.save(savepath)
+    if not os.path.exists(fpath):
+        os.makedirs(fpath)
+
+    print "-> Saving"
+    # savepath = paths.RenderedData.voxlet_prediction_path % \
+    #     (test_type, sequence['name'])
+    # prediction.save(savepath)
+    # savepath = paths.RenderedData.voxlet_prediction_path % \
+    #     (test_type, sequence['name'], 'keep_existing')
+    # prediction_keeping_exisiting.save(savepath)
 
     print "-> Rendering"
-    renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-        (test_type, sequence['name'])
-    renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-        (test_type, sequence['name'] + '_keep_existing')
-    prediction_keeping_exisiting.render_view(renderpath)
+    gen_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
+        (test_type, sequence['name'], '%s')
+
+    
+    prediction_keeping_exisiting.render_view(gen_renderpath % 'keep_existing')
+    prediction.render_view(gen_renderpath % 'not_keeping_existing')
+    sc.implicit_tsdf.render_view(gen_renderpath % 'implicit')
+    sc.im_tsdf.render_view(gen_renderpath % 'visible')
+    sc.gt_tsdf.render_view(gen_renderpath % 'gt')
+    scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
+
+    combines = (
+        ('Ground truth', 'gt'),
+        ('Input image', 'input'),
+        ('Visible surfaces', 'visible'),
+        ('Implicit prediction', 'implicit'),
+        ('Voxlets', 'not_keeping_existing'),
+        ('Voxlets with visible surfaces', 'keep_existing'))
+
+    su, sv = 2, 3
+
+    fig = plt.figure(figsize=(20, 10))
+    plt.subplots(su, sv)
+    plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=1e-3, hspace=1e-3)
+
+    for count, c in enumerate(combines):
+        plt.subplot(su, sv, count + 1)
+        plt.imshow(scipy.misc.imread(gen_renderpath % c[1]))
+        plt.axis('off')
+        plt.title(c[0])
+
+    plt.savefig(gen_renderpath.replace('png', 'pdf') % 'all')
 
     print "-> Done test type " + test_type
 

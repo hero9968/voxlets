@@ -392,14 +392,24 @@ class Reconstructer(object):
             # get the voxel grid of tsdf associated with this label
             # BUT at test time how to get this segmented grid? We need a similar type thing to before...
             this_idx_grid = self.sc.visible_tsdf_separate[this_point_label]
+            # print "WARNING - just using a single grid for the features..."
+            # this_idx_grid = self.sc.im_tsdf
 
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(this_idx_grid)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
             self.cached_feature_voxlet = features_voxlet.V
-            feature_vector = self._feature_collapse(features_voxlet.V)
-            feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
+
+            implicit_voxlet = self._initialise_voxlet(idx)
+            implicit_voxlet.fill_from_grid(self.sc.implicit_tsdf)
+            self.cached_implicit_voxlet = implicit_voxlet.V
+
+            combined_feature = np.concatenate(
+                (features_voxlet.V.flatten(), 
+                 implicit_voxlet.V.flatten()), axis=1)
+
+            feature_vector = self._feature_collapse(combined_feature)
 
             "classify according to the forest"
             voxlet_prediction = self.model.predict(
@@ -521,6 +531,7 @@ class Reconstructer(object):
         self.keeping_existing = keeping_existing
 
         return self.accum.compute_average()
+
 
     def _feature_collapse(self, X):
         """Applied to the feature shoeboxes after extraction"""

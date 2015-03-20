@@ -12,6 +12,7 @@ import voxel_data
 import images
 import features
 import carving
+import cPickle as pickle
 
 import matplotlib
 matplotlib.use('Agg')
@@ -28,7 +29,7 @@ class Scene(object):
         self.im_tsdf = None
         self.im = None
 
-    def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True, save_grids=False):
+    def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True, save_grids=False, load_implicit=False):
         '''
         loads a sequence of images, the associated gt voxel grid,
         carves the visible tsdf from the images, does segmentation
@@ -44,10 +45,10 @@ class Scene(object):
 
         # loading in the image
         sequence_frames = sequence['frames'][frame_nos]
-        print sequence_frames
+
         frame_data = paths.RenderedData.load_scene_data(
             sequence['scene'], sequence_frames)
-        print frame_data
+
         self.im = images.RGBDImage.load_from_dict(
             paths.RenderedData.scene_dir(sequence['scene']),
             frame_data)
@@ -65,6 +66,10 @@ class Scene(object):
         self.im_tsdf, self.im_visible = \
             carver.fuse(parameters.RenderedVoxelGrid.mu)
 
+        # load in the implicit prediction...
+        if load_implicit:
+            with open(paths.RenderedData.implicit_prediction_dir % sequence['name'] + 'prediction.pkl') as f:
+                self.implicit_tsdf = pickle.load(f)
 
         '''
         HERE SEGMENTING USING THE GROUND TRUTH
@@ -142,11 +147,11 @@ class Scene(object):
         if save_grids:
 
             # save this as a voxel grid...
-            savepath = paths.RenderedData.voxlet_prediction_path % \
+            savepath = paths.RenderedData.voxlet_prediction_path_short % \
                 ('partial_tsdf', sequence['name'])
             self.im_tsdf.save(savepath)
 
-            savepath = paths.RenderedData.voxlet_prediction_path % \
+            savepath = paths.RenderedData.voxlet_prediction_path_short % \
                 ('visible_voxels', sequence['name'])
             rendersavepath = paths.RenderedData.voxlet_prediction_img_path % \
                 ('visible_voxels', sequence['name'])
@@ -195,18 +200,23 @@ class Scene(object):
             this_point_label = self.gt_im_label[index[0], index[1]]
             temp_vgrid = self.gt_tsdf_separate[this_point_label]
             shoebox.fill_from_grid(temp_vgrid)
+            print "Extracted point with idx ", this_point_label
 
         elif extract_from == 'visible_tsdf':
 
             this_point_label = self.visible_im_label[index[0], index[1]]
             temp_vgrid = self.visible_tsdf_separate[this_point_label]
-            print "WARNING - in scene - not using separate grids at the moment..."
-            shoebox.fill_from_grid(self.im_tsdf)
+            #print "WARNING - in scene - not using separate grids at the moment..."
+            shoebox.fill_from_grid(temp_vgrid)
+            print "Extracted point with idx ", this_point_label
+
+        elif extract_from == 'implicit_tsdf':
+
+            shoebox.fill_from_grid(self.implicit_tsdf)
 
         else:
             raise Exception("Don't know how to extract from %s" % extract_from)
 
-        print "Extracted point with idx ", this_point_label
 
         # convert the indices to world xyz space
         if post_transform:

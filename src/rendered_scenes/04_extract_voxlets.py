@@ -32,7 +32,7 @@ def process_sequence(sequence):
 
     print "Processing " + sequence['name']
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False, load_implicit=True)
     sc.santity_render(save_folder='/tmp/')
 
     idxs = sc.im.random_sample_from_mask(
@@ -44,15 +44,23 @@ def process_sequence(sequence):
         idx, extract_from='gt_tsdf', post_transform=flatten_sbox) for idx in idxs]
     view_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='visible_tsdf', post_transform=flatten_sbox) for idx in idxs]
+    implicit_shoeboxes = [sc.extract_single_voxlet(
+        idx, extract_from='implicit_tsdf', post_transform=flatten_sbox) for idx in idxs]
     print "Took %f s" % (time() - t1)
 
     np_gt_sboxes = np.array(gt_shoeboxes)
     np_view_sboxes = np.array(view_shoeboxes)
+    np_implicit_sboxes = np.array(implicit_shoeboxes)
+
+    print "View sboxes are shape", np_view_sboxes.shape
+    print "Implicit sboxes are shape", np_implicit_sboxes.shape
+
+    np_features = np.concatenate((np_view_sboxes, np_implicit_sboxes), axis=1)
 
     print "Shoeboxes are shape " + str(np_gt_sboxes.shape)
-    print "Features are shape " + str(np_view_sboxes.shape)
+    print "Features are shape " + str(np_features.shape)
 
-    D = dict(shoeboxes=np_gt_sboxes, features=np_view_sboxes)
+    D = dict(shoeboxes=np_gt_sboxes, features=np_features)
     savepath = paths.RenderedData.voxlets_dict_data_path + \
         sequence['name'] + '.mat'
     print savepath
