@@ -560,10 +560,12 @@ class WorldVoxels(Voxels):
         ms.remove_nan_vertices()
         ms.write_to_obj('/tmp/temp.obj')
 
+        blend_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/spin.blend')
+        blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/blender_spinaround_frame.py')
         sp.call([paths.blender_path,
-                 "../rendered_scenes/spinaround/spin.blend",
+                 blend_path,
                  "-b", "-P",
-                 "../rendered_scenes/spinaround/blender_spinaround_frame.py"],
+                 blend_py_path],
                  stdout=open(os.devnull, 'w'),
                  close_fds=True)
 

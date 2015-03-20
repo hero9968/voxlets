@@ -5,6 +5,7 @@ import yaml
 import scipy.io
 import sklearn.ensemble
 import cPickle as pickle
+import scipy.misc  # for saving images
 
 import matplotlib
 matplotlib.use('Agg')
@@ -17,6 +18,7 @@ from common import voxel_data
 from common import carving
 from common import images
 from common import parameters
+from common import scene
 from features import line_casting
 
 print "Loading the model"
@@ -56,7 +58,7 @@ def save_plot_slice(V, GT_V, imagesavepath, imtitle=""):
     plt.savefig(imagesavepath, bbox_inches='tight')
 
 
-for sequence in paths.RenderedData.test_sequence():
+for sequence in paths.RenderedData.test_sequence()[:10]:
 
     print "Loading sequence %s" % sequence
 
@@ -71,47 +73,24 @@ for sequence in paths.RenderedData.test_sequence():
     with open(results_foldername + '/info.yaml', 'w') as f:
         yaml.dump(sequence, f)
 
-    # this is where to
-    vid = images.RGBDVideo()
-    vid.load_from_yaml(paths.RenderedData.video_yaml(sequence['scene']))
-
-    # load in the ground truth grid for this scene, and converting nans
-    gt_vox = voxel_data.load_voxels(
-        paths.RenderedData.ground_truth_voxels(sequence['scene']))
-    gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
-
-    # do the tsdf fusion from these frames
-    # note the slightly strange partial_tsdf copy and overright
-    # need the copy for the R, origin etc. Don't give gt to the carver
-    # to preserve train/test integrity!
-    carver = carving.Fusion()
-    carver.set_video(vid.subvid(sequence['frames']))
-    partial_tsdf = gt_vox.blank_copy()
-    carver.set_voxel_grid(partial_tsdf)
-    partial_tsdf, visible = carver.fuse(parameters.RenderedVoxelGrid.mu)
-
-    # save the grid
-    partial_tsdf.save(results_foldername + 'input_fusion.pkl')
-    scipy.io.savemat(results_foldername + 'partial_tsdf.mat', {'V': partial_tsdf.V})
-
-    # save the visible voxels
-    visible.save(results_foldername + 'visible_voxels.pkl')
+    print "Processing " + sequence['name']
+    sc = scene.Scene()
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=False, segment=False, save_grids=False)
 
     # getting the known full and empty voxels based on the depth image
-    known_full_voxels = visible
-    known_empty_voxels = partial_tsdf.blank_copy()
-    known_empty_voxels.V = partial_tsdf.V > 0
+    known_full_voxels = sc.im_visible
+    known_empty_voxels = sc.im_tsdf.blank_copy()
+    known_empty_voxels.V = sc.im_tsdf.V > 0
 
     # saving known empty and known full for my perusal
     scipy.io.savemat(
         results_foldername + 'known_voxels.mat',
-        dict(
-            known_full=known_full_voxels.V.astype(np.float64),
-            known_empty=known_empty_voxels.V.astype(np.float64)))
+        dict(known_full=known_full_voxels.V.astype(np.float64),
+             known_empty=known_empty_voxels.V.astype(np.float64)))
 
     print "Computing the features"
     X, Y = line_casting.feature_pairs_3d(
-        known_empty_voxels, known_full_voxels, gt_vox.V,
+        known_empty_voxels, known_full_voxels, sc.gt_tsdf.V,
         samples=-1, base_height=0, autorotate=False)
 
     # saving these features to disk for my perusal
@@ -130,12 +109,12 @@ for sequence in paths.RenderedData.test_sequence():
     training_pairs = dict(X=X, Y=Y,
         known_full=known_full_voxels.V.astype(np.float32),
         known_empty=known_empty_voxels.V.astype(np.float32),
-        gt_vox=gt_vox.V.astype(np.float32))
+        gt_vox=sc.gt_tsdf.V.astype(np.float32))
     scipy.io.savemat(
         results_foldername+'training_pairs.mat',
         training_pairs)
 
-    pred_grid = partial_tsdf.copy()
+    pred_grid = sc.im_tsdf.copy()
 
     pred_grid.set_indicated_voxels(unknown_voxel_idxs == 1, Y_pred)
 
@@ -144,14 +123,20 @@ for sequence in paths.RenderedData.test_sequence():
     pred_grid.save(results_foldername + 'prediction.pkl')
     scipy.io.savemat(
         results_foldername + 'prediction.mat',
-        dict(gt=gt_vox.V, pred=pred_grid.V, partial=partial_tsdf.V),
+        dict(gt=sc.gt_tsdf.V, pred=pred_grid.V, partial=sc.im_tsdf.V,
+            known_full=known_full_voxels.V, known_empty=known_empty_voxels.V, dim=sc.im.rgb, rgbim=sc.im.rgb),
         do_compression=True)
+
+    "Saving the input image"
+    img_savepath = results_foldername + 'input_im.png'
+    scipy.misc.imsave(img_savepath, sc.im.rgb)
 
     if render:
         pred_grid.render_view(results_foldername + 'prediction_render.png')
-        visible.render_view(results_foldername + 'visible_render.png')
+        sc.im_tsdf.render_view(results_foldername + 'visible_render.png')
 
     img_savepath = results_foldername + 'prediction.png'
-    save_plot_slice(pred_grid.V, gt_vox.V, img_savepath, imtitle="")
+    save_plot_slice(pred_grid.V, sc.gt_tsdf.V, img_savepath, imtitle="")
 
     print "Done "
+

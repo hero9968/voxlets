@@ -18,6 +18,7 @@ import features
 from skimage import measure
 import subprocess as sp
 from sklearn.neighbors import NearestNeighbors
+import mesh
 
 # import matplotlib
 # matplotlib.use('Agg')
@@ -28,6 +29,52 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
 import voxel_utils as vu
+
+
+def render_diff_view(grid1, grid2, savepath):
+    '''
+    renders grid1, and any nodes not in grid2 get done in a different colour
+    '''
+    # convert nans to the minimum
+    ms1 = mesh.Mesh()
+    ms1.from_volume(grid1, 0)
+    ms1.remove_nan_vertices()
+
+    ms2 = mesh.Mesh()
+    ms2.from_volume(grid2, 0)
+    ms2.remove_nan_vertices()
+
+    # now do a sort of setdiff between the two...
+    print "Bulding dictionary", ms2.vertices.shape
+    ms2_dict = {}
+    for v in ms2.vertices:
+        vt = (100*v).astype(int)
+        ms2_dict[(vt[0], vt[1], vt[2])] = 1
+
+    print "Done bulding dictionary", ms1.vertices.shape
+
+    # label each vertex in ms1
+    labels = np.zeros(ms1.vertices.shape[0])
+    for count, v in enumerate(ms1.vertices):
+        vt = (100*v).astype(int)
+        if (vt[0], vt[1], vt[2]) in ms2_dict:
+            labels[count] = 1
+    print "Done checking dictionary"
+
+    # memory problem?
+    ms1.write_to_ply('/tmp/temp.ply', labels)
+
+    sp.call([paths.blender_path,
+             "../rendered_scenes/spinaround/spin.blend",
+             "-b", "-P",
+             "../rendered_scenes/spinaround/blender_spinaround_frame_ply.py"],
+             stdout=open(os.devnull, 'w'),
+             close_fds=True)
+
+    #now copy file from /tmp/.png to the savepath...
+    print "Moving render to " + savepath
+    shutil.move('/tmp/.png', savepath)
+
 
 
 

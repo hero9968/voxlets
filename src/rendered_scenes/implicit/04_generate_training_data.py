@@ -7,61 +7,58 @@ training data from each sequence
 
 import sys
 import os
-import numpy as np
-import yaml
 import scipy.io
+from time import time
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic/'))
+
 from common import paths
-from common import images
-from common import voxel_data
-from common import carving
 from common import parameters
+from common import scene
 from features import line_casting
 
 
-for sequence in paths.RenderedData.train_sequence():
+def process_sequence(sequence):
 
     seq_foldername = paths.RenderedData.implicit_training_dir % sequence['scene']
-    print "Creating %s" % seq_foldername
-    if not os.path.exists(seq_foldername):
+
+    if os.path.exists(seq_foldername):
+        print "Saving to %s" % seq_foldername
+    else:
+        print "Creating %s" % seq_foldername
         os.makedirs(seq_foldername)
 
-    # load the full video (in future possibly change this to be able to load
-    # a subvideo...)
-    vid = images.RGBDVideo()
-    vid.load_from_yaml(paths.RenderedData.video_yaml(sequence['scene']))
-
-    # load in the ground truth grid for this scene, and converting nans
-    gt_vox = voxel_data.load_voxels(
-        paths.RenderedData.ground_truth_voxels(sequence['scene']))
-    gt_vox.V[np.isnan(gt_vox.V)] = -parameters.RenderedVoxelGrid.mu
-
-    # do the tsdf fusion from these frames
-    # note the slightly strange partial_tsdf copy and overright
-    # need the copy for the R, origin etc. Don't give gt to the carver
-    # to preserve train/test integrity!
-    carver = carving.Fusion()
-    carver.set_video(vid.subvid(sequence['frames']))
-    carver.set_voxel_grid(gt_vox.blank_copy())
-    partial_tsdf, visible = carver.fuse(mu=parameters.RenderedVoxelGrid.mu)
-
-    # save the grid
-    partial_tsdf.save(seq_foldername + 'input_fusion.pkl')
-
-    # save the visible voxels
-    visible.save(seq_foldername + 'visible_voxels.pkl')
+    print "Processing " + sequence['name']
+    sc = scene.Scene()
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=False, segment=False, save_grids=False)
 
     # getting the known full and empty voxels based on the depth image
-    known_full_voxels = visible
-    known_empty_voxels = partial_tsdf.blank_copy()
-    known_empty_voxels.V = partial_tsdf.V > 0
+    known_full_voxels = sc.im_visible
+    known_empty_voxels = sc.im_tsdf.blank_copy()
+    known_empty_voxels.V = sc.im_tsdf.V > 0
 
     X, Y = line_casting.feature_pairs_3d(
-        known_empty_voxels, known_full_voxels, gt_vox.V,
+        known_empty_voxels, known_full_voxels, sc.gt_tsdf.V,
         samples=10000, base_height=0, autorotate=False)
 
     training_pairs = dict(X=X, Y=Y)
     scipy.io.savemat(seq_foldername + 'training_pairs.mat', training_pairs)
 
+
+
+# need to import these *after* the pool helper has been defined
+if parameters.multicore:
+    import multiprocessing
+    import functools
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+
+if __name__ == '__main__':
+
+    tic = time()
+    mapper(process_sequence, paths.RenderedData.train_sequence())
+    print "In total took %f s" % (time() - tic)

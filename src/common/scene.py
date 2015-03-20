@@ -28,7 +28,7 @@ class Scene(object):
         self.im_tsdf = None
         self.im = None
 
-    def load_sequence(self, sequence, frame_nos, segment_with_gt, save_grids=False):
+    def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True, save_grids=False):
         '''
         loads a sequence of images, the associated gt voxel grid,
         carves the visible tsdf from the images, does segmentation
@@ -76,7 +76,7 @@ class Scene(object):
         needed
         '''
 
-        if segment_with_gt:
+        if segment and segment_with_gt:
 
             self.gt_labels = self._segment_tsdf_project_2d(
                 self.gt_tsdf, z_threshold=2, floor_height=4)
@@ -99,36 +99,37 @@ class Scene(object):
             - image_labels ???
         '''
 
-        # segmenting with just the visible voxels
-        self.visible_labels = self._segment_tsdf_project_2d(
-            self.im_tsdf, z_threshold=2, floor_height=4)
+        if segment:
+            # segmenting with just the visible voxels
+            self.visible_labels = self._segment_tsdf_project_2d(
+                self.im_tsdf, z_threshold=2, floor_height=4)
 
-        # #### >> transfer the labels from the voxel grid to the image
-        self.visible_im_label = self.im.label_from_grid(self.visible_labels)
+            # #### >> transfer the labels from the voxel grid to the image
+            self.visible_im_label = self.im.label_from_grid(self.visible_labels)
 
-        # expanding these labels to also cover all the unobserved regions
-        uv, to_project_idxs = self.im_tsdf.project_unobserved_voxels(self.im)
-        inside_image = self.im.find_points_inside_image(uv)
+            # expanding these labels to also cover all the unobserved regions
+            uv, to_project_idxs = self.im_tsdf.project_unobserved_voxels(self.im)
+            inside_image = self.im.find_points_inside_image(uv)
 
-        # labels of all the non-nan voxels inside the image...
-        vox_labels = self.visible_im_label[
-            uv[inside_image, 1], uv[inside_image, 0]]
+            # labels of all the non-nan voxels inside the image...
+            vox_labels = self.visible_im_label[
+                uv[inside_image, 1], uv[inside_image, 0]]
 
-        # now propograte these labels back to the main grid
-        temp = to_project_idxs[inside_image]
-        self.visible_labels.V.ravel()[temp] = vox_labels
-        # << ####
+            # now propograte these labels back to the main grid
+            temp = to_project_idxs[inside_image]
+            self.visible_labels.V.ravel()[temp] = vox_labels
+            # << ####
 
-        print "Separate out the partial tsdf into different 'layers' in a grid..."
+            print "Separate out the partial tsdf into different 'layers' in a grid..."
 
-        self.visible_labels_separate = \
-            self._separate_binary_grids(self.visible_labels.V, True)
+            self.visible_labels_separate = \
+                self._separate_binary_grids(self.visible_labels.V, True)
 
-        temp = self.im_tsdf.copy()
-        temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
+            temp = self.im_tsdf.copy()
+            temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
 
-        self.visible_tsdf_separate = \
-            self._label_grids_to_tsdf_grids(temp, self.visible_labels_separate)
+            self.visible_tsdf_separate = \
+                self._label_grids_to_tsdf_grids(temp, self.visible_labels_separate)
 
 
         # # transfer the labels from the voxel grid tothe image
