@@ -21,7 +21,7 @@ from features import line_casting
 
 def process_sequence(sequence):
 
-    seq_foldername = paths.RenderedData.implicit_training_dir % sequence['scene']
+    seq_foldername = paths.RenderedData.implicit_training_dir % sequence['name']
 
     if os.path.exists(seq_foldername):
         print "Saving to %s" % seq_foldername
