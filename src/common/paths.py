@@ -12,6 +12,8 @@ import parameters
 host_name = socket.gethostname()
 if host_name == 'troll':
     base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
+elif host_name == 'biryani':
+    base_path = '/media/ssd/data/'
 else:
     base_path = os.path.expanduser("~/projects/shape_sharing/data/")
 
@@ -177,8 +179,11 @@ import yaml
 
 class RenderedData(object):
 
-    rendered_arrangements_path = os.path.expanduser(
-        '~/projects/shape_sharing/data/rendered_arrangements/')
+    if host_name == 'biryani':
+        rendered_arrangements_path = '/media/ssd/data/rendered_arrangements/'
+    else:
+        rendered_arrangements_path = os.path.expanduser(
+            '~/projects/shape_sharing/data/rendered_arrangements/')
 
     scenes_location = rendered_arrangements_path + '/renders/'
 
