@@ -553,25 +553,28 @@ class WorldVoxels(Voxels):
         # convert nans to the minimum
         temp = self.copy()
         #temp.V[np.isnan(temp.V)] = temp.V[~np.isnan(temp.V)].min()
-        pickle.dump(self, open('/tmp/temp_voxel_grid.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
+        #pickle.dump(self, open('/tmp/temp_voxel_grid.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
         ms = mesh.Mesh()
         ms.from_volume(temp, 0)
-        pickle.dump(ms, open('/tmp/temp_mesh.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
+        #pickle.dump(ms, open('/tmp/temp_mesh.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
         ms.remove_nan_vertices()
-        ms.write_to_obj('/tmp/temp.obj')
+        ms.write_to_obj(savepath + '.obj')
 
         blend_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/spin.blend')
         blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/blender_spinaround_frame.py')
+        subenv = os.environ.copy()
+        subenv['BLENDERSAVEFILE'] = savepath
         sp.call([paths.blender_path,
                  blend_path,
                  "-b", "-P",
                  blend_py_path],
+                 env=subenv,
                  stdout=open(os.devnull, 'w'),
                  close_fds=True)
 
         #now copy file from /tmp/.png to the savepath...
-        print "Moving render to " + savepath
-        shutil.move('/tmp/.png', savepath)
+        # print "Moving render to " + savepath
+        # shutil.move('/tmp/.png', savepath)
 
     def project_unobserved_voxels(self, im):
         # project the nan voxels from grid into the image...
