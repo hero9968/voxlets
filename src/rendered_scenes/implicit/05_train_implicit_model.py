@@ -13,6 +13,7 @@ max_training_pairs = 1e6
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import paths
+from common import parameters
 
 all_X = []
 all_Y = []
@@ -44,7 +45,7 @@ print all_Y_np.dtype
 
 print "Training the model"
 rf = sklearn.ensemble.RandomForestRegressor(
-    n_estimators=1, oob_score=True, n_jobs=4, max_depth=12)
+    n_estimators=100, oob_score=True, n_jobs=parameters.cores, max_depth=12)
 rf.fit(all_X_np, all_Y_np)
 
 print "Saving the model"
