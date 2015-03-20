@@ -199,7 +199,8 @@ class Scene(object):
 
             this_point_label = self.visible_im_label[index[0], index[1]]
             temp_vgrid = self.visible_tsdf_separate[this_point_label]
-            shoebox.fill_from_grid(temp_vgrid)
+            print "WARNING - in scene - not using separate grids at the moment..."
+            shoebox.fill_from_grid(self.im_tsdf)
 
         else:
             raise Exception("Don't know how to extract from %s" % extract_from)

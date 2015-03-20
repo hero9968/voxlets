@@ -61,7 +61,7 @@ def process_sequence(sequence):
     rec.set_model(model)
     rec.set_scene(sc)
     rec.sample_points(parameters.VoxletPrediction.number_samples)
-    rec.initialise_output_grids(gt_grid=sc.gt_tsdf)
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     accum = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
         render_savepath='/tmp/renders/')
     prediction = accum
@@ -95,7 +95,7 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if False: #parameters.multicore:
+if False:  # parameters.multicore:
     import multiprocessing
     pool = multiprocessing.Pool(parameters.cores)
     mapper = pool.map
@@ -106,7 +106,7 @@ else:
 if __name__ == '__main__':
 
     tic = time()
-    mapper(process_sequence, paths.RenderedData.test_sequence()[:5])
+    mapper(process_sequence, paths.RenderedData.test_sequence())
     print "In total took %f s" % (time() - tic)
 
 

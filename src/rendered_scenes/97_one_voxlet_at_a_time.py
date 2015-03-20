@@ -82,21 +82,21 @@ def process_sequence(sequence):
 
         # Rendering the prediction
         renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'] + '_voxlet_number_%d' % count)
+            (test_type, sequence['name'] + '_voxlet_number_%04d' % count)
         prediction_keeping_exisiting.render_view(renderpath)
         print "About to render..."
         #prediction.render_view(renderpath)
 
         # Rendering the extracted voxlet and also the predicted voxlet
         prediction_voxlet_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'] + '_voxlet_number_%d_prediction' % count)
+            (test_type, sequence['name'] + '_voxlet_number_%04d_prediction' % count)
         voxlets.render_single_voxlet(
             rec.cached_voxlet_prediction.reshape(parameters.Voxlet.shape),
             prediction_voxlet_renderpath)
 
         # Rendering the extracted voxlet and also the predicted voxlet
         feature_voxlet_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'] + '_voxlet_number_%d_feature' % count)
+            (test_type, sequence['name'] + '_voxlet_number_%04d_feature' % count)
         voxlets.render_single_voxlet(
             rec.cached_feature_voxlet.reshape(parameters.Voxlet.shape),
             feature_voxlet_renderpath)
