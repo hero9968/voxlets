@@ -571,6 +571,7 @@ class WorldVoxels(Voxels):
                  env=subenv,
                  stdout=open(os.devnull, 'w'),
                  close_fds=True)
+        os.remove(savepath + '.obj')
 
         #now copy file from /tmp/.png to the savepath...
         # print "Moving render to " + savepath
