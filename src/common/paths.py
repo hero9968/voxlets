@@ -193,11 +193,17 @@ class RenderedData(object):
     yaml_test_location = split_save_location + 'test.yaml'
 
     voxlets_path = rendered_arrangements_path + 'voxlets/'
-    voxlets_dictionary_path = voxlets_path + 'dictionary/'
-    voxlets_dict_data_path = voxlets_path + 'dictionary/dict_data/'
-    voxlets_data_path = voxlets_path + 'training_voxlets/'
 
-    voxlet_model_oma_path = voxlets_path + 'models/oma.pkl'
+    if parameters.VoxletTraining.use_implicit:
+        voxlets_dictionary_path = voxlets_path + 'dictionary_implicit/'
+        voxlets_dict_data_path = voxlets_path + 'dictionary_implicit/dict_data/'
+        voxlets_data_path = voxlets_path + 'training_voxlets_implicit/'
+        voxlet_model_oma_path = voxlets_path + 'models_implicit/oma.pkl'
+    else:
+        voxlets_dictionary_path = voxlets_path + 'dictionary/'
+        voxlets_dict_data_path = voxlets_path + 'dictionary/dict_data/'
+        voxlets_data_path = voxlets_path + 'training_voxlets/'
+        voxlet_model_oma_path = voxlets_path + 'models/oma.pkl'
 
     implicit_training_dir = rendered_arrangements_path + 'implicit/training/%s/'
     implicit_training_file = implicit_training_dir + '%s.pkl'

@@ -200,15 +200,13 @@ class Scene(object):
             this_point_label = self.gt_im_label[index[0], index[1]]
             temp_vgrid = self.gt_tsdf_separate[this_point_label]
             shoebox.fill_from_grid(temp_vgrid)
-            print "Extracted point with idx ", this_point_label
-
+            
         elif extract_from == 'visible_tsdf':
 
             this_point_label = self.visible_im_label[index[0], index[1]]
             temp_vgrid = self.visible_tsdf_separate[this_point_label]
             #print "WARNING - in scene - not using separate grids at the moment..."
             shoebox.fill_from_grid(temp_vgrid)
-            print "Extracted point with idx ", this_point_label
 
         elif extract_from == 'implicit_tsdf':
 

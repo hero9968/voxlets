@@ -59,29 +59,35 @@ def process_sequence(sequence):
         idx, extract_from='gt_tsdf', post_transform=pca_flatten) for idx in idxs]
     view_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='visible_tsdf', post_transform=sbox_flatten) for idx in idxs]
-    implicit_sboxes = [sc.extract_single_voxlet(
-        idx, extract_from='implicit_tsdf', post_transform=sbox_flatten) for idx in idxs]
-    print "Took %f s" % (time() - t1)
 
     np_sboxes = np.vstack(gt_shoeboxes)
     np_view = np.vstack(view_shoeboxes)
-    np_implicit = np.vstack(implicit_sboxes)
 
     '''replace all the nans in the shoeboxes from the image view'''
     np_view[np.isnan(np_view)] = -parameters.RenderedVoxelGrid.mu
 
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
     logging.debug("...Features are shape " + str(np_view.shape))
-    logging.debug("...Implicit is shape " + str(np_implicit.shape))
 
-    print np.isnan(np_view).sum(), np.isnan(np_implicit).sum()
+    if parameters.VoxletTraining.use_implicit:
+        implicit_sboxes = [sc.extract_single_voxlet(
+            idx, extract_from='implicit_tsdf', post_transform=sbox_flatten) for idx in idxs]
+        np_implicit = np.vstack(implicit_sboxes)
+        logging.debug("...Implicit is shape " + str(np_implicit.shape))
+        all_features = np.concatenate((np_view, np_implicit), axis=1)
+        print np.isnan(np_view).sum(), np.isnan(np_implicit).sum()
 
-    np_features = features_pca.transform(np.concatenate((np_view, np_implicit), axis=1))
+    else:
+        all_features = np_view
+
+    print "Took %f s" % (time() - t1)
+
+    np_features = features_pca.transform(all_features)
 
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
     logging.debug("Saving to " + savepath)
-    D = dict(shoeboxes=np_sboxes, features=np_features, implicit=np_implicit)
+    D = dict(shoeboxes=np_sboxes, features=np_features)
     scipy.io.savemat(savepath, D, do_compression=True)
 
 

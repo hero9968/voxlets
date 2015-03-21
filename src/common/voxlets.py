@@ -369,7 +369,7 @@ class Reconstructer(object):
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
 
-    def fill_in_output_grid_oma(self, render_type, render_savepath=None):
+    def fill_in_output_grid_oma(self, render_type, render_savepath=None, use_implicit=False):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -401,13 +401,17 @@ class Reconstructer(object):
             features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
             self.cached_feature_voxlet = features_voxlet.V
 
-            implicit_voxlet = self._initialise_voxlet(idx)
-            implicit_voxlet.fill_from_grid(self.sc.implicit_tsdf)
-            self.cached_implicit_voxlet = implicit_voxlet.V
+            if use_implicit:
+                implicit_voxlet = self._initialise_voxlet(idx)
+                implicit_voxlet.fill_from_grid(self.sc.implicit_tsdf)
+                self.cached_implicit_voxlet = implicit_voxlet.V
 
-            combined_feature = np.concatenate(
-                (features_voxlet.V.flatten(), 
-                 implicit_voxlet.V.flatten()), axis=1)
+                combined_feature = np.concatenate(
+                    (features_voxlet.V.flatten(), 
+                     implicit_voxlet.V.flatten()), axis=1)
+
+            else:
+                combined_feature = features_voxlet.V.flatten()
 
             feature_vector = self._feature_collapse(combined_feature)
 

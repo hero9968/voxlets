@@ -44,18 +44,22 @@ def process_sequence(sequence):
         idx, extract_from='gt_tsdf', post_transform=flatten_sbox) for idx in idxs]
     view_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='visible_tsdf', post_transform=flatten_sbox) for idx in idxs]
-    implicit_shoeboxes = [sc.extract_single_voxlet(
-        idx, extract_from='implicit_tsdf', post_transform=flatten_sbox) for idx in idxs]
-    print "Took %f s" % (time() - t1)
 
     np_gt_sboxes = np.array(gt_shoeboxes)
     np_view_sboxes = np.array(view_shoeboxes)
-    np_implicit_sboxes = np.array(implicit_shoeboxes)
-
     print "View sboxes are shape", np_view_sboxes.shape
-    print "Implicit sboxes are shape", np_implicit_sboxes.shape
 
-    np_features = np.concatenate((np_view_sboxes, np_implicit_sboxes), axis=1)
+    if parameters.VoxletTraining.use_implicit:
+        implicit_shoeboxes = [sc.extract_single_voxlet(
+            idx, extract_from='implicit_tsdf', post_transform=flatten_sbox) for idx in idxs]
+        np_implicit_sboxes = np.array(implicit_shoeboxes)
+        np_features = np.concatenate((np_view_sboxes, np_implicit_sboxes), axis=1)
+        print "Implicit sboxes are shape", np_implicit_sboxes.shape
+
+    else:
+        np_features = np_view_sboxes
+
+    print "Took %f s" % (time() - t1)
 
     print "Shoeboxes are shape " + str(np_gt_sboxes.shape)
     print "Features are shape " + str(np_features.shape)
