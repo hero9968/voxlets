@@ -188,13 +188,17 @@ def process_sequence(sequence):
             plt.hold(1)
             plt.legend(prop={'size':6}, loc='lower right')
 
+        if c[1] == 'input':
+            plt.hold(1)
+            plt.plot(rec.sampled_idxs[:, 1], rec.sampled_idxs[:, 0], 'r.', ms=2)
+
     fname = 'all_' + sequence['name']
     plt.savefig(gen_renderpath.replace('png', 'pdf') % fname, dpi=400)
 
     print "-> Done test type " + test_type
 
     print "Done sequence %s" % sequence['name']
-    quit()
+
 
 # need to import these *after* the pool helper has been defined
 if False:  # parameters.multicore:
