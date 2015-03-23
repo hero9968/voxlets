@@ -67,11 +67,11 @@ def process_sequence(sequence):
     rec.set_scene(sc)
     rec.sample_points(parameters.VoxletPrediction.number_samples)
 
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    rec.set_model(model_with_implicit)
-    pred_voxlets_implicit = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
-        render_savepath='/tmp/renders/', use_implicit=True)
-    pred_voxlets_implicit_exisiting = rec.keeping_existing
+    # rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    # rec.set_model(model_with_implicit)
+    # pred_voxlets_implicit = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
+    #     render_savepath='/tmp/renders/', use_implicit=True)
+    # pred_voxlets_implicit_exisiting = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
@@ -79,11 +79,23 @@ def process_sequence(sequence):
         render_savepath='/tmp/renders/', use_implicit=False)
     pred_voxlets_exisiting = rec.keeping_existing
 
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    oracle_voxlets = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
+        render_savepath='/tmp/renders/', use_implicit=False, oracle='pca')
+    oracle_voxlets_existing = rec.keeping_existing
+
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    nn_oracle_voxlets = rec.fill_in_output_grid_oma( render_type=[],
+        render_savepath='/tmp/renders/', use_implicit=False, oracle='nn')
+    nn_oracle_voxlets_existing = rec.keeping_existing
+
     # Hack to put in a floor
-    pred_voxlets_implicit_exisiting.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
+    # pred_voxlets_implicit_exisiting.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
     pred_voxlets_exisiting.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
     pred_voxlets.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
-    pred_voxlets_implicit.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
+    # pred_voxlets_implicit.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
+    oracle_voxlets.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
+    nn_oracle_voxlets.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
 
     print "-> Creating folder"
     fpath = paths.RenderedData.voxlet_prediction_folderpath % \
@@ -104,8 +116,10 @@ def process_sequence(sequence):
         (test_type, sequence['name'], '%s')
 
     
-    pred_voxlets_implicit_exisiting.render_view(gen_renderpath % 'pred_voxlets_implicit_exisiting')
-    pred_voxlets_implicit.render_view(gen_renderpath % 'pred_voxlets_implicit')
+    # pred_voxlets_implicit_exisiting.render_view(gen_renderpath % 'pred_voxlets_implicit_exisiting')
+    # pred_voxlets_implicit.render_view(gen_renderpath % 'pred_voxlets_implicit')
+    oracle_voxlets.render_view(gen_renderpath % 'oracle_voxlets')
+    nn_oracle_voxlets.render_view(gen_renderpath % 'nn_oracle_voxlets')
     pred_voxlets_exisiting.render_view(gen_renderpath % 'pred_voxlets_exisiting')
     pred_voxlets.render_view(gen_renderpath % 'pred_voxlets')
     sc.implicit_tsdf.render_view(gen_renderpath % 'implicit')
@@ -117,11 +131,13 @@ def process_sequence(sequence):
         ['Ground truth', 'gt'],
         ['Input image', 'input'],
         ['Visible surfaces', 'visible', sc.im_tsdf],
+        ['Oracle using PCA', 'oracle_voxlets', oracle_voxlets],
+        ['Oracle using NN', 'nn_oracle_voxlets', nn_oracle_voxlets],
         ['Implicit prediction', 'implicit', sc.implicit_tsdf],
         ['Voxlets', 'pred_voxlets', pred_voxlets],
-        ['Voxlets + visible', 'pred_voxlets_exisiting', pred_voxlets_exisiting],
-        ['Voxlets using implicit', 'pred_voxlets_implicit', pred_voxlets_implicit],
-        ['Voxlets + visible, using implicit', 'pred_voxlets_implicit_exisiting', pred_voxlets_implicit_exisiting]]
+        ['Voxlets + visible', 'pred_voxlets_exisiting', pred_voxlets_exisiting]]
+        # ['Voxlets + visible, using implicit', 'pred_voxlets_implicit_exisiting', pred_voxlets_implicit_exisiting]]
+        # ['Voxlets using implicit', 'pred_voxlets_implicit', pred_voxlets_implicit],
 
     with open('/tmp/combines.pkl', 'w') as f:
         pickle.dump(combines, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -148,7 +164,7 @@ def process_sequence(sequence):
 
     su, sv = 3, 3
 
-    fig = plt.figure(figsize=(25, 10))
+    fig = plt.figure(figsize=(25, 10), dpi=1000)
     plt.subplots(su, sv)
     plt.subplots_adjust(left=0, bottom=0, right=0.95, top=0.95, wspace=0.2, hspace=0.2)
 
@@ -165,7 +181,7 @@ def process_sequence(sequence):
         " Add to the roc plot, which is in the final subplot"
         if count >= 3:
             "Add the AUC"
-            plt.text(0, 0, "AUC = %0.3f" % c[3][0], fontsize=12, color='white')
+            plt.text(0, 50, "AUC = %0.3f" % c[3][0], fontsize=12, color='white')
             
             plt.subplot(su, sv, su*sv)
             plt.plot(c[3][1], c[3][2], label=c[0])
@@ -173,12 +189,12 @@ def process_sequence(sequence):
             plt.legend(prop={'size':6}, loc='lower right')
 
     fname = 'all_' + sequence['name']
-    plt.savefig(gen_renderpath.replace('png', 'pdf') % fname)
+    plt.savefig(gen_renderpath.replace('png', 'pdf') % fname, dpi=400)
 
     print "-> Done test type " + test_type
 
     print "Done sequence %s" % sequence['name']
-
+    quit()
 
 # need to import these *after* the pool helper has been defined
 if False:  # parameters.multicore:
