@@ -87,7 +87,8 @@ def process_sequence(sequence):
     scipy.io.savemat(
         results_foldername + 'known_voxels.mat',
         dict(known_full=known_full_voxels.V.astype(np.float64),
-             known_empty=known_empty_voxels.V.astype(np.float64)))
+             known_empty=known_empty_voxels.V.astype(np.float64)),
+        do_compression=True)
 
     print "Computing the features"
     X, Y = line_casting.feature_pairs_3d(
@@ -95,7 +96,7 @@ def process_sequence(sequence):
         samples=-1, base_height=0, autorotate=False)
 
     # saving these features to disk for my perusal
-    scipy.io.savemat(results_foldername + 'features.mat', dict(X=X, Y=Y))
+    scipy.io.savemat(results_foldername + 'features.mat', dict(X=X, Y=Y), do_compression=True)
 
     print "Making prediction"
     Y_pred = rf.predict(X.astype(np.float32))
@@ -113,7 +114,8 @@ def process_sequence(sequence):
         gt_vox=sc.gt_tsdf.V.astype(np.float32))
     scipy.io.savemat(
         results_foldername+'training_pairs.mat',
-        training_pairs)
+        training_pairs,
+        do_compression=True)
 
     pred_grid = sc.im_tsdf.copy()
 
@@ -156,5 +158,6 @@ else:
 if __name__ == '__main__':
 
     tic = time()
-    mapper(process_sequence, paths.RenderedData.test_sequence()[50:200:10])
+    print "DANGER - doing on train sequence"
+    mapper(process_sequence, paths.RenderedData.test_sequence())
     print "In total took %f s" % (time() - tic)

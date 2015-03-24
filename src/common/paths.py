@@ -12,6 +12,8 @@ import parameters
 host_name = socket.gethostname()
 if host_name == 'troll':
     base_path = os.path.expanduser("/mnt/scratch/mfirman/data/")
+elif host_name == 'biryani':
+    base_path = '/media/ssd/data/'
 else:
     base_path = os.path.expanduser("~/projects/shape_sharing/data/")
 
@@ -177,8 +179,11 @@ import yaml
 
 class RenderedData(object):
 
-    rendered_arrangements_path = os.path.expanduser(
-        '~/projects/shape_sharing/data/rendered_arrangements/')
+    if host_name == 'biryani':
+        rendered_arrangements_path = '/media/ssd/data/rendered_arrangements/'
+    else:
+        rendered_arrangements_path = os.path.expanduser(
+            '~/projects/shape_sharing/data/rendered_arrangements/')
 
     scenes_location = rendered_arrangements_path + '/renders/'
 
@@ -188,11 +193,17 @@ class RenderedData(object):
     yaml_test_location = split_save_location + 'test.yaml'
 
     voxlets_path = rendered_arrangements_path + 'voxlets/'
-    voxlets_dictionary_path = voxlets_path + 'dictionary/'
-    voxlets_dict_data_path = voxlets_path + 'dictionary/dict_data/'
-    voxlets_data_path = voxlets_path + 'training_voxlets/'
 
-    voxlet_model_oma_path = voxlets_path + 'models/oma.pkl'
+    if parameters.VoxletTraining.use_implicit:
+        voxlets_dictionary_path = voxlets_path + 'dictionary_implicit/'
+        voxlets_dict_data_path = voxlets_path + 'dictionary_implicit/dict_data/'
+        voxlets_data_path = voxlets_path + 'training_voxlets_implicit/'
+        voxlet_model_oma_path = voxlets_path + 'models_implicit/oma.pkl'
+    else:
+        voxlets_dictionary_path = voxlets_path + 'dictionary/'
+        voxlets_dict_data_path = voxlets_path + 'dictionary/dict_data/'
+        voxlets_data_path = voxlets_path + 'training_voxlets/'
+        voxlet_model_oma_path = voxlets_path + 'models/oma.pkl'
 
     implicit_training_dir = rendered_arrangements_path + 'implicit/training/%s/'
     implicit_training_file = implicit_training_dir + '%s.pkl'
@@ -201,8 +212,10 @@ class RenderedData(object):
     implicit_prediction_path = implicit_prediction_dir + '%s.pkl'
 
     # first is method, second is the sequence
-    voxlet_prediction_path = voxlets_path + 'predictions/%s/%s.pkl'
-    voxlet_prediction_img_path = voxlets_path + 'predictions/%s/%s.png'
+    voxlet_prediction_folderpath = voxlets_path + 'predictions/%s/%s/'
+    voxlet_prediction_path = voxlets_path + 'predictions/%s/%s/%s.pkl'
+    voxlet_prediction_path_short = voxlets_path + 'predictions/%s/%s.pkl'
+    voxlet_prediction_img_path = voxlets_path + 'predictions/%s/%s/%s.png'
 
     # these are important as they refer to the location of fixed files...
     voxlet_render_blend = os.path.expanduser(

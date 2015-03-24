@@ -369,12 +369,15 @@ class Reconstructer(object):
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
 
-    def fill_in_output_grid_oma(self, render_type, render_savepath=None):
+    def fill_in_output_grid_oma(self, render_type, render_savepath=None, 
+            use_implicit=False, oracle=None):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
         could make it so that the points and the normals are extracted directly
         from the tsdf
+        'oracle' is an optional argument which uses an oracle to choose the voxlets
+        Choices of oracle should perhaps be in ['pca', 'ground_truth', 'nn' etc...]
         '''
 
         # saving
@@ -392,25 +395,33 @@ class Reconstructer(object):
             # get the voxel grid of tsdf associated with this label
             # BUT at test time how to get this segmented grid? We need a similar type thing to before...
             this_idx_grid = self.sc.visible_tsdf_separate[this_point_label]
+            # print "WARNING - just using a single grid for the features..."
+            # this_idx_grid = self.sc.im_tsdf
 
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(this_idx_grid)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
             self.cached_feature_voxlet = features_voxlet.V
-            feature_vector = self._feature_collapse(features_voxlet.V)
-            feature_vector[np.isnan(feature_vector)] = -parameters.RenderedVoxelGrid.mu
+
+            if use_implicit:
+                implicit_voxlet = self._initialise_voxlet(idx)
+                implicit_voxlet.fill_from_grid(self.sc.implicit_tsdf)
+                self.cached_implicit_voxlet = implicit_voxlet.V
+
+                combined_feature = np.concatenate(
+                    (features_voxlet.V.flatten(), 
+                     implicit_voxlet.V.flatten()), axis=1)
+
+            else:
+                combined_feature = features_voxlet.V.flatten()
+
+            feature_vector = self._feature_collapse(combined_feature)
 
             "classify according to the forest"
             voxlet_prediction = self.model.predict(
                 np.atleast_2d(feature_vector))
             self.cached_voxlet_prediction = voxlet_prediction
-
-            # adding the shoebox into the result
-            transformed_voxlet = self._initialise_voxlet(idx)
-            transformed_voxlet.V = voxlet_prediction.reshape(
-                parameters.Voxlet.shape)
-            self.accum.add_voxlet(transformed_voxlet)
 
             # getting the GT voxlet
             gt_voxlet = self._initialise_voxlet(idx)
@@ -421,7 +432,26 @@ class Reconstructer(object):
             closest_training_X = self.model.training_X[indices[0], :]
             closest_training_Y = self.model.pca.inverse_transform(
                 self.model.training_Y[indices[0], :])
-            print closest_training_X.shape, closest_training_Y.shape
+
+            "Replace the prediction - if an oracle has been specified!"
+            if oracle == 'gt':
+                print "Oracle prediction - using the grount truth"
+                voxlet_prediction = gt_voxlet.V.flatten()
+
+            elif oracle == 'pca':
+                print "Oracle prediction - using the PCA"
+                temp = self.model.pca.transform(gt_voxlet.V.flatten())
+                voxlet_prediction = self.model.pca.inverse_transform(temp)
+
+            elif oracle == 'nn':
+                print "Oracle prediction - using the NN"
+                voxlet_prediction = closest_training_Y
+
+            # adding the shoebox into the result
+            transformed_voxlet = self._initialise_voxlet(idx)
+            transformed_voxlet.V = voxlet_prediction.reshape(
+                parameters.Voxlet.shape)
+            self.accum.add_voxlet(transformed_voxlet)
 
             if 'blender' in render_type and render_savepath:
 
@@ -508,9 +538,6 @@ class Reconstructer(object):
                 savepath = render_savepath + '/compiled_%03d.png' % count
                 plt.savefig(savepath)
 
-            sys.stdout.write('.')
-            sys.stdout.flush()
-
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
         to_use_prediction = np.isnan(keeping_existing.V)
@@ -521,6 +548,7 @@ class Reconstructer(object):
         self.keeping_existing = keeping_existing
 
         return self.accum.compute_average()
+
 
     def _feature_collapse(self, X):
         """Applied to the feature shoeboxes after extraction"""
