@@ -32,7 +32,7 @@ class RenderData(object):
     else:
         scenes_to_render = 100
         train_test_max_scenes = 100
-        sequences_per_scene = 20
+        sequences_per_scene = 10
 
     # train test split parameters
     frames_per_sequence = 5
@@ -47,9 +47,9 @@ class Voxlet(object):
     # NOTE BE VERY CAREFUL IF EDITING THESE
     tall_voxlets = True
 
-    one_side_bins = 10
+    one_side_bins = 20
     shape = (one_side_bins, 2*one_side_bins, 2*one_side_bins)
-    size = 0.035  # edge size of a single voxel
+    size = 0.0175  # edge size of a single voxel
     # centre is relative to the ijk origin at the bottom corner of the voxlet
     # z height of centre takes into account the origin offset
     actual_size = np.array(shape) * size
@@ -86,19 +86,20 @@ class VoxletTraining(object):
     parameters for the training stage of the voxlet algorithm
     (Although the forest paramters are elsewhere currently)
     '''
+    use_implicit = False  # should we use the implicit predictions as a feature?
 
     # PCA and kmeans
     pca_number_points_from_each_image = 100
     number_pca_dims = 60
     number_clusters = 250
-    pca_subsample_length = 25000  # max number of examples to use for pca
+    pca_subsample_length = 50000  # max number of examples to use for pca
 
     # actual voxlet extraction
     if small_sample:
-        number_points_from_each_image = 400
+        number_points_from_each_image = 250
         forest_subsample_length = 25000  # max num examples to use to train forest
     else:
-        number_points_from_each_image = 400
+        number_points_from_each_image = 500
         forest_subsample_length = 500000  # max num examples to use to train forest
 
     decimation_rate = 2

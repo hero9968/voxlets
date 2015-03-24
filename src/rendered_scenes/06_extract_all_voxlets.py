@@ -47,11 +47,12 @@ def process_sequence(sequence):
     logging.info("Processing " + sequence['name'])
 
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False, load_implicit=True)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, 
+        save_grids=False, load_implicit=parameters.VoxletTraining.use_implicit)
     sc.santity_render(save_folder='/tmp/')
 
     idxs = sc.im.random_sample_from_mask(
-        parameters.VoxletTraining.pca_number_points_from_each_image)
+        parameters.VoxletTraining.number_points_from_each_image)
 
     logging.debug("Extracting shoeboxes and features...")
     t1 = time()
