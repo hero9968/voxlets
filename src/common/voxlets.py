@@ -20,9 +20,9 @@ import subprocess as sp
 from sklearn.neighbors import NearestNeighbors
 import mesh
 
-# import matplotlib
+#import matplotlib
 # matplotlib.use('Agg')
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
@@ -533,6 +533,64 @@ class Reconstructer(object):
             X_sub = X[::rate, ::rate, ::rate]
             return X_sub.flatten()
 
+    def plot_voxlet_top_view(self, savepath=None):
+        '''
+        plot the voxlets from the top
+        '''
+
+        plt.subplot(121)
+        plt.imshow(self.sc.im.rgb)
+        plt.axis('off')
+        plt.subplot(122)
+
+        top_view = np.sum(self.sc.gt_tsdf.V, axis=2)
+        plt.imshow(top_view, cmap=plt.get_cmap('Greys'))
+
+        # getting the world space coords
+        world_xyz = self.sc.im.get_world_xyz()
+        world_norms = self.sc.im.get_world_normals()
+
+        for index in self.sampled_idxs:
+            # convert to linear idx
+            point_idx = index[0] * self.sc.im.mask.shape[1] + index[1]
+
+            temp = self.sc.gt_tsdf.world_to_idx(
+                world_xyz[point_idx, None])[0][:2]
+            t_norm = world_norms[point_idx, :2]
+            t_norm /= np.linalg.norm(t_norm)
+            self._plot_voxlet(temp, t_norm)
+
+        plt.axis('off')
+        if savepath:
+            plt.savefig(savepath)
+
+    def _get_voxlet_corners(self):
+
+        v_size = parameters.Voxlet.size * np.array(parameters.Voxlet.shape)
+        cen = parameters.Voxlet.centre
+
+        c1 = [-cen[0], cen[1]]
+        c2 = [cen[0], cen[1]]
+        c3 = [cen[0], cen[1] - v_size[1]]
+        c4 = [-cen[0], cen[1] - v_size[1]]
+
+        corners = np.array((c2, c1, c4, c3, c2)) / \
+            parameters.RenderedVoxelGrid.voxel_size
+        return corners[:, ::-1]
+
+    def _plot_voxlet(self, point, normal):
+        plt.plot(point[1], point[0], 'or')
+        scaling = 20.0
+        end_point = point + scaling * normal
+        plt.plot([point[1], end_point[1]], [point[0], end_point[0]], 'r', lw=3)
+
+        corners = self._get_voxlet_corners()
+
+        norm2 = np.array([-normal[1], normal[0]])
+        R = np.vstack((normal, norm2)).T
+
+        t_corners = np.dot(R, corners.T).T + point
+        plt.plot(t_corners[:, 1], t_corners[:, 0], '-g')
 
 
 class VoxelGridCollection(object):
