@@ -22,5 +22,7 @@ temp.*
 /src/2D/src/scratch/
 /src/matlab/toolbox/
 /media/report/cvpr2015AuthorKit/
+/media/report/build/writeup.pdf
+/media/report/diff.tex
 /src/preprocess/voxelisation/voxelcvml
 /src/intrinsic/features/line_casting_cython.c

@@ -24,6 +24,27 @@ class Mesh(object):
         f.close()
         self.vertices, self.faces = self._extract_plydata(plydata)
 
+    def load_from_obj(self, filename):
+        '''
+        loads faces and vertices from a ply file
+        '''
+        with open(filename, 'r') as f:
+            for l in f:
+                split_line = l.strip().split(' ')
+                if split_line[0] == '#':
+                    continue
+                elif split_line[0] == 'f':
+                    self.faces.append([int(split_line[1]) - 1,
+                                       int(split_line[2]) - 1,
+                                       int(split_line[3]) - 1])
+                elif split_line[0] == 'v':
+                    self.vertices.append([float(split_line[1]),
+                                          float(split_line[2]),
+                                          float(split_line[3])])
+
+        self.faces = np.array(self.faces)
+        self.vertices = np.array(self.vertices)
+
     def write_to_obj(self, filename, labels=None):
 
         with open(filename, 'w') as f:
