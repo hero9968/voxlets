@@ -9,7 +9,7 @@ from copy import deepcopy
 import yaml
 import os
 import time
-
+import sys
 import paths
 import mesh
 import features
@@ -47,22 +47,24 @@ class RGBDImage(object):
     def load_depth_from_pgm(self, pgm_path):
         ''' the kinfu routine hack i made does pgm like this'''
         self._clear_cache
-        # reading header
-        f = open(pgm_path, 'r')
-        assert(f.readline().strip() == "P2")
-        sizes = f.readline().split()
-        height = int(sizes[1])
-        width = int(sizes[0])
-        max_depth = f.readline()
 
-        # pre-allocating
-        self.depth = np.zeros((height, width))
-        for row_idx, row in enumerate(f):
-            for col_idx, col in enumerate(row.strip().split(" ")):
-                self.depth[row_idx, col_idx] = float(col)
+        with open(pgm_path, 'r') as f:
+            if f.readline().strip() == 'P5':
+                height, width = f.readline().strip().split(' ')
+                f.readline()
+                self.depth = np.fromfile(f, dtype=('>u2'))
+                self.depth = self.depth.reshape(int(width), int(height))
 
-        self.depth[self.depth == 0] = np.nan
-        f.close()
+            elif f.readline().strip() == 'P2':
+                sizes = f.readline().split().split(' ')
+                height = int(sizes[1])
+                width = int(sizes[0])
+                max_depth = f.readline()
+
+                self.depth = np.fromfile(f, sep=' ')
+
+            self.depth[self.depth == 0] = np.nan
+
 
     def load_kinect_defaults(self):
         '''
@@ -207,14 +209,20 @@ class RGBDImage(object):
         '''
         im = cls()
         depth_image_path = os.path.join(scene_folder, dictionary['image'])
-        im.load_depth_from_img(depth_image_path)
+        if depth_image_path.endswith('pgm'):
+            im.load_depth_from_pgm(depth_image_path)
+        else:
+            im.load_depth_from_img(depth_image_path)
 
         # scaling im depth - unsure where I should put this!!
         im.depth = im.depth.astype(float)
         im.depth *= dictionary['depth_scaling']
         im.depth /= 2**16
 
-        rgb_image_path = os.path.join(scene_folder, dictionary['image'].replace('/', '/colour_'))
+        if 'rgb' in dictionary:
+            rgb_image_path = os.path.join(scene_folder, dictionary['rgb'])
+        else:
+            rgb_image_path = os.path.join(scene_folder, dictionary['image'].replace('/', '/colour_'))
         im.load_rgb_from_img(rgb_image_path)
 
         # setting the camera intrinsics and extrinsics
@@ -228,7 +236,11 @@ class RGBDImage(object):
 
         mask_image_path = \
             scene_folder + '/images/mask_%s.png' % dictionary['id']
-        im.mask = scipy.misc.imread(mask_image_path) == 255
+        if os.path.exists(mask_image_path):
+            im.mask = scipy.misc.imread(mask_image_path) == 255
+        else:
+            sys.stdout.write("Cannot find mask...")
+            sys.stdout.flush()
 
         # setting the frame id
         im.frame_id = dictionary['id']
@@ -300,7 +312,7 @@ class RGBDVideo():
         '''
         self.reset()
         with open(yamlpath, 'r') as fid:
-            frame_data = yaml.load(fid)
+            frame_data = yaml.load(fid, Loader=yaml.CLoader)
 
         if frames is not None:
             frame_data = [frame_data[frame] for frame in frames]
