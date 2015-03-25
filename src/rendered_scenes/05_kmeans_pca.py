@@ -39,7 +39,7 @@ def do_isomap(X_in, local_subsample_length, num_isomap_dimensions):
     X = X_in.take(rand_exs, 0)
 
     iso = Isomap(n_components=num_isomap_dimensions, n_neighbors=25)
-    iso.fit(X)
+    iso.fit(X.astype(np.float16))
     return iso
 
 
@@ -88,6 +88,8 @@ np_all_sboxes = np.concatenate(shoeboxes, axis=0)
 np_all_features = np.concatenate(features, axis=0)
 print "All sboxes shape is " + str(np_all_sboxes.shape)
 print "Features shape is " + str(np_all_features.shape)
+print np_all_features.dtype
+print np_all_sboxes.dtype
 
 # Replacing nans with a low number in the features, hopefully will work...
 np_all_features[np.isnan(np_all_features)] = -parameters.RenderedVoxelGrid.mu
@@ -102,11 +104,14 @@ for name, np_array in zip(
         parameters.VoxletTraining.pca_subsample_length,
         parameters.VoxletTraining.number_pca_dims)
 
-    print "Doing Isomapping"
-    iso = do_isomap(
-        np_array,
-        parameters.VoxletTraining.pca_subsample_length,
-        parameters.VoxletTraining.number_pca_dims)
+    if name == 'features':
+        # No point doing isomap for the shoeboxes
+        print "Doing Isomapping"
+
+        iso = do_isomap(
+            np_array,
+            parameters.VoxletTraining.pca_subsample_length / 10,
+            parameters.VoxletTraining.number_pca_dims)
 
     print "Doing Kmeans"
     km = cluster_data(
@@ -130,9 +135,10 @@ for name, np_array in zip(
         with open(kmeans_savepath, 'wb') as f:
             pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
 
-        print "Saving to " + iso_savepath
-        with open(iso_savepath, 'wb') as f:
-            pickle.dump(iso, f, pickle.HIGHEST_PROTOCOL)
+        if name == 'features':
+            print "Saving to " + iso_savepath
+            with open(iso_savepath, 'wb') as f:
+                pickle.dump(iso, f, pickle.HIGHEST_PROTOCOL)
 
     except:
         import pdb; pdb.set_trace()

@@ -335,9 +335,6 @@ class Reconstructer(object):
         sampled_xy /= sample_grid_size
         sampled_xy = np.round(sampled_xy).astype(int)
 
-        print sampled_xy.shape
-        print sampled_idxs.shape
-
         sample_dict = {}
         for idx, row in zip(sampled_idxs, sampled_xy):
             if (row[0], row[1]) in sample_dict:
@@ -469,16 +466,13 @@ class Reconstructer(object):
 
             "Replace the prediction - if an oracle has been specified!"
             if oracle == 'gt':
-                print "Oracle prediction - using the grount truth"
                 voxlet_prediction = gt_voxlet.V.flatten()
 
             elif oracle == 'pca':
-                print "Oracle prediction - using the PCA"
                 temp = self.model.pca.transform(gt_voxlet.V.flatten())
                 voxlet_prediction = self.model.pca.inverse_transform(temp)
 
             elif oracle == 'nn':
-                print "Oracle prediction - using the NN"
                 voxlet_prediction = closest_training_Y
 
             # adding the shoebox into the result
@@ -604,7 +598,7 @@ class Reconstructer(object):
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
         to_use_prediction = np.isnan(keeping_existing.V)
-        print "There are %d nans in the input tsdf" % to_use_prediction.sum()
+       
         keeping_existing.V[to_use_prediction] = \
             self.accum.compute_average().V[to_use_prediction]
 
