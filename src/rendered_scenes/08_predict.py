@@ -22,12 +22,13 @@ from common import scene
 import sklearn.metrics
 
 # loading model
-with open(paths.RenderedData.voxlets_path + '/models_implicit/oma.pkl', 'rb') as f:
-    model_with_implicit = pickle.load(f)
+# with open(paths.RenderedData.voxlets_path + '/models_implicit/oma.pkl', 'rb') as f:
+#     model_with_implicit = pickle.load(f)
 
+print "Loading model..."
 with open(paths.RenderedData.voxlets_path + '/models/oma.pkl', 'rb') as f:
     model_without_implicit = pickle.load(f)
-
+print "Done loading model..."
 
 
 # for count, tree in enumerate(model.forest.trees):
@@ -73,29 +74,37 @@ def process_sequence(sequence):
     #     render_savepath='/tmp/renders/', use_implicit=True)
     # pred_voxlets_implicit_exisiting = rec.keeping_existing
 
+
+    if False:
+        print "-> Rendering"
+        gen_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
+            (test_type, sequence['name'], '%s')
+        rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
+        print gen_renderpath % 'top_view'
+        quit()
+
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
-        render_savepath='/tmp/renders/', use_implicit=False)
+        render_savepath='/tmp/renders/', use_implicit=False, add_ground_plane=True)
     pred_voxlets_exisiting = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     oracle_voxlets = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
-        render_savepath='/tmp/renders/', use_implicit=False, oracle='pca')
+        render_savepath='/tmp/renders/', use_implicit=False, oracle='pca', 
+        add_ground_plane=True)
     oracle_voxlets_existing = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     nn_oracle_voxlets = rec.fill_in_output_grid_oma( render_type=[],
-        render_savepath='/tmp/renders/', use_implicit=False, oracle='nn')
+        render_savepath='/tmp/renders/', use_implicit=False, oracle='nn',
+        add_ground_plane=True)
     nn_oracle_voxlets_existing = rec.keeping_existing
 
-    # Hack to put in a floor
-    # pred_voxlets_implicit_exisiting.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
-    pred_voxlets_exisiting.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
-    pred_voxlets.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
-    # pred_voxlets_implicit.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
-    oracle_voxlets.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
-    nn_oracle_voxlets.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    greedy_oracle_voxlets = rec.fill_in_output_grid_oma(
+        render_type=[], oracle='greedy_add', add_ground_plane=True)
+    greedy_oracle_voxlets_existing = rec.keeping_existing
 
     print "-> Creating folder"
     fpath = paths.RenderedData.voxlet_prediction_folderpath % \
@@ -114,14 +123,15 @@ def process_sequence(sequence):
     print "-> Rendering"
     gen_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
         (test_type, sequence['name'], '%s')
-
     
     # pred_voxlets_implicit_exisiting.render_view(gen_renderpath % 'pred_voxlets_implicit_exisiting')
     # pred_voxlets_implicit.render_view(gen_renderpath % 'pred_voxlets_implicit')
     oracle_voxlets.render_view(gen_renderpath % 'oracle_voxlets')
     nn_oracle_voxlets.render_view(gen_renderpath % 'nn_oracle_voxlets')
-    pred_voxlets_exisiting.render_view(gen_renderpath % 'pred_voxlets_exisiting')
+    # pred_voxlets_exisiting.render_view(gen_renderpath % 'pred_voxlets_exisiting')
     pred_voxlets.render_view(gen_renderpath % 'pred_voxlets')
+    # greedy_oracle_voxlets_exisiting.render_view(gen_renderpath % 'pred_voxlets_exisiting')
+    greedy_oracle_voxlets.render_view(gen_renderpath % 'greedy_oracle_voxlets')
     sc.implicit_tsdf.render_view(gen_renderpath % 'implicit')
     sc.im_tsdf.render_view(gen_renderpath % 'visible')
     sc.gt_tsdf.render_view(gen_renderpath % 'gt')
@@ -133,9 +143,10 @@ def process_sequence(sequence):
         ['Visible surfaces', 'visible', sc.im_tsdf],
         ['Oracle using PCA', 'oracle_voxlets', oracle_voxlets],
         ['Oracle using NN', 'nn_oracle_voxlets', nn_oracle_voxlets],
+        ['Oracle using Greedy', 'greedy_oracle_voxlets', greedy_oracle_voxlets],
         ['Implicit prediction', 'implicit', sc.implicit_tsdf],
-        ['Voxlets', 'pred_voxlets', pred_voxlets],
-        ['Voxlets + visible', 'pred_voxlets_exisiting', pred_voxlets_exisiting]]
+        ['Voxlets', 'pred_voxlets', pred_voxlets]]
+        # ['Voxlets + visible', 'pred_voxlets_exisiting', pred_voxlets_exisiting]]
         # ['Voxlets + visible, using implicit', 'pred_voxlets_implicit_exisiting', pred_voxlets_implicit_exisiting]]
         # ['Voxlets using implicit', 'pred_voxlets_implicit', pred_voxlets_implicit],
 
@@ -195,10 +206,9 @@ def process_sequence(sequence):
     fname = 'all_' + sequence['name']
     plt.savefig(gen_renderpath.replace('png', 'pdf') % fname, dpi=400)
 
-    print "-> Done test type " + test_type
+    rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
 
     print "Done sequence %s" % sequence['name']
-
 
 # need to import these *after* the pool helper has been defined
 if False:  # parameters.multicore:

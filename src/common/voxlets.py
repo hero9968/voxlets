@@ -19,6 +19,7 @@ from skimage import measure
 import subprocess as sp
 from sklearn.neighbors import NearestNeighbors
 import mesh
+import sklearn.metrics
 
 #import matplotlib
 # matplotlib.use('Agg')
@@ -310,7 +311,7 @@ class Reconstructer(object):
     def set_model(self, model):
         self.model = model
 
-        self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_X)
+        self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_Y)
 
     def set_scene(self, sc_in):
         self.sc = sc_in
@@ -370,7 +371,7 @@ class Reconstructer(object):
         self.gt_grid = gt_grid
 
     def fill_in_output_grid_oma(self, render_type, render_savepath=None, 
-            use_implicit=False, oracle=None):
+            use_implicit=False, oracle=None, add_ground_plane=False):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -428,7 +429,7 @@ class Reconstructer(object):
             gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
 
             # getting the closest match in the training data...
-            ans, indices = self.nbrs.kneighbors(feature_vector)
+            ans, indices = self.nbrs.kneighbors(self.model.pca.transform(gt_voxlet.V.flatten()))
             closest_training_X = self.model.training_X[indices[0], :]
             closest_training_Y = self.model.pca.inverse_transform(
                 self.model.training_Y[indices[0], :])
@@ -451,7 +452,36 @@ class Reconstructer(object):
             transformed_voxlet = self._initialise_voxlet(idx)
             transformed_voxlet.V = voxlet_prediction.reshape(
                 parameters.Voxlet.shape)
-            self.accum.add_voxlet(transformed_voxlet)
+
+            if oracle == 'greedy_add':
+                acc_copy = self.accum.copy()
+                acc_copy.add_voxlet(transformed_voxlet)
+
+                to_evaluate_on = np.logical_or(
+                    self.sc.im_tsdf.V < 0, np.isnan(self.sc.im_tsdf.V))
+
+                # now compare the two scores...
+                gt_binary = self.sc.gt_tsdf.V[to_evaluate_on] > 0
+                gt_binary[np.isnan(gt_binary)] = -parameters.RenderedVoxelGrid.mu
+                
+                pred_new = acc_copy.compute_average().V[to_evaluate_on]
+                pred_new[np.isnan(pred_new)] = +parameters.RenderedVoxelGrid.mu
+
+                new_auc = sklearn.metrics.roc_auc_score(gt_binary, pred_new)
+
+                pred_old = self.accum.compute_average().V[to_evaluate_on]
+                pred_old[np.isnan(pred_old)] = +parameters.RenderedVoxelGrid.mu
+
+                old_auc = sklearn.metrics.roc_auc_score(gt_binary, pred_old)
+
+                if new_auc > old_auc:
+                    self.accum = acc_copy
+                    print "Accepting! Increase of %f" % (new_auc - old_auc)
+                else:
+                    print "Rejecting! Would have decresed by %f" % (old_auc - new_auc)
+            else:
+                # Standard method - adding voxlet in regardless
+                self.accum.add_voxlet(transformed_voxlet)
 
             if 'blender' in render_type and render_savepath:
 
@@ -547,7 +577,17 @@ class Reconstructer(object):
 
         self.keeping_existing = keeping_existing
 
-        return self.accum.compute_average()
+        if add_ground_plane:
+            # Adding in the ground plane
+            temp = self.accum.compute_average()
+            self.keeping_existing.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
+            self.keeping_existing.V[:, :, 4] = parameters.RenderedVoxelGrid.mu
+            temp.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
+            temp.V[:, :, 4] = parameters.RenderedVoxelGrid.mu
+
+            return temp
+        else:
+            return self.accum.compute_average()
 
 
     def _feature_collapse(self, X):
