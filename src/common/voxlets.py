@@ -320,7 +320,40 @@ class Reconstructer(object):
         '''
         sampling points from the test image
         '''
-        self.sampled_idxs = self.sc.im.random_sample_from_mask(num_to_sample)
+        sample_grid_size = parameters.VoxletPrediction.sampling_grid_size
+
+        # Over-sample the points to begin with
+        sampled_idxs = \
+            self.sc.im.random_sample_from_mask(4*num_to_sample)
+        linear_idxs = sampled_idxs[:, 0] * self.sc.im.mask.shape[1] + \
+            sampled_idxs[:, 1]
+
+        # Now I want to choose points according to the x-y grid
+        # First, discretise the location of each point
+        xyz = self.sc.im.get_world_xyz()
+        sampled_xy = xyz[linear_idxs, :2]
+        sampled_xy /= sample_grid_size
+        sampled_xy = np.round(sampled_xy).astype(int)
+
+        print sampled_xy.shape
+        print sampled_idxs.shape
+
+        sample_dict = {}
+        for idx, row in zip(sampled_idxs, sampled_xy):
+            if (row[0], row[1]) in sample_dict:
+                sample_dict[(row[0], row[1])].append(idx)
+            else:
+                sample_dict[(row[0], row[1])] = [idx]
+
+        sampled_points = []
+        while len(sampled_points) < num_to_sample:
+
+            for key, value in sample_dict.iteritems():
+                # add the top item to the sampled points
+                if len(value) > 0:
+                    sampled_points.append(value.pop())
+
+        self.sampled_idxs = np.array(sampled_points)
 
     def _initialise_voxlet(self, index):
         '''
@@ -605,13 +638,20 @@ class Reconstructer(object):
         '''
         plot the voxlets from the top
         '''
+        fig = plt.figure(figsize=(25, 10), dpi=1000)
+        plt.subplots(1, 3)
+        plt.subplots_adjust(left=0, bottom=0, right=0.99, top=0.99, wspace=0, hspace=0)
 
-        plt.subplot(121)
+        plt.subplot(131)
         plt.imshow(self.sc.im.rgb)
         plt.axis('off')
-        plt.subplot(122)
+        plt.subplot(132)
 
         top_view = np.sum(self.sc.gt_tsdf.V, axis=2)
+        plt.imshow(top_view, cmap=plt.get_cmap('Greys'))
+        plt.axis('off')
+
+        plt.subplot(133)
         plt.imshow(top_view, cmap=plt.get_cmap('Greys'))
 
         # getting the world space coords
@@ -629,8 +669,12 @@ class Reconstructer(object):
             self._plot_voxlet(temp, t_norm)
 
         plt.axis('off')
+
+        plt.subplot(132).set_xlim(plt.subplot(133).get_xlim())
+        plt.subplot(132).set_ylim(plt.subplot(133).get_ylim())
+
         if savepath:
-            plt.savefig(savepath)
+            plt.savefig(savepath.replace('png', 'pdf'), dpi=400)
 
     def _get_voxlet_corners(self):
 
@@ -647,10 +691,10 @@ class Reconstructer(object):
         return corners[:, ::-1]
 
     def _plot_voxlet(self, point, normal):
-        plt.plot(point[1], point[0], 'or')
+        plt.plot(point[1], point[0], 'or', ms=2)
         scaling = 20.0
         end_point = point + scaling * normal
-        plt.plot([point[1], end_point[1]], [point[0], end_point[0]], 'r', lw=3)
+        plt.plot([point[1], end_point[1]], [point[0], end_point[0]], 'r', lw=1)
 
         corners = self._get_voxlet_corners()
 
@@ -658,7 +702,7 @@ class Reconstructer(object):
         R = np.vstack((normal, norm2)).T
 
         t_corners = np.dot(R, corners.T).T + point
-        plt.plot(t_corners[:, 1], t_corners[:, 0], '-g')
+        plt.plot(t_corners[:, 1], t_corners[:, 0], '-g', lw=1)
 
 
 class VoxelGridCollection(object):

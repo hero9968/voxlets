@@ -111,6 +111,8 @@ class VoxletPrediction(object):
     parameters for prediction stage of voxlet algorithm
     '''
     if small_sample:
-        number_samples = 400  # number of points to sample from image
+        number_samples = 100  # number of points to sample from image
     else:
-        number_samples = 500
+        number_samples = 100
+
+    sampling_grid_size = 0.1
