@@ -74,7 +74,7 @@ def process_sequence(sequence):
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True)
+        render_type=[], add_ground_plane=True, combine_segments_separately=True)
     pred_voxlets_exisiting = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
@@ -113,8 +113,8 @@ def process_sequence(sequence):
         scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
 
     combines = [
-        ['Ground truth', 'gt', sc.gt_tsdf],
         ['Input image', 'input'],
+        ['Ground truth', 'gt', sc.gt_tsdf],
         ['Visible surfaces', 'visible', sc.im_tsdf],
         ['Full oracle (OR1)', 'full_oracle_voxlets', full_oracle_voxlets],
         ['Oracle using PCA (OR2)', 'oracle_voxlets', oracle_voxlets],
@@ -202,7 +202,7 @@ def process_sequence(sequence):
                 {'auc':test_auc, 'description':test_desc}
         with open(fpath + 'scores.yaml', 'w') as f:
             f.write(yaml.dump(results_dict, default_flow_style=False))
-    quit()
+
 
     print "Done sequence %s" % sequence['name']
 
@@ -221,7 +221,7 @@ if __name__ == '__main__':
     # temp = [s for s in paths.RenderedData.test_sequence() if s['name'] == 'd2p8ae7t0xi81q3y_SEQ']
     # print temp
     tic = time()
-    mapper(process_sequence, paths.RenderedData.test_sequence())
+    mapper(process_sequence, paths.RenderedData.test_sequence()[1:])
     print "In total took %f s" % (time() - tic)
 
 

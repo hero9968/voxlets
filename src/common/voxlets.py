@@ -400,15 +400,29 @@ class Reconstructer(object):
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
 
-    def fill_in_output_grid_oma(self, render_type, render_savepath=None, 
-            use_implicit=False, oracle=None, add_ground_plane=False):
+    def fill_in_output_grid_oma(self, render_type, render_savepath=None,
+            use_implicit=False, oracle=None, add_ground_plane=False,
+            combine_segments_separately=False, accum_only_predict_true=False):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
         could make it so that the points and the normals are extracted directly
         from the tsdf
-        'oracle' is an optional argument which uses an oracle to choose the voxlets
-        Choices of oracle should perhaps be in ['pca', 'ground_truth', 'nn' etc...]
+
+        oracle
+            an optional argument which uses an oracle to choose the voxlets
+            Choices of oracle should perhaps be in ['pca', 'ground_truth', 'nn' etc...]
+
+        combine_segments_separately
+            if true, then each segment in the image
+            has a separate accumulation grid. These are then 'or'ed together
+            (or similar) at the very end...
+
+        accum_only_predict_true --- NOT DONE YET!
+            if true, the accumulator(s) will combine
+            each prediction by only averaging in the regions predicted to be
+            full. If false, the entire voxlet region will be added in, just
+            like the CVPR submission.
         '''
 
         # saving
@@ -417,6 +431,14 @@ class Reconstructer(object):
 
         with open('/tmp/im.pkl', 'wb') as f:
             pickle.dump(self.sc.im, f)
+
+        if combine_segments_separately:
+            # Create a separate accumulator for each segment in the image...
+            self.segement_accums = {}
+            labels = np.unique(self.sc.visible_im_label[~np.isnan(self.sc.visible_im_label)])
+            for label in labels:
+                self.segement_accums[label] = self.accum.copy()
+            self.accum = None
 
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
@@ -432,7 +454,8 @@ class Reconstructer(object):
             # extract features from the tsdf volume
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(this_idx_grid)
-            features_voxlet.V[np.isnan(features_voxlet.V)] = -parameters.RenderedVoxelGrid.mu
+            features_voxlet.V[np.isnan(features_voxlet.V)] = \
+                -parameters.RenderedVoxelGrid.mu
             self.cached_feature_voxlet = features_voxlet.V
 
             if use_implicit:
@@ -441,7 +464,7 @@ class Reconstructer(object):
                 self.cached_implicit_voxlet = implicit_voxlet.V
 
                 combined_feature = np.concatenate(
-                    (features_voxlet.V.flatten(), 
+                    (features_voxlet.V.flatten(),
                      implicit_voxlet.V.flatten()), axis=1)
 
             else:
@@ -481,7 +504,10 @@ class Reconstructer(object):
                 parameters.Voxlet.shape)
 
             if oracle == 'greedy_add':
-                acc_copy = self.accum.copy()
+                if combine_segments_separately:
+                    acc_copy = self.segement_accums[this_point_label]
+                else:
+                    acc_copy = self.accum.copy()
                 acc_copy.add_voxlet(transformed_voxlet)
 
                 to_evaluate_on = np.logical_or(
@@ -490,7 +516,7 @@ class Reconstructer(object):
                 # now compare the two scores...
                 gt_binary = self.sc.gt_tsdf.V[to_evaluate_on] > 0
                 gt_binary[np.isnan(gt_binary)] = -parameters.RenderedVoxelGrid.mu
-                
+
                 pred_new = acc_copy.compute_average().V[to_evaluate_on]
                 pred_new[np.isnan(pred_new)] = +parameters.RenderedVoxelGrid.mu
 
@@ -502,13 +528,19 @@ class Reconstructer(object):
                 old_auc = sklearn.metrics.roc_auc_score(gt_binary, pred_old)
 
                 if new_auc > old_auc:
-                    self.accum = acc_copy
+                    if combine_segments_separately:
+                        self.segement_accums[this_point_label] = acc_copy
+                    else:
+                        self.accum = acc_copy
                     print "Accepting! Increase of %f" % (new_auc - old_auc)
                 else:
                     print "Rejecting! Would have decresed by %f" % (old_auc - new_auc)
             else:
                 # Standard method - adding voxlet in regardless
-                self.accum.add_voxlet(transformed_voxlet)
+                if combine_segments_separately:
+                    self.segement_accums[this_point_label].add_voxlet(transformed_voxlet)
+                else:
+                    self.accum.add_voxlet(transformed_voxlet)
 
             if 'blender' in render_type and render_savepath:
 
@@ -595,26 +627,36 @@ class Reconstructer(object):
                 savepath = render_savepath + '/compiled_%03d.png' % count
                 plt.savefig(savepath)
 
+        if combine_segments_separately:
+            with open('/tmp/separate.pkl', 'w') as f:
+                pickle.dump(self.segement_accums, f, protocol=pickle.HIGHEST_PROTOCOL)
+            average = self.sc.gt_tsdf.blank_copy()
+            average.V += parameters.RenderedVoxelGrid.mu
+            for _, accum in self.segement_accums.iteritems():
+                temp_average = accum.compute_average()
+                print "This sum is ", temp_average.V.sum()
+                to_use = temp_average.V < 0
+                print "To use sum is ", to_use.sum()
+                average.V[to_use] = temp_average.V[to_use]
+        else:
+            average = self.accum.compute_average()
+
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
         to_use_prediction = np.isnan(keeping_existing.V)
-       
-        keeping_existing.V[to_use_prediction] = \
-            self.accum.compute_average().V[to_use_prediction]
-
         self.keeping_existing = keeping_existing
+        keeping_existing.V[to_use_prediction] = \
+            average.V[to_use_prediction]
 
         if add_ground_plane:
             # Adding in the ground plane
-            temp = self.accum.compute_average()
             self.keeping_existing.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
             self.keeping_existing.V[:, :, 4] = parameters.RenderedVoxelGrid.mu
-            temp.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
-            temp.V[:, :, 4] = parameters.RenderedVoxelGrid.mu
+            average.V[:, :, :4] = -parameters.RenderedVoxelGrid.mu
+            average.V[:, :, 4] = parameters.RenderedVoxelGrid.mu
 
-            return temp
-        else:
-            return self.accum.compute_average()
+        return average
+
 
 
     def _feature_collapse(self, X):
