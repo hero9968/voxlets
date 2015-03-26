@@ -125,7 +125,11 @@ def process_sequence(sequence):
             pickle.dump(combines, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     print "-> Computing the score for each prediction"
-    voxels_to_evaluate = np.logical_or(sc.im_tsdf.V < 0, np.isnan(sc.im_tsdf.V))
+    temp = np.logical_or(sc.im_tsdf.V < 0, np.isnan(sc.im_tsdf.V))
+    voxels_to_evaluate = np.logical_and(temp, sc.get_visible_frustrum().reshape(temp.shape))
+    floor_t = sc.gt_tsdf.blank_copy()
+    floor_t.V[:, :, :4] = 1
+    voxels_to_evaluate = np.logical_and(floor_t.V == 0, voxels_to_evaluate)
     gt = sc.gt_tsdf.V[voxels_to_evaluate] > 0
     gt[np.isnan(gt)] = -parameters.RenderedVoxelGrid.mu
 

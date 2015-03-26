@@ -200,7 +200,7 @@ class Scene(object):
             this_point_label = self.gt_im_label[index[0], index[1]]
             temp_vgrid = self.gt_tsdf_separate[this_point_label]
             shoebox.fill_from_grid(temp_vgrid)
-            
+
         elif extract_from == 'visible_tsdf':
 
             this_point_label = self.visible_im_label[index[0], index[1]]
@@ -234,6 +234,17 @@ class Scene(object):
 
     def set_im(self, im):
         self.im = im
+
+    def get_visible_frustrum(self):
+        '''
+        returns a boolean voxel grid with ones where the voxel is in the
+        frustrum of any of the cameras, and zeros otherwise...
+        Warning - just doing for a single image, not for a video!
+        '''
+        carver = carving.VoxelAccumulator()
+        carver.set_voxel_grid(self.gt_tsdf.blank_copy())
+        inside, _, _ = carver.project_voxels(self.im)
+        return inside
 
     def santity_render(self, save_folder):
         '''
