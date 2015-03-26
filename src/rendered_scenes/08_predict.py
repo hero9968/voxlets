@@ -30,10 +30,10 @@ print "Done loading model..."
 
 test_types = ['oma_implicit']
 
-combine_renders = False
-render_predictions = False
+combine_renders = True
+render_predictions = True
 render_top_view = False
-save_prediction_grids = False
+save_prediction_grids = True
 save_scores_to_yaml = True
 
 
@@ -44,7 +44,7 @@ print "MAIN LOOP"
 def process_sequence(sequence):
 
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, 
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, load_implicit=True)
     sc.santity_render(save_folder='/tmp/')
 
@@ -78,6 +78,11 @@ def process_sequence(sequence):
     pred_voxlets_exisiting = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    full_oracle_voxlets = rec.fill_in_output_grid_oma(
+        render_type=[],oracle='gt', add_ground_plane=True)
+    full_oracle_voxlets_existing = rec.keeping_existing
+
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     oracle_voxlets = rec.fill_in_output_grid_oma(
         render_type=[],oracle='pca', add_ground_plane=True)
     oracle_voxlets_existing = rec.keeping_existing
@@ -95,34 +100,31 @@ def process_sequence(sequence):
     if render_predictions:
         print "-> Rendering"
 
+        full_oracle_voxlets.render_view(gen_renderpath % 'full_oracle_voxlets')
         oracle_voxlets.render_view(gen_renderpath % 'oracle_voxlets')
         nn_oracle_voxlets.render_view(gen_renderpath % 'nn_oracle_voxlets')
+        greedy_oracle_voxlets.render_view(gen_renderpath % 'greedy_oracle_voxlets')
         # pred_voxlets_exisiting.render_view(gen_renderpath % 'pred_voxlets_exisiting')
         pred_voxlets.render_view(gen_renderpath % 'pred_voxlets')
         # greedy_oracle_voxlets_exisiting.render_view(gen_renderpath % 'pred_voxlets_exisiting')
-        greedy_oracle_voxlets.render_view(gen_renderpath % 'greedy_oracle_voxlets')
         sc.implicit_tsdf.render_view(gen_renderpath % 'implicit')
         sc.im_tsdf.render_view(gen_renderpath % 'visible')
         sc.gt_tsdf.render_view(gen_renderpath % 'gt')
         scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
 
     combines = [
-        ['Ground truth', 'gt'],
+        ['Ground truth', 'gt', sc.gt_tsdf],
         ['Input image', 'input'],
         ['Visible surfaces', 'visible', sc.im_tsdf],
-        ['Oracle using PCA', 'oracle_voxlets', oracle_voxlets],
-        ['Oracle using NN', 'nn_oracle_voxlets', nn_oracle_voxlets],
-        ['Oracle using Greedy', 'greedy_oracle_voxlets', greedy_oracle_voxlets],
+        ['Full oracle (OR1)', 'full_oracle_voxlets', full_oracle_voxlets],
+        ['Oracle using PCA (OR2)', 'oracle_voxlets', oracle_voxlets],
+        ['Oracle using NN (OR3)', 'nn_oracle_voxlets', nn_oracle_voxlets],
+        ['Oracle using Greedy (OR4)', 'greedy_oracle_voxlets', greedy_oracle_voxlets],
         ['Implicit prediction', 'implicit', sc.implicit_tsdf],
         ['Voxlets', 'pred_voxlets', pred_voxlets]]
         # ['Voxlets + visible', 'pred_voxlets_exisiting', pred_voxlets_exisiting]]
         # ['Voxlets + visible, using implicit', 'pred_voxlets_implicit_exisiting', pred_voxlets_implicit_exisiting]]
         # ['Voxlets using implicit', 'pred_voxlets_implicit', pred_voxlets_implicit],
-
-    if save_prediction_grids:
-        print "-> Saving prediction grids"
-        with open('/tmp/combines.pkl', 'w') as f:
-            pickle.dump(combines, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     print "-> Computing the score for each prediction"
     temp = np.logical_or(sc.im_tsdf.V < 0, np.isnan(sc.im_tsdf.V))
@@ -132,6 +134,9 @@ def process_sequence(sequence):
     voxels_to_evaluate = np.logical_and(floor_t.V == 0, voxels_to_evaluate)
     gt = sc.gt_tsdf.V[voxels_to_evaluate] > 0
     gt[np.isnan(gt)] = -parameters.RenderedVoxelGrid.mu
+
+    print "GT SCORE IS::"
+    print sklearn.metrics.roc_auc_score(gt, sc.gt_tsdf.V[voxels_to_evaluate])
 
     for c in combines[3:]:
         voxel_predictions = c[2].V[voxels_to_evaluate]
@@ -144,14 +149,20 @@ def process_sequence(sequence):
         fpr, tpr, _ = sklearn.metrics.roc_curve(gt, voxel_predictions)
         c.append([score, fpr, tpr])
 
+    if save_prediction_grids:
+        print "-> Saving prediction grids"
+        with open('/tmp/combines.pkl', 'w') as f:
+            pickle.dump(combines, f, protocol=pickle.HIGHEST_PROTOCOL)
+        with open('/tmp/sensible.pkl', 'w') as f:
+            pickle.dump(voxels_to_evaluate, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     if combine_renders:
         print "-> Combining renders"
-        su, sv = 3, 3
+        su, sv = 3, 4
 
         fig = plt.figure(figsize=(25, 10), dpi=1000)
         plt.subplots(su, sv)
-        plt.subplots_adjust(left=0, bottom=0, right=0.95, top=0.95, wspace=0.2, hspace=0.2)
+        plt.subplots_adjust(left=0, bottom=0, right=0.95, top=0.95, wspace=0.05, hspace=0.05)
 
         for count, c in enumerate(combines):
 
@@ -161,13 +172,13 @@ def process_sequence(sequence):
             plt.subplot(su, sv, count + 1)
             plt.imshow(scipy.misc.imread(gen_renderpath % c[1]))
             plt.axis('off')
-            plt.title(c[0])
+            plt.title(c[0], fontsize=10)
 
             " Add to the roc plot, which is in the final subplot"
             if count >= 3:
                 "Add the AUC"
-                plt.text(0, 50, "AUC = %0.3f" % c[3][0], fontsize=12, color='white')
-                
+                plt.text(0, 50, "AUC = %0.3f" % c[3][0], fontsize=10, color='white')
+
                 plt.subplot(su, sv, su*sv)
                 plt.plot(c[3][1], c[3][2], label=c[0])
                 plt.hold(1)
