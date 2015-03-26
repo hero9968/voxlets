@@ -7,7 +7,7 @@ sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 
 from sklearn.decomposition import RandomizedPCA
 from sklearn.cluster import MiniBatchKMeans
-from sklearn.manifold import Isomap
+# from sklearn.manifold import LocallyLinearEmbedding
 
 from common import paths
 from common import parameters
@@ -38,7 +38,7 @@ def do_isomap(X_in, local_subsample_length, num_isomap_dimensions):
         replace=False))
     X = X_in.take(rand_exs, 0)
 
-    iso = Isomap(n_components=num_isomap_dimensions, n_neighbors=25)
+    iso = LocallyLinearEmbedding(n_components=num_isomap_dimensions, n_neighbors=25)
     iso.fit(X.astype(np.float16))
     return iso
 
@@ -104,14 +104,14 @@ for name, np_array in zip(
         parameters.VoxletTraining.pca_subsample_length,
         parameters.VoxletTraining.number_pca_dims)
 
-    if name == 'features':
-        # No point doing isomap for the shoeboxes
-        print "Doing Isomapping"
+    # if name == 'features':
+    #     # No point doing isomap for the shoeboxes
+    #     print "Doing Isomapping"
 
-        iso = do_isomap(
-            np_array,
-            parameters.VoxletTraining.pca_subsample_length / 10,
-            parameters.VoxletTraining.number_pca_dims)
+    #     iso = do_isomap(
+    #         np_array,
+    #         parameters.VoxletTraining.pca_subsample_length / 10,
+    #         parameters.VoxletTraining.number_pca_dims)
 
     print "Doing Kmeans"
     km = cluster_data(
@@ -124,8 +124,8 @@ for name, np_array in zip(
             '_pca.pkl'
         kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
             '_kmean.pkl'
-        iso_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
-            '_iso.pkl'
+        # iso_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
+        #     '_iso.pkl'
 
         print "Saving to " + pca_savepath
         with open(pca_savepath, 'wb') as f:
@@ -135,10 +135,10 @@ for name, np_array in zip(
         with open(kmeans_savepath, 'wb') as f:
             pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
 
-        if name == 'features':
-            print "Saving to " + iso_savepath
-            with open(iso_savepath, 'wb') as f:
-                pickle.dump(iso, f, pickle.HIGHEST_PROTOCOL)
+        # if name == 'features':
+        #     print "Saving to " + iso_savepath
+        #     with open(iso_savepath, 'wb') as f:
+        #         pickle.dump(iso, f, pickle.HIGHEST_PROTOCOL)
 
     except:
         import pdb; pdb.set_trace()

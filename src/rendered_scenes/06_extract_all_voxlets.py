@@ -15,6 +15,10 @@ from common import paths
 from common import parameters
 from common import scene
 
+# features_iso_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_iso.pkl'
+# with open(features_iso_savepath, 'rb') as f:
+#     features_iso = pickle.load(f)
+
 pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
@@ -47,7 +51,7 @@ def process_sequence(sequence):
     logging.info("Processing " + sequence['name'])
 
     sc = scene.Scene()
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, 
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, load_implicit=parameters.VoxletTraining.use_implicit)
     sc.santity_render(save_folder='/tmp/')
 
@@ -82,8 +86,13 @@ def process_sequence(sequence):
         all_features = np_view
 
     print "Took %f s" % (time() - t1)
+    t1 = time()
 
-    np_features = features_pca.transform(all_features)
+    # np_features = features_pca.transform(all_features)
+
+    # iso_features = features_iso.transform(all_features)
+    # print "iso features is shape ", iso_features.shape
+    # print "Transform took %f s" % (time() - t1)
 
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
@@ -92,7 +101,7 @@ def process_sequence(sequence):
     scipy.io.savemat(savepath, D, do_compression=True)
 
 
-if parameters.multicore:
+if False:  # parameters.multicore:
     # need to import these *after* pool_helper has been defined
     import multiprocessing
     pool = multiprocessing.Pool(parameters.cores)
