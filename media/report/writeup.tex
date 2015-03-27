@@ -4,7 +4,7 @@
 %\usepackage{url}
 %\usepackage{booktabs}
 
-\usepackage{cvpr}
+\usepackage{iccv}
 \usepackage{times}
 \usepackage{epsfig}
 \usepackage{graphicx}
@@ -34,7 +34,7 @@
 
 %\cvprfinalcopy % *** Uncomment this line for the final submission
 
-\def\cvprPaperID{1437} % *** Enter the CVPR Paper ID here
+\def\iccvPaperID{1437} % *** Enter the CVPR Paper ID here
 \def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
 
 % General notation
@@ -166,7 +166,10 @@ The key contributions that underpin our novel depth image to voxel geometry fram
 \begin{itemize}
 \item \emph{Voxlets}, a representation of multi-voxel geometry in the region of a point in a scene.
 We use a Random Forest to learn a mapping from a point in a depth image to a structured prediction of geometry in the region near the point.
-\item A novel feature representation for a point in a depth image, which captures both local and region-level shape for a single point in a depth image.
+\item We introduce a synthetic and a real dataset, setting a standard for evaluating scene completion algorithms.
+The real dataset captures 50 desks with natural clutter.
+\item We demonstrate the efficacy of a feature representation taken directly from a signed distance field.
+This efficient representation effectively captures the geometry in a region of a depth image, and we believe it will have many further applications in segmentation and labelling.
 \end{itemize}
 
 
@@ -360,22 +363,6 @@ The top and bottom face of each cuboid region $\voxregion$ is therefore parallel
 %\todo{Figure for this!}
 %The cuboid is then rotated about the z-axis so that its y-axis is perpendicular to the normal at $\project(\pixelidx)$.
 
-% \remove{
-% Each $\voxregion$ is aligned with the coordinate system
-% \begin{equation}
-%   \Lambda =
-%   \left( \begin{array}{ccc}
-%   \updir \times \normal \,\, / \,\,  \| \updir \times \normal \| \\
-%   \updir \times (\updir \times \normal) \,\,  / \,\,  \| \updir \times (\updir \times \normal) \|  \\
-%   \updir
-%   \end{array}\right),
-%   % \qquad
-%   %(\mathbf{v})_{u} := \mathbf{v} / \| \mathbf{v} \|,
-% \end{equation}
-% where $\normal$ is the normal at $\point$ and $\updir$ is the `up' direction of the scene (\ie pointing directly away from the direction of gravity).
-
-%We examine each $\feat(\pixelidx)$ from $\rgbdimage$ in turn.
-
 \paragraph{Making a single prediction}
 At test time, we map a pixel $\pixelidx$ to a feature representation $\feat(\pixelidx)$, as described in Section \ref{sec:features}.
 Using a structured Random Forest, we can make a prediction of the geometry inside of $\voxregion$.
@@ -395,33 +382,6 @@ In this case, the ground truth values of $\voxelgrid$ and hence $\voxregion$ are
 We use these ground truth TSDF values, together with $\mathbf{x}(\pixelidx)$, to train a Random Forest, as explained in  Section \ref{sec:forest_train}.
 
 
-% \newcommand{\preprocesssubwidth}{0.41\columnwidth}
-% \begin{figure*}[tb]
-%     \centering
-%     \subfigure[RGB image]{%
-%         \includegraphics[width=\preprocesssubwidth]{preprocess_a}}
-%         \hfill
-%     \subfigure[Raw depth image]{%
-%         \includegraphics[width=\preprocesssubwidth]{preprocess_b}}
-%         \hfill
-%     \subfigure[Smoothed depth]{%
-%         \includegraphics[width=\preprocesssubwidth]{preprocess_c}}
-%         \hfill
-%     \subfigure[Structured edges]{%
-%         \includegraphics[width=\preprocesssubwidth]{preprocess_d}\label{subfig:structedge}}
-%         \hfill
-%     \subfigure[Binary edge map]{%
-%         \includegraphics[width=\preprocesssubwidth]{preprocess_e}\label{subfig:binaryedge}}
-%     \caption{
-%     \todo{Combine this image and the spider image explanation. I can do this on Friday.}
-%     The depth image preprocessing pipeline.
-%     The noisy depth image (b) is smoothed, and missing data is filled (c).
-%     This makes use of the RGB image in the cross-bilateral filtering, where we use the implementation provided by \cite{silberman-eccv-2012}.
-%     We then use the structured edge detection model from \cite{dollar-iccv-2013} to compute a real-valued edge map (d) for the image, which is finally binarized (e) using the Canny edge hysteresis method \cite{canny-pami-1986}.
-%     }%
-%     \label{fig:preprocessing}
-% \end{figure*}
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Feature representation}
@@ -430,6 +390,16 @@ We use these ground truth TSDF values, together with $\mathbf{x}(\pixelidx)$, to
 
 \newcommand{\scalfeat}{x}
 
+There have been recent successes in extracting simple features directly comparing depths at pixel locations in depth images, \eg \cite{shotton-cvpr-2011}.
+While fast to compute, this feature is limited to making predictions for a single depth image.
+In our case, we may have several images fused together into a common volume.\footnote{\note{We need to decide if we should tackle the multi-image case. This is more generalisable (sets us apart from some of the competition), but will need a few changes to the code base and paper text.}}
+We therefore choose to extract features directly from the partially reconstructed signed distance volume $\voxelgrid$.
+
+%In our work, we exploit the dense reconstruction of the Kinect Fusion algorithm to extract features directly from the partially complete dense voxel grid.
+This has the benefit of being more invariant to camera viewing angle than features taken directly from the depth image, and given the voxel grid, it is computationally cheaper to extract features directly from the grid than to perform point cloud operations.
+
+
+
 %Our feature representation maps a pixel location $\pixelidx = (u, v)$ to a feature $\feat(\pixelidx)$, which represents the geometry around the point.
 Our feature representation $\feat(\pixelidx)$ at location $\pixelidx$ in the input depth image $\rgbdimage$  describes aspects of its neighborhood.
 We use local and regional features extracted from the depth image.
@@ -437,205 +407,6 @@ The Random Forest--based model weights feature space to make structured predicti
 %This is used in our classifier to map from a single point to a prediction of voxel occupancy in the surrounding region.
 % $\feat(\pixelidx) = [\feat_\text{off}(\pixelidx), \feat_\text{spider}(\pixelidx)]$
 
-$\feat(\pixelidx)$ is composed of two parts.
-The \emph{offset} feature captures the shape of the depth surface in the immediate neighborhood of $\pixelidx$, and is made up of several local depth comparisons.
-The \emph{spider} feature captures the size and shape of the region in the 2D image in which $\pixelidx$ resides.
-%, together with the position of $\pixelidx$ in that region.
-%\footnote{The names of our features are taken from the shapes they produce in image space (Figure \ref{fig:features}).}.
-%$\feat_\text{off}(\pixelidx)$
-%$\feat_s(\pixelidx)$
-
-
-\subsection{Offset feature}
-%\pagedepth\maxdimen
-\begin{wrapfigure}[10]{r}{0.35\columnwidth}
-  \vspace{-20pt}
-  \centering
-    \includegraphics[width=0.35\columnwidth, clip=true, trim=130 210 340 80, page=9]{spider_cobweb}
-    \vspace{-10pt}
-  \caption{}%The offset feature}
-    \label{fig:offset_feature}
-\end{wrapfigure}
-The `offset feature' $\scalfeat_\text{off}$ is a simple pairwise feature, used with success in recent work such as \cite{shotton-cvpr-2011}, capturing the surface shape in the immediate neighborhood of pixel $\pixelidx$.
-The feature computes the difference between the depth from the camera at $\pixelidx$ and the depth at a predetermined offset $\Delta$ (Figure \ref{fig:offset_feature}). We define
-\begin{align}
-\scalfeat_\text{off} (\pixelidx, \psi, t) &= \rgbdimage(\pixelidx) - \rgbdimage(\pixelidx + \Delta), \, \text{where} \\
-\Delta &= M(t) (\sin(\psi), \cos(\psi)).
-\end{align}
-Here $M(t) = (t\cdotp f)/\rgbdimage(\pixelidx)$ uses the focal length $f$ to map a distance in world space to a pixel offset.
-
-For a single point $\pixelidx$ we compute $\scalfeat_\text{off} (\pixelidx, \psi, t)$ for a range of different values of $\psi$ and $t$, and concatenate all the values into a feature vector $\feat_{\text{off}}$.
-For our experiments we use $\psi, \,\, t \in \{0\degree, 45\degree, \ldots, 315\degree\} \times \{0.02m, 0.04m, 0.06m, 0.08m\}$.
-$\feat_{\text{off}}$ is therefore 24-dimensional.
-%The pattern of our extracted $\pixelidx + \Delta$ values can be seen in figure \ref{subfig:cobweb}.
-
-%\begin{align}
-%F_o (\pixelidx) &= [f_o (\pixelidx, \psi, t) \, :   \psi \in \Psi, t \in \mathcal{T}].
-%\end{align}
-%\Delta &= M(t) (\sin(\psi), \cos(\psi)).
-                %& t \in \{0.02m, 0.04m, 0.06m, 0.08m\}.
-
-%The final feature is then composed of $\Phi(\pixelidx, \psi, t)$ evaluated over a range of values of $\psi$ and $t$.
-%For our experiments, we compute the cobweb feature for all combinations of $\psi = [0\degree, 45\degree, \ldots, 315\degree]$ and $t = [0.02m, 0.04m, 0.06m, 0.08m]$.
-
-
-  %\end{center}
-  %\begin{center}
-%In our experiments the final feature is then composed of
-% as
-%\begin{align}
-%\feat_c(\pixelidx) &= [\Phi(\pixelidx, \psi, t): \psi = [0\degree, 45\degree, \ldots, 315\degree], t = [0.%02m, 0.04m, 0.06m, 0.08m].
-%\end{align}
-
-%a &= \left\lfloor u + M(t)  \sin(\psi) \right\rceil \\
-%b &= \left\lfloor v + M(t)  \cos(\psi) \right\rceil
-
-% over a range of values of
-%Note also: ``If an offset pixel lies on the background or outside the bounds of the image, the depth probe dI (x0) is given a large positive constant value''.
-
-\newcommand{\pointthreed}{\pixelidx_p}
-\newcommand{\edgethreed}{\edgeimidx_p}
-\newcommand{\spiderfeat}{s}
-\newcommand{\gline}{\mathbf{l}}
-
-
-\newcommand{\subwidth}{0.32\columnwidth}
-\begin{figure}
-    \centering
-    %\subfigure[Query point]{%
-    %    \includegraphics[width=\subwidth, clip=true, trim=130 125 300 30, page=1]{spider_cobweb}}
-    %    \hfill
-    %\subfigure[Offset feature]{%
-        %\includegraphics[width=\subwidth, clip=true, trim=130 125 300 30, page=2]{spider_cobweb}
-        %\label{subfig:cobweb}}
-        %\hfill
-    \subfigure[$\spiderfeat_1$]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 105 300 30, page=4]{spider_cobweb}\label{subfig:c0}}
-        \hfill
-    \subfigure[$\spiderfeat_2$ (Top view)]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30, page=5]{spider_cobweb}\label{subfig:c1}}
-        \hfill
-    \subfigure[$\spiderfeat_3$ (Top view)]{%
-        \includegraphics[width=\subwidth, clip=true, trim=130 70 300 30, page=6]{spider_cobweb}\label{subfig:c2}}
-        \hfill
-    \caption{
-    %\todo{Add the tildes above the notation. I can fix this image on Friday when I am tired.}
-    %(a) We compute a feature vector for a single point $\pixelidx = (u, v)$.
-    %(b) The offset feature computes the difference in depth between $\pixelidx$ and the points that surround it.
-    The spider features $\scalfeat_s(\pixelidx, \edgeimidx, \psi) = (s_1, s_2, s_3)$ provides three measures of the distance between $\pixelidx$ and the edge point $\edgeimidx$.
-    (a) $s_1$ measures the distance between pixel locations $\pixelidx$ and $\edgeimidx$.
-    (b) $s_2$ measures the distance between 3D points $\pointthreed$ and $\edgethreed$ along the surface of $\rgbdimage$.
-    (c) $s_3$ gives an estimate of the depth of the object at the 3D location $\pointthreed$, using the surface normal $\mathbf{n}_\mathbf{s}$.
-    }%
-    \label{fig:features}
-\end{figure}
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{The spider feature}
-%\note{Name up for debate! Another candidate is `compass'}
-
-\begin{wrapfigure}[7]{r}{0.45\columnwidth}
-  \centering
-  \vspace{-15pt}
-    \includegraphics[width=0.45\columnwidth]{features_1}
-    \vspace{-10pt}
-  \caption{}%The offset feature}
-    \label{fig:patch_problems}
-\end{wrapfigure}
-Local features, such as the offset feature, have proved discriminatory where the output labeling is on a per-pixel basis, such as labeling each pixel as a part of a human body \cite{shotton-cvpr-2011}.
-However, when it comes to predicting the geometry of the scene we cannot observe, the local shape of the depth image around a point does not provide enough information.
-An example of this can be seen in Figure \ref{fig:patch_problems}.
-The two regions circled in the image have identical \emph{local} appearance, but the 3D geometry around each region is very different due to the different thicknesses of the two boxes.
-We use this observation to motivate the `spider feature'.
-
-  %vspace{-20pt}
-% \begin{figure}[bt]
-%   \centering
-%   \includegraphics[width=0.9\columnwidth]{features_1}
-%   \caption{Patch-type features do not give enough information to accurately predict depth. Here, regions on two different objects are marked. Each region has identical local appearance. However, the voxel geometry of the object at the two locations is very different due to the different thicknesses.
-%   We use this observation to motivate the spider feature.}
-%   \label{fig:patch_problems}
-% \end{figure}
-%\todo{Combine all the motivational images for the spider feature into one...}}
-
-
-%Previous works have used the properties of a whole segmented region for classification of individual points \cite{golovinskiy-iccv-2009}.
-%When it comes to predicting the 3D shape local to a point in a depth image, however, we care as much about the point's location in the region as we do about the overall region properties (Figure \ref{fig:spider_motivation}).
-
-We desire a feature which captures the size and shape of the region in which $\pixelidx$ resides, along with the location of $\pixelidx$ in that region.
-To achieve this we take inspiration from the features between a point and a binary edge map used by \cite{drost-3dimpvt-2012}.
-
-\paragraph{Computing a binary edge map}
-We first compute a binary edge map for the image, where each pixel takes the value 1 at a large change in depth or surface normal direction, and is 0 otherwise.
-We first use the method of \cite{dollar-iccv-2013} to compute a real-valued edge map for the image. % (Figure \ref{subfig:structedge}).
-Next we apply the Canny filtering algorithm \cite{canny-pami-1986} to convert this to a binary edge map. % (Figure \ref{subfig:binaryedge}).
-We mitigate against poor quality depth data around discontinuities by dilating this edge map with a 3x3 disc-shaped structuring element.
-
-
-
-\paragraph{Casting lines from $\pixelidx$}
-From $\pixelidx$, we then cast a line across the edge map at angle $\psi$, where $\psi$ is a parameter of the feature computation.
-We denote the point on the edge map where the line first hits a pixel with value 1 as $\edgeimidx$.
-We additionally denote the 3D reprojections of the 2D pixel coordinates $\pixelidx$ and $\edgeimidx$ as $\pointthreed$ and $\edgethreed$ respectively.
-%For each line cast we therefore have two points in 3D space: $\point$ and $\point_e$.
-
-\paragraph{Extracting the spider feature}
-The spider feature for a single point with a line cast in direction $\psi$ is $\scalfeat_s(\pixelidx, \edgeimidx, \psi) = (\spiderfeat_1, \spiderfeat_2, \spiderfeat_3)$.
-Each element of this tuple is a distance between $\pixelidx$ and $\edgeimidx$, computed as follows:
-\begin{itemize}
-
-\item $\spiderfeat_1 = \rgbdimage(\pixelidx) \|\pixelidx - \edgeimidx\|_2 / f$. This is the distance between $\pixelidx$ and $\edgeimidx$ in pixel units $\|\pixelidx - \edgeimidx\|_2$ scaled by $\rgbdimage(\pixelidx) / f$ to convert to a real-world distance (Figure \ref{subfig:c0}).
-
-\item $\spiderfeat_2 = \sum_{i=2}^{|\gline|} \| \gline(i) - \gline(i-1)) \|_2 $, where $\gline$ is an ordered list of the 3D locations of the points on the line between $\pixelidx$ and $\edgeimidx$.
-$\spiderfeat_2$ approximates the arc length between $\pixelidx$ and $\edgeimidx$ along the surface of $\rgbdimage$  (Figure \ref{subfig:c1}).
-
-\item $\spiderfeat_3 = (\pointthreed - \edgethreed) \cdot \normal_\pixelidx$.
-This is the Euclidean distance between 3D points $\pointthreed$ and $\edgethreed$ along the direction of the normal $\normal_\pixelidx$ at $\pixelidx$  (Figure \ref{subfig:c2}).
-
-\end{itemize}
-
-We compute $\scalfeat_s(\pixelidx, \edgeimidx, \psi)$ for  $\psi \in \{0\degree, 45\degree, \ldots, 315\degree\}$, and concatenate the results into a  24-dimensional vector $\feat_{\text{spi}}$.
-The concatenation of $\feat_\text{off}$ and $\feat_\text{spi}$ forms the final 56D feature vector $\feat(\pixelidx)$ for point $\pixelidx$.
-
-\paragraph{Implementation}
-The spider feature is efficient to compute; we can compute the 24D spider feature for every point in a $640\times480$ image in less than 0.01s using our C++ implementation.
-%We would expect a significant speedup were this to be implemented on a GPU.
-
-
-% \paragraph{Occluded spider features}
-% \todo{Remove or improve and do experiments}
-
-% We explicitly handle occlusion in the spider features. Where the spider feature first hits an occluded edge rather than an occluding edge, the true size of the object in that dimension is unknown (see figure \ref{fig:features:occluded_spider}).
-% However, we do have a \textit{minimum} size in that direction.
-
-% We reason that discontinuities in depth images can be assigned a direction: one side of each edge is the occluder, the other is the occludee.
-% We can compute the gradient of the depth edges using PCA on the edge pixels in image space.
-% We ensure that the final gradient at each edge pixel points in the direction of the occluded side.
-
-% We can then use the occlusion information in our feature computations.
-% See for example figure \ref{fig:occluded_region}.
-
-
-% \begin{figure}
-%     \centering
-%     \subfigure[]{%
-%         \includegraphics[width=0.45\columnwidth]{occlusion_a}}
-%         \hfill
-%     \subfigure[]{%
-%         \includegraphics[width=0.45\columnwidth]{occlusion_b}} \\
-%     \caption{Where edges occur as a result of occlusion boundaries, the direction of the edge is important. The edge bounding region A can be divided into an \emph{occluding} portion (solid green) and an \emph{occluded} portion (dashed red).
-%     We can make a reasonable assumption that region A may extend behind object B past the occluded edge.
-%     However, region A cannot continue sideways beyond its occluding edge.}
-%     \label{fig:occluded_region}
-% \end{figure}
-
-% \begin{figure}
-%     \centering%
-%     \includegraphics[width=0.7\columnwidth]{occlusion_spider.png}%
-%     \figcaption{The spider feature extends lines from $\point$ to the first occluding edge found along the path. Internal edges (e.g. those found in RGB space) are ignored. Where the line first hits an occluded edge, the true extent is unknown --- this case is denoted as \texttt{?} in this figure.}%
-%     \label{fig:occluded_spider}%
-% \end{figure}
 
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -846,82 +617,40 @@ The lower precision and higher recall for the spider feature suggests that it is
 The K-means Forest does almost as well as our full structured forest.
 However, as it has discretized the label space before training we would not expect it to generalize well to larger and more diverse training data.
 
+\subsection{Introspection using oracles}
 
-\newcommand{\turnheight}{0.26\columnwidth}
-\begin{figure*}
-    \begin{tabular}{cccccc}
-\includegraphics[height=\turnheight, clip=true, trim=30 30 30 30]{data/rgb_ims/tapatio_hot_sauce} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/tapatio_hot_sauce_NP1_312.mat_visible_pixels_view_90} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/tapatio_hot_sauce_NP1_312.mat_gt_view_90} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/tapatio_hot_sauce_NP1_312.mat_bb_view_90} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/tapatio_hot_sauce_NP1_312.mat_zheng_view_90} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/tapatio_hot_sauce_NP1_312.mat_oma_view_90} \\
-\includegraphics[height=\turnheight, clip=true, trim=30 30 30 30]{data/rgb_ims/zilla_night_black_heat} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/zilla_night_black_heat_NP2_312.mat_visible_pixels_view_180} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/zilla_night_black_heat_NP2_312.mat_gt_view_180} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/zilla_night_black_heat_NP2_312.mat_bb_view_180} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/zilla_night_black_heat_NP2_312.mat_zheng_view_180} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/zilla_night_black_heat_NP2_312.mat_oma_view_180} \\
-\includegraphics[height=\turnheight, clip=true, trim=30 30 30 30]{data/rgb_ims/nutrigrain_harvest_blueberry_bliss} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_visible_pixels_view_0} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_gt_view_0} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_bb_view_0} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_zheng_view_0} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_oma_view_0} \\
-\includegraphics[height=\turnheight, clip=true, trim=30 30 30 30]{data/rgb_ims/pop_tarts_strawberry} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_visible_pixels_view_90} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_gt_view_90} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_bb_view_90} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_zheng_view_90} &
-\includegraphics[height=\turnheight, clip=true, trim=60 30 30 60]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_oma_view_90} \\
-     Input view & Input depth pixels & Ground truth mesh & Bounding box &  Zheng \ea & Our result \\
-    \end{tabular}
-    \vspace{5pt}
-     \caption{Results from the Bigbird turntable dataset.
-     Each row shows a different object, while each column shows the result of a different algorithm.
-      The first column shows the RGB image of the input view, while the second column shows the reprojected input depth pixels from a side view.
-     The following columns, all shown from the same viewpoint as the input depth pixels view, demonstrate the different baselines and algorithm variants.
-      More views and objects can be seen in the supplementary material.
-     \label{fig:turntable_qual}
-     }
-\end{figure*}
-     %Our algorithm is able to predict shape beyond the extents of the visible depth pixels, and can also recover the shape of non-prismoidal objects, such as in the first row.
-% (a) Input view &
-     %For visualization purposes we have converted the voxel grids to a mesh using marching cubes.
-     %The details of the algorithms are given in Section \ref{sec:algorithms}, and
+A common question for algorithms like ours is: Where is the algorithm failing? We can gain some insight into the system by replacing various stages with an oracle that has access to the ground truth:
+
+\textbf{OR1} is a modifed system which does not use any of the machine learning algorithm. Instead, at each $\mathcal{R}$ the ground truth voxels are extracted and then placed directly into the output grid. This system checks how good the coverage of voxlets is.
+
+\textbf{OR2} is as OR1, except that the ground truth voxlets are compressed and then decompressed using the pre-learned PCA model. This system checks how well the PCA covers the range of voxlet shapes.
+
+\textbf{OR3} is very similar to the full system, but in this system the machine learning algorithm which makes the voxlet predictions has access to the ground truth data. We use a nearest neighbours algorithm to find the closest training example to the ground truth voxlet at each location. The predictions are still restricted to be training examples.
+
+\textbf{OR4} uses our Random Forest algorithm for prediction, but it uses the oracle at the aggregation step. Each voxlet is greedily added to the accumulator iff its inclusion would increase the AUC for this scene.
 
 
-% \begin{figure*}
-%     \begin{tabular}{cccc}
+\begin{table}
+  \centering
+  \begin{tabular}{|p{4.8cm}|c|c|}
+  \hline
+  \textbf{Method}  &   \textbf{Precision} & \textbf{Recall} \\
+  \hline
+  OR1 & - & - \\
+  OR2 & - & - \\
+  OR3 & - & - \\
+  OR4 & - & - \\
+  Full system & - & - \\
+  \hline
+  \end{tabular}
+  \vspace{5pt}
+  \caption{Qunatitiative results of our algorithm on the synthetic scenes.}
+    \label{tab:oracle_results}
+\end{table}
 
 
 
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_visible_pixels_view_0.png} &
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_gt_view_0.png} &
-%     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_bb_view_0.png} &
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_oma_view_0.png} \\
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_visible_pixels_view_0.png} &
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_gt_view_0.png} &
-%     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_bb_view_0.png} &
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/nutrigrain_harvest_blueberry_bliss_NP1_0.mat_oma_view_0.png} \\
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_visible_pixels_view_0.png} &
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_gt_view_0.png} &
-%     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_bb_view_0.png} &
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_oma_view_0.png} \\
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_visible_pixels_view_0.png} &
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_gt_view_0.png} &
-%     \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_bb_view_0.png} &
-%      \includegraphics[width=0.32\columnwidth, clip=true, trim=30 0 30 40]{data/renders_turn_table/pop_tarts_strawberry_NP3_0.mat_oma_view_0.png} \\
-%      (a) Input view (b) Input depth pixels & (c) Ground truth mesh & (d) Bounding box & (e) Zheng \ea & (f) Our result \\
-%     \end{tabular}
-%     \vspace{10pt}
-%      \caption{Results from the Bigbird turntable dataset.
-%      Each row shows a different object, while each column shows the result of a different algorithm.
-%      For visualization we convert the voxel grids to a mesh using marching cubes.
-%      The details of the algorithms are given in Section \ref{sec:algorithms}.
-%      \label{fig:turntable_qual}
-%      }
-% \end{figure*}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Qualitative scene results}
