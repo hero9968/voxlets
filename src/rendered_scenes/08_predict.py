@@ -74,7 +74,7 @@ def process_sequence(sequence):
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True, combine_segments_separately=True)
+        render_type=[], add_ground_plane=True, combine_segments_separately=True, accum_only_predict_true=True)
     pred_voxlets_exisiting = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
