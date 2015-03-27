@@ -80,7 +80,7 @@ def process_sequence(sequence):
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     full_oracle_voxlets = rec.fill_in_output_grid_oma(
         render_type=[],oracle='gt', add_ground_plane=True)
-    full_oracle_voxlets_existing = rec.keeping_existing
+    full_oracle_voxlets = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     oracle_voxlets = rec.fill_in_output_grid_oma(
@@ -97,21 +97,6 @@ def process_sequence(sequence):
         render_type=[], oracle='greedy_add', add_ground_plane=True)
     greedy_oracle_voxlets_existing = rec.keeping_existing
 
-    if render_predictions:
-        print "-> Rendering"
-
-        full_oracle_voxlets.render_view(gen_renderpath % 'full_oracle_voxlets')
-        oracle_voxlets.render_view(gen_renderpath % 'oracle_voxlets')
-        nn_oracle_voxlets.render_view(gen_renderpath % 'nn_oracle_voxlets')
-        greedy_oracle_voxlets.render_view(gen_renderpath % 'greedy_oracle_voxlets')
-        # pred_voxlets_exisiting.render_view(gen_renderpath % 'pred_voxlets_exisiting')
-        pred_voxlets.render_view(gen_renderpath % 'pred_voxlets')
-        # greedy_oracle_voxlets_exisiting.render_view(gen_renderpath % 'pred_voxlets_exisiting')
-        sc.implicit_tsdf.render_view(gen_renderpath % 'implicit')
-        sc.im_tsdf.render_view(gen_renderpath % 'visible')
-        sc.gt_tsdf.render_view(gen_renderpath % 'gt')
-        scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
-
     combines = [
         ['Input image', 'input'],
         ['Ground truth', 'gt', sc.gt_tsdf],
@@ -125,6 +110,11 @@ def process_sequence(sequence):
         # ['Voxlets + visible', 'pred_voxlets_exisiting', pred_voxlets_exisiting]]
         # ['Voxlets + visible, using implicit', 'pred_voxlets_implicit_exisiting', pred_voxlets_implicit_exisiting]]
         # ['Voxlets using implicit', 'pred_voxlets_implicit', pred_voxlets_implicit],
+
+    if render_predictions:
+        print "-> Rendering"
+        for c in combines[1:]:
+            c[2].render_view(gen_renderpath % c[1])
 
     print "-> Computing the score for each prediction"
     temp = np.logical_or(sc.im_tsdf.V < 0, np.isnan(sc.im_tsdf.V))

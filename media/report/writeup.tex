@@ -23,7 +23,7 @@
 %\usepackage{booktabs}
 
 \usepackage{wrapfig}
-\graphicspath{{imgs/}{data/renders_turn_table/}}
+\graphicspath{{imgs/}{data/renders_turn_table/}{imgs/rendered_results/}}
 
 \usepackage{xspace}
 \renewcommand*{\eg}{e.g.\@\xspace}
@@ -483,7 +483,7 @@ As with our real data, the ground truth TSDF is computed by fusing together the 
 At test time, one image is selected from the 42 input images and reconstruction performed.
 
 %\paragraph{Desks dataset D2}
-Existing RGBD datasets of natural scenes typically focus on the per-frame labelling task \cite{nyu, sun3d}, object detection \cite{rgbd scenes dataset} or camera pose estimation \cite{stanford?}.
+Existing RGBD datasets of natural scenes typically focus on the per-frame labelling task \cite{nyu, sun3d}, object detection \cite{rgbd scenes dataset} or camera pose estimation \cite{stanford}.
 There are no datasets to our knowledge which have the aim of capturing the full geometry of a scene.
 We therefore introduce a \textbf{desktop dataset (D2)}, capturing the full geometry of **75** desktops in an office environment.
 The desks were not manipulated before data capture, meaning they include the true intricacies of the real world.
@@ -595,23 +595,9 @@ See for example the result in row three, column three.
 %We believe that these results could be improved by
 %This experiment demonstrates an ability for the algorithm to generalize from the turntable dataset.
 
-\newcommand{\scenewidth}{0.48\columnwidth}
-\newcommand{\topc}{30}
+\newcommand{\turnheight}{0.23\columnwidth}
 \begin{figure*}
-    \begin{tabular}{cccc}
-    \includegraphics[width=\scenewidth]{scene/image_color/learn12} &
-    \includegraphics[width=\scenewidth]{scene/image_color/test11} &
-    \includegraphics[width=\scenewidth]{scene/image_color/learn13} &
-    \includegraphics[width=\scenewidth]{scene/image_color/test45} \\
-    \includegraphics[width=\scenewidth]{scene/cropped/learn12_op_0} &
-    \includegraphics[width=\scenewidth]{scene/cropped/test11_op_0} &
-    \includegraphics[width=\scenewidth]{scene/cropped/learn13_op_0} &
-    \includegraphics[width=\scenewidth]{scene/cropped/test45_op_0} \\
-    \includegraphics[width=\scenewidth]{scene/cropped/learn12_op_1} &
-    \includegraphics[width=\scenewidth]{scene/cropped/test11_op_1} &
-    \includegraphics[width=\scenewidth]{scene/cropped/learn13_op_1} &
-    \includegraphics[width=\scenewidth]{scene/cropped/test45_op_1} \\
-    \end{tabular}
+    \input{imgs/rendered_results/results_table.tex}
      \caption{
      Qualitative results from the Object Segmentation Dataset. Each column shows the result of our agorithm on a different image from the database.
      We note that our training from the turntable dataset successfully recovers the shape of many objects.
