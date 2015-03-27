@@ -173,113 +173,6 @@ This efficient representation effectively captures the geometry in a region of a
 \end{itemize}
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Related work}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%Most prior work in the area of completing missing data can be categorized according to its application domain (\eg meshes \cite{schnabel-eurographics-2009, ju-cst-2009}, 2D images \cite{gupta-cvpr-2011} or depth images \cite{shen-tog-2012}).
-
-
-%\subsection{Taxonomy of related works}
-Previous works on completing unknown regions of visual data can be categorized against several different criteria.
-Some of these are given here, and we italicize the categories into which our approach falls.
-
-Works can be classed according to their application domain, such as operating on meshes \cite{harary-tog-2013, schnabel-eurographics-2009}, 2D images \cite{gupta-cvpr-2011} or in \emph{voxel space} \cite{kim-iccv-2013}.
-Some works make use of highly specialist hardware to capture images \eg \cite{velten-nature-2012}, while we use \emph{hardware available to consumers}.
-Some approaches only aim to get a result that looks plausible to a human, while we strive for \emph{accuracy in comparison to the ground truth}.
-In comparison to works which use heuristics, we make use of \emph{training data}.
-Such supervised approaches can be further classed according to whether the data used come from within the same image (\eg symmetry \cite{kroemer-humanoids-2012}) or from a \emph{database of training data}.
-
-We now outline some of these previous approaches in more detail, and compare them to our approach.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Fitting 3D models}
-If prior knowledge is available about the objects present in the scene, in the form of 3D models, then an instance-level model can be fitted to a 3D scene.
-This gives a good recovery of missing geometry of that object \cite{hinterstoisser-accv-2012, drost-3dimpvt-2012}.
-Some works focus on the broader problem where an exact match is not present in the training set.
-Shen \ea \cite{shen-tog-2012} complete the missing regions of a single object using an assembly of parts from several different models in a CAD database.
-Cocias \ea \cite{cocias-cgvcv-2013} directly deform a mesh to fit to a point cloud, while Prisacariu and Reid \cite{prisacariu-iccv-2011} fit a class-level manifold model to the image data.
-
-%Collecting training data for this is laborious and costly, and currently there do not exist enough 3D models suitable for accurately completing most real-world scenes.
-All these methods, however, rely on the availability of some form of specific prior model, and this completion method relies on an accurate detector to find and classify each object in the scene.
-In our approach, we set out to get as much shape information as possible \emph{without semantics}, thus remaining free of its associated machinery and limitations.
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Symmetry}
-Where one can accurately detect symmetry, it can be leveraged to complete some types of objects (\eg \cite{law-cviu-2010, thrun-iccv-2005, kroemer-humanoids-2012}).
-However, using symmetry for object completion is brittle.
-If symmetry cannot be detected at all, then no prediction can be made.
-This is the case for example when viewing a cuboid end-on.
-%Our algorithm allows for a reasonable prediction to be made even when no axes of symmetry can be detected.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Voxel space reasoning}
-The two algorithms which bear the most similarity to ours both make predictions of full scene geometry from a single depth image.
-
-Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantic labeling of voxels from an RGBD image.
-For training, they use manually labeled top-down views of the scene.
-Their final labelings are found from graph cuts over the CRF.
-They primarily model the probability of a voxel being occupied as a Gaussian centered on the first observed voxel along a camera ray.
-However, high-order-terms in the CRF are used to enforce planar structures and for `objects' to remain contiguous.
-
-Like \cite{kim-iccv-2013},  Zheng \ea \cite{zheng-cvpr-2013} go from a single depth image to a voxel representation of a scene.
-Their core algorithm consists of two parts.
-Firstly they complete missing voxels by extruding visible points in the detected Manhattan World directions of the scene.
-This part bears resemblance to a similar method used for completions by \cite{kroemer-humanoids-2012}.
-Secondly, they use physics-based reasoning to fill in missing data to ensure connectedness and stability.
-The physics-based reasoning is clearly useful in complex scenes where, for example, a table leg may be occluded.
-However the voxel completion by extrusion is limited by the Manhattan World assumption, and the extent of visible voxels in the scene.
-
-In contrast to these methods, we are able to make \emph{structured} predictions in 3D space, thus being able to make predictions about shape learned directly from training data.
-%we are able to complete objects where the points making up the objects are hard to see.}
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Surface completion}
-Silberman \ea \cite{silberman-eccv-2014} tackle the completion of an incomplete multi-view reconstruction as a surface completion problem.
-By detecting planes, they can complete their contours in a 2D projection using a novel CRF method.
-This method, however, relies both on a piecewise-planar scene, and on beginning with an almost-complete scan as input.
-
-Davis \ea \cite{davis-3dpvt-2002} complete surfaces by operating directly on the \emph{signed distance field}, the zero level-set of which defines the surface location. They diffuse the signed distance field across holes in the mesh to fill in the gaps.
-\cite{harary-tog-2013} use a data-driven approach, finding matches in the mesh to the missing region.
-
-All of these completion methods are only suitable where the set of missing data is small relative to the size of the observed data.
-In our case, we are completing the geometry of an unknown surface which is typically at least as large as the observed surface.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Image completion and super-resolution}
-Image completion works such as \cite{hays-siggraph-2007, criminisi-cvpr-2003}
-typically use region-based data-driven approaches as it is very difficult to form true generative models over image appearance.
-For example, \cite{hays-siggraph-2007} look up possible completion regions in a large database of similar images, while \cite{criminisi-cvpr-2003} in-paint by selecting and combining multiple plausible patches from other regions of the input image.
-This differs from our task, as image completion typically aims for a visually plausible output, irrespective of the accuracy compared to ground truth.
-Similar to image \emph{completion} is image \emph{super-resolution}, \eg \cite{macaodha-eccv-2012}.
-This, like our problem, is ill-posed and relies on the repeatability and predictability of the world in order to improve the local geometry of an image.
-Our problem differs from that of super-resolution because we make predictions about the state of the world outside of the region directly observable by the camera.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Using 3D primitives for recognition}
-`Geons' are proposed by \cite{bieberman-rbc-1987} as a set of 3D primitives such as cylinders and cuboids used by humans in their recognition of object shapes.
-While in theory, geons could be used by computers  as features to describe natural objects, in practice, this was found to be challenging \cite{dickinson-iavc-1997} due to their ``idealized nature'', requirement for part segmentation, labeling errors, and the coarseness of features used to extract geons in the first place.
-%Besl - hand-defined
-
-However, fitting bounding boxes has recently become a popular method to explain the arrangement of objects in a scene.
-Recent work has successfully incorporated high-level information such as gravity and stability
- \cite{shao-siggraphasia-2014, jia-cvpr-2013}, and made use of training data to accurately detect bounding box locations \cite{hedau-cvpr-2012}.
-Gupta \ea \cite{gupta-cvpr-2011} estimate voxel occupancy from a 2D image, which is regularized using cuboid bounding box hypotheses.
-The obvious problem with bounding box style methods is that they can only give coarse shape information, which is not suitable for many applications of geometry completion.
-
-In our work, we make use of 3D primitives.
-However, unlike geons which are fixed in shape, we learn a distribution of shapes from training data.
-We are also able to make more fine-grained predictions than bounding boxes.
-
-
-
 \begin{figure*}
     \subfigure[Query point]{%
         \includegraphics[width=0.5\columnwidth, clip=true, trim=110 170 205 30, page=1]{overview_image}\label{subfig:voxregion}}
@@ -299,31 +192,98 @@ We are also able to make more fine-grained predictions than bounding boxes.
     The forest makes a prediction for the values of each of the voxels in $\mathcal{R}$.
     (c) This prediction is transformed into the scene and used to update the values of the voxels.
     (d) The aggregation of multiple such predictions forms our final prediction of the TSDF, which can be converted to voxel occupancy or a surface representation.
-    }%
     \label{fig:overview}
+    }%
 \end{figure*}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\paragraph{Structured learning for vision}
-\emph{Structured learning} has become a popular method for some computer vision tasks.
-As with standard supervised learning, structured learning finds a mapping from a feature space to a label space.
-In contrast to a traditional one-dimensional label space, however, a structured label space is \emph{multidimensional}.
-Feature space is typically limited to a local descriptor of the image, while the label space may be surface normals \cite{fouhey-iccv-2013}, human poses \cite{bourdev-iccv-2009}, or semantic labels.
-This family of works provides inspiration for our approach.
 
-%A question that arises is: How to form the set of primitives?
-There are many different ways of finding the mapping from feature to structured label space.
-For example, \cite{bourdev-iccv-2009} cluster human poses, while \cite{fouhey-iccv-2013} use an SVM-like formulation to find primitives which are both discriminative in feature space and informative in label space.
 
-In our work, we make use of Random Forests \cite{breiman-ml-2001}.
-Originally proposed for regression and then single-label classification problems, they have since been adapted to make structured predictions for tasks such as semantic labelling \cite{kontschieder-iccv-2011} and edge detection \cite{dollar-iccv-2013}.
-Structured prediction can make faster and more regularized predictions than a single dimensional predictor.
-In our case, we benefit from a structured prediction as we are able to make predictions beyond the location of the input data point.
 
-%One example of this is work on edge detection, where an input image patch is mapped to a prediction of the edges in the region of the patch
-% \begin{quote}
-% Voxel occupancy is one approach for reconstructing the 3-dimensional shape of an object from multiple views. In voxel occupancy, the task is to produce a binary labeling of a set of voxels, that determines which voxels are filled and which are empty.
-% \cite{snow-cvpr-2000}
-% \end{quote}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Related work}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Most prior work in the area of completing missing data can be categorized according to its application domain (\eg meshes \cite{schnabel-eurographics-2009, ju-cst-2009}, 2D images \cite{gupta-cvpr-2011} or depth images \cite{shen-tog-2012}).
+
+
+%\subsection{Taxonomy of related works}
+Here we review related methods for completing unknown regions of visual data.
+While similar, we do not cover the problem in 2D image completion.
+Work in this area usually relies on the availability of extremely large amounts of similar images~\cite{hays-siggraph-2007} or on the assumption that the necessary structure for completion is present in the observed data~\cite{criminisi-cvpr-2003}.
+Image completion typically aims for a visually plausible output, as opposed to accuracy compared to ground truth.
+Additionally, our approach utilizes standard consumer hardware and as a result we do not review work that requires highly specialist equipment~\cite{velten-nature-2012}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{3D primitives}\newline
+`Geons' are proposed by \cite{bieberman-rbc-1987} as a set of 3D primitives such as cylinders and cuboids used by humans in their recognition of object shapes.
+While in theory, geons could be used by computers  as features to describe natural objects, in practice, this was found to be challenging \cite{dickinson-iavc-1997} due to their ``idealized nature'', requirement for part segmentation, labeling errors, and the coarseness of features used to extract geons in the first place.
+%Besl - hand-defined
+However, fitting bounding boxes has recently become a popular method to explain the arrangement of objects in a scene.
+Recent work has successfully incorporated high-level information such as gravity and stability
+ \cite{shao-siggraphasia-2014, jia-cvpr-2013}, and made use of training data to accurately detect bounding box locations \cite{hedau-cvpr-2012}.
+Gupta \ea \cite{gupta-cvpr-2011} estimate voxel occupancy from a 2D image, which is regularized using cuboid bounding box hypotheses.
+The obvious problem with bounding box style methods is that they can only give coarse shape information, which is not suitable for many applications of geometry completion.
+
+In our work, we make use of 3D primitives.
+However, unlike geons which are fixed in shape, we learn a distribution of shapes from training data.
+We are also able to make more fine-grained predictions than bounding boxes.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Shape models}\newline
+If prior knowledge is available about the objects present in the scene, in the form of 3D models, then an instance-level model can be fitted to a 3D scene.
+This gives a good recovery of missing geometry of that object \cite{hinterstoisser-accv-2012, drost-3dimpvt-2012}.
+Some works focus on the broader problem where an exact match is not present in the training set.
+Shen \ea \cite{shen-tog-2012} complete the missing regions of a single object using an assembly of parts from several different models in a CAD database.
+Cocias \ea \cite{cocias-cgvcv-2013} directly deform a mesh to fit to a point cloud, while Prisacariu and Reid \cite{prisacariu-iccv-2011} fit a class-level manifold model to the image data.
+\note{Cite 3D ShapeNets CVPR 2015}
+
+%Collecting training data for this is laborious and costly, and currently there do not exist enough 3D models suitable for accurately completing most real-world scenes.
+All these methods, however, rely on the availability of some form of specific prior model, and on accurate detection to localize each object of interest in the scene.
+In our approach, we set out to get as much shape information as possible \emph{without semantics}, thus remaining free of its associated machinery and limitations.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Surface completion}\newline
+Silberman \ea \cite{silberman-eccv-2014} tackle the completion of an incomplete multi-view reconstruction as a surface completion problem.
+By detecting planes, they can complete their contours in a 2D projection using a novel CRF method.
+This method, however, relies both on a piecewise-planar scene, and on beginning with an almost-complete scan as input.
+Davis \ea \cite{davis-3dpvt-2002} complete surfaces by operating directly on the \emph{signed distance field}, the zero level-set of which defines the surface location. They diffuse the signed distance field across holes in the mesh to fill in the gaps.
+\cite{harary-tog-2013} use a data-driven approach, finding matches in the mesh to the missing region.
+Symmetry can be leveraged to complete some types of objects (\eg \cite{law-cviu-2010, thrun-iccv-2005, kroemer-humanoids-2012}).
+However, this can be brittle, and if symmetry cannot be detected at all, then no prediction can be made.
+
+All of these completion methods are only suitable where the set of missing data is small relative to the size of the observed data.
+In our case, we are completing the geometry of an unknown surface which is typically at least as large as the observed surface.
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Voxel space reasoning}\newline
+Finally, the two algorithms most similar to ours both make predictions of full scene geometry from a single depth image.
+Kim \ea \cite{kim-iccv-2013} use a CRF model over a voxel representation of a scene to simultaneously predict occupancy, visibility and semantic labeling of voxels from an RGBD image.
+For training, they use manually labeled top-down views of the scene.
+They primarily model the probability of a voxel being occupied as a Gaussian centered on the first observed voxel along a camera ray.
+However, high-order-terms in the CRF are used to enforce planar structures and for `objects' to remain contiguous.
+
+Similarly,  Zheng \ea \cite{zheng-cvpr-2013} go from a single depth image to a voxel representation of a scene.
+Their core algorithm consists of two parts.
+Firstly they complete missing voxels by extruding visible points in the detected Manhattan World directions of the scene.
+This is related to the completion method of \cite{kroemer-humanoids-2012}.
+Secondly, they use physics-based reasoning to fill in missing data to ensure connectedness and stability.
+The physics-based reasoning is clearly useful in complex scenes where, for example, supporting object parts may be occluded.
+However the voxel completion by extrusion is limited by the Manhattan World assumption, and the extent of visible voxels in the scene.
+
+In contrast to these methods, we make \emph{structured} predictions in 3D space, and reason about the space of shape variation using models learned from training data.
+%we are able to complete objects where the points making up the objects are hard to see.}
+
+
+
+
 
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -340,7 +300,7 @@ The zero level-set of $\voxelgrid$ therefore represents the surface.
 \newcommand{\voxregion}{\mathcal{R}}
 
 Our system maps a point $\pixelidx$ on an input depth image $\rgbdimage$ to a prediction of the TSDF in a set of voxels in the neighborhood of $\pixelidx_p$, which we use to denote the 3D reprojection of $\pixelidx$.
-The aggregation of multiple such predictions gives our final TSDF prediction for the scene.
+The aggregation of multiple such predictions gives our final TSDF prediction for the scene (Figure \ref{fig:overview}).
 
 %$\project(\pixelidx)$, where $\project(\pixelidx)$ is the 3D location of $\pixelidx$ in world space.
 
@@ -352,7 +312,7 @@ The aggregation of multiple such predictions gives our final TSDF prediction for
 
 \paragraph{Support regions}
 The \emph{support region} $\voxregion \subset \voxelgrid$ is a set of voxels in the neighborhood of $\pixelidx_p$ for which our model can make a prediction of the TSDF.
-Each $\voxregion$ is a fixed-size cuboid of voxels, whose x-axis aligned with the normal direction at $\pixelidx$ (Figure \ref{subfig:voxregion}).
+Each $\voxregion$ is a fixed-size cuboid of voxels, whose x-axis is aligned with the normal direction at $\pixelidx$ (Figure \ref{subfig:voxregion}).
 
 In a 2D world, the location of $\pixelidx$ and the direction of its normal can unambiguously define the location and orientation of $\voxregion$.
 However, in 3D there is a degree of freedom unconstrained as the rotation of the cuboid about the axis of the normal is unspecified.
@@ -364,8 +324,8 @@ The top and bottom face of each cuboid region $\voxregion$ is therefore parallel
 %The cuboid is then rotated about the z-axis so that its y-axis is perpendicular to the normal at $\project(\pixelidx)$.
 
 \paragraph{Making a single prediction}
-At test time, we map a pixel $\pixelidx$ to a feature representation $\feat(\pixelidx)$, as described in Section \ref{sec:features}.
-Using a structured Random Forest, we can make a prediction of the geometry inside of $\voxregion$.
+At test time, we extract a feature description of $\voxregion$, as described in Section \ref{sec:features}.
+Using a structured Random Forest, we can make a prediction of the full geometry inside of $\voxregion$.
 We call this prediction of geometry a \emph{voxlet}.
 The voxlet, which comes out of the forest in canonical alignment, is then transformed from its local coordinate system into world space to fill the voxels in $\voxregion$.
 
@@ -378,10 +338,28 @@ This can then be converted to a prediction of surface geometry, described in Sec
 
 \paragraph{Training}
 At training time, we similarly define a region $\voxregion$ around each point $\pixelidx$, again of a fixed size.
+To help make our algorithm robust to different arrangements of objects we separate our ground truth grid into regions, and only extract ground truth voxels from the region associated with the point $\pixelidx$.
 In this case, the ground truth values of $\voxelgrid$ and hence $\voxregion$ are known.
-We use these ground truth TSDF values, together with $\mathbf{x}(\pixelidx)$, to train a Random Forest, as explained in  Section \ref{sec:forest_train}.
+We use these ground truth TSDF values, together with the ground truth representations, to train a Random Forest, as explained in  Section \ref{sec:forest_train}.
 
 
+\subsection{Pre-segmentation}
+
+We note that while models such as PCA and Random Forests can model variation in shape on isolated objects using TSDFs well, modeling variations in arrangement of objects is much harder.
+We quantified this using early experiments, which had good success in reconstructing objects in isolation, but struggled to complete objects in clutter.
+
+We tackle this issue with objects in clutter both at training and and test time.
+At training time, we assign a label to each voxel occupied voxel ($\voxel$ < 0) in $\voxelgrid$ such that  voxels with the same label are well connected to each other, and voxels with different labels are separated by some amount of free space.
+
+When extracting a training voxlet from $\voxelgrid$, we note the label at $\pixelidx$.
+We then only add to the training voxlet voxels which have the same label.
+This ensures that each training voxlet typically models the shape of isolated objects.
+
+Where objects are not well segmented at this stage, it is not a problem, as they will simply be used to make similar predictions at test time.
+
+\todo{Segmentation method}
+
+\note{Add images to make this more clear}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Feature representation}
@@ -395,17 +373,13 @@ While fast to compute, this feature is limited to making predictions for a singl
 In our case, we may have several images fused together into a common volume.\footnote{\note{We need to decide if we should tackle the multi-image case. This is more generalisable (sets us apart from some of the competition), but will need a few changes to the code base and paper text.}}
 We therefore choose to extract features directly from the partially reconstructed signed distance volume $\voxelgrid$.
 
-%In our work, we exploit the dense reconstruction of the Kinect Fusion algorithm to extract features directly from the partially complete dense voxel grid.
 This has the benefit of being more invariant to camera viewing angle than features taken directly from the depth image, and given the voxel grid, it is computationally cheaper to extract features directly from the grid than to perform point cloud operations.
 
+Our feature descriptor $\mathbf{x}$ consists simply of the raw TSDF values extracted at a set of $n$ locations randomly sampled throughout $\voxregion$.
+These values could be sampled from the full grid $\voxelgrid$ on-the-fly at the leaf nodes in the forest (similar to \eg \cite{shotton-cvpr-2011}).
+However, we choose to extract the $n$ features from each $\voxregion$ in advance.
 
-
-%Our feature representation maps a pixel location $\pixelidx = (u, v)$ to a feature $\feat(\pixelidx)$, which represents the geometry around the point.
-Our feature representation $\feat(\pixelidx)$ at location $\pixelidx$ in the input depth image $\rgbdimage$  describes aspects of its neighborhood.
-We use local and regional features extracted from the depth image.
-The Random Forest--based model weights feature space to make structured predictions of the truncated signed distance function in the surrounding region.
-%This is used in our classifier to map from a single point to a prediction of voxel occupancy in the surrounding region.
-% $\feat(\pixelidx) = [\feat_\text{off}(\pixelidx), \feat_\text{spider}(\pixelidx)]$
+%The Random Forest--based model weights feature space to make structured predictions of the truncated signed distance function in the surrounding region.
 
 
 
@@ -439,8 +413,10 @@ For each location in the input depth image we simply traverse the tree until we 
 \paragraph{Implementation}
 Given the large dimensionality of $\mathcal{Y}$ we perform an initial dimensionality reduction to a 50 dimensional space using PCA.
 Due to the large amount of redundancy in each $\mathbf{v}$ we found this to have little impact on the quality of our results, and yet it provides a large improvement to computational tractability.
-We use an ensemble of 50 trees, which are grown to a maximum depth of 15 or until there is a minimum of 2 examples at a node.
+(The effect of the PCA projection is quantified in Section \ref{sec:oracles}.)
+We use an ensemble of 50 trees, which are grown to a maximum depth of 14 or until there is a minimum of 5 examples at a node.
 We use simple axis aligned feature splits at each node.
+
 
 \newcommand{\voxletsubwidth}{0.41\columnwidth}
 \begin{figure}
@@ -457,9 +433,6 @@ We use simple axis aligned feature splits at each node.
 \end{figure}
 
 
-
-%\note{Our training set is extracted from ...
-%We set size of $\mathcal{R}$ to $15, 15, 30$ ...}
 
 \pagedepth\maxdimen
 \subsection{The voxlet dimensions}
@@ -500,17 +473,29 @@ The final TSDF estimation can be converted to a mesh by finding the level-set of
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Experiments}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+We introduce two datasets to evaluate our algorithm, both of which will be placed in the public domain.
 
-We evaluate our algorithm from the perspective of its ability to reconstruct objects in isolation, and then further its ability to reconstruct more cluttered scenes.
-All of the experiments are performed on data captured from the Microsoft Kinect.
+% \paragraph{Synthetic dataset D1}
+Our \textbf{synthetic dataset (D1)} is a is a large dataset of 500 scenes, each featuring a random arrangement of CAD primitives.
+These random but physically plausible arrangements were formed by dropping objects onto a plane using a physics simulator. Each scene is then rendered from 42 viewpoints in a hemisphere.
+This large dataset allows us to easily demonstrate and quantify the effects of various parts of our algorithm.
+As with our real data, the ground truth TSDF is computed by fusing together the depth images from all the cameras in the hemisphere.
+At test time, one image is selected from the 42 input images and reconstruction performed.
 
+%\paragraph{Desks dataset D2}
+Existing RGBD datasets of natural scenes typically focus on the per-frame labelling task \cite{nyu, sun3d}, object detection \cite{rgbd scenes dataset} or camera pose estimation \cite{stanford?}.
+There are no datasets to our knowledge which have the aim of capturing the full geometry of a scene.
+We therefore introduce a \textbf{desktop dataset (D2)}, capturing the full geometry of **75** desktops in an office environment.
+The desks were not manipulated before data capture, meaning they include the true intricacies of the real world.
+This dataset has wide applications in geometry recovery, mesh segmentation and reconstruction.
+We include the raw color and depth frames, together with the reconstructed mesh and voxelised volume for the data.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Experimental procedure}
 
-In our experiments we first smooth the noisy depth data using cross-bilateral filtering, using the implementation provided by \cite{silberman-eccv-2012}.
-We then detect the largest approximately horizontal plane in the image, and use this to estimate the `up' direction of the scene.
+In our experiments we first smooth the noisy depth data using bilateral filtering.
+We then detect the largest approximately horizontal plane in reprojected 3D points, and use this to estimate the `up' direction of the scene.
 We make an estimate of geometry using the 3D points which lie above this detected planar surface.
 
 %A parameter of our  is how many pixels to evaluate.
@@ -518,52 +503,6 @@ We can choose at test time how many pixels to run through the forest to make a p
 In our experiments we use 200 pixels.
 The forest predictions for these pixels are then aggregated as described in Section \ref{sec:combining}.
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%\subsection{Datasets used}
-
-
-\subsection{Datasets}
-We introduce two datasets to evaluate our algorithm, both of which will be placed in the public domain.
-
-% \paragraph{Synthetic dataset D1}
-Our \textbf{synthetic dataset (D1)} is a is a large dataset of 500 scenes, each featuring a random arrangement of CAD primitives.
-These random but physically plausible arrangements were formed by dropping objects onto a plane using a physics simulator. Each scene is then rendered from 42 viewpoints in a hemisphere.
-This large dataset allows us to easily quantify the effects of various parts of our algorithm, and to demonstrate the various stages of the algorithm.
-
-%\paragraph{Desks dataset D2}
-Existing RGBD datasets of natural scenes typically focus on the per-frame labelling task \cite{nyu, sun3d}, object detection \cite{rgbd scenes dataset} or camera pose estimation \cite{stanford?}.
-There are no datasets to our knowledge which have the aim of capturing the full geometry of a scene.
-We therefore introduce a \textbf{desktop dataset (D2)}, capturing the full geometry of [75] desktops in an office.
-The desks were not manipulated before data capture, meaning they include the true intricacies of the real world.
-This dataset has wide applications in geometry recovery, mesh segmentation and reconstruction.
-We include the raw color and depth frames, together with the reconstructed mesh and voxelised volume for the data.
-
-
-%Example images from this dataset are shown in Figure \ref{fig:osm}.
-
-
-\begin{table}
-  \centering
-  \begin{tabular}{|p{4.8cm}|c|c|}
-  %\toprule
-  \hline
-  \textbf{Method}  &   \textbf{Precision} & \textbf{Recall} \\
-  \hline
-  %\midrule
-  Bounding box & 0.550 & 0.683  \\
-  Zheng \ea \cite{zheng-cvpr-2013}  & 0.570 & 0.466 \\
-  K-means forest & 0.922 & 0.944 \\
-  Structured forest (offset only) & 0.921 & 0.948 \\
-  Structured forest (spider only) &  0.855 & 0.949 \\
-  Structured forest (offset + spider) & 0.926 & 0.948 \\
-  \hline
-  %\bottomrule
-  \end{tabular}
-  \vspace{5pt}
-  \caption{A comparison of the accuracy of geometry estimation algorithms on the Bigbird dataset. Details of the algorithms used are given in Section \ref{sec:algorithms}.}
-    \label{tab:quant_results}
-\end{table}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -595,15 +534,6 @@ We then perform their axis-aligned voxel search for each unobserved voxel, marki
 
 %We do not implement their method for physical reasoning of objects  as we are making predictions for single objects in isolation.
 
-\noindent \textbf{(c) K-means forest} We train a standard classification Random Forest, the leaf nodes of which vote for items in a dictionary of 200 voxlets formed by running K-means on the training set of voxlets. The transformation into the scene and the aggregation steps are equivalent to our core algorithm.
-
-\noindent \textbf{(d) Structured (offset only)} Our full structured forest, but only using the offset features
-
-\noindent \textbf{(e) Structured (spider only)} Our full structured forest, but only using the spider features
-
-\noindent \textbf{(f) Structured (offset + spider)}  Our full structured forest using both offset and spider features.
-
-\vspace{10pt}
 
 The results from our quantitative analysis on the Bigbird turntable dataset are shown in Table \ref{tab:quant_results}.
 We present some views of individual results in Figure \ref{fig:turntable_qual}.
@@ -618,6 +548,7 @@ The K-means Forest does almost as well as our full structured forest.
 However, as it has discretized the label space before training we would not expect it to generalize well to larger and more diverse training data.
 
 \subsection{Introspection using oracles}
+\label{sec:oracles}
 
 A common question for algorithms like ours is: Where is the algorithm failing? We can gain some insight into the system by replacing various stages with an oracle that has access to the ground truth:
 
