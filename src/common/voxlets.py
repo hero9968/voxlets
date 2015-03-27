@@ -418,7 +418,7 @@ class Reconstructer(object):
             has a separate accumulation grid. These are then 'or'ed together
             (or similar) at the very end...
 
-        accum_only_predict_true --- NOT DONE YET!
+        accum_only_predict_true
             if true, the accumulator(s) will combine
             each prediction by only averaging in the regions predicted to be
             full. If false, the entire voxlet region will be added in, just
@@ -508,7 +508,7 @@ class Reconstructer(object):
                     acc_copy = self.segement_accums[this_point_label]
                 else:
                     acc_copy = self.accum.copy()
-                acc_copy.add_voxlet(transformed_voxlet)
+                acc_copy.add_voxlet(transformed_voxlet, accum_only_predict_true)
 
                 to_evaluate_on = np.logical_or(
                     self.sc.im_tsdf.V < 0, np.isnan(self.sc.im_tsdf.V))
@@ -538,9 +538,9 @@ class Reconstructer(object):
             else:
                 # Standard method - adding voxlet in regardless
                 if combine_segments_separately:
-                    self.segement_accums[this_point_label].add_voxlet(transformed_voxlet)
+                    self.segement_accums[this_point_label].add_voxlet(transformed_voxlet, accum_only_predict_true)
                 else:
-                    self.accum.add_voxlet(transformed_voxlet)
+                    self.accum.add_voxlet(transformed_voxlet, accum_only_predict_true)
 
             if 'blender' in render_type and render_savepath:
 

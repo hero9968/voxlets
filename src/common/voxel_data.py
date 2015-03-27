@@ -599,9 +599,13 @@ class UprightAccumulator(WorldVoxels):
         self.sumV = (copy.deepcopy(self.V)*0)
         self.countV = (copy.deepcopy(self.V)*0)
 
-    def add_voxlet(self, voxlet):
+    def add_voxlet(self, voxlet, accum_only_predict_true):
         '''
         adds a single voxlet into the output grid
+
+        accum_only_predict_true
+            if true, then only add in the 'occupied' and the narrow band from the
+            prediction.
         '''
 
         # convert the indices to world xyz space
@@ -615,7 +619,27 @@ class UprightAccumulator(WorldVoxels):
 
         #self.sumV[valid.reshape(self.V.shape)] += occupied_values
         #self.countV[valid.reshape(self.V.shape)] += 1
-        self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
+        if accum_only_predict_true:
+
+            self_world_xyz = self.world_meshgrid()
+            self_idx = self.idx_meshgrid()
+
+            # 2) Warp into idx space of input_grid and
+            # 3) See which are valid idxs in input_grid
+            data_to_insert, valid = input_grid.just_valid_world_to_idx(self_world_xyz)
+
+            # now only use the values which pass the test...
+            valid_data = data_to_insert < parameters.RenderedVoxelGrid.mu
+            data_to_insert = data_to_insert[valid_data]
+            valid = np.where(valid)[0][valid_data]
+
+            # 4) Replace these values in self
+            # do this manually...
+            self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += data_to_insert
+            self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += 1
+
+        else:
+            self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
 
     def compute_average(self, nan_value=0):
         '''
