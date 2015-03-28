@@ -53,7 +53,7 @@ def process_sequence(sequence):
     sc = scene.Scene()
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, load_implicit=parameters.VoxletTraining.use_implicit)
-    sc.santity_render(save_folder='/tmp/')
+    # sc.santity_render(save_folder='/tmp/')
 
     idxs = sc.im.random_sample_from_mask(
         parameters.VoxletTraining.number_points_from_each_image)
@@ -88,7 +88,7 @@ def process_sequence(sequence):
     print "Took %f s" % (time() - t1)
     t1 = time()
 
-    # np_features = features_pca.transform(all_features)
+    np_features = features_pca.transform(all_features)
 
     # iso_features = features_iso.transform(all_features)
     # print "iso features is shape ", iso_features.shape
