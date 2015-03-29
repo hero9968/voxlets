@@ -439,6 +439,9 @@ class WorldVoxels(Voxels):
             if combine == 'sum':
                 addition = self.get_idxs(self_idx[valid, :])
                 self.set_idxs(self_idx[valid, :], valid_values+addition)
+            elif combine=='accumulator':
+                self.sumV[valid.reshape(self.sumV.shape)] += valid_values
+                self.countV[valid.reshape(self.countV.shape)] += 1
             else:
                 self.set_idxs(self_idx[valid, :], valid_values)
 
@@ -626,7 +629,7 @@ class UprightAccumulator(WorldVoxels):
 
             # 2) Warp into idx space of input_grid and
             # 3) See which are valid idxs in input_grid
-            data_to_insert, valid = input_grid.just_valid_world_to_idx(self_world_xyz)
+            data_to_insert, valid = voxlet.just_valid_world_to_idx(self_world_xyz)
 
             # now only use the values which pass the test...
             valid_data = data_to_insert < parameters.RenderedVoxelGrid.mu
@@ -639,7 +642,7 @@ class UprightAccumulator(WorldVoxels):
             self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += 1
 
         else:
-            self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
+            self.fill_from_grid(voxlet, method='naive', combine='accumulator')
 
     def compute_average(self, nan_value=0):
         '''
