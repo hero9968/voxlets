@@ -113,7 +113,7 @@ def process_sequence(sequence):
     scipy.io.savemat(savepath, D, do_compression=True)
 
 
-if False:  # parameters.multicore:
+if parameters.multicore:
     # need to import these *after* pool_helper has been defined
     import multiprocessing
     pool = multiprocessing.Pool(parameters.cores)
