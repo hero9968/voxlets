@@ -88,7 +88,7 @@ def process_sequence(sequence):
     print "Took %f s" % (time() - t1)
     t1 = time()
 
-    # np_features = features_pca.transform(all_features)
+    np_features = features_pca.transform(all_features)
 
     # iso_features = features_iso.transform(all_features)
     # print "iso features is shape ", iso_features.shape
@@ -101,7 +101,7 @@ def process_sequence(sequence):
     scipy.io.savemat(savepath, D, do_compression=True)
 
 
-if False:  # parameters.multicore:
+if parameters.multicore:
     # need to import these *after* pool_helper has been defined
     import multiprocessing
     pool = multiprocessing.Pool(parameters.cores)
