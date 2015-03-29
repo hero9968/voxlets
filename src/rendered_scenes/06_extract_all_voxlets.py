@@ -60,7 +60,8 @@ def process_sequence(sequence):
     # sc.santity_render(save_folder='/tmp/')
 
     idxs = sc.im.random_sample_from_mask(
-        parameters.VoxletTraining.number_points_from_each_image)
+        parameters.VoxletTraining.number_points_from_each_image,
+        additional_mask=sc.gt_im_label != 0)
 
     logging.debug("Extracting shoeboxes and features...")
     t1 = time()
@@ -74,7 +75,7 @@ def process_sequence(sequence):
 
     # Doing the mask trick...
     np_masks = np.isnan(np_sboxes).astype(np.float16)
-    np_sboxes[np_masks == 1] = np.nanmax(np_masks)
+    np_sboxes[np_masks == 1] = np.nanmax(np_sboxes)
 
     # must do the pca now after doing the mask trick
     np_sboxes = pca.transform(np_sboxes)

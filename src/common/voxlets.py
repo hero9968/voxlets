@@ -124,7 +124,7 @@ def render_single_voxlet(V, savepath, level=0):
     sp.call([paths.blender_path,
          paths.RenderedData.voxlet_render_blend,
          "-b", "-P",
-         paths.RenderedData.voxlet_render_script]),
+         paths.RenderedData.voxlet_render_script],
          stdout=open(os.devnull, 'w'),
          close_fds=True)
 

@@ -36,7 +36,8 @@ def process_sequence(sequence):
     sc.santity_render(save_folder='/tmp/')
 
     idxs = sc.im.random_sample_from_mask(
-        parameters.VoxletTraining.pca_number_points_from_each_image)
+        parameters.VoxletTraining.pca_number_points_from_each_image,
+        additional_mask=sc.gt_im_label != 0)
 
     "Now try to make this nice and like parrallel or something...?"
     t1 = time()

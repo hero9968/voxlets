@@ -63,6 +63,7 @@ class RGBDImage(object):
 
                 self.depth = np.fromfile(f, sep=' ')
 
+            self.depth = self.depth.astype(np.float32)
             self.depth[self.depth == 0] = np.nan
 
 
@@ -239,20 +240,25 @@ class RGBDImage(object):
         if os.path.exists(mask_image_path):
             im.mask = scipy.misc.imread(mask_image_path) == 255
         else:
-            sys.stdout.write("Cannot find mask...")
-            sys.stdout.flush()
+            pass
 
         # setting the frame id
         im.frame_id = dictionary['id']
         #im.frame_number = count
         return im
 
-    def random_sample_from_mask(self, num_samples):
+    def random_sample_from_mask(self, num_samples, additional_mask=None):
         '''
         returns indices into the mask
+        additional_mask:
+            an extra mask, to be 'anded' together with the mask we have here
+            useful to ensure we don't sample from certain pixels
         '''
         temp_mask = np.logical_and(self.mask,
             self.get_world_normals()[:, 2].reshape(self.mask.shape) < 0.9)
+        if additional_mask != None:
+            temp_mask = np.logical_and(temp_mask, additional_mask)
+
         indices = np.array(np.nonzero(temp_mask)).T
         samples = np.random.randint(0, indices.shape[0], num_samples)
         return indices[samples, :]

@@ -95,7 +95,7 @@ print "There are %d nans in sboxes" % np.isnan(np_all_sboxes).sum()
 
 # Now removing the nans from the shoeboxes and making the masks separate...
 np_all_masks = np.isnan(np_all_sboxes).astype(np.float16)
-np_all_sboxes[np_all_masks == 1] = np.nanmax(np_all_masks)
+np_all_sboxes[np_all_masks == 1] = np.nanmax(np_all_sboxes)
 
 print "There are %d nans in sboxes" % np.isnan(np_all_sboxes).sum()
 
