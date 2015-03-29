@@ -439,6 +439,9 @@ class WorldVoxels(Voxels):
             if combine == 'sum':
                 addition = self.get_idxs(self_idx[valid, :])
                 self.set_idxs(self_idx[valid, :], valid_values+addition)
+            elif combine=='accumulator':
+                self.sumV[valid.reshape(self.sumV.shape)] += valid_values
+                self.countV[valid.reshape(self.countV.shape)] += 1
             else:
                 self.set_idxs(self_idx[valid, :], valid_values)
 
@@ -654,7 +657,7 @@ class UprightAccumulator(WorldVoxels):
             self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights
 
         else:
-            self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
+            self.fill_from_grid(voxlet, method='naive', combine='accumulator')
 
     def compute_average(self, nan_value=0):
         '''

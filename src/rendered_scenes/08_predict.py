@@ -74,13 +74,13 @@ def process_sequence(sequence):
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True, combine_segments_separately=True, accum_only_predict_true=True)
+        render_type=[], add_ground_plane=True, combine_segments_separately=False, accum_only_predict_true=False)
     pred_voxlets_exisiting = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     full_oracle_voxlets = rec.fill_in_output_grid_oma(
         render_type=[],oracle='gt', add_ground_plane=True)
-    full_oracle_voxlets = rec.keeping_existing
+    # full_oracle_voxlets = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     oracle_voxlets = rec.fill_in_output_grid_oma(
@@ -137,7 +137,9 @@ def process_sequence(sequence):
 
         score = sklearn.metrics.roc_auc_score(gt, voxel_predictions)
         fpr, tpr, _ = sklearn.metrics.roc_curve(gt, voxel_predictions)
-        c.append([score, fpr, tpr])
+        precision = sklearn.metrics.precision_score(gt, voxel_predictions > 0)
+        recall = sklearn.metrics.recall_score(gt, voxel_predictions > 0)
+        c.append([score, fpr, tpr, precision, recall])
 
     if save_prediction_grids:
         print "-> Saving prediction grids"
@@ -167,7 +169,8 @@ def process_sequence(sequence):
             " Add to the roc plot, which is in the final subplot"
             if count >= 3:
                 "Add the AUC"
-                plt.text(0, 50, "AUC = %0.3f" % c[3][0], fontsize=10, color='white')
+                plt.text(0, 50, "AUC=%0.3f, prec=%0.3f, rec=%0.3f" % (c[3][0], c[3][3], c[3][4]),
+                    fontsize=6, color='white')
 
                 plt.subplot(su, sv, su*sv)
                 plt.plot(c[3][1], c[3][2], label=c[0])
@@ -188,8 +191,11 @@ def process_sequence(sequence):
             test_key = c[1]
             test_desc = c[0]
             test_auc = float(c[3][0])
+            precision = float(c[3][3])
+            recall = float(c[3][4])
             results_dict[test_key] = \
-                {'auc':test_auc, 'description':test_desc}
+                {'auc':test_auc, 'description':test_desc,
+                'precision':precision, 'recall':recall}
         with open(fpath + 'scores.yaml', 'w') as f:
             f.write(yaml.dump(results_dict, default_flow_style=False))
 
