@@ -351,7 +351,9 @@ class Scene(object):
         tsdf_grids = {}
         for idx, reg in binary_grids.iteritems():
             temp = tsdf.copy()
-            temp.V[~reg] = np.nanmax(tsdf.V)
+            to_set_to_nan = np.logical_and(self.gt_labels.V != idx, self.gt_labels.V != 0)
+            print to_set_to_nan.sum()
+            temp.V[to_set_to_nan] = np.nan
             tsdf_grids[idx] = temp
 
         return tsdf_grids

@@ -599,7 +599,7 @@ class UprightAccumulator(WorldVoxels):
         self.sumV = (copy.deepcopy(self.V)*0)
         self.countV = (copy.deepcopy(self.V)*0)
 
-    def add_voxlet(self, voxlet, accum_only_predict_true):
+    def add_voxlet(self, voxlet, accum_only_predict_true, weights=None):
         '''
         adds a single voxlet into the output grid
 
@@ -626,7 +626,7 @@ class UprightAccumulator(WorldVoxels):
 
             # 2) Warp into idx space of input_grid and
             # 3) See which are valid idxs in input_grid
-            data_to_insert, valid = input_grid.just_valid_world_to_idx(self_world_xyz)
+            data_to_insert, valid = voxlet.just_valid_world_to_idx(self_world_xyz)
 
             # now only use the values which pass the test...
             valid_data = data_to_insert < parameters.RenderedVoxelGrid.mu
@@ -637,6 +637,21 @@ class UprightAccumulator(WorldVoxels):
             # do this manually...
             self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += data_to_insert
             self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += 1
+
+        elif weights != None:
+            # Doing the accumulation in a naive way here...
+
+            self_world_xyz = self.world_meshgrid()
+            self_idx = self.idx_meshgrid()
+
+            # 2) Warp into idx space of input_grid and
+            # 3) See which are valid idxs in input_grid
+            data_to_insert, valid = voxlet.just_valid_world_to_idx(self_world_xyz)
+
+            # 4) Replace these values in self
+            # do this manually...
+            self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += data_to_insert * weights
+            self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights
 
         else:
             self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')

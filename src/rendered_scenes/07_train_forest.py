@@ -31,11 +31,16 @@ features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_p
 with open(features_pca_savepath, 'rb') as f:
     features_pca = pickle.load(f)
 
+masks_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'masks_pca.pkl'
+with open(features_pca_savepath, 'rb') as f:
+    masks_pca = pickle.load(f)
+
 ####################################################################
 print "Loading in all the data..."
 ########################################################################
 features = []
 pca_representation = []
+masks = []
 
 for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
@@ -47,6 +52,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     D = scipy.io.loadmat(loadpath)
     features.append(D['features'])
     pca_representation.append(D['shoeboxes'])
+    masks.append(D['masks'])
 
     print D['features'].shape, D['shoeboxes'].shape
     if count > parameters.max_sequences:
@@ -54,10 +60,12 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
         break
 
 np_pca_representation = np.vstack(pca_representation)
+np_masks = np.vstack(masks)
 np_features = np.concatenate(features, axis=0)
 
-print np_pca_representation.shape
-print np_features.shape
+print "Sbox pca representation is shape", np_pca_representation.shape
+print "Masks is ", np_masks.shape
+print "Features is ", np_features.shape
 
 ####################################################################
 print "Training the model"
@@ -67,7 +75,9 @@ model = voxlets.VoxletPredictor()
 model.train(
     np_features,
     np_pca_representation,
-    parameters.VoxletTraining.forest_subsample_length)
+    parameters.VoxletTraining.forest_subsample_length,
+    masks=np_masks)
 model.set_pca(pca)
+model.set_masks_pca(masks_pca)
 model.set_feature_pca(features_pca)
 model.save(paths.RenderedData.voxlet_model_oma_path)

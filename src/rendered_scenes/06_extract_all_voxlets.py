@@ -23,6 +23,10 @@ pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
+mask_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'masks_pca.pkl'
+with open(mask_pca_savepath, 'rb') as f:
+    mask_pca = pickle.load(f)
+
 features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
 with open(features_pca_savepath, 'rb') as f:
     features_pca = pickle.load(f)
@@ -61,12 +65,20 @@ def process_sequence(sequence):
     logging.debug("Extracting shoeboxes and features...")
     t1 = time()
     gt_shoeboxes = [sc.extract_single_voxlet(
-        idx, extract_from='gt_tsdf', post_transform=pca_flatten) for idx in idxs]
+        idx, extract_from='gt_tsdf', post_transform=sbox_flatten) for idx in idxs]
     view_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='visible_tsdf', post_transform=sbox_flatten) for idx in idxs]
 
     np_sboxes = np.vstack(gt_shoeboxes)
     np_view = np.vstack(view_shoeboxes)
+
+    # Doing the mask trick...
+    np_masks = np.isnan(np_sboxes).astype(np.float16)
+    np_sboxes[np_masks == 1] = np.nanmax(np_masks)
+
+    # must do the pca now after doing the mask trick
+    np_sboxes = pca.transform(np_sboxes)
+    np_masks = mask_pca.transform(np_masks)
 
     '''replace all the nans in the shoeboxes from the image view'''
     np_view[np.isnan(np_view)] = -parameters.RenderedVoxelGrid.mu
@@ -97,7 +109,7 @@ def process_sequence(sequence):
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
     logging.debug("Saving to " + savepath)
-    D = dict(shoeboxes=np_sboxes, features=np_features)
+    D = dict(shoeboxes=np_sboxes, features=np_features, masks=np_masks)
     scipy.io.savemat(savepath, D, do_compression=True)
 
 

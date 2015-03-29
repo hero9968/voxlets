@@ -91,11 +91,20 @@ print "Features shape is " + str(np_all_features.shape)
 print np_all_features.dtype
 print np_all_sboxes.dtype
 
+print "There are %d nans in sboxes" % np.isnan(np_all_sboxes).sum()
+
+# Now removing the nans from the shoeboxes and making the masks separate...
+np_all_masks = np.isnan(np_all_sboxes).astype(np.float16)
+np_all_sboxes[np_all_masks == 1] = np.nanmax(np_all_masks)
+
+print "There are %d nans in sboxes" % np.isnan(np_all_sboxes).sum()
+
 # Replacing nans with a low number in the features, hopefully will work...
 np_all_features[np.isnan(np_all_features)] = -parameters.RenderedVoxelGrid.mu
 
 for name, np_array in zip(
-        ('shoeboxes', 'features'), (np_all_sboxes, np_all_features)):
+        ('shoeboxes', 'features', 'masks'),
+        (np_all_sboxes, np_all_features, np_all_masks)):
 
     # clustering the sboxes - but only a subsample of them for speed!
     print "Doing PCA"
@@ -103,15 +112,6 @@ for name, np_array in zip(
         np_array,
         parameters.VoxletTraining.pca_subsample_length,
         parameters.VoxletTraining.number_pca_dims)
-
-    # if name == 'features':
-    #     # No point doing isomap for the shoeboxes
-    #     print "Doing Isomapping"
-
-    #     iso = do_isomap(
-    #         np_array,
-    #         parameters.VoxletTraining.pca_subsample_length / 10,
-    #         parameters.VoxletTraining.number_pca_dims)
 
     print "Doing Kmeans"
     km = cluster_data(
@@ -124,8 +124,6 @@ for name, np_array in zip(
             '_pca.pkl'
         kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
             '_kmean.pkl'
-        # iso_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
-        #     '_iso.pkl'
 
         print "Saving to " + pca_savepath
         with open(pca_savepath, 'wb') as f:
@@ -134,11 +132,6 @@ for name, np_array in zip(
         print "Saving to " + kmeans_savepath
         with open(kmeans_savepath, 'wb') as f:
             pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
-
-        # if name == 'features':
-        #     print "Saving to " + iso_savepath
-        #     with open(iso_savepath, 'wb') as f:
-        #         pickle.dump(iso, f, pickle.HIGHEST_PROTOCOL)
 
     except:
         import pdb; pdb.set_trace()

@@ -122,9 +122,9 @@ def render_single_voxlet(V, savepath, level=0):
     vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
 
     sp.call([paths.blender_path,
-         "../rendered_scenes/visualisation/voxlet_render_quick.blend",
+         paths.RenderedData.voxlet_render_blend,
          "-b", "-P",
-         "../rendered_scenes/visualisation/single_voxlet_blender_render.py"],
+         paths.RenderedData.voxlet_render_script]),
          stdout=open(os.devnull, 'w'),
          close_fds=True)
 
@@ -159,13 +159,18 @@ class VoxletPredictor(object):
     def set_feature_pca(self, feature_pca_in):
         self.feature_pca = feature_pca_in
 
+    def set_masks_pca(self, masks_pca_in):
+        self.masks_pca = masks_pca_in
 
-    def train(self, X, Y, subsample_length=-1):
+    def train(self, X, Y, subsample_length=-1, masks=None):
         '''
         Runs the OMA forest code
         Y is expected to be a PCA version of the shoeboxes
         subsample_length is the maximum number of training examples to use.
         When it is -1, then we use all the training examples
+        masks
+            is an optional argument, giving a pca-ed binary mask for each
+            training example
         '''
         if X.shape[0] != Y.shape[0]:
             raise Exception("X and Y should have the same number of rows")
@@ -194,7 +199,11 @@ class VoxletPredictor(object):
         self.training_Y = Y
         self.training_X = X
 
-    def _medioid(self, data):
+        # Unpythonic comparison but nessary in case it is numpy array
+        if masks != None:
+            self.training_masks = masks
+
+    def _medioid_idx(self, data):
         '''
         similar to numpy 'mean', but returns the medioid data item
         '''
@@ -203,7 +212,7 @@ class VoxletPredictor(object):
         mu_dist = np.sqrt(((data - mu[np.newaxis, ...])**2).sum(axis=1))
 
         median_item_idx = mu_dist.argmin()
-        return data[median_item_idx]
+        return median_item_idx
 
     def predict(self, X):
         '''
@@ -216,11 +225,28 @@ class VoxletPredictor(object):
         # must extract original test data from the indices
 
         # this is a horrible line and needs changing...
-        Y_pred_compressed = [self._medioid(self.training_Y[pred])
+        medioid_idx = [self._medioid_idx(self.training_Y[pred])
                              for pred in index_predictions]
+        Y_pred_compressed = [self.training_Y[idx] for idx in medioid_idx]
         Y_pred_compressed = np.array(Y_pred_compressed)
 
-        return self.pca.inverse_transform(Y_pred_compressed)
+        all_masks = []
+        #for each prediction...
+        for row in index_predictions:
+            # Want to get the mean mask for each data point in the leaf node...
+            # Each row is a list of training examples
+            these_masks_compressed = [self.training_masks[idx] for idx in row]
+            # Must inverse transform *before* taking the mean -
+            # I don't want to take mean in PCA space
+            these_masks_full = \
+                self.masks_pca.inverse_transform(np.array(these_masks_compressed))
+            all_masks.append(np.mean(these_masks_full, axis=0))
+        all_masks = np.vstack(all_masks)
+
+        print "X has shape ", X.shape
+        print "All masks has shape ", all_masks.shape
+
+        return (self.pca.inverse_transform(Y_pred_compressed), all_masks)
 
     def save(self, savepath):
         '''
@@ -293,10 +319,33 @@ class VoxletPredictor(object):
             else:
                 ids_to_render = node.exs_at_node
 
+            # Rendering each example at this node
             for count, example_id in enumerate(ids_to_render):
                 V = self.pca.inverse_transform(self.training_Y[example_id])
                 render_single_voxlet(V.reshape(parameters.Voxlet.shape),
                     leaf_folder_path + str(count) + '.png')
+
+            # Now doing the average mask and plotting slices through it
+            mean_mask = self._get_mean_mask(ids_to_render)
+            plt.figure(figsize=(10, 10))
+            for count, slice_id in enumerate(range(0, mean_mask.shape[2], 10)):
+                if count+1 > 3*3: break
+                plt.subplot(3, 3, count+1)
+                plt.imshow(mean_mask[:, :, slice_id], interpolation='nearest', cmap=plt.cm.gray)
+                plt.clim(0, 1)
+                plt.title('Slice_id = %d' % slice_id)
+                plt.savefig(leaf_folder_path + 'slices.pdf')
+
+    def _get_mean_mask(self, training_idxs):
+        '''
+        returns the mean mask, given a set of indices into the training
+        data
+        '''
+        all_masks = [self.masks_pca.inverse_transform(self.training_masks[idx])
+                     for idx in training_idxs]
+        return np.array(all_masks).mean(axis=0).reshape(parameters.Voxlet.shape)
+
+
 
 
 class Reconstructer(object):
@@ -473,8 +522,8 @@ class Reconstructer(object):
             feature_vector = self._feature_collapse(combined_feature)
 
             "classify according to the forest"
-            voxlet_prediction = self.model.predict(
-                np.atleast_2d(feature_vector))
+            voxlet_prediction, mask_prediction = \
+                self.model.predict(np.atleast_2d(feature_vector))
             self.cached_voxlet_prediction = voxlet_prediction
 
             # getting the GT voxlet
@@ -508,7 +557,7 @@ class Reconstructer(object):
                     acc_copy = self.segement_accums[this_point_label]
                 else:
                     acc_copy = self.accum.copy()
-                acc_copy.add_voxlet(transformed_voxlet, accum_only_predict_true)
+                acc_copy.add_voxlet(transformed_voxlet, accum_only_predict_true, weights=mask_prediction)
 
                 to_evaluate_on = np.logical_or(
                     self.sc.im_tsdf.V < 0, np.isnan(self.sc.im_tsdf.V))
@@ -538,9 +587,10 @@ class Reconstructer(object):
             else:
                 # Standard method - adding voxlet in regardless
                 if combine_segments_separately:
-                    self.segement_accums[this_point_label].add_voxlet(transformed_voxlet, accum_only_predict_true)
+                    self.segement_accums[this_point_label].add_voxlet(transformed_voxlet, accum_only_predict_true, weights=mask_prediction)
                 else:
-                    self.accum.add_voxlet(transformed_voxlet, accum_only_predict_true)
+                    self.accum.add_voxlet(transformed_voxlet,
+                        accum_only_predict_true, weights=mask_prediction)
 
             if 'blender' in render_type and render_savepath:
 
