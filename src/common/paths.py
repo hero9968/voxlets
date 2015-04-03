@@ -303,6 +303,19 @@ class RenderedData(object):
 
         return frames
 
+    def new_dropbox_dir():
+        '''
+        creates a new dropbox directory for results
+        '''
+        base_path = \
+            os.path.expanduser('~/Dropbox/PhD/Projects/Shape_sharing_data/predictions/res_%04d/')
+        count = 0
+        while os.path.exists(base_dropbox_path % count):
+            count += 1
+        os.mkdir(base_path % count)
+        return
+
+
 class Bricks(object):
     base = os.path.expanduser('~/projects/shape_sharing/data/bricks/')
     models = base + 'models/'

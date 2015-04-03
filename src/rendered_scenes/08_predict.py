@@ -35,7 +35,8 @@ render_predictions = True
 render_top_view = False
 save_prediction_grids = True
 save_scores_to_yaml = True
-
+copy_to_dropbox = True and paths.host_name == 'biryani'
+base_dropbox_path = paths.RenderedData.new_dropbox_dir()
 
 print "MAIN LOOP"
 # Note: if parallelising, should either do here (at top level) or at the
@@ -182,7 +183,12 @@ def process_sequence(sequence):
                 plt.plot(rec.sampled_idxs[:, 1], rec.sampled_idxs[:, 0], 'r.', ms=2)
 
         fname = 'all_' + sequence['name']
-        plt.savefig(gen_renderpath.replace('png', 'pdf') % fname, dpi=400)
+        all_savename = gen_renderpath.replace('png', 'pdf') % fname
+        plt.savefig(all_savename, dpi=400)
+
+        # Saving to the dropbox...
+        if copy_to_dropbox:
+            shutil.copy(all_savename, dropbox_path)
 
     if save_scores_to_yaml:
         print "-> Writing scores to YAML"
