@@ -208,6 +208,10 @@ class Scene(object):
             #print "WARNING - in scene - not using separate grids at the moment..."
             shoebox.fill_from_grid(temp_vgrid)
 
+        elif extract_from == 'im_tsdf':
+
+            shoebox.fill_from_grid(self.im_tsdf)
+
         elif extract_from == 'implicit_tsdf':
 
             shoebox.fill_from_grid(self.implicit_tsdf)

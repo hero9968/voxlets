@@ -44,7 +44,7 @@ def process_sequence(sequence):
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=flatten_sbox) for idx in idxs]
     view_shoeboxes = [sc.extract_single_voxlet(
-        idx, extract_from='visible_tsdf', post_transform=flatten_sbox) for idx in idxs]
+        idx, extract_from='im_tsdf', post_transform=flatten_sbox) for idx in idxs]
 
     np_gt_sboxes = np.array(gt_shoeboxes)
     np_view_sboxes = np.array(view_shoeboxes)

@@ -39,6 +39,10 @@ if not os.path.exists(paths.RenderedData.voxlets_data_path):
     os.makedirs(paths.RenderedData.voxlets_data_path)
 
 
+def decimate_flatten(sbox):
+    return sbox.V[::2, ::2, ::2].flatten()
+
+
 def pca_flatten(sbox):
     """Applied to the GT shoeboxes after extraction"""
     return pca.transform(sbox.V.flatten())
@@ -47,7 +51,6 @@ def pca_flatten(sbox):
 def sbox_flatten(sbox):
     """Applied to the GT shoeboxes after extraction"""
     return sbox.V.flatten()
-
 
 
 def process_sequence(sequence):
@@ -67,11 +70,23 @@ def process_sequence(sequence):
     t1 = time()
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=sbox_flatten) for idx in idxs]
-    view_shoeboxes = [sc.extract_single_voxlet(
-        idx, extract_from='visible_tsdf', post_transform=sbox_flatten) for idx in idxs]
+
+    if parameters.VoxletTraining.feature_transform == 'pca':
+
+        view_shoeboxes = [sc.extract_single_voxlet(
+            idx, extract_from='im_tsdf', post_transform=sbox_flatten) for idx in idxs]
+        all_features = np.vstack(view_shoeboxes)
+        all_features[np.isnan(all_features)] = -parameters.RenderedVoxelGrid.mu
+        np_features = features_pca.transform(all_features)
+
+    elif parameters.VoxletTraining.feature_transform == 'decimate':
+
+        view_shoeboxes = [sc.extract_single_voxlet(
+            idx, extract_from='im_tsdf', post_transform=decimate_flatten) for idx in idxs]
+        np_features = np.vstack(view_shoeboxes)
+        np_features[np.isnan(np_features)] = -parameters.RenderedVoxelGrid.mu
 
     np_sboxes = np.vstack(gt_shoeboxes)
-    np_view = np.vstack(view_shoeboxes)
 
     # Doing the mask trick...
     np_masks = np.isnan(np_sboxes).astype(np.float16)
@@ -82,30 +97,13 @@ def process_sequence(sequence):
     np_masks = mask_pca.transform(np_masks)
 
     '''replace all the nans in the shoeboxes from the image view'''
-    np_view[np.isnan(np_view)] = -parameters.RenderedVoxelGrid.mu
+
 
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
     logging.debug("...Features are shape " + str(np_view.shape))
 
-    if parameters.VoxletTraining.use_implicit:
-        implicit_sboxes = [sc.extract_single_voxlet(
-            idx, extract_from='implicit_tsdf', post_transform=sbox_flatten) for idx in idxs]
-        np_implicit = np.vstack(implicit_sboxes)
-        logging.debug("...Implicit is shape " + str(np_implicit.shape))
-        all_features = np.concatenate((np_view, np_implicit), axis=1)
-        print np.isnan(np_view).sum(), np.isnan(np_implicit).sum()
-
-    else:
-        all_features = np_view
-
     print "Took %f s" % (time() - t1)
     t1 = time()
-
-    np_features = features_pca.transform(all_features)
-
-    # iso_features = features_iso.transform(all_features)
-    # print "iso features is shape ", iso_features.shape
-    # print "Transform took %f s" % (time() - t1)
 
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
