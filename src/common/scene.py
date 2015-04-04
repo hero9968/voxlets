@@ -8,7 +8,6 @@ from skimage.morphology import binary_erosion, binary_dilation, disk
 import sklearn.metrics  # for evaluation
 import skimage.measure
 import paths
-import parameters
 import voxel_data
 import images
 import features
@@ -25,10 +24,12 @@ class Scene(object):
     stores voxel grid, also labels and perhaps the video of depth images
     will probably have methods to do segmentation etc
     '''
-    def __init__(self):
+    def __init__(self, mu, voxlet_params):
         self.gt_tsdf = None
         self.im_tsdf = None
         self.im = None
+        self.mu = mu
+        self.voxlet_params = voxlet_params
 
     def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True, save_grids=False, load_implicit=False):
         '''
@@ -41,7 +42,7 @@ class Scene(object):
         # load in the ground truth grid for this scene, and converting nans
         vox_location = paths.RenderedData.ground_truth_voxels(sequence['scene'])
         self.gt_tsdf = voxel_data.load_voxels(vox_location)
-        self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -parameters.RenderedVoxelGrid.mu
+        self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -self.mu
         self.gt_tsdf.set_origin(self.gt_tsdf.origin)
 
         # loading in the image
@@ -64,8 +65,7 @@ class Scene(object):
         carver = carving.Fusion()
         carver.set_video(video)
         carver.set_voxel_grid(self.gt_tsdf.blank_copy())
-        self.im_tsdf, self.im_visible = \
-            carver.fuse(parameters.RenderedVoxelGrid.mu)
+        self.im_tsdf, self.im_visible = carver.fuse(self.mu)
 
         # load in the implicit prediction...
         if load_implicit:
@@ -174,17 +174,17 @@ class Scene(object):
         # convert to linear idx
         point_idx = index[0] * self.im.mask.shape[1] + index[1]
 
-        shoebox = voxel_data.ShoeBox(parameters.Voxlet.shape, np.float32)
+        shoebox = voxel_data.ShoeBox(self.voxlet_params.shape, np.float32)
         shoebox.V *= 0
-        shoebox.V += parameters.RenderedVoxelGrid.mu  # set the outside area to -mu
-        shoebox.set_p_from_grid_origin(parameters.Voxlet.centre)  # m
-        shoebox.set_voxel_size(parameters.Voxlet.size)  # m
+        shoebox.V += self.mu  # set the outside area to -mu
+        shoebox.set_p_from_grid_origin(self.voxlet_params.centre)  # m
+        shoebox.set_voxel_size(self.voxlet_params.size)  # m
 
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
 
-        if parameters.Voxlet.tall_voxlets:
-            start_z = parameters.Voxlet.tall_voxlet_height
+        if self.voxlet_params.tall_voxlets:
+            start_z = self.voxlet_params.tall_voxlet_height
         else:
             start_z = world_xyz[point_idx, 2]
 
@@ -340,7 +340,7 @@ class Scene(object):
         # propagate these labels back the to the voxels...
         labels3d = np.expand_dims(labels, axis=2)
         labels3d = np.tile(labels3d, (1, 1, tsdf.V.shape[2]))
-        labels3d[tsdf.V > parameters.RenderedVoxelGrid.mu] = 0
+        labels3d[tsdf.V > self.mu] = 0
 
         labels_3d_grid = tsdf.copy()
         labels_3d_grid.V = labels3d
@@ -404,11 +404,11 @@ class Scene(object):
 
         # getting the ground truth TSDF voxels
         gt = self.gt_tsdf.V[voxels_to_evaluate] > 0
-        gt[np.isnan(gt)] = -parameters.RenderedVoxelGrid.mu
+        gt[np.isnan(gt)] = -self.mu
 
         # Getting the relevant predictions
         V_to_eval = V[voxels_to_evaluate]
-        V_to_eval[np.isnan(V_to_eval)] = +parameters.RenderedVoxelGrid.mu
+        V_to_eval[np.isnan(V_to_eval)] = +self.mu
 
         # Now doing the final evaluation
         results = {}

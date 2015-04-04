@@ -375,12 +375,11 @@ We therefore choose to extract features directly from the partially reconstructe
 
 This has the benefit of being more invariant to camera viewing angle than features taken directly from the depth image, and given the voxel grid, it is computationally cheaper to extract features directly from the grid than to perform point cloud operations.
 
-Our feature descriptor $\mathbf{x}$ consists simply of the raw TSDF values extracted at a set of $n$ locations randomly sampled throughout $\voxregion$.
-These values could be sampled from the full grid $\voxelgrid$ on-the-fly at the leaf nodes in the forest (similar to \eg \cite{shotton-cvpr-2011}).
-However, we choose to extract the $n$ features from each $\voxregion$ in advance.
+Our feature descriptor $\mathbf{x}$ consists simply of the raw TSDF values extracted at a set of pre-specified locations randomly sampled throughout $\voxregion$.
+While values could be sampled from the full grid $\voxelgrid$ on-the-fly at the leaf nodes in the forest (similar to \eg \cite{shotton-cvpr-2011}).
+However, we choose to extract $n$ such features from each $\voxregion$ in advance.
 
 %The Random Forest--based model weights feature space to make structured predictions of the truncated signed distance function in the surrounding region.
-
 
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -420,15 +419,14 @@ We use simple axis aligned feature splits at each node.
 
 \newcommand{\voxletsubwidth}{0.41\columnwidth}
 \begin{figure}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=130 150 120 150]{data/all_voxlets_renders_white/1_marching_cubes.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=130 150 120 150]{data/all_voxlets_renders_white/5_marching_cubes.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=130 150 120 150]{data/all_voxlets_renders_white/10_marching_cubes.jpg} \\
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=130 150 120 150]{data/all_voxlets_renders_white/95_marching_cubes.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=130 150 120 150]{data/all_voxlets_renders_white/38_marching_cubes.jpg}
-     \includegraphics[width=0.32\columnwidth, clip=true, trim=130 150 120 150]{data/all_voxlets_renders_white/44_marching_cubes.jpg}
-     \caption{Representative voxlets from the dataset. Here we show cluster centroids after running K-Means on a collection of 20,000 voxlets, with K=200.
-     The green arrow represents the vector which is aligned with $\mathbf{n}_\mathbf{s}$ (see Figure \ref{subfig:alignment}).
-     Each voxlet can be seen to capture a section of the geometry of an object.}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=110 30 110 30]{voxlets/pca_render_1.png}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=110 30 110 30]{voxlets/pca_render_4.png}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=110 30 110 30]{voxlets/pca_render_8.png} \\
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=110 30 110 30]{voxlets/pca_render_9.png}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=110 30 110 30]{voxlets/pca_render_16.png}
+     \includegraphics[width=0.32\columnwidth, clip=true, trim=110 30 110 30]{voxlets/pca_render_46.png}
+     \caption{Some exemplar training voxlets extracted from the synthetic dataset (see Figure \ref{subfig:alignment}).
+     Each voxlet can be seen to capture a section of the geometry of the scene.}
      \label{fig:voxlets}
 \end{figure}
 
@@ -439,17 +437,17 @@ We use simple axis aligned feature splits at each node.
 \begin{wrapfigure}[10]{r}{0.35\columnwidth}
   \vspace{-30pt}
   \centering
-    \includegraphics[width=0.35\columnwidth, clip=true, trim=120 140 340 80]{single_voxlet}
+    \includegraphics[width=0.40\columnwidth, clip=true, trim=160 180 440 120]{single_voxlet}
     \vspace{-15pt}
   \caption{}%The offset feature}
     \label{fig:voxlet_dims}
 \end{wrapfigure}
-The fixed-size regions $\mathcal{R}$ in the voxel grid are set in our experiments to have dimensions of $15 \times 30 \times 15$ voxels.
+The fixed-size regions $\mathcal{R}$ in the voxel grid are set in our experiments to have dimensions of $20 \times 40 \times 40$ voxels.
 We make the voxlets longer in the y-direction as it is this direction that is approximately parallel to the normal at $\pixelidx_p$.
 This allows the voxlet to make a larger prediction \emph{backwards} into the scene than \emph{sideways} into a region which typically already has observed data.
-We set each voxlet to have real-world dimensions $0.1m \times 0.2m \times 0.1m$, meaning each voxel inside a voxlet has edge lengths of $(0.1 / 15)$m.
+We set each voxlet to have real-world dimensions $0.1m \times 0.2m \times 0.2m$, meaning each voxel inside a voxlet has edge lengths of $(0.1 / 15)$m.
 We define a local coordinate system for the voxlet, as shown in red in Figure \ref{fig:voxlet_dims}.
-The position in the voxlet which we align with the 3D point $\pixelidx_p$, as shown in Figure \ref{subfig:alignment}, is the point $x_v = y_v = z_v = 0.05$m.
+%The position in the voxlet which we align with the 3D point $\pixelidx_p$, as shown in Figure \ref{subfig:alignment}, is the point $x_v = y_v = z_v = 0.05$m.
 
 
 
@@ -480,10 +478,11 @@ Our \textbf{synthetic dataset (D1)} is a is a large dataset of 500 scenes, each 
 These random but physically plausible arrangements were formed by dropping objects onto a plane using a physics simulator. Each scene is then rendered from 42 viewpoints in a hemisphere.
 This large dataset allows us to easily demonstrate and quantify the effects of various parts of our algorithm.
 As with our real data, the ground truth TSDF is computed by fusing together the depth images from all the cameras in the hemisphere.
-At test time, one image is selected from the 42 input images and reconstruction performed.
+We perform a 60/40 train/test split at a scene level.
+At test time, one image is selected from the 42 input images for a test scene and reconstruction performed.
 
 %\paragraph{Desks dataset D2}
-Existing RGBD datasets of natural scenes typically focus on the per-frame labelling task \cite{nyu, sun3d}, object detection \cite{rgbd scenes dataset} or camera pose estimation \cite{stanford}.
+Existing RGBD datasets of natural scenes typically focus on the per-frame labelling task, object detection or camera pose estimation.
 There are no datasets to our knowledge which have the aim of capturing the full geometry of a scene.
 We therefore introduce a \textbf{desktop dataset (D2)}, capturing the full geometry of **75** desktops in an office environment.
 The desks were not manipulated before data capture, meaning they include the true intricacies of the real world.
@@ -510,8 +509,10 @@ The forest predictions for these pixels are then aggregated as described in Sect
 
 \paragraph{Evaluation criteria}
 The aim of our algorithm is to accurately classify free space around objects and in scenes.
-Therefore, we report the per-voxel precision and recall over all the test data.
-For our algorithms, we use the sign of the accumulated TSDF to form our final binary prediction of occupancy.
+Therefore, we report the per-voxel precision and recall over all the test data, using the sign of the accumulated TSDF to form our final binary prediction of occupancy.
+
+We additionally report the area under the ROC curve, treating the predicted TSDF values as a soft prediction of occupancy.
+
 
 %To find our test volume, we find the minimum volume axis-aligned bounding box for the ground truth voxel data before padding this voxel grid with 10cm of padding in each axis direction.
 
@@ -525,27 +526,17 @@ The details of these baseline implementations, and of the details of variants of
 We are careful to remove `flying pixels', as they can have a large adverse effect on bounding box predictions.
 Finally, the prediction of voxel occupancy is simply all voxels inside the bounding box are predicted to be occupied, while those outside are predicted to be empty.
 
-\noindent \textbf{(b) Zheng \ea} \cite{zheng-cvpr-2013}
-We implemented the algorithm of Zheng \ea \cite{zheng-cvpr-2013} for reconstructing voxel occupancy as described in Section 2 of their paper.
-We find the Manhattan axes of the scene from the minimum area bounding box aligned with the ground truth voxel grid.
-We then perform their axis-aligned voxel search for each unobserved voxel, marking voxels as `filled' where more than two Manhattan directions hit a voxel directly observed by the camera.
-
-%We consider this to be a best-case implementation of object-wise Manhattan-world estimation.
-
-%We do not implement their method for physical reasoning of objects  as we are making predictions for single objects in isolation.
-
-
-The results from our quantitative analysis on the Bigbird turntable dataset are shown in Table \ref{tab:quant_results}.
+\remove{The results from our quantitative analysis on the Bigbird turntable dataset are shown in Table \ref{tab:quant_results}.
 We present some views of individual results in Figure \ref{fig:turntable_qual}.
 We notice that the naive bounding box prediction suffers from a poor rate of recall.
 This is expected, as typically the bounding box predictions under-predict the volume due to a lack of observed pixels to complete the shape of the object (\ref{fig:turntable_qual}).
 Our results successfully capture the overall geometry of each of the objects.
-The main, general point of failure is a smoothing effect which affects the edges of the objects.
+The main, general point of failure is a smoothing effect which affects the edges of the objects.}
 
-While our full forest outperforms the other methods, we notice only a small change in the variants of our approach using different features.
+\remove{While our full forest outperforms the other methods, we notice only a small change in the variants of our approach using different features.
 The lower precision and higher recall for the spider feature suggests that it is over-predicting the size of objects, although the performance is maximized when it is coupled with the offset feature.
 The K-means Forest does almost as well as our full structured forest.
-However, as it has discretized the label space before training we would not expect it to generalize well to larger and more diverse training data.
+However, as it has discretized the label space before training we would not expect it to generalize well to larger and more diverse training data.}
 
 \subsection{Introspection using oracles}
 \label{sec:oracles}
@@ -563,19 +554,20 @@ A common question for algorithms like ours is: Where is the algorithm failing? W
 
 \begin{table}
   \centering
-  \begin{tabular}{|p{4.8cm}|c|c|}
+  \begin{tabular}{|p{2.2cm}|c|c|c|}
   \hline
-  \textbf{Method}  &   \textbf{Precision} & \textbf{Recall} \\
+  \textbf{Method}  &   \textbf{Precision} & \textbf{Recall} & \textbf{AUC} \\
   \hline
-  OR1 & - & - \\
-  OR2 & - & - \\
-  OR3 & - & - \\
-  OR4 & - & - \\
-  Full system & - & - \\
+  OR1 & 0.882 & 0.958   & 0.933 \\
+  OR2 & 0.879 & 0.959 & 0.945 \\
+  OR3 & 0.878 & 0.951 & 0.942 \\
+  OR4 & 0.819 & 0.968 & 0.928 \\
+  \hline
+  Full system & 0.798 & 0.939 & 0.898 \\
   \hline
   \end{tabular}
   \vspace{5pt}
-  \caption{Qunatitiative results of our algorithm on the synthetic scenes.}
+  \caption{Qunatitiative results of our algorithm on the synthetic scenes. See section \ref{sec:oracles} for details.}
     \label{tab:oracle_results}
 \end{table}
 
@@ -586,22 +578,23 @@ A common question for algorithms like ours is: Where is the algorithm failing? W
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Qualitative scene results}
 \label{sec:qualit}
-In our qualitative analysis, we run the full structured prediction model from the previous section on views from the object segmentation dataset.
+\remove{In our qualitative analysis, we run the full structured prediction model from the previous section on views from the object segmentation dataset.
 Qualitative results from this evaluation are shown in Figure \ref{fig:osd_qual}.
 We note that the geometry of larger objects is recovered well, while the geometry of smaller regions can be missed.
 Where objects are occluded and cluttered, our algorithm can fail to recover the most occluded sections.
-See for example the result in row three, column three.
+See for example the result in row three, column three.}
 
 %We believe that these results could be improved by
 %This experiment demonstrates an ability for the algorithm to generalize from the turntable dataset.
 
-\newcommand{\turnheight}{0.23\columnwidth}
+\newcommand{\turnheight}{0.36\columnwidth}
 \begin{figure*}
     \input{imgs/rendered_results/results_table.tex}
+    \vspace{5pt}
      \caption{
-     Qualitative results from the Object Segmentation Dataset. Each column shows the result of our agorithm on a different image from the database.
-     We note that our training from the turntable dataset successfully recovers the shape of many objects.
-     It is in areas of occlusions, heavy clutter and specular objects that the algorithm misses areas (\eg column 4).
+     Qualitative results from the synthetic scene dataset. Each row shows the result of our algorithm on a different image from the database.
+     We note that we can successfully recover the shape of many objects.
+     It is in areas of occlusions, heavy clutter and specular objects that the algorithm misses areas (\eg the cylinder closest to the camera in row 3).
      \label{fig:osd_qual}
      }
 \end{figure*}
@@ -618,10 +611,6 @@ We propose that a physics-based-reasoning post-processing step, such as is propo
 In this paper we have presented an algorithm to successfully recover 3D geometry given just a single depth image.
 Key to this approach is the voxlet, a set of voxels which can be learned from training data and then used at test time to recover shape.
 %We valided this on
-
-The primary direction for our future work is to apply the algorithm to larger and more natural scenes.
-In particular, we believe that training on real-world scenes in addition to turntable data will yield a large improvement to the results.
-% may help the reconstruction quality, mitigating against the issues discussed in Section \ref{sec:qualit}.
 
 An interesting potential application of our method is to use the predicted completion as a prior for structure-from-motion.
 Such a system would up its prediction of occupancy with observed data as it arrives from the capture device.
