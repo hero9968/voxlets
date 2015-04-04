@@ -14,6 +14,7 @@ sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from time import time
 import scipy.misc  # for image saving
 import yaml
+import shutil
 
 from common import paths
 from common import parameters
@@ -33,7 +34,8 @@ render_top_view = False
 save_prediction_grids = True
 save_scores_to_yaml = True
 copy_to_dropbox = True and paths.host_name == 'biryani'
-base_dropbox_path = paths.RenderedData.new_dropbox_dir()
+dropbox_path = paths.RenderedData.new_dropbox_dir()
+print dropbox_path
 
 print "MAIN LOOP"
 # Note: if parallelising, should either do here (at top level) or at the

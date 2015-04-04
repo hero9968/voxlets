@@ -41,6 +41,7 @@ print "Loading in all the data..."
 features = []
 pca_representation = []
 masks = []
+scene_ids = []
 
 for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
@@ -53,6 +54,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     features.append(D['features'])
     pca_representation.append(D['shoeboxes'])
     masks.append(D['masks'])
+    scene_ids.append(np.ones(D['features'].shape[0]) * count)
 
     print D['features'].shape, D['shoeboxes'].shape
     if count > parameters.max_sequences:
@@ -62,10 +64,12 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 np_pca_representation = np.vstack(pca_representation)
 np_masks = np.vstack(masks)
 np_features = np.concatenate(features, axis=0)
+np_scene_ids = np.concatenate(scene_ids, axis=0).astype(int)
 
 print "Sbox pca representation is shape", np_pca_representation.shape
 print "Masks is ", np_masks.shape
 print "Features is ", np_features.shape
+print "Scene ids is ", np_scene_ids.shape
 
 ####################################################################
 print "Training the model"
@@ -76,7 +80,8 @@ model.train(
     np_features,
     np_pca_representation,
     parameters.VoxletTraining.forest_subsample_length,
-    masks=np_masks)
+    masks=np_masks,
+    scene_ids=np_scene_ids)
 model.set_pca(pca)
 model.set_masks_pca(masks_pca)
 model.set_feature_pca(features_pca)

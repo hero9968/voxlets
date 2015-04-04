@@ -27,13 +27,15 @@ class ForestParams:
 
 class Node:
 
-    def __init__(self, node_id, exs_at_node, impurity, probability, medoid_id):
+    def __init__(self, node_id, exs_at_node, impurity, probability, medoid_id, tree_id):
         self.node_id = node_id
+        print "In tree %d \t node %d" % (int(tree_id), int(node_id))
         self.exs_at_node = exs_at_node
         self.impurity = impurity
         self.num_exs = float(exs_at_node.shape[0])
         self.is_leaf = True
         self.info_gain = 0.0
+        self.tree_id = tree_id
 
         # just saving the probability of class 1 for now
         self.probability = probability
@@ -59,9 +61,9 @@ class Node:
         med_id = inds[self.find_medoid_id(y_pca.take(inds_local, 0))]
 
         if child_type == 'left':
-            self.left_node = Node(2*self.node_id+1, inds, impurity, prob, med_id)
+            self.left_node = Node(2*self.node_id+1, inds, impurity, prob, med_id, self.tree_id)
         elif child_type == 'right':
-            self.right_node = Node(2*self.node_id+2, inds, impurity, prob, med_id)
+            self.right_node = Node(2*self.node_id+2, inds, impurity, prob, med_id, self.tree_id)
 
     def get_leaf_nodes(self):
         # returns list of all leaf nodes below this node
@@ -124,13 +126,34 @@ class Tree:
         y_ds = pca.fit_transform(y_sub)
         return y_ds
 
-    def train(self, X, Y):
+    def train(self, X, Y, extracted_from):
         # no bagging
         #exs_at_node = np.arange(Y.shape[0])
 
         # bagging
-        exs_at_node = np.random.choice(Y.shape[0], int(Y.shape[0]*self.tree_params.bag_size), replace=True)
+        if extracted_from == None:
+            exs_at_node = np.random.choice(Y.shape[0], int(Y.shape[0]*self.tree_params.bag_size), replace=False)
+        else:
+            ids = np.unique(extracted_from)
+            ids_for_this_tree = \
+                np.random.choice(ids.shape[0], int(ids.shape[0]*self.tree_params.bag_size), replace=False)
+
+            print "ids ", ids.shape
+            print "ids_for_this_tree", ids_for_this_tree.shape
+
+            # http://stackoverflow.com/a/15866830/279858
+            exs_at_node = []
+            for this_id in ids_for_this_tree:
+                exs_at_node.append(np.where(extracted_from == this_id)[0])
+            exs_at_node = np.unique(np.array(exs_at_node))
+
+            print np.unique(extracted_from[exs_at_node])
+
+            print "exs_at_node ", exs_at_node.shape
+            print "exs_at_node ", exs_at_node.dtype
+
         exs_at_node.sort()
+
 
         # compute impurity
         #root_prob, root_impurity = self.calc_impurity(0, np.take(Y, exs_at_node), np.ones((exs_at_node.shape[0], 1), dtype='bool'),
@@ -141,7 +164,7 @@ class Tree:
         root_medoid_id = 0
 
         # create root
-        self.root = Node(0, exs_at_node, root_impurity, root_prob, root_medoid_id)
+        self.root = Node(0, exs_at_node, root_impurity, root_prob, root_medoid_id, self.tree_id)
         self.num_nodes = 1
         self.label_dims = Y.shape[1]  # dimensionality of label space
 
@@ -323,11 +346,11 @@ class Tree:
 
 
 ## Parallel training helper - used to train trees in parallel
-def train_forest_helper(t_id, X, Y, params, seed):
+def train_forest_helper(t_id, X, Y, extracted_from, params, seed):
     print 'tree', t_id
     np.random.seed(seed)
     tree = Tree(t_id, params)
-    tree.train(X, Y)
+    tree.train(X, Y, extracted_from)
     return tree
 
 
@@ -342,8 +365,12 @@ class Forest:
         #with open(filename, 'wb') as fid:
         #    cPickle.dump(self, fid)
 
-    def train(self, X, Y):
-
+    def train(self, X, Y, extracted_from=None):
+        '''
+        extracted_from is an optional array which defines a class label
+        for each training example. if provided, the bagging is done at
+        the level of np.unique(extracted_from)
+        '''
         if np.any(np.isnan(X)):
             raise Exception('nans should not be present in training X')
 
@@ -355,14 +382,15 @@ class Forest:
             #print 'Parallel training'
             # need to seed the random number generator for each process
             seeds = np.random.random_integers(0, np.iinfo(np.int32).max, self.params.num_trees)
-            self.trees.extend(Parallel(n_jobs=-1)(delayed(train_forest_helper)(t_id, X, Y, self.params, seeds[t_id])
+            self.trees.extend(Parallel(n_jobs=-1)
+                (delayed(train_forest_helper)(t_id, X, Y, extracted_from, self.params, seeds[t_id])
                                              for t_id in range(self.params.num_trees)))
         else:
             #print 'Standard training'
             for t_id in range(self.params.num_trees):
                 print 'tree', t_id
                 tree = Tree(t_id, self.params)
-                tree.train(X, Y)
+                tree.train(X, Y, extracted_from)
                 self.trees.append(tree)
         #print 'num trees ', len(self.trees)
 

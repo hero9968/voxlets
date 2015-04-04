@@ -162,7 +162,7 @@ class VoxletPredictor(object):
     def set_masks_pca(self, masks_pca_in):
         self.masks_pca = masks_pca_in
 
-    def train(self, X, Y, subsample_length=-1, masks=None):
+    def train(self, X, Y, subsample_length=-1, masks=None, scene_ids=None):
         '''
         Runs the OMA forest code
         Y is expected to be a PCA version of the shoeboxes
@@ -190,7 +190,7 @@ class VoxletPredictor(object):
         forest_params = srf.ForestParams()
         self.forest = srf.Forest(forest_params)
         tic = time.time()
-        self.forest.train(X, Y)
+        self.forest.train(X, Y, scene_ids)
         toc = time.time()
         print "Time to train forest is", toc-tic
 
@@ -221,7 +221,7 @@ class VoxletPredictor(object):
         # each tree predicts which index in the test set to use...
         # rows = test data (X), cols = tree
         index_predictions = self.forest.test(X).astype(int)
-
+        print "Forest predicts ", index_predictions
         # must extract original test data from the indices
 
         # this is a horrible line and needs changing...
