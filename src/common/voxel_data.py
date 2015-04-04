@@ -330,6 +330,7 @@ class WorldVoxels(Voxels):
         '''
         as world_to_idx, but only returns the values of the valid idx locations,
         also returns a binary array indicating which these were
+        valid_idxs are the locations of the values from self which were pulled out
         '''
         assert(xyz.shape[1]==3)
         idxs, valid = self.world_to_idx(xyz, True)
@@ -337,7 +338,7 @@ class WorldVoxels(Voxels):
         valid_idxs = idxs[valid, :]
         values = self.get_idxs(valid_idxs)
 
-        return values, valid
+        return values, valid, valid_idxs
 
     def idx_meshgrid(self):
         '''
@@ -432,7 +433,7 @@ class WorldVoxels(Voxels):
 
             # 2) Warp into idx space of input_grid and
             # 3) See which are valid idxs in input_grid
-            valid_values, valid = input_grid.just_valid_world_to_idx(self_world_xyz)
+            valid_values, valid, _ = input_grid.just_valid_world_to_idx(self_world_xyz)
             #self.set_indicated_voxels(valid, occupied_values)
 
             # 4) Replace these values in self
@@ -629,7 +630,7 @@ class UprightAccumulator(WorldVoxels):
 
             # 2) Warp into idx space of input_grid and
             # 3) See which are valid idxs in input_grid
-            data_to_insert, valid = voxlet.just_valid_world_to_idx(self_world_xyz)
+            data_to_insert, valid, _ = voxlet.just_valid_world_to_idx(self_world_xyz)
 
             # now only use the values which pass the test...
             valid_data = data_to_insert < parameters.RenderedVoxelGrid.mu
@@ -649,12 +650,16 @@ class UprightAccumulator(WorldVoxels):
 
             # 2) Warp into idx space of input_grid and
             # 3) See which are valid idxs in input_grid
-            data_to_insert, valid = voxlet.just_valid_world_to_idx(self_world_xyz)
+            data_to_insert, valid, voxlet_idxs = \
+                voxlet.just_valid_world_to_idx(self_world_xyz)
 
-            # 4) Replace these values in self
-            # do this manually...
-            self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += data_to_insert * weights
-            self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights
+            # This is a bit of a bodge but is needed to get the correct items from the weights...
+            weights_to_use = weights.reshape(voxlet.V.shape)[
+                voxlet_idxs[:, 0], voxlet_idxs[:, 1], voxlet_idxs[:, 2]].shape
+
+            self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += \
+                data_to_insert * weights_to_use
+            self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights_to_use
 
         else:
             self.fill_from_grid(voxlet, method='naive', combine='accumulator')

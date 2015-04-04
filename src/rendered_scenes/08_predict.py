@@ -27,9 +27,6 @@ with open(paths.RenderedData.voxlets_path + '/models/oma.pkl', 'rb') as f:
     model_without_implicit = pickle.load(f)
 print "Done loading model..."
 
-
-test_types = ['oma_implicit']
-
 combine_renders = True
 render_predictions = True
 render_top_view = False
@@ -75,7 +72,7 @@ def process_sequence(sequence):
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True, combine_segments_separately=True)
+        render_type=[], add_ground_plane=True, combine_segments_separately=False)
     pred_voxlets_exisiting = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
@@ -118,36 +115,16 @@ def process_sequence(sequence):
             c[2].render_view(gen_renderpath % c[1])
 
     print "-> Computing the score for each prediction"
-    temp = np.logical_or(sc.im_tsdf.V < 0, np.isnan(sc.im_tsdf.V))
-    voxels_to_evaluate = np.logical_and(temp, sc.get_visible_frustrum().reshape(temp.shape))
-    floor_t = sc.gt_tsdf.blank_copy()
-    floor_t.V[:, :, :4] = 1
-    voxels_to_evaluate = np.logical_and(floor_t.V == 0, voxels_to_evaluate)
-    gt = sc.gt_tsdf.V[voxels_to_evaluate] > 0
-    gt[np.isnan(gt)] = -parameters.RenderedVoxelGrid.mu
-
-    print "GT SCORE IS::"
-    print sklearn.metrics.roc_auc_score(gt, sc.gt_tsdf.V[voxels_to_evaluate])
-
     for c in combines[3:]:
-        voxel_predictions = c[2].V[voxels_to_evaluate]
-        voxel_predictions[np.isnan(voxel_predictions)] = \
-            +parameters.RenderedVoxelGrid.mu
-
-        print "Sum is " , c[0],  voxel_predictions.sum()
-
-        score = sklearn.metrics.roc_auc_score(gt, voxel_predictions)
-        fpr, tpr, _ = sklearn.metrics.roc_curve(gt, voxel_predictions)
-        precision = sklearn.metrics.precision_score(gt, voxel_predictions > 0)
-        recall = sklearn.metrics.recall_score(gt, voxel_predictions > 0)
-        c.append([score, fpr, tpr, precision, recall])
+        c.append(sc.evaluate_prediction(c[2].V))
 
     if save_prediction_grids:
         print "-> Saving prediction grids"
         with open('/tmp/combines.pkl', 'w') as f:
             pickle.dump(combines, f, protocol=pickle.HIGHEST_PROTOCOL)
-        with open('/tmp/sensible.pkl', 'w') as f:
-            pickle.dump(voxels_to_evaluate, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    # must save the input view to the save folder
+    scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
 
     if combine_renders:
         print "-> Combining renders"
@@ -170,11 +147,11 @@ def process_sequence(sequence):
             " Add to the roc plot, which is in the final subplot"
             if count >= 3:
                 "Add the AUC"
-                plt.text(0, 50, "AUC=%0.3f, prec=%0.3f, rec=%0.3f" % (c[3][0], c[3][3], c[3][4]),
+                plt.text(0, 50, "AUC=%0.3f, prec=%0.3f, rec=%0.3f" % (c[3]['auc'], c[3]['precision'], c[3]['recall']),
                     fontsize=6, color='white')
 
                 plt.subplot(su, sv, su*sv)
-                plt.plot(c[3][1], c[3][2], label=c[0])
+                plt.plot(c[3]['fpr'], c[3]['tpr'], label=c[0])
                 plt.hold(1)
                 plt.legend(prop={'size':6}, loc='lower right')
 
@@ -195,13 +172,12 @@ def process_sequence(sequence):
         results_dict = {}
         for c in combines[3:]:
             test_key = c[1]
-            test_desc = c[0]
-            test_auc = float(c[3][0])
-            precision = float(c[3][3])
-            recall = float(c[3][4])
             results_dict[test_key] = \
-                {'auc':test_auc, 'description':test_desc,
-                'precision':precision, 'recall':recall}
+                {'description': c[0],
+                 'auc':         float(c[3]['auc']),
+                 'precision':   float(c[3]['precision']),
+                 'recall':      float(c[3]['recall'])}
+
         with open(fpath + 'scores.yaml', 'w') as f:
             f.write(yaml.dump(results_dict, default_flow_style=False))
 

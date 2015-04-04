@@ -100,7 +100,7 @@ def process_sequence(sequence):
 
 
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
-    logging.debug("...Features are shape " + str(np_view.shape))
+    logging.debug("...Features are shape " + str(np_features.shape))
 
     print "Took %f s" % (time() - t1)
     t1 = time()

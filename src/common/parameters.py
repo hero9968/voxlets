@@ -103,7 +103,7 @@ class VoxletTraining(object):
         forest_subsample_length = 500000  # max num examples to use to train forest
 
     decimation_rate = 2
-    feature_transform = 'decimate' # - what to do with the feature after extraction...
+    feature_transform = 'pca' # - what to do with the feature after extraction...
 
 
 class VoxletPrediction(object):

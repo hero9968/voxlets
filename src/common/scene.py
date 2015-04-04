@@ -5,6 +5,7 @@ quick class to store data about a SCENE!
 
 import numpy as np
 from skimage.morphology import binary_erosion, binary_dilation, disk
+import sklearn.metrics  # for evaluation
 import skimage.measure
 import paths
 import parameters
@@ -382,3 +383,42 @@ class Scene(object):
             each_label_region[idx] = label_temp > 0
 
         return each_label_region
+
+    def evaluate_prediction(self, V):
+        '''
+        evalutes a prediction grid, assuming to be the same size and position
+        as the ground truth grid...
+        '''
+        assert(V.shape[0] == self.gt_tsdf.V.shape[0])
+        assert(V.shape[1] == self.gt_tsdf.V.shape[1])
+        assert(V.shape[2] == self.gt_tsdf.V.shape[2])
+
+        temp = np.logical_or(self.im_tsdf.V < 0, np.isnan(self.im_tsdf.V))
+
+        # deciding which voxels to evaluate over...
+        voxels_to_evaluate = np.logical_and(
+            temp, self.get_visible_frustrum().reshape(temp.shape))
+        floor_t = self.gt_tsdf.blank_copy()
+        floor_t.V[:, :, :4] = 1
+        voxels_to_evaluate = np.logical_and(floor_t.V == 0, voxels_to_evaluate)
+
+        # getting the ground truth TSDF voxels
+        gt = self.gt_tsdf.V[voxels_to_evaluate] > 0
+        gt[np.isnan(gt)] = -parameters.RenderedVoxelGrid.mu
+
+        # Getting the relevant predictions
+        V_to_eval = V[voxels_to_evaluate]
+        V_to_eval[np.isnan(V_to_eval)] = +parameters.RenderedVoxelGrid.mu
+
+        # Now doing the final evaluation
+        results = {}
+        results['auc'] = sklearn.metrics.roc_auc_score(gt, V_to_eval)
+        results['precision'] = sklearn.metrics.precision_score(gt, V_to_eval > 0)
+        results['recall'] = sklearn.metrics.recall_score(gt, V_to_eval > 0)
+
+        fpr, tpr, _ = sklearn.metrics.roc_curve(gt, V_to_eval)
+        results['fpr'] = fpr
+        results['tpr'] = tpr
+
+        return results
+

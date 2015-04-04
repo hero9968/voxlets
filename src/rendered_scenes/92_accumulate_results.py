@@ -1,14 +1,12 @@
 # This will accumulate all the different results from all the different experiments and average them
-
+import numpy as np
 import sys
 import os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 import yaml
-
 from common import paths
 
 test_type = 'oma_implicit'
-
 all_scores = []
 
 for sequence in paths.RenderedData.test_sequence():
@@ -20,6 +18,13 @@ for sequence in paths.RenderedData.test_sequence():
         with open(fpath + 'scores.yaml', 'r') as f:
             all_scores.append(yaml.load(f))
 
+def get_mean_score(test, score_type):
+    all_this_scores = []
+    for sc in all_scores:
+        if score_type in sc[test]:
+            all_this_scores.append(sc[test][score_type])
+    return np.array(all_this_scores).mean()
+
 tests = ['full_oracle_voxlets',
          'oracle_voxlets',
          'nn_oracle_voxlets',
@@ -28,9 +33,10 @@ tests = ['full_oracle_voxlets',
          'implicit']
 
 all_scores = all_scores[1:5]
-import numpy as np
 for test in tests:
-    mean_auc = np.array([sc[test]['auc'] for sc in all_scores]).mean()
-    mean_precision = np.array([sc[test]['precision'] for sc in all_scores]).mean()
-    mean_recall = np.array([sc[test]['recall'] for sc in all_scores]).mean()
+
+    mean_auc = get_mean_score(test, 'auc')
+    mean_precision = get_mean_score(test, 'precision')
+    mean_recall = get_mean_score(test, 'recall')
+
     print '%s & %0.3f & %0.3f & %0.3f' % (test, mean_precision, mean_recall, mean_auc)
