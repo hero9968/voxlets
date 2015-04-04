@@ -32,15 +32,15 @@ with open(paths.RenderedData.voxlet_model_oma_path, 'rb') as f:
 
 test_types = ['oma']
 
-print "Checking results folders exist, creating if not"
-for test_type in test_types + ['partial_tsdf', 'visible_voxels']:
-    print test_type
-    folder_save_path = \
-        paths.RenderedData.voxlet_prediction_path % (test_type, '_')
-    folder_save_path = os.path.dirname(folder_save_path)
-    print folder_save_path
-    if not os.path.exists(folder_save_path):
-        os.makedirs(folder_save_path)
+# print "Checking results folders exist, creating if not"
+# for test_type in test_types + ['partial_tsdf', 'visible_voxels']:
+#     print test_type
+#     folder_save_path = \
+#         paths.RenderedData.voxlet_prediction_path % (test_type, '_')
+#     folder_save_path = os.path.dirname(folder_save_path)
+#     print folder_save_path
+#     if not os.path.exists(folder_save_path):
+#         os.makedirs(folder_save_path)
 
 
 print "MAIN LOOP"
@@ -53,8 +53,12 @@ def process_sequence(sequence):
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
     sc.santity_render(save_folder='/tmp/')
 
-
     test_type = 'oma'
+
+    fpath = paths.RenderedData.voxlet_prediction_folderpath % \
+        (test_type, sequence['name'])
+    if not os.path.exists(fpath):
+        os.makedirs(fpath)
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
@@ -82,7 +86,7 @@ def process_sequence(sequence):
 
         # Rendering the prediction
         renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'] + '_voxlet_number_%04d' % count)
+            (test_type, sequence['name'], ('_voxlet_number_%04d' % count) + '_diff')
         prediction_keeping_exisiting.render_view(renderpath)
         print "About to render..."
         #prediction.render_view(renderpath)
@@ -90,14 +94,14 @@ def process_sequence(sequence):
 
         # Rendering the extracted voxlet and also the predicted voxlet
         prediction_voxlet_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'] + '_voxlet_number_%04d_prediction' % count)
+            (test_type, sequence['name'], ('_voxlet_number_%04d' % count) + '_prediction')
         voxlets.render_single_voxlet(
             rec.cached_voxlet_prediction.reshape(parameters.Voxlet.shape),
             prediction_voxlet_renderpath)
 
         # Rendering the extracted voxlet and also the predicted voxlet
         feature_voxlet_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'] + '_voxlet_number_%04d_feature' % count)
+            (test_type, sequence['name'], ('_voxlet_number_%04d' % count) + '_feature')
         voxlets.render_single_voxlet(
             rec.cached_feature_voxlet.reshape(parameters.Voxlet.shape),
             feature_voxlet_renderpath)
