@@ -19,7 +19,6 @@ import paths
 import mesh
 import os
 
-import parameters
 
 def load_voxels(loadpath):
     with open(loadpath, 'rb') as f:
@@ -633,7 +632,7 @@ class UprightAccumulator(WorldVoxels):
             data_to_insert, valid, _ = voxlet.just_valid_world_to_idx(self_world_xyz)
 
             # now only use the values which pass the test...
-            valid_data = data_to_insert < parameters.RenderedVoxelGrid.mu
+            valid_data = data_to_insert < np.nanmax(voxlet.V)
             data_to_insert = data_to_insert[valid_data]
             valid = np.where(valid)[0][valid_data]
 

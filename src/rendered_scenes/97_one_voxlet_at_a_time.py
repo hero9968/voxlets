@@ -49,7 +49,8 @@ print "MAIN LOOP"
 # better off being GPU...)
 def process_sequence(sequence):
 
-    sc = scene.Scene()
+    sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
+        model_without_implicit.voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
     sc.santity_render(save_folder='/tmp/')
 

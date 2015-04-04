@@ -72,6 +72,7 @@ print "Training the model"
 ####################################################################
 
 model = voxlets.VoxletPredictor()
+model.set_voxlet_params(parameters.Voxlet)
 model.train(
     np_features,
     np_pca_representation,
