@@ -43,7 +43,8 @@ print "MAIN LOOP"
 # better off being GPU...)
 def process_sequence(sequence):
 
-    sc = scene.Scene()
+    sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
+        model_without_implicit.voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, load_implicit=True)
     sc.santity_render(save_folder='/tmp/')
@@ -54,7 +55,8 @@ def process_sequence(sequence):
     rec = voxlets.Reconstructer(
         reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_scene(sc)
-    rec.sample_points(parameters.VoxletPrediction.number_samples)
+    rec.sample_points(parameters.VoxletPrediction.number_samples,
+                      parameters.VoxletPrediction.sampling_grid_size)
 
     # Path where any renders will be saved to
     gen_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
@@ -74,27 +76,28 @@ def process_sequence(sequence):
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True, combine_segments_separately=False)
+        render_type=[], add_ground_plane=True,
+        combine_segments_separately=False, feature_collapse_type='pca')
     pred_voxlets_exisiting = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     full_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[],oracle='gt', add_ground_plane=True)
+        render_type=[],oracle='gt', add_ground_plane=True, feature_collapse_type='pca')
     # full_oracle_voxlets = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[],oracle='pca', add_ground_plane=True)
+        render_type=[],oracle='pca', add_ground_plane=True, feature_collapse_type='pca')
     oracle_voxlets_existing = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     nn_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='nn', add_ground_plane=True)
+        render_type=[], oracle='nn', add_ground_plane=True, feature_collapse_type='pca')
     nn_oracle_voxlets_existing = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     greedy_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='greedy_add', add_ground_plane=True)
+        render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca')
     greedy_oracle_voxlets_existing = rec.keeping_existing
 
     combines = [
