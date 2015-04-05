@@ -496,10 +496,11 @@ class Reconstructer(object):
         for count, idx in enumerate(self.sampled_idxs):
 
             # find the segment index of this voxlet
-            this_point_label = self.sc.visible_im_label[idx[0], idx[1]]
+            # this_point_label = self.sc.visible_im_label[idx[0], idx[1]]
             # get the voxel grid of tsdf associated with this label
             # BUT at test time how to get this segmented grid? We need a similar type thing to before...
-            this_idx_grid = self.sc.visible_tsdf_separate[this_point_label]
+            # this_idx_grid = self.sc.visible_tsdf_separate[this_point_label]
+            this_idx_grid = self.sc.im_tsdf
             # print "WARNING - just using a single grid for the features..."
             # this_idx_grid = self.sc.im_tsdf
 
