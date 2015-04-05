@@ -50,23 +50,24 @@ print "MAIN LOOP"
 def process_sequence(sequence):
 
     sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
-        model_without_implicit.voxlet_params)
+        model.voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
     sc.santity_render(save_folder='/tmp/')
 
     test_type = 'oma'
 
-    fpath = paths.RenderedData.voxlet_prediction_folderpath % \
-        (test_type, sequence['name'])
-    if not os.path.exists(fpath):
-        os.makedirs(fpath)
+    # fpath = paths.RenderedData.voxlet_prediction_folderpath % \
+    #     (test_type, sequence['name'])
+    # if not os.path.exists(fpath):
+    #     os.makedirs(fpath)
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
         reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_model(model)
     rec.set_scene(sc)
-    rec.sample_points(parameters.VoxletPrediction.number_samples)
+    rec.sample_points(parameters.VoxletPrediction.number_samples,
+                      parameters.VoxletPrediction.sampling_grid_size)
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
 
     blank_rec = copy.deepcopy(rec)
@@ -82,30 +83,50 @@ def process_sequence(sequence):
 
         rec.sampled_idxs = [idx]
         prediction = rec.fill_in_output_grid_oma( render_type=[], #['matplotlib'],
-            render_savepath='/tmp/renders/')
+            render_savepath='/tmp/renders/', feature_collapse_type='pca')
         prediction_keeping_exisiting = rec.keeping_existing
 
+        # creating a folder for this prediction...
+        gen_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
+            (test_type, sequence['name'], ('voxlet_number_%04d/%s' % (count, '%s')))
+        print gen_renderpath
+
+        if not os.path.exists(os.path.dirname(gen_renderpath)):
+            os.makedirs(os.path.dirname(gen_renderpath))
+
         # Rendering the prediction
-        renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'], ('_voxlet_number_%04d' % count) + '_diff')
+        renderpath = gen_renderpath % '_diff'
         prediction_keeping_exisiting.render_view(renderpath)
         print "About to render..."
         #prediction.render_view(renderpath)
-        voxlets.render_diff_view(prediction_keeping_exisiting, prediction, '/tmp/trial.png')
+        voxlets.render_diff_view(prediction_keeping_exisiting, prediction, renderpath)
 
-        # Rendering the extracted voxlet and also the predicted voxlet
-        prediction_voxlet_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'], ('_voxlet_number_%04d' % count) + '_prediction')
-        voxlets.render_single_voxlet(
-            rec.cached_voxlet_prediction.reshape(parameters.Voxlet.shape),
-            prediction_voxlet_renderpath)
-
-        # Rendering the extracted voxlet and also the predicted voxlet
-        feature_voxlet_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
-            (test_type, sequence['name'], ('_voxlet_number_%04d' % count) + '_feature')
+        # Rendering the extracted voxlet
+        feature_voxlet_renderpath = gen_renderpath % '_feature'
         voxlets.render_single_voxlet(
             rec.cached_feature_voxlet.reshape(parameters.Voxlet.shape),
             feature_voxlet_renderpath)
+
+        # Rendering the predicted voxlets
+        pred_idxs = rec.model._cached_predictions[0]
+
+        for pred_idx in pred_idxs:
+            Y_pred_compressed = rec.model.training_Y[pred_idx]
+            this_voxlet = rec.model.pca.inverse_transform(Y_pred_compressed)
+
+            # compute the distance to the extracted feature voxlet...
+            dims_to_use_for_distance = \
+                rec.cached_feature_voxlet.flatten() == -np.array(parameters.RenderedVoxelGrid.mu).astype(rec.cached_feature_voxlet.dtype)
+            print dims_to_use_for_distance.sum() / dims_to_use_for_distance.flatten().shape[0]
+            distance = np.linalg.norm(
+                rec.cached_feature_voxlet.flatten()[dims_to_use_for_distance] -
+                this_voxlet.flatten()[dims_to_use_for_distance])
+
+            prediction_voxlet_renderpath = gen_renderpath % (
+                '_prediction_%04f_%04d' % (distance, pred_idx))
+            voxlets.render_single_voxlet(
+                this_voxlet.reshape(parameters.Voxlet.shape),
+                prediction_voxlet_renderpath)
 
     # Hack to put in a floor
     prediction_keeping_exisiting.V[:, :, :4] = -1

@@ -222,8 +222,9 @@ class VoxletPredictor(object):
         '''
         # each tree predicts which index in the test set to use...
         # rows = test data (X), cols = tree
+
         index_predictions = self.forest.test(X).astype(int)
-        print "Forest predicts ", index_predictions
+        self._cached_predictions = index_predictions
         # must extract original test data from the indices
 
         # this is a horrible line and needs changing...
@@ -718,6 +719,9 @@ class Reconstructer(object):
         elif feature_collapse_type == 'decimate':
             X_sub = X[::parameter, ::parameter, ::parameter]
             return X_sub.flatten()
+
+        else:
+            raise Exception('Unknown feature collapse type')
 
     def plot_voxlet_top_view(self, savepath=None):
         '''
