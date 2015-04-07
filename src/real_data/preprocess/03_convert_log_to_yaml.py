@@ -66,8 +66,8 @@ def read_log(scene_path):
         # vv this is good
         t = data[2:5]
         R = np.array(quaternion_matrix(data[5:]))
-        R = np.dot(rotter, R)
         R[:3, 3] = R[:3, 3] = np.dot(np.linalg.inv(R[:3, :3]), -1000.0*np.array(t))
+        R = np.dot(rotter, R)
         R[:, 2] *= -1
         R[:3, :3] = np.linalg.inv(R[:3, :3])
         R[1, -1] *= -1
@@ -95,8 +95,7 @@ def read_log(scene_path):
 
 def dump_log(log, scene):
     with open(scene + '/' + 'poses.yaml', 'w') as f:
-        yaml.dump(log
-            , f)
+        yaml.dump(log, f)
 
 
 def get_scene_pose(scene):
@@ -134,7 +133,8 @@ def convert_log_to_canonical(frames, scene_pose):
 
 
 
-for scene in ['/Users/Michael/projects/shape_sharing/data/desks/test_scans/saved_00151/']:
+for scene in ['/Users/Michael/projects/shape_sharing/data/desks/test_scans/saved_00153/']:
+# for scene in scenes:
     # scene_pose = get_scene_pose(scene)
     # print scene_pose
     print "Doing ", scene
