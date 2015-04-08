@@ -20,15 +20,17 @@ def get_scene_pose(scene):
         return yaml.load(f)
 
 # doing a loop here to loop over all possible files...
-for scenename in paths.scenes:
+for sequence in paths.scenes:
 
-    print "Making masks for %s" % scenename
+    scene = sequence['folder'] + sequence['scene']
+
+    print "Making masks for %s" % scene
 
     vid = images.RGBDVideo()
-    vid.load_from_yaml(scenename + '/poses.yaml')
+    vid.load_from_yaml(scene + '/poses.yaml')
 
     # loading the scene pise,,,
-    scene_pose = get_scene_pose(scenename)
+    scene_pose = get_scene_pose(scene)
 
     grid_min = np.array([0, 0, 0])
     grid_max = np.array(scene_pose['size'])
@@ -40,12 +42,13 @@ for scenename in paths.scenes:
 
         # remove points outside the bounding cuboid
         xyz = frame.get_world_xyz()
-
+        print np.nanmin(xyz, axis=0), np.nanmax(xyz, axis=0)
+        print grid_min, grid_max
         inside = np.all(np.logical_and(xyz > grid_min, xyz < grid_max), axis=1)
         inside = inside.reshape(frame.depth.shape)
 
         # also remove points on the floor plane
-        floor_height = 25
+        floor_height = 0.025
         above_floor = np.abs(xyz[:, 2]) > floor_height
         above_floor = above_floor.reshape(frame.depth.shape)
 
@@ -53,5 +56,5 @@ for scenename in paths.scenes:
 
         # choose the save location carefully
         mask[np.isnan(mask)] = 0
-        savepath = scenename + '/frames/%s_mask.png' % frame.frame_id
+        savepath = scene + '/images/mask_%s.png' % frame.frame_id
         scipy.misc.imsave(savepath, mask)

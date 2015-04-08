@@ -88,7 +88,9 @@ def norm_v(vec):
     return vec / np.linalg.norm(vec)
 
 
-for scene in paths.scenes:
+for sequence in paths.scenes:
+
+    scene = sequence['folder'] + sequence['scene']
 
     with open(scene + '/dump.voxels') as f:
         f.readline()
@@ -125,9 +127,7 @@ for scene in paths.scenes:
     temp = norm_v(points_on_plane[0] - points_on_plane[1])
     x = norm_v(np.cross(temp, z))
     y = norm_v(np.cross(z, x))
-    print x, y, z
     R = np.vstack((x, y, z))
-    print R
 
     # getting the origin
     origin = points_on_plane[1] * voxel_size * 1000
@@ -140,17 +140,22 @@ for scene in paths.scenes:
     size_x = np.linalg.norm(points_on_plane[2] - points_on_plane[1]) * voxel_size * 1000
     size_z = box_height
 
-    size = [float(size_x), float(size_y), float(size_z)]
+    size = np.array([size_x, size_y, size_z])
 
     # hacks... dont know why I need to do this but I do, apparently...
     plane[1] *= -1
     R[:, 1] *= -1
     origin[1] *= -1
 
+    #converting mm to m
+    origin /= 1000
+    size /= 1000
+    plane[-1] /= 1000
+
     scene_pose = dict(
         R=R.flatten().tolist(),
         origin=origin.tolist(),
-        size=size,
+        size=size.tolist(),
         voxel_size=voxel_size,
         plane=plane.tolist())
 
