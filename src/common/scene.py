@@ -7,12 +7,13 @@ import numpy as np
 from skimage.morphology import binary_erosion, binary_dilation, disk
 import sklearn.metrics  # for evaluation
 import skimage.measure
-import paths
 import voxel_data
 import images
 import features
 import carving
 import cPickle as pickle
+import paths
+import yaml
 
 import matplotlib
 matplotlib.use('Agg')
@@ -31,6 +32,23 @@ class Scene(object):
         self.mu = mu
         self.voxlet_params = voxlet_params
 
+    def _load_scene_data(self, scene_dir, frame_idxs=None):
+        '''
+        returns a list of frames from a scene
+        if frames then returns only the specified frame numbers
+        '''
+        with open(scene_dir + '/poses.yaml', 'r') as f:
+            frames = yaml.load(f)
+
+        # Using "!= None" because if I don't and frame_idxs==0 then this fails
+        if frame_idxs != None:
+            if isinstance(frame_idxs, list):
+                frames = [frames[idx] for idx in frame_idxs]
+            else:
+                frames = frames[frame_idxs]
+
+        return frames
+
     def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True, save_grids=False, load_implicit=False):
         '''
         loads a sequence of images, the associated gt voxel grid,
@@ -40,7 +58,8 @@ class Scene(object):
         self.sequence = sequence
 
         # load in the ground truth grid for this scene, and converting nans
-        vox_location = paths.RenderedData.ground_truth_voxels(sequence['scene'])
+        vox_location = sequence['folder'] + sequence['scene'] + \
+            '/ground_truth_tsdf.pkl'
         self.gt_tsdf = voxel_data.load_voxels(vox_location)
         self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -self.mu
         self.gt_tsdf.set_origin(self.gt_tsdf.origin)
@@ -48,12 +67,11 @@ class Scene(object):
         # loading in the image
         sequence_frames = sequence['frames'][frame_nos]
 
-        frame_data = paths.RenderedData.load_scene_data(
-            sequence['scene'], sequence_frames)
+        frame_data = self._load_scene_data(
+            sequence['folder'] + sequence['scene'], sequence_frames)
 
         self.im = images.RGBDImage.load_from_dict(
-            paths.RenderedData.scene_dir(sequence['scene']),
-            frame_data)
+            sequence['folder'] + sequence['scene'], frame_data)
 
         # computing normals...
         norm_engine = features.Normals()

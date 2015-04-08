@@ -269,6 +269,9 @@ class RenderedData(object):
         with open(cls.yaml_train_location, 'r') as f:
             train_data = yaml.load(f)
 
+        for t in train_data:
+            t['folder'] = cls.scenes_location
+
         if parameters.max_sequences < len(train_data):
             print "Warning - training on a subset"
             return train_data[:parameters.max_sequences]
@@ -282,6 +285,9 @@ class RenderedData(object):
         '''
         with open(cls.yaml_test_location, 'r') as f:
             test_data = yaml.load(f)
+
+        for t in test_data:
+            t['folder'] = cls.scenes_location
 
         return  test_data
 

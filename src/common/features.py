@@ -220,29 +220,3 @@ class Normals(object):
 
         return H, K, Zyy, Zxx
 
-
-# here should probably write some kind of testing routine
-# where an image is loaded, rotated patches are extracted and the gradient of
-# the rotated patches is shown to be all mostly close to zero
-
-if __name__ == '__main__':
-
-    '''testing the plotting'''
-
-    import images
-    import paths
-
-    # loading the render
-    im = images.CADRender()
-    im.load_from_cad_set(paths.modelnames[30], 30)
-    im.compute_edges_and_angles()
-
-    # sampling indices from the image
-    indices = np.array(np.nonzero(~np.isnan(im.depth))).transpose()
-    samples = np.random.randint(0, indices.shape[0], 20)
-    indices = indices[samples, :]
-
-    # plotting patch
-    patch_plotter = PatchPlot()
-    patch_plotter.set_image(im.depth)
-    patch_plotter.plot_patches(indices, scale_factor=10)

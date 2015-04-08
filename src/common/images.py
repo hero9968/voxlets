@@ -10,7 +10,6 @@ import yaml
 import os
 import time
 import sys
-import paths
 import mesh
 import features
 
