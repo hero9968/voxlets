@@ -1,6 +1,5 @@
 import numpy as np
 #https://github.com/dranjan/python-plyfile
-import paths
 from skimage.measure import marching_cubes
 
 
@@ -275,12 +274,16 @@ class Camera(object):
         returns their 2D projected location
         '''
         assert(xyz.shape[1] == 3)
-        temp_xyz = self._apply_homo_transformation(xyz, self.inv_H)
-        # upon inspection it seems totally cool that self.H is used...
-        temp_trans = self._apply_transformation(temp_xyz, self.K)
+
+        to_add = np.zeros((3, 1))
+        full_K = np.concatenate((self.K, to_add), axis=1)
+        full_mat = np.dot(full_K, self.inv_H)
+
+        temp_trans = self._apply_homo_transformation(xyz, full_mat)
+
         temp_trans[:, 0] /= temp_trans[:, 2]
         temp_trans[:, 1] /= temp_trans[:, 2]
-        #print "In side proj points"
+
         return temp_trans  # [:, 0:2]
 
     def inv_project_points(self, uvd):
