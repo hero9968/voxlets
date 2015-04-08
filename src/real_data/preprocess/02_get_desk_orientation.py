@@ -8,15 +8,10 @@ import numpy as np
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import mesh
 import yaml
-
-data_folder = '/Users/Michael/projects/shape_sharing/data/desks/oisin_1/data/'
+import real_data_paths as paths
 
 inlier_threshold = 5  # what considered inlier for plane?
-box_height = 1.0  # in meters
-
-scenes = [os.path.join(data_folder,o)
-          for o in os.listdir(data_folder)
-          if os.path.isdir(os.path.join(data_folder,o))]
+box_height = 1000  # in mm
 
 
 def load_xyz_points(xml_filepath):
@@ -93,7 +88,7 @@ def norm_v(vec):
     return vec / np.linalg.norm(vec)
 
 
-for scene in scenes:
+for scene in paths.scenes:
 
     with open(scene + '/dump.voxels') as f:
         f.readline()
@@ -117,7 +112,7 @@ for scene in scenes:
     plane = correct_plane_orientation(plane, xyz1)
 
     # now projecting the extent points onto the plane
-    extents_path = scene + '/plane.pp'
+    extents_path = scene + '/extents.pp'
     extents_xyz = load_xyz_points(extents_path)
     print "EXTENTS: Loaded points of shape " , extents_xyz.shape
 
@@ -137,33 +132,29 @@ for scene in scenes:
     # getting the origin
     origin = points_on_plane[1] * voxel_size * 1000
 
+    # push the origin 10 mm below the plane for breathing room
+    origin -= z * 10
+
     # getting the size of the box...
     size_y = np.linalg.norm(points_on_plane[0] - points_on_plane[1]) * voxel_size * 1000
-    size_x = np.linalg.norm(points_on_plane[0] - points_on_plane[2]) * voxel_size * 1000
+    size_x = np.linalg.norm(points_on_plane[2] - points_on_plane[1]) * voxel_size * 1000
     size_z = box_height
 
     size = [float(size_x), float(size_y), float(size_z)]
+
+    # hacks... dont know why I need to do this but I do, apparently...
+    plane[1] *= -1
+    R[:, 1] *= -1
+    origin[1] *= -1
 
     scene_pose = dict(
         R=R.flatten().tolist(),
         origin=origin.tolist(),
         size=size,
-        voxel_size=voxel_size)
+        voxel_size=voxel_size,
+        plane=plane.tolist())
 
     # now writing these to a yaml file...
     with open(scene + '/scene_pose.yaml', 'w') as f:
         yaml.dump(scene_pose, f)
-
-    # # segmenting out the plane and everything above it to create a new mesh file...
-    # dotted = np.dot(plane, xyz1.T)
-    # inliers = np.logical_and(dotted > -float(inlier_threshold),
-    #                          dotted < box_height)
-    # print "Found %d inliers out of %d points" % (inliers.sum(), xyz1.shape[0])
-
-    # ms_out = copy.deepcopy(ms)
-    # ms_out.faces = []
-    # ms_out.vertices = ms.vertices[inliers]
-    # ms_out.write_to_obj(scene + '/above_below_stripped.obj')
-
-    break
 

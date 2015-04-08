@@ -5,10 +5,7 @@ import numpy as np
 import os
 
 # here will load the log file and convert to my format...
-data_folder = '/Users/Michael/projects/shape_sharing/data/desks/oisin_1/data/'
-scenes = [os.path.join(data_folder,o)
-          for o in os.listdir(data_folder)
-          if os.path.isdir(os.path.join(data_folder,o))]
+import real_data_paths as paths
 
 log_name = 'log.txt'
 
@@ -41,6 +38,7 @@ def quaternion_matrix(quaternion):
         [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
         [                0.0,                 0.0,                 0.0, 1.0]])
 
+
 def read_log(scene_path):
 
     frames = []
@@ -55,8 +53,6 @@ def read_log(scene_path):
         # modifying M2...
         rotter = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
         # M3 = np.dot(M2, rotter)
-
-
 
         framedict = {}
         data = map(float, l.strip().split())
@@ -118,28 +114,23 @@ def convert_log_to_canonical(frames, scene_pose):
     kind of canonical pose...
     '''
     scene_R = np.array(scene_pose['R']).reshape(3, 3)
-    scene_origin = np.array(scene_pose['origin'])
+    scene_origin = np.dot(scene_R, -np.array(scene_pose['origin']))
     scene_H = combine_rot_and_trans(scene_R, scene_origin)
 
     for frame in frames:
         old_pose = np.array(frame['pose']).reshape(4, 4)
-        print np.linalg.inv(scene_H)
-        new_pose = np.dot(np.linalg.inv(scene_H), old_pose)
+        new_pose = np.dot(scene_H, old_pose)
         frame['pose'] = new_pose.flatten().tolist()
 
     return frames
 
 
-
-
-
-for scene in ['/Users/Michael/projects/shape_sharing/data/desks/test_scans/saved_00153/']:
+for scene in paths.scenes: #['/Users/Michael/projects/shape_sharing/data/desks/test_scans/saved_00151/']:
 # for scene in scenes:
-    # scene_pose = get_scene_pose(scene)
-    # print scene_pose
+    scene_pose = get_scene_pose(scene)
+    print scene_pose
     print "Doing ", scene
 
     log = read_log(scene)
-    # log = convert_log_to_canonical(log, scene_pose)
+    log = convert_log_to_canonical(log, scene_pose)
     dump_log(log, scene)
-    break
