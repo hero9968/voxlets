@@ -7,6 +7,13 @@ import numpy as np
 import voxel_data
 from copy import deepcopy
 
+from skimage.restoration import denoise_bilateral
+
+# temp = denoise_bilateral(vid.frames[0].depth)
+import scipy.ndimage
+import scipy.interpolate
+
+
 class VoxelAccumulator(object):
     '''
     base class for kinect fusion and voxel carving
@@ -51,7 +58,6 @@ class Carver(VoxelAccumulator):
     - Allow for only a subset of frames to be used
     - Allow for use of TSDF
     '''
-
     def carve(self, tsdf=False):
         '''
         for each camera, project voxel grid into camera
@@ -69,7 +75,7 @@ class Carver(VoxelAccumulator):
             # now work out which voxels are in front of or behind the depth
             # image and location in camera image of each voxel
             inside_image, uv, depth_to_voxels = self.project_voxels(im)
-            all_observed_depths = im.depth[uv[:, 1], uv[:, 0]]
+            all_observed_depths = depth[uv[:, 1], uv[:, 0]]
 
             print "%f%% of voxels projected into image" % \
                 (float(np.sum(inside_image)) / float(inside_image.shape[0]))
@@ -157,7 +163,37 @@ class Fusion(VoxelAccumulator):
         x[x < -truncation] = -truncation
         return x
 
-    def fuse(self, mu):
+    def _fill_in_nans(self, depth):
+        # a boolean array of (width, height) which False where there are
+        # missing values and True where there are valid (non-missing) values
+        mask = ~np.isnan(depth)
+
+        # location of valid values
+        xym = np.where(mask)
+
+        # location of missing values
+        xymis = np.where(~mask)
+
+        # the valid values of the input image
+        data0 = np.ravel( depth[mask] )
+
+        # three separate interpolators for the separate color channels
+        interp0 = scipy.interpolate.NearestNDInterpolator( xym, data0 )
+
+        # interpolate the whole image, one color channel at a time
+        guesses = interp0(xymis) #np.ravel(xymis[0]), np.ravel(xymis[1]))
+        depth = deepcopy(depth)
+        depth[xymis[0], xymis[1]] = guesses
+        return depth
+
+    def _filter_depth(self, depth):
+        temp = self._fill_in_nans(depth)
+        temp_denoised = \
+            denoise_bilateral(temp, sigma_range=30, sigma_spatial=4.5)
+        temp_denoised[np.isnan(depth)] = np.nan
+        return temp_denoised
+
+    def fuse(self, mu, filtering=False, measure_in_frustrum=False):
         '''
         mu is the truncation parameter. Default 0.03 as this is what PCL kinfu
         uses (measured in m).
@@ -167,6 +203,7 @@ class Fusion(VoxelAccumulator):
             i.e. typically of the same size as the number of voxels which ended
             up in the image
         Todo - should probably incorporate the numpy.ma module
+        if filter==True, then each image is bilateral filtered before adding in
         '''
         # the kinfu accumulator, which keeps the rolling average
         accum = KinfuAccumulator(self.voxel_grid.V.shape)
@@ -179,15 +216,25 @@ class Fusion(VoxelAccumulator):
         visible_voxels = self.voxel_grid.blank_copy()
         visible_voxels.V = visible_voxels.V.astype(bool)
 
+        # finally a third grid, which stores how many frustrums each voxel has
+        # fallen into
+        if measure_in_frustrum:
+            self.in_frustrum = self.voxel_grid.blank_copy()
+            self.in_frustrum.V = self.in_frustrum.V.astype(np.int16)
 
         for count, im in enumerate(self.video.frames):
 
             print "Fusing frame number %d with name %s" % (count, im.frame_id)
 
+            if filtering:
+                depth = self._filter_depth(im.depth)
+            else:
+                depth = im.depth
+
             # work out which voxels are in front of or behind the depth image
             # and location in camera image of each voxel
             inside_image_f, uv_s, depth_to_voxels_s = self.project_voxels(im)
-            observed_depths_s = im.depth[uv_s[:, 1], uv_s[:, 0]]
+            observed_depths_s = depth[uv_s[:, 1], uv_s[:, 0]]
 
             # Distance between depth image and each voxel perpendicular to the
             # camera origin ray (this is *not* how kinfu does it: see ismar2011
@@ -223,6 +270,10 @@ class Fusion(VoxelAccumulator):
             visible_voxels_f[inside_image_f] = voxels_visible_in_image_s
 
             visible_voxels.set_indicated_voxels(visible_voxels_f, 1)
+
+            if measure_in_frustrum:
+                temp = inside_image_f.reshape(self.in_frustrum.V.shape)
+                self.in_frustrum.V[temp] += 1
 
         return accum.get_current_tsdf(), visible_voxels
 

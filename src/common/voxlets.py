@@ -504,25 +504,13 @@ class Reconstructer(object):
             # print "WARNING - just using a single grid for the features..."
             # this_idx_grid = self.sc.im_tsdf
 
-            # extract features from the tsdf volume
+            "extract features from the tsdf volume"
             features_voxlet = self._initialise_voxlet(idx)
             features_voxlet.fill_from_grid(this_idx_grid)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -self.sc.mu
             self.cached_feature_voxlet = features_voxlet.V
 
-            if use_implicit:
-                implicit_voxlet = self._initialise_voxlet(idx)
-                implicit_voxlet.fill_from_grid(self.sc.implicit_tsdf)
-                self.cached_implicit_voxlet = implicit_voxlet.V
-
-                combined_feature = np.concatenate(
-                    (features_voxlet.V.flatten(),
-                     implicit_voxlet.V.flatten()), axis=1)
-
-            else:
-                combined_feature = features_voxlet.V.flatten()
-
-            feature_vector = self._feature_collapse(combined_feature,
+            feature_vector = self._feature_collapse(features_voxlet.V.flatten(),
                 feature_collapse_type, feature_collapse_param)
 
             "classify according to the forest"
@@ -530,15 +518,9 @@ class Reconstructer(object):
                 self.model.predict(np.atleast_2d(feature_vector))
             self.cached_voxlet_prediction = voxlet_prediction
 
-            # getting the GT voxlet
+            # getting the GT voxlet - useful for the oracles and rendering
             gt_voxlet = self._initialise_voxlet(idx)
             gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
-
-            # getting the closest match in the training data...
-            ans, indices = self.nbrs.kneighbors(self.model.pca.transform(gt_voxlet.V.flatten()))
-            closest_training_X = self.model.training_X[indices[0], :]
-            closest_training_Y = self.model.pca.inverse_transform(
-                self.model.training_Y[indices[0], :])
 
             "Replace the prediction - if an oracle has been specified!"
             if oracle == 'gt':
@@ -549,6 +531,11 @@ class Reconstructer(object):
                 voxlet_prediction = self.model.pca.inverse_transform(temp)
 
             elif oracle == 'nn':
+                # getting the closest match in the training data...
+                _, indices = self.nbrs.kneighbors(
+                    self.model.pca.transform(gt_voxlet.V.flatten()))
+                closest_training_Y = self.model.pca.inverse_transform(
+                    self.model.training_Y[indices[0], :])
                 voxlet_prediction = closest_training_Y
 
             # adding the shoebox into the result

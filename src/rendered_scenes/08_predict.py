@@ -15,6 +15,7 @@ from time import time
 import scipy.misc  # for image saving
 import yaml
 import shutil
+import collections
 
 from common import paths
 from common import parameters
@@ -100,28 +101,41 @@ def process_sequence(sequence):
         render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca')
     greedy_oracle_voxlets_existing = rec.keeping_existing
 
-    combines = [
-        ['Input image', 'input'],
-        ['Ground truth', 'gt', sc.gt_tsdf],
-        ['Visible surfaces', 'visible', sc.im_tsdf],
-        ['Full oracle (OR1)', 'full_oracle_voxlets', full_oracle_voxlets],
-        ['Oracle using PCA (OR2)', 'oracle_voxlets', oracle_voxlets],
-        ['Oracle using NN (OR3)', 'nn_oracle_voxlets', nn_oracle_voxlets],
-        ['Oracle using Greedy (OR4)', 'greedy_oracle_voxlets', greedy_oracle_voxlets],
-        ['Implicit prediction', 'implicit', sc.implicit_tsdf],
-        ['Voxlets', 'pred_voxlets', pred_voxlets]]
+    combines = collections.OrderedDict()
+    combines['input'] = {'name':'Input image'}
+    combines['gt'] = {'name':'Ground truth', 'grid':sc.gt_tsdf}
+    combines['visible'] = {'name':'Visible surfaces', 'grid':sc.im_tsdf}
+    combines['OR1'] = {'name':'Full oracle (OR1)', 'grid':full_oracle_voxlets}
+    combines['OR2'] = {'name':'Oracle using PCA (OR2)', 'grid':oracle_voxlets}
+    combines['OR3'] = {'name':'Oracle using NN (OR3)', 'grid':nn_oracle_voxlets}
+    combines['OR4'] = {'name':'Oracle using greedy (OR4)', 'grid':greedy_oracle_voxlets}
+    combines['implicit'] = {'name':'Implicit prediction', 'grid':sc.implicit_tsdf}
+    combines['pred_voxlets'] = {'name':'Voxlets', 'grid':pred_voxlets}
+
+    # combines = [
+    #     ['Input image', 'input'],
+    #     ['Ground truth', 'gt', sc.gt_tsdf],
+    #     ['Visible surfaces', 'visible', sc.im_tsdf],
+    #     ['Full oracle (OR1)', 'full_oracle_voxlets', full_oracle_voxlets],
+    #     ['Oracle using PCA (OR2)', 'oracle_voxlets', oracle_voxlets],
+    #     ['Oracle using NN (OR3)', 'nn_oracle_voxlets', nn_oracle_voxlets],
+    #     ['Oracle using Greedy (OR4)', 'greedy_oracle_voxlets', greedy_oracle_voxlets],
+    #     ['Implicit prediction', 'implicit', sc.implicit_tsdf],
+    #     ['Voxlets', 'pred_voxlets', pred_voxlets]]
         # ['Voxlets + visible', 'pred_voxlets_exisiting', pred_voxlets_exisiting]]
         # ['Voxlets + visible, using implicit', 'pred_voxlets_implicit_exisiting', pred_voxlets_implicit_exisiting]]
         # ['Voxlets using implicit', 'pred_voxlets_implicit', pred_voxlets_implicit],
 
     if render_predictions:
         print "-> Rendering"
-        for c in combines[1:]:
-            c[2].render_view(gen_renderpath % c[1])
+        for name, dic in combines.iteritems():
+            if name != 'input':
+                dic['grid'].render_view(gen_renderpath % name)
 
     print "-> Computing the score for each prediction"
-    for c in combines[3:]:
-        c.append(sc.evaluate_prediction(c[2].V))
+    for name, dic in combines.iteritems():
+        if name != 'input':
+            dic['results'] = sc.evaluate_prediction(dic['grid'].V)
 
     if save_prediction_grids:
         print "-> Saving prediction grids"
@@ -139,28 +153,31 @@ def process_sequence(sequence):
         plt.subplots(su, sv)
         plt.subplots_adjust(left=0, bottom=0, right=0.95, top=0.95, wspace=0.05, hspace=0.05)
 
-        for count, c in enumerate(combines):
+        for count, (name, dic) in enumerate(combines.iteritems()):
 
             if count >= su*sv:
                 raise Exception("Error! Final subplot is reserved for the ROC curve")
 
             plt.subplot(su, sv, count + 1)
-            plt.imshow(scipy.misc.imread(gen_renderpath % c[1]))
+            plt.imshow(scipy.misc.imread(gen_renderpath % name))
             plt.axis('off')
-            plt.title(c[0], fontsize=10)
+            plt.title(dic['name'], fontsize=10)
 
             " Add to the roc plot, which is in the final subplot"
-            if count >= 3:
+            if name != 'input':
                 "Add the AUC"
-                plt.text(0, 50, "AUC=%0.3f, prec=%0.3f, rec=%0.3f" % (c[3]['auc'], c[3]['precision'], c[3]['recall']),
+                plt.text(0, 50, "AUC=%0.3f, prec=%0.3f, rec=%0.3f" % \
+                    (dic['results']['auc'],
+                     dic['results']['precision'],
+                     dic['results']['recall']),
                     fontsize=6, color='white')
 
                 plt.subplot(su, sv, su*sv)
-                plt.plot(c[3]['fpr'], c[3]['tpr'], label=c[0])
+                plt.plot(dic['results']['fpr'], dic['results']['tpr'], label=dic['name'])
                 plt.hold(1)
                 plt.legend(prop={'size':6}, loc='lower right')
 
-            if c[1] == 'input':
+            else:
                 plt.hold(1)
                 plt.plot(rec.sampled_idxs[:, 1], rec.sampled_idxs[:, 0], 'r.', ms=2)
 
@@ -175,13 +192,14 @@ def process_sequence(sequence):
     if save_scores_to_yaml:
         print "-> Writing scores to YAML"
         results_dict = {}
-        for c in combines[3:]:
-            test_key = c[1]
-            results_dict[test_key] = \
-                {'description': c[0],
-                 'auc':         float(c[3]['auc']),
-                 'precision':   float(c[3]['precision']),
-                 'recall':      float(c[3]['recall'])}
+        for name, dic in combines.iteritems():
+            if name != 'input':
+                test_key = name
+                results_dict[test_key] = \
+                    {'description': dic['name'],
+                     'auc':         float(dic['results']['auc']),
+                     'precision':   float(dic['results']['precision']),
+                     'recall':      float(dic['results']['recall'])}
 
         with open(fpath + 'scores.yaml', 'w') as f:
             f.write(yaml.dump(results_dict, default_flow_style=False))

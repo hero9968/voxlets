@@ -1,8 +1,9 @@
 import random_forest_structured as srf
+import random_forest_structured_old as srf_old
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.datasets import load_iris
 from sklearn.datasets import load_digits
 import pickle
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     y_st_test = y_st[train_size:, :]
 
 
-    print '\nOMA forest'
+    print '\nOMA structured forest'
 
     # RF params
     forest_params = srf.ForestParams()
@@ -51,7 +52,11 @@ if __name__ == '__main__':
     toc = time.time()
     print 'train time', toc-tic
 
+    tic = time.time()
     y_test_pre_ids = forest.test(x_test)
+    toc = time.time()
+    print 'test time', toc-tic
+
     # need to look up ids in the training Y space
     # here we just take the id with the biggest vote
     train_set_class = y_train[y_test_pre_ids.astype('int')]
@@ -63,33 +68,37 @@ if __name__ == '__main__':
     print 'OMA structured forest acc ', tes_acc
 
 
-    print '\nOMA forest - save and load'
-    file_for = open('forest.obj', 'w')
-    pickle.dump(forest, file_for)
-    file_for.close()
-
-    file_for_load = open('forest.obj', 'r')
-    forest_load = pickle.load(file_for_load)
-    file_for_load.close()
+    # print '\nOMA forest - save and load'
+    # file_for = open('forest.obj', 'w')
+    # pickle.dump(forest, file_for)
+    # file_for.close()
+    #
+    # file_for_load = open('forest.obj', 'r')
+    # forest_load = pickle.load(file_for_load)
+    # file_for_load.close()
 
     # need to look up ids in the training Y space
     # here we just take the id with the biggest vote
-    train_set_class = y_train[y_test_pre_ids.astype('int')]
-    pre_labels = np.zeros(y_test.shape[0])
-    for ii in range(y_test.shape[0]):
-        pre_labels[ii] = np.bincount(train_set_class[ii, :]).argmax()
-    tes_acc = (pre_labels == y_test).mean()
-    print 'OMA loaded forest acc ', tes_acc
+    # train_set_class = y_train[y_test_pre_ids.astype('int')]
+    # pre_labels = np.zeros(y_test.shape[0])
+    # for ii in range(y_test.shape[0]):
+    #     pre_labels[ii] = np.bincount(train_set_class[ii, :]).argmax()
+    # tes_acc = (pre_labels == y_test).mean()
+    # print 'OMA loaded forest acc ', tes_acc
 
 
-    print '\nscikit-learn'
-    forest_sc = RandomForestClassifier(n_estimators=forest_params.num_trees)
+    print '\nsklearn'
+    forest_sc = ExtraTreesClassifier(n_estimators=forest_params.num_trees)
     tic = time.time()
     forest_sc = forest_sc.fit(x_train, y_train)
     toc = time.time()
-    print 'scikit train time', toc-tic
+    print 'train time', toc-tic
 
+    tic = time.time()
     skl_y_test = forest_sc.predict(x_test)
+    toc = time.time()
+    print 'test time', toc-tic
+
     skl_test_acc = (skl_y_test == y_test).mean()
-    print 'scikit forest acc ', skl_test_acc
+    print 'forest acc ', skl_test_acc
 

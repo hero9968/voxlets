@@ -11,6 +11,7 @@ import scipy.stats
 import scipy.io
 from numbers import Number
 import scipy.stats as stats
+# from sklearn.neighbors import KDTree
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -205,7 +206,10 @@ class Normals(object):
         return self.normalize_v3(cross.T)
 
     def compute_curvature(self, im, offset=1):
-
+        '''
+        I must have got this code from the internet somewhere,
+        but I don't remember where....
+        '''
         Z = im.depth
 
         Zy, Zx  = np.gradient(Z, offset)
@@ -220,29 +224,56 @@ class Normals(object):
 
         return H, K, Zyy, Zxx
 
+    # def kdtree_normals(self, im):
+    #     '''
+    #     '''
+    #     xyz = im.reproject_3d().T
+    #     nans = np.any(np.isnan(xyz), axis=1)
+    #     print nans.shape, nans.sum()
+    #     print "xyz is shape", xyz.shape
+    #     tree = KDTree(xyz[~nans, :])
+    #     _, xyz_neighbours = tree.query(xyz[~nans, :], k=20)
+    #     print xyz_neighbours.shape
 
-# here should probably write some kind of testing routine
-# where an image is loaded, rotated patches are extracted and the gradient of
-# the rotated patches is shown to be all mostly close to zero
 
-if __name__ == '__main__':
+    def voxel_normals(self, im, vgrid):
+        '''
+        compute the normals from a voxel grid
+        '''
+        offset = 2
+        xyz = im.get_world_xyz()
+        inliers = np.ravel(im.mask)
 
-    '''testing the plotting'''
+        # padding the array
+        pad_width = ((offset, offset), (offset, offset), (offset, offset))
+        padded = np.pad(vgrid.V, pad_width, 'edge')
 
-    import images
-    import paths
+        idx = vgrid.world_to_idx(xyz[inliers]) + offset
 
-    # loading the render
-    im = images.CADRender()
-    im.load_from_cad_set(paths.modelnames[30], 30)
-    im.compute_edges_and_angles()
+        ds = np.eye(3) * offset
 
-    # sampling indices from the image
-    indices = np.array(np.nonzero(~np.isnan(im.depth))).transpose()
-    samples = np.random.randint(0, indices.shape[0], 20)
-    indices = indices[samples, :]
+        diffs = []
+        for d in ds:
+            plus = (idx + d).astype(int)
+            minus = (idx - d).astype(int)
 
-    # plotting patch
-    patch_plotter = PatchPlot()
-    patch_plotter.set_image(im.depth)
-    patch_plotter.plot_patches(indices, scale_factor=10)
+            diffs.append(
+                padded[plus[:, 0], plus[:, 1], plus[:, 2]] -
+                padded[minus[:, 0], minus[:, 1], minus[:, 2]])
+
+        diffs = np.vstack(diffs).astype(np.float32)
+        length = np.linalg.norm(diffs, axis=0)
+        length[length==0] = 0.0001
+
+        diffs /= length
+
+        # now convert the normals to image space instead of world space...
+        image_norms = np.dot(im.cam.inv_H[:3, :3], diffs).T
+
+        # pad out array to the correct size for future computations...
+        output_norms = np.zeros((im.mask.size, 3), dtype=np.float32)
+        output_norms[inliers, :] = image_norms
+        return output_norms
+
+
+        # return diffs.T
