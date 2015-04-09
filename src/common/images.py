@@ -132,7 +132,7 @@ class RGBDImage(object):
         '''
         h, w = self.depth.shape
         us, vs = np.meshgrid(np.arange(w), np.arange(h))
-        x = 1000*np.vstack((us.flatten()*self.depth.flatten(),
+        x = np.vstack((us.flatten()*self.depth.flatten(),
                             vs.flatten()*self.depth.flatten(),
                             self.depth.flatten()))
 
@@ -239,7 +239,7 @@ class RGBDImage(object):
         if os.path.exists(mask_image_path):
             im.mask = scipy.misc.imread(mask_image_path) == 255
         else:
-            pass
+            print mask_image_path
 
         # setting the frame id
         im.frame_id = dictionary['id']
