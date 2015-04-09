@@ -29,3 +29,4 @@ temp.*
 *.ipynb
 /media/report_extra/
 *.docx
+*.idea
