@@ -492,6 +492,8 @@ class Reconstructer(object):
                 self.segement_accums[label] = self.accum.copy()
             self.accum = None
 
+        self.all_pred_cache = []
+
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
 
@@ -517,6 +519,7 @@ class Reconstructer(object):
             voxlet_prediction, mask_prediction = \
                 self.model.predict(np.atleast_2d(feature_vector))
             self.cached_voxlet_prediction = voxlet_prediction
+            self.all_pred_cache.append(voxlet_prediction)
 
             # getting the GT voxlet - useful for the oracles and rendering
             gt_voxlet = self._initialise_voxlet(idx)
@@ -578,6 +581,7 @@ class Reconstructer(object):
             else:
                 # Standard method - adding voxlet in regardless
                 if combine_segments_separately:
+                    raise Exception('Why????')
                     self.segement_accums[this_point_label].add_voxlet(transformed_voxlet, accum_only_predict_true, weights=mask_prediction)
                 else:
                     self.accum.add_voxlet(transformed_voxlet,
@@ -667,6 +671,7 @@ class Reconstructer(object):
                 plt.savefig(savepath)
 
         if combine_segments_separately:
+            raise Exception('Why am I here???')
             with open('/tmp/separate.pkl', 'w') as f:
                 pickle.dump(self.segement_accums, f, protocol=pickle.HIGHEST_PROTOCOL)
             average = self.sc.gt_tsdf.blank_copy()
