@@ -239,7 +239,7 @@ class RGBDImage(object):
         if os.path.exists(mask_image_path):
             im.mask = scipy.misc.imread(mask_image_path) == 255
         else:
-            print mask_image_path
+            pass
 
         # setting the frame id
         im.frame_id = dictionary['id']

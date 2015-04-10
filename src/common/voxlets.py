@@ -228,7 +228,7 @@ class VoxletPredictor(object):
         # must extract original test data from the indices
 
         # this is a horrible line and needs changing...
-        medioid_idx = [self._medioid_idx(self.training_Y[pred])
+        medioid_idx = [pred[self._medioid_idx(self.training_Y[pred])]
                              for pred in index_predictions]
         Y_pred_compressed = [self.training_Y[idx] for idx in medioid_idx]
         Y_pred_compressed = np.array(Y_pred_compressed)
@@ -398,7 +398,7 @@ class Reconstructer(object):
 
             for key, value in sample_dict.iteritems():
                 # add the top item to the sampled points
-                if len(value) > 0:
+                if len(value) > 0 and len(sampled_points) < num_to_sample:
                     sampled_points.append(value.pop())
 
         self.sampled_idxs = np.array(sampled_points)

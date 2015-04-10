@@ -654,8 +654,10 @@ class UprightAccumulator(WorldVoxels):
 
             # This is a bit of a bodge but is needed to get the correct items from the weights...
             weights_to_use = weights.reshape(voxlet.V.shape)[
-                voxlet_idxs[:, 0], voxlet_idxs[:, 1], voxlet_idxs[:, 2]].shape
+                voxlet_idxs[:, 0], voxlet_idxs[:, 1], voxlet_idxs[:, 2]]
 
+            print "Adding weights of shape ", weights_to_use.shape
+            print "Weights d type is ", weights.dtype
             self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += \
                 data_to_insert * weights_to_use
             self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights_to_use
