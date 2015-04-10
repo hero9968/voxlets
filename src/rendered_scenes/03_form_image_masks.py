@@ -5,20 +5,19 @@ import sys
 import os
 import numpy as np
 import scipy
+from time import time
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic/'))
-
 from common import images
-from common import paths
-from common import parameters
+import paths
+import parameters
 
 # setting the bounds of the cube...
 grid_min, grid_max = parameters.RenderedVoxelGrid.aabb()
 print grid_min, grid_max
 
 # doing a loop here to loop over all possible files...
-for scenename in paths.RenderedData.get_scene_list():
+def form_masks(scenename):
 
     print "Making masks for %s" % scenename
 
@@ -44,3 +43,18 @@ for scenename in paths.RenderedData.get_scene_list():
         # choose the save location carefully
         savepath = paths.RenderedData.mask_path(scenename, frame.frame_id)
         scipy.misc.imsave(savepath, mask)
+
+
+if parameters.multicore:
+    # need to import these *after* pool_helper has been defined
+    import multiprocessing
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+if __name__ == "__main__":
+
+    tic = time()
+    mapper(form_masks, paths.RenderedData.get_scene_list())
+    print "In total took %f s" % (time() - tic)

@@ -1,14 +1,31 @@
 import subprocess as sp
-import sys
+import parameters
+import paths
+from time import time
 import os
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import parameters
-from common import paths
 
-for i in range(parameters.RenderData.scenes_to_render):
+def render_seq(i):
     sp.call([
         paths.blender_path,
         "data_generation/data/blank.blend",
         "-b",
         "-P",
-        "data_generation/physics.py"])
+        "data_generation/physics.py"],
+        stdout=open(os.devnull, 'w'),
+        close_fds=True)
+    print "Done ", i
+
+
+if parameters.multicore:
+    # need to import these *after* pool_helper has been defined
+    import multiprocessing
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+if __name__ == "__main__":
+
+    tic = time()
+    mapper(render_seq, range(parameters.RenderData.scenes_to_render))
+    print "In total took %f s" % (time() - tic)

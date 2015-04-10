@@ -17,8 +17,9 @@ import yaml
 import shutil
 import collections
 
-from common import paths
-from common import parameters
+import paths
+import parameters
+
 from common import voxlets
 from common import scene
 
@@ -31,12 +32,15 @@ print "Done loading model..."
 
 combine_renders = True
 render_predictions = True
-render_top_view = False
+render_top_view = True
 save_prediction_grids = True
 save_scores_to_yaml = True
 copy_to_dropbox = True and paths.host_name == 'biryani'
 dropbox_path = paths.RenderedData.new_dropbox_dir()
 print dropbox_path
+
+# this overrides all other parameters. Means we don't botther with orables etc
+only_prediction = False
 
 print "MAIN LOOP"
 # Note: if parallelising, should either do here (at top level) or at the
@@ -47,10 +51,10 @@ def process_sequence(sequence):
     sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
         model_without_implicit.voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
-        save_grids=False, load_implicit=True)
-    sc.santity_render(save_folder='/tmp/')
+        save_grids=False, load_implicit=False)
+    # sc.santity_render(save_folder='/tmp/')
 
-    test_type = 'oma_implicit'
+    test_type = 'oma'
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
@@ -69,17 +73,22 @@ def process_sequence(sequence):
     if not os.path.exists(fpath):
         os.makedirs(fpath)
 
-    if render_top_view:
-        print "-> Rendering top view"
-        rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
-        print gen_renderpath % 'top_view'
-
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
         render_type=[], add_ground_plane=True,
         combine_segments_separately=False, feature_collapse_type='pca')
     pred_voxlets_exisiting = rec.keeping_existing
+
+    if only_prediction:
+        pred_voxlets.render_view(gen_renderpath % 'pred_voxlets')
+        return
+
+    if render_top_view:
+        print "-> Rendering top view"
+        rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
+        print gen_renderpath % 'top_view'
+
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     full_oracle_voxlets = rec.fill_in_output_grid_oma(
@@ -109,7 +118,7 @@ def process_sequence(sequence):
     combines['OR2'] = {'name':'Oracle using PCA (OR2)', 'grid':oracle_voxlets}
     combines['OR3'] = {'name':'Oracle using NN (OR3)', 'grid':nn_oracle_voxlets}
     combines['OR4'] = {'name':'Oracle using greedy (OR4)', 'grid':greedy_oracle_voxlets}
-    combines['implicit'] = {'name':'Implicit prediction', 'grid':sc.implicit_tsdf}
+    # combines['implicit'] = {'name':'Implicit prediction', 'grid':sc.implicit_tsdf}
     combines['pred_voxlets'] = {'name':'Voxlets', 'grid':pred_voxlets}
 
     # combines = [
@@ -209,7 +218,7 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if False:  # parameters.multicore:
+if parameters.multicore:
     import multiprocessing
     pool = multiprocessing.Pool(parameters.cores)
     mapper = pool.map

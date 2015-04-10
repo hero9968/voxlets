@@ -7,8 +7,8 @@ import cPickle as pickle
 import sys
 import os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import paths
-from common import parameters
+import paths
+import parameters
 from common import voxlets
 import time
 

@@ -7,18 +7,18 @@ TODO:
 import sys
 import os
 import numpy as np
-import scipy.io
+from time import time
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic/'))
 from common import images
 from common import voxel_data
 from common import carving
-from common import paths
-from common import parameters
+
+import paths
+import parameters
 
 # doing a loop here to loop over all possible files...
-for scenename in paths.RenderedData.get_scene_list():
+def carve_grid(scenename):
 
     vid = images.RGBDVideo()
     vid.load_from_yaml(paths.RenderedData.video_yaml(scenename))
@@ -42,3 +42,19 @@ for scenename in paths.RenderedData.get_scene_list():
     savepath = paths.RenderedData.visible_voxels(scenename)
     print "Saving using custom routine to location %s" % savepath
     visible.save(savepath)
+
+
+
+if parameters.multicore:
+    # need to import these *after* pool_helper has been defined
+    import multiprocessing
+    pool = multiprocessing.Pool(parameters.cores)
+    mapper = pool.map
+else:
+    mapper = map
+
+if __name__ == "__main__":
+
+    tic = time()
+    mapper(carve_grid, paths.RenderedData.get_scene_list())
+    print "In total took %f s" % (time() - tic)

@@ -11,9 +11,10 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import paths
-from common import parameters
 from common import scene
+
+import paths
+import parameters
 
 # features_iso_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_iso.pkl'
 # with open(features_iso_savepath, 'rb') as f:
