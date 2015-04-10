@@ -368,14 +368,14 @@ class Reconstructer(object):
     def set_scene(self, sc_in):
         self.sc = sc_in
 
-    def sample_points(self, num_to_sample, sample_grid_size):
+    def sample_points(self, num_to_sample, sample_grid_size, additional_mask=None):
         '''
         sampling points from the test image
         '''
 
         # Over-sample the points to begin with
         sampled_idxs = \
-            self.sc.im.random_sample_from_mask(4*num_to_sample)
+            self.sc.im.random_sample_from_mask(4*num_to_sample, additional_mask=additional_mask)
         linear_idxs = sampled_idxs[:, 0] * self.sc.im.mask.shape[1] + \
             sampled_idxs[:, 1]
 

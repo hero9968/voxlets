@@ -36,9 +36,14 @@ def process_sequence(sequence):
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
     sc.santity_render(save_folder='/tmp/')
 
-    idxs = sc.im.random_sample_from_mask(
-        parameters.VoxletTraining.pca_number_points_from_each_image,
-        additional_mask=sc.gt_im_label != 0)
+    # just using the reconstructor for its point sampling routine!
+    rec = voxlets.Reconstructer(
+        reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+    rec.set_scene(sc)
+    rec.sample_points(parameters.VoxletPrediction.pca_number_points_from_each_image,
+                      parameters.VoxletPrediction.sampling_grid_size,
+                      additional_mask=sc.gt_im_label != 0)
+    idxs = rec.sampled_idxs
 
     "Now try to make this nice and like parrallel or something...?"
     t1 = time()
