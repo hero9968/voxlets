@@ -3,7 +3,7 @@ import real_data_paths as paths
 import os
 
 for sequence in paths.scenes:
-    scene = sequence['location'] + sequence['scene']
+    scene = sequence['folder'] + sequence['scene']
     print scene
 
     if not os.path.exists(scene + '/dump.obj'):

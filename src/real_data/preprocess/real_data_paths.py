@@ -9,7 +9,7 @@ scene_names = [o
           for o in os.listdir(raw_data)
           if os.path.isdir(os.path.join(raw_data,o))]
 
-scene_names = ['saved_aaron']
+# scene_names = ['saved_aaron']
 
 scenes = [{'folder':raw_data,
            'scene':scene}
