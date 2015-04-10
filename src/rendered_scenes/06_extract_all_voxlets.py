@@ -63,9 +63,14 @@ def process_sequence(sequence):
         save_grids=False, load_implicit=parameters.VoxletTraining.use_implicit)
     # sc.santity_render(save_folder='/tmp/')
 
-    idxs = sc.im.random_sample_from_mask(
-        parameters.VoxletTraining.number_points_from_each_image,
-        additional_mask=sc.gt_im_label != 0)
+    # just using reconstructor for sampling the points...
+    rec = voxlets.Reconstructer(
+        reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+    rec.set_scene(sc)
+    rec.sample_points(parameters.VoxletTraining.number_points_from_each_image,
+                      parameters.VoxletPrediction.sampling_grid_size,
+                      additional_mask=sc.gt_im_label != 0)
+    idxs = rec.sampled_idxs
 
     logging.debug("Extracting shoeboxes and features...")
     t1 = time()
