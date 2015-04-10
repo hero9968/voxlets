@@ -74,6 +74,10 @@ train_list = [dict(name=random_seq_name(16), scene=scene_name, frames=s)
               for scene_name in train_scenes
               for s in sequences[scene_name]]
 
+# muddling up the lists...
+np.random.shuffle(test_list)
+np.random.shuffle(train_list)
+
 # checking if output folder exists
 split_save_dir = os.path.dirname(paths.RenderedData.yaml_train_location)
 if not os.path.exists(split_save_dir):
