@@ -28,7 +28,8 @@ def process_sequence(sequence):
 
     print "Processing " + sequence['scene']
     sc = scene.Scene(parameters.mu, parameters.Voxlet)
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
+        save_grids=False, voxel_normals=True)
     sc.santity_render(save_folder='/tmp/')
 
     idxs = sc.im.random_sample_from_mask(
@@ -36,6 +37,7 @@ def process_sequence(sequence):
         additional_mask=sc.gt_im_label != 0)
 
     "Now try to make this nice and like parrallel or something...?"
+    print "Extracting voxlets"
     t1 = time()
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=flatten_sbox) for idx in idxs]

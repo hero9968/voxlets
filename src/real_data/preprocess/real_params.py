@@ -55,7 +55,7 @@ class VoxletTraining(object):
     (Although the forest paramters are elsewhere currently)
     '''
     # PCA and kmeans
-    pca_number_points_from_each_image = 100
+    pca_number_points_from_each_image = 250
     number_pca_dims = 60
     number_clusters = 50
     pca_subsample_length = 50000  # max number of examples to use for pca
