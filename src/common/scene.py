@@ -49,7 +49,8 @@ class Scene(object):
 
         return frames
 
-    def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True, save_grids=False, load_implicit=False):
+    def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True,
+            save_grids=False, load_implicit=False, voxel_normals=False):
         '''
         loads a sequence of images, the associated gt voxel grid,
         carves the visible tsdf from the images, does segmentation
@@ -75,7 +76,10 @@ class Scene(object):
 
         # computing normals...
         norm_engine = features.Normals()
-        self.im.normals = norm_engine.compute_normals(self.im)
+        if voxel_normals:
+            self.im.normals = norm_engine.voxel_normals(self.im, self.gt_tsdf)
+        else:
+            self.im.normals = norm_engine.compute_normals(self.im)
 
         # while I'm here - might as well save the image as a voxel grid
         video = images.RGBDVideo()
