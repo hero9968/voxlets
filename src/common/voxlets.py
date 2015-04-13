@@ -773,7 +773,7 @@ class Reconstructer(object):
         plt.axis('off')
         plt.subplot(132)
 
-        top_view = np.sum(self.sc.gt_tsdf.V, axis=2)
+        top_view = np.nanmean(self.sc.im_tsdf.V, axis=2)
         plt.imshow(top_view, cmap=plt.get_cmap('Greys'))
         plt.axis('off')
 
@@ -817,7 +817,7 @@ class Reconstructer(object):
 
     def _plot_voxlet(self, point, normal):
         plt.plot(point[1], point[0], 'or', ms=2)
-        scaling = 20.0
+        scaling = 10.0
         end_point = point + scaling * normal
         plt.plot([point[1], end_point[1]], [point[0], end_point[0]], 'r', lw=1)
 

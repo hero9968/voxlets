@@ -29,3 +29,6 @@ voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
 voxlets_dictionary_path = models_folder + 'dictionary/'
 voxlets_data_path = models_folder + 'training_voxlets/'
 voxlet_model_oma_path = models_folder + 'models/oma.pkl'
+
+voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
+voxlet_prediction_folder_path = base_path + "/voxlets/bigbird/predictions/%s/"

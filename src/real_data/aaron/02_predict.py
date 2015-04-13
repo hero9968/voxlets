@@ -47,7 +47,7 @@ class Voxlet(object):
 
     one_side_bins = 20
     shape = (one_side_bins, 2*one_side_bins, 2*one_side_bins)
-    size = 0.0175  # edge size of a single voxel
+    size = 0.0175 / 3.0  # edge size of a single voxel
     # centre is relative to the ijk origin at the bottom corner of the voxlet
     # z height of centre takes into account the origin offset
     actual_size = np.array(shape) * size
@@ -58,17 +58,18 @@ class Voxlet(object):
     tall_voxlet_height = 0.375
 
 
+model_without_implicit.voxlet_params = Voxlet
+
 print "MAIN LOOP"
 # Note: if parallelising, should either do here (at top level) or at the
 # bottom level, where the predictions are accumulated (although this might be)
 # better off being GPU...)
 def process_sequence(sequence):
-    print model_without_implicit.voxlet_params.vox_size
-    sdsds
+
     sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
         model_without_implicit.voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
-        save_grids=False, load_implicit=False)
+        save_grids=False, load_implicit=False, voxel_normals='im_tsdf')
     # sc.santity_render(save_folder='/tmp/')
 
     test_type = 'oma'
@@ -79,11 +80,6 @@ def process_sequence(sequence):
     rec.set_scene(sc)
     rec.sample_points(parameters.VoxletPrediction.number_samples,
                       parameters.VoxletPrediction.sampling_grid_size)
-
-    plt.imshow(sc.im.rgb)
-    plt.hold(1)
-    plt.plot(rec.sampled_idxs[:, 1], rec.sampled_idxs[:, 0], 'r.', ms=2)
-    plt.savefig('/tmp/im.png')
 
     # Path where any renders will be saved to
     gen_renderpath = paths.voxlet_prediction_img_path % \
@@ -102,7 +98,7 @@ def process_sequence(sequence):
         print "-> Rendering top view"
         rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
         print gen_renderpath % 'top_view'
-        wewe
+
     pred_voxlets = rec.fill_in_output_grid_oma(
         render_type=[], add_ground_plane=True,
         combine_segments_separately=False, feature_collapse_type='pca')
