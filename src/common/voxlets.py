@@ -301,9 +301,6 @@ class VoxletPredictor(object):
         else:
             raise Exception('Do not understand')
 
-        print "X has shape ", X.shape
-        print "All masks has shape ", all_masks.shape
-
         return (final_predictions, all_masks)
 
     def save(self, savepath):
@@ -500,7 +497,8 @@ class Reconstructer(object):
     def initialise_output_grid(self, gt_grid=None):
         '''defaulting to initialising from the ground truth grid...'''
         self.accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
-        self.accum.set_origin(gt_grid.origin)
+        self.accum.set_origin(gt_grid.origin, gt_grid.R
+             )
         self.accum.set_voxel_size(gt_grid.vox_size)
 
         # during testing it makes sense to save the GT grid, for visualisation

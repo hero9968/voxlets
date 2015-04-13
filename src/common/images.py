@@ -52,7 +52,6 @@ class RGBDImage(object):
                 height, width = f.readline().strip().split(' ')
                 f.readline()
                 self.depth = np.fromfile(f, dtype=('>u2'))
-                print self.depth.shape
                 self.depth = self.depth.reshape(int(width), int(height))
 
             elif f.readline().strip() == 'P2':
@@ -262,7 +261,6 @@ class RGBDImage(object):
             im.mask = scipy.misc.imread(mask_image_path) == 255
         else:
             print mask_image_path
-            sdsds
 
         # setting the frame id
         im.frame_id = dictionary['id']
