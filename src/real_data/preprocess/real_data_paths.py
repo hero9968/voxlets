@@ -1,9 +1,18 @@
 import os
 import yaml
+import socket
 
-data_folder = '/Users/Michael/projects/shape_sharing/data/desks/'
+host_name = socket.gethostname()
+print host_name
+
+if host_name == 'troll' or host_name == 'biryani':
+    data_folder = '/media/ssd/data/desks/'
+    converter_path = ''
+else:
+    data_folder = '/Users/Michael/projects/shape_sharing/data/desks/'
+    converter_path = '/Users/Michael/projects/InfiniTAM_Alt/convertor/voxels_to_ply.py'
+
 raw_data = data_folder + 'oisin_1/data/'
-converter_path = '/Users/Michael/projects/InfiniTAM_Alt/convertor/voxels_to_ply.py'
 
 scene_names = [o
           for o in os.listdir(raw_data)
