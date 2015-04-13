@@ -63,7 +63,8 @@ class Scene(object):
             '/ground_truth_tsdf.pkl'
         self.gt_tsdf = voxel_data.load_voxels(vox_location)
         self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -self.mu
-        self.gt_tsdf.set_origin(self.gt_tsdf.origin)
+        self.gt_tsdf.set_origin(self.gt_tsdf.origin,
+                self.gt_tsdf.R)
 
         # loading in the image
         sequence_frames = sequence['frames'][frame_nos]
@@ -74,13 +75,6 @@ class Scene(object):
         self.im = images.RGBDImage.load_from_dict(
             sequence['folder'] + sequence['scene'], frame_data)
 
-        # computing normals...
-        norm_engine = features.Normals()
-        if voxel_normals:
-            self.im.normals = norm_engine.voxel_normals(self.im, self.gt_tsdf)
-        else:
-            self.im.normals = norm_engine.compute_normals(self.im)
-
         # while I'm here - might as well save the image as a voxel grid
         video = images.RGBDVideo()
         video.frames = [self.im]
@@ -88,6 +82,15 @@ class Scene(object):
         carver.set_video(video)
         carver.set_voxel_grid(self.gt_tsdf.blank_copy())
         self.im_tsdf, self.im_visible = carver.fuse(self.mu)
+
+        # computing normals...
+        norm_engine = features.Normals()
+        if voxel_normals and voxel_normals == 'im_tsdf':
+            self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
+        elif voxel_normals:
+            self.im.normals = norm_engine.voxel_normals(self.im, self.gt_tsdf)
+        else:
+            self.im.normals = norm_engine.compute_normals(self.im)
 
         # load in the implicit prediction...
         if load_implicit:

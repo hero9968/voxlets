@@ -52,6 +52,7 @@ class RGBDImage(object):
                 height, width = f.readline().strip().split(' ')
                 f.readline()
                 self.depth = np.fromfile(f, dtype=('>u2'))
+                print self.depth.shape
                 self.depth = self.depth.reshape(int(width), int(height))
 
             elif f.readline().strip() == 'P2':
@@ -65,6 +66,21 @@ class RGBDImage(object):
             self.depth = self.depth.astype(np.float32)
             self.depth[self.depth == 0] = np.nan
 
+    def load_depth_from_dat(self, fpath):
+        '''
+        used for aaron's data
+        '''
+        with open(fpath) as f:
+            f.read(8)
+            self.depth = \
+                np.fromfile(f, dtype=np.float32).reshape(480, 640)
+
+    # def write_depth_to_pgm(self, pgm_path):
+    #     with open(pgm_path, 'w') as f:
+    #         f.write('P5\n')
+    #         f.write(str(self.depth.shape[1]) + ' ' + str(self.depth.shape[0]) + '\n')
+    #         f.write('\n')
+    #         self.depth.astype(np.float16).tofile(f, format=('>u2'))
 
     def load_kinect_defaults(self):
         '''
@@ -211,6 +227,8 @@ class RGBDImage(object):
         depth_image_path = os.path.join(scene_folder, dictionary['image'])
         if depth_image_path.endswith('pgm'):
             im.load_depth_from_pgm(depth_image_path)
+        elif depth_image_path.endswith('dat'):
+            im.load_depth_from_dat(depth_image_path)
         else:
             im.load_depth_from_img(depth_image_path)
 
@@ -234,12 +252,17 @@ class RGBDImage(object):
         cam.set_intrinsics(intrinsics)
         im.set_camera(cam)
 
-        mask_image_path = \
-            scene_folder + '/images/mask_%s.png' % dictionary['id']
+        if 'mask' in dictionary:
+            mask_image_path = os.path.join(scene_folder, dictionary['mask'])
+        else:
+            mask_image_path = \
+                scene_folder + '/images/mask_%s.png' % dictionary['id']
+
         if os.path.exists(mask_image_path):
             im.mask = scipy.misc.imread(mask_image_path) == 255
         else:
-            pass
+            print mask_image_path
+            sdsds
 
         # setting the frame id
         im.frame_id = dictionary['id']
