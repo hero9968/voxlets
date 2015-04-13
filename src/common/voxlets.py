@@ -263,31 +263,40 @@ class VoxletPredictor(object):
 
             tree_predictions = \
                 self.pca.inverse_transform(self.training_Y[index_predictions])
-            print self.training_Y[index_predictions].shape
-            print "Tree predictions has shape ", tree_predictions.shape
+            # print self.training_Y[index_predictions].shape
+            # print "Tree predictions has shape ", tree_predictions.shape
 
             dims_to_use_for_distance = \
                 visible_voxlet.flatten() > np.nanmin(visible_voxlet)
-            print "Dims being used for the distance has shape, sum:"
-            print dims_to_use_for_distance.shape
-            print dims_to_use_for_distance.sum()
+            # print "Dims being used for the distance has shape, sum:"
+            # print dims_to_use_for_distance.shape
+            # print dims_to_use_for_distance.sum()
 
-            print tree_predictions[:, dims_to_use_for_distance].shape
-            print visible_voxlet.flatten()[dims_to_use_for_distance].shape
+            # print tree_predictions[:, dims_to_use_for_distance].shape
+            # print visible_voxlet.flatten()[dims_to_use_for_distance].shape
             distances = np.linalg.norm(
                 visible_voxlet.flatten()[dims_to_use_for_distance] -
                 tree_predictions[:, dims_to_use_for_distance], axis=1)
 
-            print "Distances has shape ", distances.shape
+            # print "Distances has shape ", distances.shape
 
             to_use = distances.argmin()
-            print "Now actually using ", to_use
+            # print "Now actually using ", to_use
 
-            print "Retrieving this one...", index_predictions[to_use]
+            # print "Retrieving this one...", index_predictions[to_use]
             final_predictions = tree_predictions[to_use]
 
-            compressed_mask = self.training_masks[index_predictions[to_use]]
-            all_masks = np.vstack([self.masks_pca.inverse_transform(compressed_mask)])
+            if True:
+                compressed_mask = self.training_masks[index_predictions[to_use]]
+                all_masks = np.vstack([self.masks_pca.inverse_transform(compressed_mask)])
+            else:
+                print "WARNINGG" * 10
+                these_masks_compressed = [self.training_masks[idx] for idx in index_predictions]
+                # Must inverse transform *before* taking the mean -
+                # I don't want to take mean in PCA space
+                these_masks_full = \
+                    self.masks_pca.inverse_transform(np.array(these_masks_compressed))
+                all_masks = np.mean(these_masks_full, axis=0)
 
         else:
             raise Exception('Do not understand')
