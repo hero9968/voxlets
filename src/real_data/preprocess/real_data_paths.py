@@ -28,16 +28,30 @@ yaml_train_location = data_folder + 'train_test/train.yaml'
 with open(yaml_train_location, 'r') as f:
     train_data = yaml.load(f)
 
+yaml_train_location = data_folder + 'train_test/test.yaml'
+with open(yaml_train_location, 'r') as f:
+    test_data = yaml.load(f)
+
+
 for t in train_data:
     t['folder'] = raw_data
+
+for t in test_data:
+    t['folder'] = raw_data
+
 
 # saving...
 models_folder = data_folder + 'models/'
 
-voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
-voxlets_dictionary_path = models_folder + 'dictionary/'
-voxlets_data_path = models_folder + 'training_voxlets/'
-voxlet_model_oma_path = models_folder + 'models/oma.pkl'
 
-voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
-voxlet_prediction_folder_path = base_path + "/voxlets/bigbird/predictions/%s/"
+class RenderedData(object):
+
+    voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
+    voxlets_dictionary_path = models_folder + 'dictionary/'
+    voxlets_data_path = models_folder + 'training_voxlets/'
+    voxlet_model_oma_path = models_folder + 'models/oma.pkl'
+
+    voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
+    voxlet_prediction_folderpath = data_folder + '/predictions/%s/%s/'
+# voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
+# voxlet_prediction_folder_path = base_path + "/voxlets/bigbird/predictions/%s/"
