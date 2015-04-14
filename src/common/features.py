@@ -240,16 +240,19 @@ class Normals(object):
         '''
         compute the normals from a voxel grid
         '''
-        offset = 2
+        offset = 4
         xyz = im.get_world_xyz()
         inliers = np.ravel(im.mask)
 
         # padding the array
-        pad_width = ((offset, offset), (offset, offset), (offset, offset))
+        t = 10
+        pad_width = ((offset+t, offset+t), (offset+t, offset+t), (offset+t, offset+t))
         padded = np.pad(vgrid.V, pad_width, 'edge')
+        padded[np.isnan(padded)] = np.nanmin(padded)
 
-        idx = vgrid.world_to_idx(xyz[inliers]) + offset
-
+        idx = vgrid.world_to_idx(xyz[inliers]) + offset + t
+        print idx
+        print idx.shape
         ds = np.eye(3) * offset
 
         diffs = []
@@ -266,6 +269,8 @@ class Normals(object):
         length[length==0] = 0.0001
 
         diffs /= length
+        print np.isnan(diffs).sum()
+        print diffs.shape
 
         # now convert the normals to image space instead of world space...
         image_norms = np.dot(im.cam.inv_H[:3, :3], diffs).T

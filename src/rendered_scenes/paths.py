@@ -320,7 +320,8 @@ class RenderedData(object):
         while os.path.exists(base_path % count):
             count += 1
         os.mkdir(base_path % count)
-        return
+        assert os.path.exists(base_path % count)
+        return base_path % count
 
 
 class Bricks(object):

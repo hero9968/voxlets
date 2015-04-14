@@ -1,16 +1,13 @@
 import numpy as np
 import cPickle as pickle
 import scipy.io
-import sys
-import os
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 
 from sklearn.decomposition import RandomizedPCA
 from sklearn.cluster import MiniBatchKMeans
-# from sklearn.manifold import LocallyLinearEmbedding
 
-from common import paths
-from common import parameters
+import paths
+import parameters
+
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
 
@@ -27,20 +24,6 @@ def pca_randomized(X_in, local_subsample_length, num_pca_dims):
     pca = RandomizedPCA(n_components=num_pca_dims)
     pca.fit(X)
     return pca
-
-
-def do_isomap(X_in, local_subsample_length, num_isomap_dimensions):
-
-    # take subsample
-    rand_exs = np.sort(np.random.choice(
-        X_in.shape[0],
-        np.minimum(local_subsample_length, X_in.shape[0]),
-        replace=False))
-    X = X_in.take(rand_exs, 0)
-
-    iso = LocallyLinearEmbedding(n_components=num_isomap_dimensions, n_neighbors=25)
-    iso.fit(X.astype(np.float16))
-    return iso
 
 
 def cluster_data(X, local_subsample_length, num_clusters):
@@ -67,7 +50,7 @@ def cluster_data(X, local_subsample_length, num_clusters):
 shoeboxes = []
 features = []
 
-for count, sequence in enumerate(paths.RenderedData.train_sequence()[:80]):
+for count, sequence in enumerate(paths.RenderedData.train_sequence()[:400]):
 
     print "Processing " + sequence['name']
 

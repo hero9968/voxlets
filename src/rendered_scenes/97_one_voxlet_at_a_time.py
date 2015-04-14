@@ -14,8 +14,8 @@ sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from time import time
 import copy
 
-from common import paths
-from common import parameters
+import paths
+import parameters
 from common import voxlets
 from common import scene
 
@@ -24,6 +24,7 @@ from common import scene
 with open(paths.RenderedData.voxlet_model_oma_path, 'rb') as f:
     model = pickle.load(f)
 
+model.set_voxlet_params(parameters.Voxlet)
 # for count, tree in enumerate(model.forest.trees):
 #     print count, len(tree.leaf_nodes())
 #     lengths = np.array([len(leaf.exs_at_node) for leaf in tree.leaf_nodes()])
@@ -49,10 +50,12 @@ print "MAIN LOOP"
 # better off being GPU...)
 def process_sequence(sequence):
 
+
+    # sequence['folder'] =
     sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
         model.voxlet_params)
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
-    sc.santity_render(save_folder='/tmp/')
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False, load_implicit=False)
+    # sc.santity_render(save_folder='/tmp/')
 
     test_type = 'oma'
 
@@ -165,7 +168,7 @@ else:
 if __name__ == '__main__':
 
     tic = time()
-    mapper(process_sequence, paths.RenderedData.test_sequence()[:5])
+    mapper(process_sequence, paths.RenderedData.test_sequence()[1:5])
     print "In total took %f s" % (time() - tic)
 
 

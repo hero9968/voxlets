@@ -4,6 +4,10 @@ Will happily construct the voxels from the front and back renders
 In an ideal world, perhaps should inherit from a more generic voxel class
 I haven't thought about this yet though...
 '''
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 import numpy as np
 from scipy.ndimage.morphology import distance_transform_edt
@@ -18,6 +22,8 @@ import shutil
 import paths
 import mesh
 import os
+
+
 
 
 def load_voxels(loadpath):
@@ -586,6 +592,22 @@ class WorldVoxels(Voxels):
         nan_xyz = self.world_meshgrid()[to_project_idxs]
         return im.cam.project_points(nan_xyz).astype(np.int32), to_project_idxs
 
+    def plot_slices(self, savepath):
+        '''
+        plots the slices through the grid to subplots
+        '''
+        height = self.V.shape[2]
+        mu = max(np.abs(np.nanmin(self.V)), np.nanmax(self.V))
+
+        # don't bother getting slices at the extremes of the volume...
+        slice_locations = np.linspace(0, height, 9+2)[1:-1]
+        for count, idx in enumerate(slice_locations):
+            plt.subplot(3, 3, count+1)
+            plt.imshow(self.V[:, :, idx])
+            plt.clim(-mu, mu)
+            plt.title("idx = %d" % idx)
+
+        plt.savefig(savepath)
 
 
 class UprightAccumulator(WorldVoxels):
@@ -652,9 +674,12 @@ class UprightAccumulator(WorldVoxels):
             data_to_insert, valid, voxlet_idxs = \
                 voxlet.just_valid_world_to_idx(self_world_xyz)
 
+            print "Of the %d voxels in the voxlet, %d fall within the accumulation grid" % \
+                (voxlet.V.size, voxlet_idxs.shape[0])
+
             # This is a bit of a bodge but is needed to get the correct items from the weights...
             weights_to_use = weights.reshape(voxlet.V.shape)[
-                voxlet_idxs[:, 0], voxlet_idxs[:, 1], voxlet_idxs[:, 2]].shape
+                voxlet_idxs[:, 0], voxlet_idxs[:, 1], voxlet_idxs[:, 2]]
 
             self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += \
                 data_to_insert * weights_to_use

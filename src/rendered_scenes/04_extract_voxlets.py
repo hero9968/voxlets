@@ -10,11 +10,12 @@ import yaml
 from time import time
 import scipy.io
 
+import paths
+import parameters
+
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import paths
 from common import voxel_data
 from common import images
-from common import parameters
 from common import features
 from common import carving
 from common import voxlets
@@ -35,9 +36,14 @@ def process_sequence(sequence):
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
     sc.santity_render(save_folder='/tmp/')
 
-    idxs = sc.im.random_sample_from_mask(
-        parameters.VoxletTraining.pca_number_points_from_each_image,
-        additional_mask=sc.gt_im_label != 0)
+    # just using the reconstructor for its point sampling routine!
+    rec = voxlets.Reconstructer(
+        reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+    rec.set_scene(sc)
+    rec.sample_points(parameters.VoxletPrediction.pca_number_points_from_each_image,
+                      parameters.VoxletPrediction.sampling_grid_size,
+                      additional_mask=sc.gt_im_label != 0)
+    idxs = rec.sampled_idxs
 
     "Now try to make this nice and like parrallel or something...?"
     t1 = time()
@@ -47,18 +53,8 @@ def process_sequence(sequence):
         idx, extract_from='im_tsdf', post_transform=flatten_sbox) for idx in idxs]
 
     np_gt_sboxes = np.array(gt_shoeboxes)
-    np_view_sboxes = np.array(view_shoeboxes)
-    print "View sboxes are shape", np_view_sboxes.shape
-
-    if parameters.VoxletTraining.use_implicit:
-        implicit_shoeboxes = [sc.extract_single_voxlet(
-            idx, extract_from='implicit_tsdf', post_transform=flatten_sbox) for idx in idxs]
-        np_implicit_sboxes = np.array(implicit_shoeboxes)
-        np_features = np.concatenate((np_view_sboxes, np_implicit_sboxes), axis=1)
-        print "Implicit sboxes are shape", np_implicit_sboxes.shape
-
-    else:
-        np_features = np_view_sboxes
+    np_features = np.array(view_shoeboxes)
+    print "View sboxes are shape", np_features.shape
 
     print "Took %f s" % (time() - t1)
 

@@ -4,39 +4,51 @@ import sys
 import os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 import yaml
-from common import paths
+import paths
 
-test_type = 'oma_implicit'
-all_scores = []
+test_types = ['oma', 'oma_no_masks', 'oma_with_weights_broke_maybe']
 
-for sequence in paths.RenderedData.test_sequence():
+def get_all_scores(test_type):
+    all_scores = []
 
-    fpath = paths.RenderedData.voxlet_prediction_folderpath % \
-        (test_type, sequence['name'])
+    for sequence in paths.RenderedData.test_sequence()[1:16]:
 
-    if os.path.exists(fpath + 'scores.yaml'):
-        with open(fpath + 'scores.yaml', 'r') as f:
-            all_scores.append(yaml.load(f))
+        # print sequence['name']
 
-def get_mean_score(test, score_type):
+        fpath = paths.RenderedData.voxlet_prediction_folderpath % \
+            (test_type, sequence['name'])
+
+        if os.path.exists(fpath + 'scores.yaml'):
+            with open(fpath + 'scores.yaml', 'r') as f:
+                all_scores.append(yaml.load(f))
+        else:
+            print "Not found"
+            pass
+    return all_scores
+
+
+def get_mean_score(test, all_scores, score_type):
     all_this_scores = []
     for sc in all_scores:
         if score_type in sc[test]:
             all_this_scores.append(sc[test][score_type])
+    # print np.array(all_this_scores)
+    # print "Score for %s, %s is length %d" % (test, score_type, len(all_this_scores))
     return np.array(all_this_scores).mean()
 
-tests = ['full_oracle_voxlets',
-         'oracle_voxlets',
-         'nn_oracle_voxlets',
-         'greedy_oracle_voxlets',
-         'pred_voxlets',
-         'implicit']
+tests = ['OR1',
+         'OR2',
+         'OR3',
+         'OR4',
+         'pred_voxlets']
 
-all_scores = all_scores[1:5]
-for test in tests:
+for test_type in test_types:
+    print test_type
+    all_scores = get_all_scores(test_type)
+    for test in tests:
 
-    mean_auc = get_mean_score(test, 'auc')
-    mean_precision = get_mean_score(test, 'precision')
-    mean_recall = get_mean_score(test, 'recall')
+        mean_auc = get_mean_score(test, all_scores, 'auc')
+        mean_precision = get_mean_score(test, all_scores, 'precision')
+        mean_recall = get_mean_score(test, all_scores, 'recall')
 
-    print '%s & %0.3f & %0.3f & %0.3f' % (test, mean_precision, mean_recall, mean_auc)
+        print '%s & %0.3f & %0.3f & %0.3f \\\\' % (test, mean_precision, mean_recall, mean_auc)

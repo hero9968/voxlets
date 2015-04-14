@@ -216,9 +216,9 @@ class VoxletPredictor(object):
         median_item_idx = mu_dist.argmin()
         return median_item_idx
 
-    def predict(self, X):
+    def predict(self, X, how_to_choose='medioid', visible_voxlet=None):
         '''
-        Returns a voxlet prediction for each row in X
+        Returns a voxlet prediction for a single X
         '''
         # each tree predicts which index in the test set to use...
         # rows = test data (X), cols = tree
@@ -227,29 +227,81 @@ class VoxletPredictor(object):
         self._cached_predictions = index_predictions
         # must extract original test data from the indices
 
-        # this is a horrible line and needs changing...
-        medioid_idx = [self._medioid_idx(self.training_Y[pred])
-                             for pred in index_predictions]
-        Y_pred_compressed = [self.training_Y[idx] for idx in medioid_idx]
-        Y_pred_compressed = np.array(Y_pred_compressed)
+        if how_to_choose == 'medioid':
 
-        all_masks = []
-        #for each prediction...
-        for row in index_predictions:
-            # Want to get the mean mask for each data point in the leaf node...
-            # Each row is a list of training examples
-            these_masks_compressed = [self.training_masks[idx] for idx in row]
-            # Must inverse transform *before* taking the mean -
-            # I don't want to take mean in PCA space
-            these_masks_full = \
-                self.masks_pca.inverse_transform(np.array(these_masks_compressed))
-            all_masks.append(np.mean(these_masks_full, axis=0))
-        all_masks = np.vstack(all_masks)
+            # this is a horrible line and needs changing...
+            medioid_idx = [pred[self._medioid_idx(self.training_Y[pred])]
+                                 for pred in index_predictions]
+            Y_pred_compressed = [self.training_Y[idx] for idx in medioid_idx]
+            Y_pred_compressed = np.array(Y_pred_compressed)
 
-        print "X has shape ", X.shape
-        print "All masks has shape ", all_masks.shape
+            all_masks = []
+            #for each prediction...
+            for row in index_predictions:
+                # Want to get the mean mask for each data point in the leaf node...
+                # Each row is a list of training examples
+                these_masks_compressed = [self.training_masks[idx] for idx in row]
+                # Must inverse transform *before* taking the mean -
+                # I don't want to take mean in PCA space
+                these_masks_full = \
+                    self.masks_pca.inverse_transform(np.array(these_masks_compressed))
+                all_masks.append(np.mean(these_masks_full, axis=0))
+            all_masks = np.vstack(all_masks)
 
-        return (self.pca.inverse_transform(Y_pred_compressed), all_masks)
+            final_predictions = self.pca.inverse_transform(Y_pred_compressed)
+
+        elif how_to_choose == 'closest':
+            # makes the prediction which is closest to the observed data...
+            # candidates = sle
+            assert X.shape[0] == 1 or len(X.shape) == 0
+
+            X = X.flatten()
+            visible_voxlet.flatten()
+
+            index_predictions = index_predictions[0]
+            assert len(index_predictions) > 5 and len(index_predictions) < 1000 # should be one prediction per tree
+
+            tree_predictions = \
+                self.pca.inverse_transform(self.training_Y[index_predictions])
+            # print self.training_Y[index_predictions].shape
+            # print "Tree predictions has shape ", tree_predictions.shape
+
+            dims_to_use_for_distance = \
+                visible_voxlet.flatten() > np.nanmin(visible_voxlet)
+            # print "Dims being used for the distance has shape, sum:"
+            # print dims_to_use_for_distance.shape
+            # print dims_to_use_for_distance.sum()
+
+            # print tree_predictions[:, dims_to_use_for_distance].shape
+            # print visible_voxlet.flatten()[dims_to_use_for_distance].shape
+            distances = np.linalg.norm(
+                visible_voxlet.flatten()[dims_to_use_for_distance] -
+                tree_predictions[:, dims_to_use_for_distance], axis=1)
+
+            # print "Distances has shape ", distances.shape
+
+            to_use = distances.argmin()
+            # print "Now actually using ", to_use
+
+            # print "Retrieving this one...", index_predictions[to_use]
+            final_predictions = tree_predictions[to_use]
+
+            if True:
+                compressed_mask = self.training_masks[index_predictions[to_use]]
+                all_masks = np.vstack([self.masks_pca.inverse_transform(compressed_mask)])
+            else:
+                print "WARNINGG" * 10
+                these_masks_compressed = [self.training_masks[idx] for idx in index_predictions]
+                # Must inverse transform *before* taking the mean -
+                # I don't want to take mean in PCA space
+                these_masks_full = \
+                    self.masks_pca.inverse_transform(np.array(these_masks_compressed))
+                all_masks = np.mean(these_masks_full, axis=0)
+
+        else:
+            raise Exception('Do not understand')
+
+        return (final_predictions, all_masks)
 
     def save(self, savepath):
         '''
@@ -368,14 +420,14 @@ class Reconstructer(object):
     def set_scene(self, sc_in):
         self.sc = sc_in
 
-    def sample_points(self, num_to_sample, sample_grid_size):
+    def sample_points(self, num_to_sample, sample_grid_size, additional_mask=None):
         '''
         sampling points from the test image
         '''
 
         # Over-sample the points to begin with
         sampled_idxs = \
-            self.sc.im.random_sample_from_mask(4*num_to_sample)
+            self.sc.im.random_sample_from_mask(4*num_to_sample, additional_mask=additional_mask)
         linear_idxs = sampled_idxs[:, 0] * self.sc.im.mask.shape[1] + \
             sampled_idxs[:, 1]
 
@@ -398,7 +450,7 @@ class Reconstructer(object):
 
             for key, value in sample_dict.iteritems():
                 # add the top item to the sampled points
-                if len(value) > 0:
+                if len(value) > 0 and len(sampled_points) < num_to_sample:
                     sampled_points.append(value.pop())
 
         self.sampled_idxs = np.array(sampled_points)
@@ -445,7 +497,8 @@ class Reconstructer(object):
     def initialise_output_grid(self, gt_grid=None):
         '''defaulting to initialising from the ground truth grid...'''
         self.accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
-        self.accum.set_origin(gt_grid.origin)
+        self.accum.set_origin(gt_grid.origin, gt_grid.R
+             )
         self.accum.set_voxel_size(gt_grid.vox_size)
 
         # during testing it makes sense to save the GT grid, for visualisation
@@ -492,6 +545,8 @@ class Reconstructer(object):
                 self.segement_accums[label] = self.accum.copy()
             self.accum = None
 
+        self.all_pred_cache = []
+
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
 
@@ -514,9 +569,13 @@ class Reconstructer(object):
                 feature_collapse_type, feature_collapse_param)
 
             "classify according to the forest"
-            voxlet_prediction, mask_prediction = \
-                self.model.predict(np.atleast_2d(feature_vector))
+            voxlet_prediction, mask = \
+                self.model.predict(np.atleast_2d(feature_vector), how_to_choose='closest', visible_voxlet=features_voxlet.V)
             self.cached_voxlet_prediction = voxlet_prediction
+            self.all_pred_cache.append(voxlet_prediction)
+
+            # flipping the mask direction here:
+            weights_to_use = 1-mask
 
             # getting the GT voxlet - useful for the oracles and rendering
             gt_voxlet = self._initialise_voxlet(idx)
@@ -548,7 +607,7 @@ class Reconstructer(object):
                     acc_copy = self.segement_accums[this_point_label]
                 else:
                     acc_copy = self.accum.copy()
-                acc_copy.add_voxlet(transformed_voxlet, accum_only_predict_true, weights=mask_prediction)
+                acc_copy.add_voxlet(transformed_voxlet, accum_only_predict_true, weights=weights_to_use)
 
                 to_evaluate_on = np.logical_or(
                     self.sc.im_tsdf.V < 0, np.isnan(self.sc.im_tsdf.V))
@@ -578,10 +637,11 @@ class Reconstructer(object):
             else:
                 # Standard method - adding voxlet in regardless
                 if combine_segments_separately:
-                    self.segement_accums[this_point_label].add_voxlet(transformed_voxlet, accum_only_predict_true, weights=mask_prediction)
+                    raise Exception('Why????')
+                    self.segement_accums[this_point_label].add_voxlet(transformed_voxlet, accum_only_predict_true, weights=weights_to_use)
                 else:
                     self.accum.add_voxlet(transformed_voxlet,
-                        accum_only_predict_true, weights=mask_prediction)
+                        accum_only_predict_true, weights=weights_to_use)
 
             if 'blender' in render_type and render_savepath:
 
@@ -667,6 +727,7 @@ class Reconstructer(object):
                 plt.savefig(savepath)
 
         if combine_segments_separately:
+            raise Exception('Why am I here???')
             with open('/tmp/separate.pkl', 'w') as f:
                 pickle.dump(self.segement_accums, f, protocol=pickle.HIGHEST_PROTOCOL)
             average = self.sc.gt_tsdf.blank_copy()
@@ -724,7 +785,7 @@ class Reconstructer(object):
         plt.axis('off')
         plt.subplot(132)
 
-        top_view = np.sum(self.sc.gt_tsdf.V, axis=2)
+        top_view = np.nanmean(self.sc.im_tsdf.V, axis=2)
         plt.imshow(top_view, cmap=plt.get_cmap('Greys'))
         plt.axis('off')
 
@@ -768,7 +829,7 @@ class Reconstructer(object):
 
     def _plot_voxlet(self, point, normal):
         plt.plot(point[1], point[0], 'or', ms=2)
-        scaling = 20.0
+        scaling = 10.0
         end_point = point + scaling * normal
         plt.plot([point[1], end_point[1]], [point[0], end_point[0]], 'r', lw=1)
 

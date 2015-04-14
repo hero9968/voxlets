@@ -35,7 +35,7 @@ class RenderData(object):
         sequences_per_scene = 10
 
     # train test split parameters
-    frames_per_sequence = 5
+    frames_per_sequence = 1
     train_fraction = 0.6
 
 
@@ -69,7 +69,7 @@ class RenderedVoxelGrid(object):
     origin = np.array((-0.75, -0.75, -0.03))
     R = np.eye(3)
 
-    mu = 0.05  # truncation parameter for the tsdf
+    mu = 0.1  # truncation parameter for the tsdf
 
     @classmethod
     def aabb(cls):
@@ -89,7 +89,7 @@ class VoxletTraining(object):
     use_implicit = False  # should we use the implicit predictions as a feature?
 
     # PCA and kmeans
-    pca_number_points_from_each_image = 100
+    pca_number_points_from_each_image = 50
     number_pca_dims = 60
     number_clusters = 250
     pca_subsample_length = 50000  # max number of examples to use for pca

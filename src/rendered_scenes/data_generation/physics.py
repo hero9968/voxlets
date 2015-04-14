@@ -4,11 +4,20 @@ import random
 import string
 import shutil
 import numpy as np
-obj_folderpath = os.path.expanduser('~/projects/shape_sharing/data/meshes/primitives/ply_files/')
-save_path = os.path.expanduser('~/projects/shape_sharing/data/rendered_arrangements/renders/')
+import socket
 
-min_to_load = 5 # in future this will be random number
-max_to_load = 5
+host_name = socket.gethostname()
+if host_name == 'biryani':
+    base_path = '/media/ssd/data/'
+else:
+    base_path = os.path.expanduser("~/projects/shape_sharing/data/")
+
+
+obj_folderpath = base_path + '/meshes/primitives/ply_files/'
+save_path = base_path + '/rendered_arrangements/renders/'
+
+min_to_load = 4 # in future this will be random number
+max_to_load = 7
 
 camera_names = ['Camera', 'Camera.001', 'Camera.002']
 frames_per_camera = [20, 20, 10]
@@ -68,6 +77,7 @@ def loadSingleObject(number):
         y = random.random() * 1.2 - 0.6
         obj.location = (x, y, 5) # this will be a random position above the plane
         bpy.context.scene.objects.active = obj
+        obj.active_material = bpy.data.materials['Material.001']
 
     bpy.ops.rigidbody.object_add(type='ACTIVE')
     return imported_object[0]
