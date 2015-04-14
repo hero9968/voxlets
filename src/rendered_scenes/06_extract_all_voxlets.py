@@ -11,7 +11,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import scene
+from common import scene, voxlets
 
 import paths
 import parameters
@@ -83,6 +83,10 @@ def process_sequence(sequence):
             idx, extract_from='im_tsdf', post_transform=sbox_flatten) for idx in idxs]
         all_features = np.vstack(view_shoeboxes)
         all_features[np.isnan(all_features)] = -parameters.RenderedVoxelGrid.mu
+
+        if parameters.use_binary:
+            all_features = (all_features > 0).astype(np.float16)
+
         np_features = features_pca.transform(all_features)
 
     elif parameters.VoxletTraining.feature_transform == 'decimate':
@@ -98,13 +102,14 @@ def process_sequence(sequence):
     np_masks = np.isnan(np_sboxes).astype(np.float16)
     np_sboxes[np_masks == 1] = np.nanmax(np_sboxes)
 
+    if parameters.use_binary:
+        np_sboxes = (np_sboxes > 0).astype(np.float16)
+
     # must do the pca now after doing the mask trick
     np_sboxes = pca.transform(np_sboxes)
     np_masks = mask_pca.transform(np_masks)
 
     '''replace all the nans in the shoeboxes from the image view'''
-
-
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
     logging.debug("...Features are shape " + str(np_features.shape))
 

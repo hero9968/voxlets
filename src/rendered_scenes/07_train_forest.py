@@ -71,6 +71,9 @@ print "Masks is ", np_masks.shape
 print "Features is ", np_features.shape
 print "Scene ids is ", np_scene_ids.shape
 
+if not parameters.scene_bagging:
+    np_scene_ids = None
+
 ####################################################################
 print "Training the model"
 ####################################################################

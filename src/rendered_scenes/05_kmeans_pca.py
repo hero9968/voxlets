@@ -85,6 +85,10 @@ print "There are %d nans in sboxes" % np.isnan(np_all_sboxes).sum()
 # Replacing nans with a low number in the features, hopefully will work...
 np_all_features[np.isnan(np_all_features)] = -parameters.RenderedVoxelGrid.mu
 
+if parameters.use_binary:
+    np_all_sboxes = (np_all_sboxes > 0).astype(np.float16)
+    np_all_features = (np_all_features > 0).astype(np.float16)
+
 for name, np_array in zip(
         ('shoeboxes', 'features', 'masks'),
         (np_all_sboxes, np_all_features, np_all_masks)):

@@ -30,12 +30,12 @@ with open(paths.RenderedData.voxlets_path + '/models/oma.pkl', 'rb') as f:
     model_without_implicit = pickle.load(f)
 print "Done loading model..."
 
-combine_renders = True
-render_predictions = True
-render_top_view = True
-save_prediction_grids = True
+combine_renders = False
+render_predictions = False
+render_top_view = False
+save_prediction_grids = False
 save_scores_to_yaml = True
-copy_to_dropbox = True and paths.host_name == 'biryani'
+copy_to_dropbox = False and paths.host_name == 'biryani'
 dropbox_path = paths.RenderedData.new_dropbox_dir()
 print dropbox_path
 
@@ -54,7 +54,7 @@ def process_sequence(sequence):
         save_grids=False, load_implicit=False)
     # sc.santity_render(save_folder='/tmp/')
 
-    test_type = 'oma'
+    test_type = 'oma_choose_nearest'
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
@@ -77,7 +77,7 @@ def process_sequence(sequence):
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
         render_type=[], add_ground_plane=True,
-        combine_segments_separately=False, feature_collapse_type='pca')
+        combine_segments_separately=False, feature_collapse_type='pca', use_binary=parameters.use_binary)
     pred_voxlets_exisiting = rec.keeping_existing
 
     if only_prediction:
@@ -92,23 +92,28 @@ def process_sequence(sequence):
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     full_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[],oracle='gt', add_ground_plane=True, feature_collapse_type='pca')
+        render_type=[],oracle='gt', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
     # full_oracle_voxlets = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[],oracle='pca', add_ground_plane=True, feature_collapse_type='pca')
+        render_type=[],oracle='pca', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
     oracle_voxlets_existing = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     nn_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='nn', add_ground_plane=True, feature_collapse_type='pca')
+        render_type=[], oracle='nn', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
     nn_oracle_voxlets_existing = rec.keeping_existing
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     greedy_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca')
+        render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binaryt)
     greedy_oracle_voxlets_existing = rec.keeping_existing
+
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    weight_empty_lower = rec.fill_in_output_grid_oma(
+        render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca', weight_empty_lower=0.5)
+    weight_empty_lower_existing = rec.keeping_existing
 
     combines = collections.OrderedDict()
     combines['input'] = {'name':'Input image'}
@@ -118,22 +123,9 @@ def process_sequence(sequence):
     combines['OR2'] = {'name':'Oracle using PCA (OR2)', 'grid':oracle_voxlets}
     combines['OR3'] = {'name':'Oracle using NN (OR3)', 'grid':nn_oracle_voxlets}
     combines['OR4'] = {'name':'Oracle using greedy (OR4)', 'grid':greedy_oracle_voxlets}
+    combines['weight_empty_lower'] = {'name':'Empty voxlets weighted lower', 'grid':weight_empty_lower}
     # combines['implicit'] = {'name':'Implicit prediction', 'grid':sc.implicit_tsdf}
     combines['pred_voxlets'] = {'name':'Voxlets', 'grid':pred_voxlets}
-
-    # combines = [
-    #     ['Input image', 'input'],
-    #     ['Ground truth', 'gt', sc.gt_tsdf],
-    #     ['Visible surfaces', 'visible', sc.im_tsdf],
-    #     ['Full oracle (OR1)', 'full_oracle_voxlets', full_oracle_voxlets],
-    #     ['Oracle using PCA (OR2)', 'oracle_voxlets', oracle_voxlets],
-    #     ['Oracle using NN (OR3)', 'nn_oracle_voxlets', nn_oracle_voxlets],
-    #     ['Oracle using Greedy (OR4)', 'greedy_oracle_voxlets', greedy_oracle_voxlets],
-    #     ['Implicit prediction', 'implicit', sc.implicit_tsdf],
-    #     ['Voxlets', 'pred_voxlets', pred_voxlets]]
-        # ['Voxlets + visible', 'pred_voxlets_exisiting', pred_voxlets_exisiting]]
-        # ['Voxlets + visible, using implicit', 'pred_voxlets_implicit_exisiting', pred_voxlets_implicit_exisiting]]
-        # ['Voxlets using implicit', 'pred_voxlets_implicit', pred_voxlets_implicit],
 
     if render_predictions:
         print "-> Rendering"
@@ -231,7 +223,7 @@ if __name__ == '__main__':
     # temp = [s for s in paths.RenderedData.test_sequence() if s['name'] == 'd2p8ae7t0xi81q3y_SEQ']
     # print temp
     tic = time()
-    mapper(process_sequence, paths.RenderedData.test_sequence()[1:])
+    mapper(process_sequence, paths.RenderedData.test_sequence()[:48], chunksize=1)
     print "In total took %f s" % (time() - tic)
 
 
