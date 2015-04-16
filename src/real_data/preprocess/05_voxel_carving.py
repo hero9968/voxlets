@@ -4,7 +4,7 @@ import real_params as parameters
 import cPickle as pickle
 import os, sys
 import yaml
-
+from time import time
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import images
 from common import voxel_data
@@ -67,5 +67,5 @@ else:
     mapper = map
 
 tic = time()
-mapper(process_sequence, paths.train_data)
+mapper(process_sequence, paths.scenes, chunksize=1)
 print "In total took %f s" % (time() - tic)

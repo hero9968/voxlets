@@ -54,7 +54,7 @@ for count, sequence in enumerate(paths.train_data):
     print "Processing " + sequence['name']
 
     # loading the data
-    loadpath = paths.voxlets_dict_data_path + \
+    loadpath = paths.RenderedData.voxlets_dict_data_path + \
         sequence['name'] + '.mat'
     print "Loading from " + loadpath
 
@@ -102,9 +102,9 @@ for name, np_array in zip(
         parameters.VoxletTraining.number_clusters)
 
     try:
-        pca_savepath = paths.voxlets_dictionary_path + name + \
+        pca_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
             '_pca.pkl'
-        kmeans_savepath = paths.voxlets_dictionary_path + name + \
+        kmeans_savepath = paths.RenderedData.voxlets_dictionary_path + name + \
             '_kmean.pkl'
 
         print "Saving to " + pca_savepath

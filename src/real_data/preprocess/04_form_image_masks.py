@@ -56,5 +56,5 @@ for sequence in paths.scenes:
 
         # choose the save location carefully
         mask[np.isnan(mask)] = 0
-        savepath = scene + '/images/mask_%s.png' % frame.frame_id
+        savepath = scene + '/frames/mask_%s.png' % frame.frame_id
         scipy.misc.imsave(savepath, mask)
