@@ -105,39 +105,31 @@ for sequence in paths.scenes:
     plane = fitplane(plane_xyz)
     print "Fitted plane: ", plane
 
-    # Load all the points...
-    ms = mesh.Mesh()
-    ms.load_from_obj(scene + '/dump.obj')
-    xyz1 = to_homogeneous(ms.vertices)
-
-    # ...and use these to correct the plane orientatipn
-    # plane = correct_plane_orientation(plane, xyz1)
-
-    # now projecting the extent points onto the plane
-    extents_xyz = plane_xyz[0:2, :]
-    print "EXTENTS: Loaded points of shape " , extents_xyz.shape
+    # # Load all the points...
+    # ms = mesh.Mesh()
+    # ms.load_from_obj(scene + '/dump.obj')
+    # xyz1 = to_homogeneous(ms.vertices)
 
     # extents projected onto plane
-    extents1 = to_homogeneous(extents_xyz)
-    points_on_plane = project_point_to_plane(extents1, plane)
+    extents1 = to_homogeneous(plane_xyz)
+    # points_on_plane = project_point_to_plane(extents1, plane)
 
-
-    # now defining the coordinate system
-    z = plane[:3]
-    temp = norm_v(points_on_plane[0] - points_on_plane[1])
-    x = norm_v(np.cross(temp, z))
+    x = norm_v(plane_xyz[0] - plane_xyz[1])
+    y_temp = norm_v(plane_xyz[2] - plane_xyz[1])
+    z = norm_v(np.cross(x, y_temp))
     y = norm_v(np.cross(z, x))
     R = np.vstack((x, y, z))
+    print "Found coordinate system ", R
 
     # getting the origin
-    origin = points_on_plane[1] * voxel_size * 1000
+    origin = plane_xyz[1] * voxel_size * 1000
 
     # push the origin 10 mm below the plane for breathing room
     origin -= z * 10
 
     # getting the size of the box...
-    size_y = np.linalg.norm(points_on_plane[0] - points_on_plane[1]) * voxel_size * 1000
-    size_x = np.linalg.norm(points_on_plane[2] - points_on_plane[1]) * voxel_size * 1000
+    size_x = np.linalg.norm(plane_xyz[0] - plane_xyz[1]) * voxel_size * 1000
+    size_y = np.linalg.norm(plane_xyz[2] - plane_xyz[1]) * voxel_size * 1000
     size_z = box_height
 
     size = np.array([size_x, size_y, size_z])
@@ -151,6 +143,9 @@ for sequence in paths.scenes:
     origin /= 1000
     size /= 1000
     plane[-1] /= 1000
+
+    print "origin", origin
+    print np.linalg.det(R)
 
     scene_pose = dict(
         R=R.flatten().tolist(),
