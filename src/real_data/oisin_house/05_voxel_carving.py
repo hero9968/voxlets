@@ -4,6 +4,7 @@ import real_params as parameters
 import cPickle as pickle
 import os, sys
 import yaml
+from time import time
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import images
@@ -18,6 +19,10 @@ def get_scene_pose(scene):
 def process_sequence(sequence):
 
     scene = sequence['folder'] + sequence['scene']
+
+    # ignore if the output file exists...
+    if os.path.exists(scene + '/ground_truth_tsdf.pkl'):
+        return
 
     print "Processing ", scene
     vid = images.RGBDVideo()
@@ -67,5 +72,5 @@ else:
     mapper = map
 
 tic = time()
-mapper(process_sequence, paths.train_data)
+mapper(process_sequence, paths.scenes)
 print "In total took %f s" % (time() - tic)

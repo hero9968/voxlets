@@ -26,11 +26,18 @@ def flatten_sbox(sbox):
 
 def process_sequence(sequence):
 
+    if not os.path.exists(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.pkl'):
+        print "Failed"
+        return
+    # try:
     print "Processing " + sequence['scene']
     sc = scene.Scene(parameters.mu, parameters.Voxlet)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, voxel_normals=True)
-    sc.santity_render(save_folder='/tmp/')
+    # sc.santity_render(save_folder='/tmp/')
+    # except:
+        # print "Couldn't load scene ", sequence['scene']
+        # return
 
     # just using the reconstructor for its point sampling routine!
     rec = voxlets.Reconstructer(
@@ -66,7 +73,8 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if parameters.multicore:
+if False:
+    # parameters.multicore:
     import multiprocessing
     import functools
     pool = multiprocessing.Pool(parameters.cores)
