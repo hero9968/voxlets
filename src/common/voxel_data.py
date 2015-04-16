@@ -22,6 +22,7 @@ import shutil
 import paths
 import mesh
 import os
+import sys
 
 
 
@@ -412,7 +413,7 @@ class WorldVoxels(Voxels):
 
         return self._cached_world_xy_meshgrid
 
-    def fill_from_grid(self, input_grid, method='naive', combine='replace'):
+    def fill_from_grid(self, input_grid, method='naive', combine='replace', weights=None):
         '''
         warps input_grid into the world space of self.
         For all voxels in self.V which input_grid overlaps with,
@@ -517,6 +518,9 @@ class WorldVoxels(Voxels):
                     data_to_insert = input_grid.get_idxs(valid_ij_in_input).astype(self.V.dtype)
                     current_shoebox_slice = this_z_in_input_grid
 
+                    if weights:
+                        weights_to_insert = weights.get_idxs(valid_ij_in_input).astype(self.V.dtype)
+
                 # now choosing where we put it in the world grid...
                 # yes we overwrite each time - but we don't care as we never use it again!
                 valid_ij[:, 2] = world_slice_idx
@@ -524,8 +528,12 @@ class WorldVoxels(Voxels):
                 # TODO - save all these up and do at end
                 if combine=='accumulator':
                     # here will do special stuff
-                    self.sumV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += data_to_insert
-                    self.countV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += 1
+                    if weights:
+                        self.sumV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += data_to_insert * weights_to_insert
+                        self.countV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += weights_to_insert
+                    else:
+                        self.sumV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += data_to_insert
+                        self.countV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += 1
 
                 elif combine == 'sum':
                     addition = self.get_idxs(valid_ij)
@@ -580,7 +588,7 @@ class WorldVoxels(Voxels):
                  env=subenv,
                  stdout=open(os.devnull, 'w'),
                  close_fds=True)
-        os.remove(savepath + '.obj')
+        # os.remove(savepath + '.obj')
 
         #now copy file from /tmp/.png to the savepath...
         # print "Moving render to " + savepath
@@ -664,29 +672,34 @@ class UprightAccumulator(WorldVoxels):
             self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += 1
 
         elif weights != None:
-            # Doing the accumulation in a naive way here...
+            # # Doing the accumulation in a naive way here...
 
-            self_world_xyz = self.world_meshgrid()
-            self_idx = self.idx_meshgrid()
+            # self_world_xyz = self.world_meshgrid()
+            # self_idx = self.idx_meshgrid()
 
-            # 2) Warp into idx space of input_grid and
-            # 3) See which are valid idxs in input_grid
-            data_to_insert, valid, voxlet_idxs = \
-                voxlet.just_valid_world_to_idx(self_world_xyz)
+            # # 2) Warp into idx space of input_grid and
+            # # 3) See which are valid idxs in input_grid
+            # data_to_insert, valid, voxlet_idxs = \
+            #     voxlet.just_valid_world_to_idx(self_world_xyz)
 
-            print "Of the %d voxels in the voxlet, %d fall within the accumulation grid" % \
-                (voxlet.V.size, voxlet_idxs.shape[0])
+            # # print "Of the %d voxels in the voxlet, %d fall within the accumulation grid" % \
+            # #     (voxlet.V.size, voxlet_idxs.shape[0])
+            # sys.stdout.write('.')
+            # sys.stdout.flush()
 
-            # This is a bit of a bodge but is needed to get the correct items from the weights...
-            weights_to_use = weights.reshape(voxlet.V.shape)[
-                voxlet_idxs[:, 0], voxlet_idxs[:, 1], voxlet_idxs[:, 2]]
+            # # This is a bit of a bodge but is needed to get the correct items from the weights...
+            # weights_to_use = weights.reshape(voxlet.V.shape)[
+            #     voxlet_idxs[:, 0], voxlet_idxs[:, 1], voxlet_idxs[:, 2]]
 
-            self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += \
-                data_to_insert * weights_to_use
-            self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights_to_use
+            # self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += \
+            #     data_to_insert * weights_to_use
+            # self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights_to_use
+            weights_grid = voxlet.blank_copy()
+            weights_grid.V = weights.reshape(weights_grid.V.shape)
+            self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator', weights=weights_grid)
 
         else:
-            self.fill_from_grid(voxlet, method='naive', combine='accumulator')
+            self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')
 
     def compute_average(self, nan_value=0):
         '''
