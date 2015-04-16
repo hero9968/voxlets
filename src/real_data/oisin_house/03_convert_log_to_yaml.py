@@ -70,8 +70,6 @@ def read_log(scene_path):
 
         # ^^ this is good
 
-
-
         # print "Warning - using M2 instead of R"
         framedict['pose'] = R.flatten().tolist()
         framedict['camera'] = 1

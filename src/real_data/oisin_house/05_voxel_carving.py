@@ -20,9 +20,9 @@ def process_sequence(sequence):
 
     scene = sequence['folder'] + sequence['scene']
 
-    # ignore if the output file exists...
-    if os.path.exists(scene + '/ground_truth_tsdf.pkl'):
-        return
+    # # ignore if the output file exists...
+    # if os.path.exists(scene + '/ground_truth_tsdf.pkl'):
+    #     return
 
     print "Processing ", scene
     vid = images.RGBDVideo()
@@ -36,18 +36,18 @@ def process_sequence(sequence):
 
     # initialise voxel grid (could add helper function to make it explicit...?)
     vox = voxel_data.WorldVoxels()
-    vox.V = np.zeros(vgrid_shape, np.float32)
+    vox.V = np.zeros(vgrid_shape, np.uint8)
     vox.set_voxel_size(voxel_size)
     vox.set_origin(np.array([0, 0, 0]))
 
-    print "Performing voxel carving"
+    print "Performing voxel carving", scene
     carver = carving.Fusion()
     carver.set_video(vid)
     carver.set_voxel_grid(vox)
     vox, visible = carver.fuse(mu=parameters.mu, filtering=False, measure_in_frustrum=True)
     in_frustrum = carver.in_frustrum
 
-    print "Saving..."
+    print "Saving...", scene
     print vox.V.dtype
     print visible.V.dtype
     print in_frustrum.V.dtype
@@ -66,11 +66,11 @@ def process_sequence(sequence):
 if parameters.multicore:
     import multiprocessing
     import functools
-    pool = multiprocessing.Pool(parameters.cores)
+    pool = multiprocessing.Pool(6)
     mapper = pool.map
 else:
     mapper = map
 
 tic = time()
-mapper(process_sequence, paths.scenes)
+mapper(process_sequence, paths.scenes, chunksize=1)
 print "In total took %f s" % (time() - tic)

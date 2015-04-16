@@ -11,7 +11,7 @@ import yaml
 import real_data_paths as paths
 
 inlier_threshold = 5  # what considered inlier for plane?
-box_height = 500  # in mm
+box_height = 400  # in mm
 
 
 def load_xyz_points(xml_filepath):
