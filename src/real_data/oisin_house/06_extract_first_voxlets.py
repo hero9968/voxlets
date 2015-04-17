@@ -43,7 +43,7 @@ def process_sequence(sequence):
     rec = voxlets.Reconstructer(
         reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_scene(sc)
-    rec.sample_points(parameters.VoxletPrediction.pca_number_points_from_each_image,
+    rec.sample_points(parameters.VoxletTraining.pca_number_points_from_each_image,
                       parameters.VoxletPrediction.sampling_grid_size,
                       additional_mask=sc.gt_im_label != 0)
     idxs = rec.sampled_idxs
@@ -67,14 +67,14 @@ def process_sequence(sequence):
 
     D = dict(shoeboxes=np_gt_sboxes, features=np_features)
     savepath = paths.voxlets_dict_data_path + \
-        sequence['name'] + '.mat'
+        sequence['name'] + '.pkl'
+    with open(savepath, 'w') as f:
+        pickle.dump(D, f, protocol=pickle.HIGHEST_PROTOCOL)
     print savepath
-    scipy.io.savemat(savepath, D, do_compression=True)
 
 
 # need to import these *after* the pool helper has been defined
-if False:
-    # parameters.multicore:
+if  parameters.multicore:
     import multiprocessing
     import functools
     pool = multiprocessing.Pool(parameters.cores)

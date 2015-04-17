@@ -29,8 +29,22 @@ yaml_test_location = data_folder + 'train_test/test.yaml'
 with open(yaml_train_location, 'r') as f:
     train_data = yaml.load(f)
 
-for t in train_data:
+with open(yaml_test_location, 'r') as f:
+    test_data = yaml.load(f)
+
+
+sequences = []
+for t in scenes:
+    temp = []
     t['folder'] = raw_data
+    fpath = t['folder'] + t['scene'] + '/test_frame.txt'
+    with open(fpath, 'r') as f:
+        frames = [int(l) for l in f]
+    for fr in frames:
+        t['frames'] = [fr]
+        t['name'] = t['scene'] + '_' + str(t['frames'])
+        temp.append(t)
+    sequences.append(temp)
 
 # saving...
 models_folder = data_folder + 'models/'
@@ -41,4 +55,5 @@ voxlets_data_path = models_folder + 'training_voxlets/'
 voxlet_model_oma_path = models_folder + 'models/oma.pkl'
 
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
-# voxlet_prediction_folder_path = base_path + "/voxlets/bigbird/predictions/%s/"
+voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
+voxlet_prediction_folderpath = data_folder + '/predictions/%s/%s/'
