@@ -30,8 +30,9 @@ with open(paths.RenderedData.voxlets_path + '/models/oma.pkl', 'rb') as f:
     model_without_implicit = pickle.load(f)
 print "Done loading model..."
 
-combine_renders = False
-render_predictions = False
+do_oracles = False
+combine_renders = True
+render_predictions = True
 render_top_view = False
 save_prediction_grids = False
 save_scores_to_yaml = True
@@ -54,7 +55,7 @@ def process_sequence(sequence):
         save_grids=False, load_implicit=False)
     # sc.santity_render(save_folder='/tmp/')
 
-    test_type = 'oma_choose_nearest'
+    test_type = 'true_greedy_oracles'
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
@@ -73,13 +74,27 @@ def process_sequence(sequence):
     if not os.path.exists(fpath):
         os.makedirs(fpath)
 
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
+
+    # true greedy oracle prediction - without the ground truth
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    true_greedy = rec.fill_in_output_grid_oma(
+        render_type=[], add_ground_plane=True, feature_collapse_type='pca',
+        oracle='true_greedy')
+
+    # true greedy oracle prediction -with the ground truth
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    true_greedy_gt = rec.fill_in_output_grid_oma(
+        render_type=[], add_ground_plane=True, feature_collapse_type='pca',
+        oracle='true_greedy_gt')
+
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     pred_voxlets = rec.fill_in_output_grid_oma(
         render_type=[], add_ground_plane=True,
         combine_segments_separately=False, feature_collapse_type='pca', use_binary=parameters.use_binary)
     pred_voxlets_exisiting = rec.keeping_existing
 
+    print "Done standard...."
     if only_prediction:
         pred_voxlets.render_view(gen_renderpath % 'pred_voxlets')
         return
@@ -91,41 +106,58 @@ def process_sequence(sequence):
 
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    full_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[],oracle='gt', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
-    # full_oracle_voxlets = rec.keeping_existing
+    rec.set_model(model_without_implicit)
+    pred_voxlets_medioid = rec.fill_in_output_grid_oma(
+        add_ground_plane=True, how_to_choose='medioid',
+        feature_collapse_type='pca')
+    pred_voxlets_medioid_exisiting = rec.keeping_existing
 
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[],oracle='pca', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
-    oracle_voxlets_existing = rec.keeping_existing
+    if do_oracles:
+        rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+        full_oracle_voxlets = rec.fill_in_output_grid_oma(
+            render_type=[],oracle='gt', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
+        # full_oracle_voxlets = rec.keeping_existing
 
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    nn_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='nn', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
-    nn_oracle_voxlets_existing = rec.keeping_existing
+        rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+        oracle_voxlets = rec.fill_in_output_grid_oma(
+            render_type=[],oracle='pca', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
+        oracle_voxlets_existing = rec.keeping_existing
 
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    greedy_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binaryt)
-    greedy_oracle_voxlets_existing = rec.keeping_existing
+        rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+        nn_oracle_voxlets = rec.fill_in_output_grid_oma(
+            render_type=[], oracle='nn', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
+        nn_oracle_voxlets_existing = rec.keeping_existing
 
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    weight_empty_lower = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca', weight_empty_lower=0.5)
-    weight_empty_lower_existing = rec.keeping_existing
+        rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+        greedy_oracle_voxlets = rec.fill_in_output_grid_oma(
+            render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
+        greedy_oracle_voxlets_existing = rec.keeping_existing
+
+    # rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+    # weight_empty_lower = rec.fill_in_output_grid_oma(
+    #     render_type=[], add_ground_plane=True, feature_collapse_type='pca', weight_empty_lower=0.5)
+    # weight_empty_lower_existing = rec.keeping_existing
+
 
     combines = collections.OrderedDict()
     combines['input'] = {'name':'Input image'}
     combines['gt'] = {'name':'Ground truth', 'grid':sc.gt_tsdf}
     combines['visible'] = {'name':'Visible surfaces', 'grid':sc.im_tsdf}
-    combines['OR1'] = {'name':'Full oracle (OR1)', 'grid':full_oracle_voxlets}
-    combines['OR2'] = {'name':'Oracle using PCA (OR2)', 'grid':oracle_voxlets}
-    combines['OR3'] = {'name':'Oracle using NN (OR3)', 'grid':nn_oracle_voxlets}
-    combines['OR4'] = {'name':'Oracle using greedy (OR4)', 'grid':greedy_oracle_voxlets}
-    combines['weight_empty_lower'] = {'name':'Empty voxlets weighted lower', 'grid':weight_empty_lower}
+    if do_oracles:
+        combines['OR1'] = {'name':'Full oracle (OR1)', 'grid':full_oracle_voxlets}
+        combines['OR2'] = {'name':'Oracle using PCA (OR2)', 'grid':oracle_voxlets}
+        combines['OR3'] = {'name':'Oracle using NN (OR3)', 'grid':nn_oracle_voxlets}
+        combines['OR4'] = {'name':'Oracle using greedy (OR4)', 'grid':greedy_oracle_voxlets}
+    # combines['weight_empty_lower'] = {'name':'Empty voxlets weighted lower', 'grid':weight_empty_lower}
     # combines['implicit'] = {'name':'Implicit prediction', 'grid':sc.implicit_tsdf}
     combines['pred_voxlets'] = {'name':'Voxlets', 'grid':pred_voxlets}
+    combines['pred_voxlets_medioid'] = {'name':'Voxlets medioid', 'grid':pred_voxlets_medioid}
+
+    for key, result in true_greedy.iteritems():
+        combines['true_greedy_%04d' % key] =  {'name':'True greedy %d' % key, 'grid':result}
+
+    for key, result in true_greedy_gt.iteritems():
+        combines['true_greedy_gt_%04d' % key] =  {'name':'True greedy (with GT oracle) %d' % key, 'grid':result}
 
     if render_predictions:
         print "-> Rendering"
@@ -148,11 +180,11 @@ def process_sequence(sequence):
 
     if combine_renders:
         print "-> Combining renders"
-        su, sv = 3, 4
+        su, sv = 3, 5
 
         fig = plt.figure(figsize=(25, 10), dpi=1000)
         plt.subplots(su, sv)
-        plt.subplots_adjust(left=0, bottom=0, right=0.95, top=0.95, wspace=0.05, hspace=0.05)
+        plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.98, wspace=0.02, hspace=0.02)
 
         for count, (name, dic) in enumerate(combines.iteritems()):
 
@@ -192,6 +224,7 @@ def process_sequence(sequence):
 
     if save_scores_to_yaml:
         print "-> Writing scores to YAML"
+        print fpath + 'scores.yaml'
         results_dict = {}
         for name, dic in combines.iteritems():
             if name != 'input':
@@ -212,7 +245,7 @@ def process_sequence(sequence):
 # need to import these *after* the pool helper has been defined
 if parameters.multicore:
     import multiprocessing
-    pool = multiprocessing.Pool(parameters.cores)
+    pool = multiprocessing.Pool(3)
     mapper = pool.map
 else:
     mapper = map

@@ -266,8 +266,10 @@ class VoxletPredictor(object):
             # print self.training_Y[index_predictions].shape
             # print "Tree predictions has shape ", tree_predictions.shape
 
+            # the 0.9 is in case the PCA etc makes the nanmin not exacrtly correct
             dims_to_use_for_distance = \
-                visible_voxlet.flatten() > np.nanmin(visible_voxlet)
+                visible_voxlet.flatten() > np.nanmin(visible_voxlet) * 0.9
+            self.dims_to_use_for_distance_cache = dims_to_use_for_distance
             # print "Dims being used for the distance has shape, sum:"
             # print dims_to_use_for_distance.shape
             # print dims_to_use_for_distance.sum()
@@ -281,6 +283,7 @@ class VoxletPredictor(object):
             # print "Distances has shape ", distances.shape
 
             to_use = distances.argmin()
+            self.min_dist = distances[to_use]
             # print "Now actually using ", to_use
 
             # print "Retrieving this one...", index_predictions[to_use]
@@ -504,11 +507,11 @@ class Reconstructer(object):
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
 
-    def fill_in_output_grid_oma(self, render_type, render_savepath=None,
+    def fill_in_output_grid_oma(self, render_type=[], render_savepath=None,
             use_implicit=False, oracle=None, add_ground_plane=False,
             combine_segments_separately=False, accum_only_predict_true=False,
             feature_collapse_type=None, feature_collapse_param=None,
-            weight_empty_lower=None, use_binary=None):
+            weight_empty_lower=None, use_binary=None, how_to_choose='closest'):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -557,6 +560,9 @@ class Reconstructer(object):
 
         self.all_pred_cache = []
 
+        if oracle == 'true_greedy':
+            self.possible_predictions = []
+
         A = B = C = D = E = 0
 
         "extract features from each shoebox..."
@@ -588,7 +594,7 @@ class Reconstructer(object):
             # print "time A :", A
             "classify according to the forest"
             voxlet_prediction, mask = \
-                self.model.predict(np.atleast_2d(feature_vector), how_to_choose='closest', visible_voxlet=features_voxlet.V)
+                self.model.predict(np.atleast_2d(feature_vector), how_to_choose=how_to_choose, visible_voxlet=features_voxlet.V)
             self.cached_voxlet_prediction = voxlet_prediction
             # self.all_pred_cache.append(voxlet_prediction)
 
@@ -666,6 +672,22 @@ class Reconstructer(object):
                     print "Accepting! Increase of %f" % (new_auc - old_auc)
                 else:
                     print "Rejecting! Would have decresed by %f" % (old_auc - new_auc)
+
+            elif oracle == 'true_greedy' or oracle == 'true_greedy_gt':
+                # store up all the predictions, wait until the end to add them in
+                Di = {}
+                # The distance used depends on if we are comparing to the ground truth or the observed data...
+                if oracle == 'true_greedy':
+                    Di['distance'] = self.model.min_dist
+                elif oracle == 'true_greedy_gt':
+                    Di['distance'] = np.linalg.norm(
+                        transformed_voxlet.V.flatten()[self.model.dims_to_use_for_distance_cache.flatten()] -
+                        gt_voxlet.V.flatten()[self.model.dims_to_use_for_distance_cache.flatten()])
+
+                Di['voxlet'] = transformed_voxlet
+                Di['mask'] = mask
+                Di['weights'] = weights_to_use
+                self.possible_predictions.append(Di)
             else:
                 # Standard method - adding voxlet in regardless
                 if combine_segments_separately:
@@ -677,7 +699,6 @@ class Reconstructer(object):
 
                 E += time.time() - tic; tic = time.time()
                 # print "time E :", E
-            print "COUNT IS ", count
 
             if 'blender' in render_type and render_savepath:
 
@@ -761,6 +782,21 @@ class Reconstructer(object):
                 plt.tight_layout()
                 savepath = render_savepath + '/compiled_%03d.png' % count
                 plt.savefig(savepath)
+
+        if oracle == 'true_greedy' or oracle == 'true_greedy_gt':
+            # in true greedy, then we wait until here to add everything together...
+            # sort so the smallest possible predictions are at the front...
+            stop_points = [10, 25, 50, 100]
+            results = {}
+            self.possible_predictions.sort(key=lambda x: x['distance'])
+            for count, prediction in enumerate(self.possible_predictions):
+                # add this one in...
+                self.accum.add_voxlet(prediction['voxlet'],
+                    accum_only_predict_true, weights=prediction['weights'])
+                if count in stop_points:
+                    results[count] = copy.deepcopy(self.accum.compute_average())
+
+            return results
 
         if combine_segments_separately:
             raise Exception('Why am I here???')
