@@ -49,6 +49,10 @@ def pca_flatten(sbox):
     return pca.transform(sbox.V.flatten())
 
 
+def sample_sbox(sbox):
+    return sbox.flatten()[parameters.VoxletTraining.voxlet_samples]
+
+
 def sbox_flatten(sbox):
     """Applied to the GT shoeboxes after extraction"""
     return sbox.V.flatten()
@@ -95,6 +99,14 @@ def process_sequence(sequence):
             idx, extract_from='im_tsdf', post_transform=decimate_flatten) for idx in idxs]
         np_features = np.vstack(view_shoeboxes)
         np_features[np.isnan(np_features)] = -parameters.RenderedVoxelGrid.mu
+
+    elif parameters.VoxletTraining.feature_transform == 'sample':
+
+        view_shoeboxes = [sc.extract_single_voxlet(
+            idx, extract_from='im_tsdf', post_transform=sample_sbox) for idx in idxs]
+        np_features = np.vstack(view_shoeboxes)
+        np_features[np.isnan(np_features)] = -parameters.RenderedVoxelGrid.mu
+
 
     np_sboxes = np.vstack(gt_shoeboxes)
 

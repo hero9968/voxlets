@@ -2,6 +2,9 @@ import numpy as np
 import socket
 
 
+use_binary = False
+scene_bagging = True
+
 # general parameters about the system and the implementation
 host_name = socket.gethostname()
 
@@ -90,7 +93,7 @@ class VoxletTraining(object):
 
     # PCA and kmeans
     pca_number_points_from_each_image = 50
-    number_pca_dims = 60
+    number_pca_dims = 400
     number_clusters = 250
     pca_subsample_length = 50000  # max number of examples to use for pca
 
@@ -106,13 +109,15 @@ class VoxletTraining(object):
     feature_transform = 'pca' # - what to do with the feature after extraction...
 
 
+
+
 class VoxletPrediction(object):
     '''
     parameters for prediction stage of voxlet algorithm
     '''
     if small_sample:
-        number_samples = 100  # number of points to sample from image
+        number_samples = 300  # number of points to sample from image
     else:
-        number_samples = 100
+        number_samples = 300
 
     sampling_grid_size = 0.1

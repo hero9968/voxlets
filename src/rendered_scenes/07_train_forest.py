@@ -61,9 +61,9 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
         print "SMALL SAMPLE: Stopping"
         break
 
-np_pca_representation = np.vstack(pca_representation)
-np_masks = np.vstack(masks)
-np_features = np.concatenate(features, axis=0)
+np_pca_representation = np.vstack(pca_representation).astype(np.float16)
+np_masks = np.vstack(masks).astype(np.float16)
+np_features = np.concatenate(features, axis=0).astype(np.float16)
 np_scene_ids = np.concatenate(scene_ids, axis=0).astype(int)
 
 print "Sbox pca representation is shape", np_pca_representation.shape

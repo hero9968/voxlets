@@ -84,6 +84,8 @@ if data_type=='bigbird':
 
     # model using oma code
     voxlet_model_oma_path = base_path + "voxlets/dict/tsdf/oma_forest.pkl" + extra
+    if not parameters.scene_bagging:
+        voxlet_model_oma_path += '.not_scene_bagging'
     voxlet_model_oma_cobweb_path = base_path + "voxlets/dict/tsdf/oma_forest_cobweb.pkl" + extra
     voxlet_model_oma_spider_path = base_path + "voxlets/dict/tsdf/oma_forest_spider.pkl" + extra
 
@@ -192,7 +194,12 @@ class RenderedData(object):
     yaml_train_location = split_save_location + 'train.yaml'
     yaml_test_location = split_save_location + 'test.yaml'
 
-    voxlets_path = rendered_arrangements_path + 'voxlets/'
+    if parameters.use_binary:
+        voxlets_path = rendered_arrangements_path + 'binary_voxlets/'
+    elif parameters.VoxletTraining.feature_transform == 'pca':
+        voxlets_path = rendered_arrangements_path + 'voxlets/'
+    elif parameters.VoxletTraining.feature_transform == 'sample':
+        voxlets_path = rendered_arrangements_path + 'sampled_voxlets/'
 
     if parameters.VoxletTraining.use_implicit:
         voxlets_dictionary_path = voxlets_path + 'dictionary_implicit/'
