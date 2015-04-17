@@ -183,8 +183,10 @@ class RGBDImage(object):
         return self._cached_world_normals
 
     def _clear_cache(self):
-        del self._cached_world_normals
-        del self._cached_world_xyz
+        if hasattr(self, '_cached_world_normals'):
+            del self._cached_world_normals
+        if hasattr(self, '_cached_world_xyz'):
+            del self._cached_world_xyz
 
     def compute_ray_image(self):
         '''
