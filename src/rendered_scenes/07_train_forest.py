@@ -32,7 +32,7 @@ with open(features_pca_savepath, 'rb') as f:
     features_pca = pickle.load(f)
 
 masks_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'masks_pca.pkl'
-with open(features_pca_savepath, 'rb') as f:
+with open(masks_pca_savepath, 'rb') as f:
     masks_pca = pickle.load(f)
 
 ####################################################################
