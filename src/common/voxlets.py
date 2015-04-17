@@ -507,7 +507,8 @@ class Reconstructer(object):
     def fill_in_output_grid_oma(self, render_type, render_savepath=None,
             use_implicit=False, oracle=None, add_ground_plane=False,
             combine_segments_separately=False, accum_only_predict_true=False,
-            feature_collapse_type=None, feature_collapse_param=None):
+            feature_collapse_type=None, feature_collapse_param=None,
+            weight_empty_lower=None, use_binary=None):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -528,6 +529,15 @@ class Reconstructer(object):
             each prediction by only averaging in the regions predicted to be
             full. If false, the entire voxlet region will be added in, just
             like the CVPR submission.
+
+        weight_empty_lower
+            if set to a number, then empty regions will be weighted by this much.
+            e.g. if set to 0.5, then empty regions will be weighted by 0.5.
+            full regions are always weighted as 1.0
+
+        use_binary:
+            converts tsdf to binary before prediction and marging.
+            MUST use only with a forest trained on binary predictions...
         '''
 
         # saving
@@ -547,9 +557,12 @@ class Reconstructer(object):
 
         self.all_pred_cache = []
 
+        A = B = C = D = E = 0
+
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
 
+            tic = time.time()
             # find the segment index of this voxlet
             # this_point_label = self.sc.visible_im_label[idx[0], idx[1]]
             # get the voxel grid of tsdf associated with this label
@@ -565,21 +578,37 @@ class Reconstructer(object):
             features_voxlet.V[np.isnan(features_voxlet.V)] = -self.sc.mu
             self.cached_feature_voxlet = features_voxlet.V
 
+            if use_binary:
+                features_voxlet.V = (features_voxlet.V > 0).astype(np.float16)
+
             feature_vector = self._feature_collapse(features_voxlet.V.flatten(),
                 feature_collapse_type, feature_collapse_param)
 
+            A += time.time() - tic; tic = time.time()
+            # print "time A :", A
             "classify according to the forest"
             voxlet_prediction, mask = \
                 self.model.predict(np.atleast_2d(feature_vector), how_to_choose='closest', visible_voxlet=features_voxlet.V)
             self.cached_voxlet_prediction = voxlet_prediction
-            self.all_pred_cache.append(voxlet_prediction)
+            # self.all_pred_cache.append(voxlet_prediction)
+
+            B += time.time() - tic; tic = time.time()
+            # print "time B :", B
 
             # flipping the mask direction here:
             weights_to_use = 1-mask
+            weights_to_use = weights_to_use.flatten()
+            if weight_empty_lower:
+                print "Weights has shape, ", weights_to_use.shape
+                print "Voxlet prediction has shape ", voxlet_prediction.shape
+                weights_to_use[voxlet_prediction > 0] *= weight_empty_lower
 
             # getting the GT voxlet - useful for the oracles and rendering
             gt_voxlet = self._initialise_voxlet(idx)
             gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
+
+            C += time.time() - tic; tic = time.time()
+            # print "time C :", C
 
             "Replace the prediction - if an oracle has been specified!"
             if oracle == 'gt':
@@ -601,6 +630,9 @@ class Reconstructer(object):
             transformed_voxlet = self._initialise_voxlet(idx)
             transformed_voxlet.V = voxlet_prediction.reshape(
                 self.model.voxlet_params.shape)
+
+            D += time.time() - tic; tic = time.time()
+            # print "time D :", D
 
             if oracle == 'greedy_add':
                 if combine_segments_separately:
@@ -642,6 +674,10 @@ class Reconstructer(object):
                 else:
                     self.accum.add_voxlet(transformed_voxlet,
                         accum_only_predict_true, weights=weights_to_use)
+
+                E += time.time() - tic; tic = time.time()
+                # print "time E :", E
+            print "COUNT IS ", count
 
             if 'blender' in render_type and render_savepath:
 
@@ -744,9 +780,9 @@ class Reconstructer(object):
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
         to_use_prediction = np.isnan(keeping_existing.V)
-        self.keeping_existing = keeping_existing
         keeping_existing.V[to_use_prediction] = \
             average.V[to_use_prediction]
+        self.keeping_existing = keeping_existing
 
         if add_ground_plane:
             # Adding in the ground plane
@@ -754,6 +790,11 @@ class Reconstructer(object):
             self.keeping_existing.V[:, :, 4] = self.sc.mu
             average.V[:, :, :4] = -self.sc.mu
             average.V[:, :, 4] = self.sc.mu
+
+        if use_binary:
+            # making sure the level set is at zero!
+            average.V += 0.5
+            self.keeping_existing.V += 0.5
 
         return average
 
@@ -785,7 +826,8 @@ class Reconstructer(object):
         plt.axis('off')
         plt.subplot(132)
 
-        top_view = np.nanmean(self.sc.im_tsdf.V, axis=2)
+        top_view = np.nanmean(self.sc.gt_tsdf.V, axis=2)
+        # np.nanmean(self.sc.im_tsdf.V, axis=2)
         plt.imshow(top_view, cmap=plt.get_cmap('Greys'))
         plt.axis('off')
 

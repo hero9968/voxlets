@@ -7,15 +7,15 @@ import cPickle as pickle
 import sys
 import os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-import paths
-import parameters
+import real_data_paths as paths
+import real_params as parameters
 from common import voxlets
 import time
 
 if parameters.small_sample:
     print "WARNING: Just computing on a small sample"
 
-modelfolder = os.path.dirname(paths.RenderedData.voxlet_model_oma_path)
+modelfolder = os.path.dirname(paths.voxlet_model_oma_path)
 if not os.path.exists(modelfolder):
     os.makedirs(modelfolder)
 
@@ -23,15 +23,15 @@ if not os.path.exists(modelfolder):
 ####################################################################
 print "Loading the dictionaries and PCA"
 ########################################################################
-pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
+pca_savepath = paths.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
-features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
+features_pca_savepath = paths.voxlets_dictionary_path + 'features_pca.pkl'
 with open(features_pca_savepath, 'rb') as f:
     features_pca = pickle.load(f)
 
-masks_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'masks_pca.pkl'
+masks_pca_savepath = paths.voxlets_dictionary_path + 'masks_pca.pkl'
 with open(features_pca_savepath, 'rb') as f:
     masks_pca = pickle.load(f)
 
@@ -43,14 +43,15 @@ pca_representation = []
 masks = []
 scene_ids = []
 
-for count, sequence in enumerate(paths.RenderedData.train_sequence()):
+for count, sequence in enumerate(paths.train_data):
 
     # loading the data
-    loadpath = paths.RenderedData.voxlets_data_path + \
-        sequence['name'] + '.mat'
+    loadpath = paths.voxlets_data_path + \
+        sequence['name'] + '.pkl'
     print "Loading from " + loadpath
 
-    D = scipy.io.loadmat(loadpath)
+    with open(loadpath, 'r') as f:
+        D = pickle.load(f) 
     features.append(D['features'])
     pca_representation.append(D['shoeboxes'])
     masks.append(D['masks'])
@@ -71,9 +72,6 @@ print "Masks is ", np_masks.shape
 print "Features is ", np_features.shape
 print "Scene ids is ", np_scene_ids.shape
 
-if not parameters.scene_bagging:
-    np_scene_ids = None
-
 ####################################################################
 print "Training the model"
 ####################################################################
@@ -89,4 +87,4 @@ model.train(
 model.set_pca(pca)
 model.set_masks_pca(masks_pca)
 model.set_feature_pca(features_pca)
-model.save(paths.RenderedData.voxlet_model_oma_path)
+model.save(paths.voxlet_model_oma_path)

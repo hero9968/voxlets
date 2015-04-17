@@ -55,10 +55,12 @@ for count, sequence in enumerate(paths.train_data):
 
     # loading the data
     loadpath = paths.voxlets_dict_data_path + \
-        sequence['name'] + '.mat'
+        sequence['name'] + '.pkl'
     print "Loading from " + loadpath
 
-    D = scipy.io.loadmat(loadpath)
+    with open(loadpath, 'r') as f:
+        D = pickle.load(f)
+
     shoeboxes.append(D['shoeboxes'].astype(np.float16))
     features.append(D['features'].astype(np.float16))
 

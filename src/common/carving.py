@@ -70,7 +70,7 @@ class Carver(VoxelAccumulator):
 
         for count, im in enumerate(self.video.frames):
 
-            print "\nFrame number %d with name %s" % (count, im.frame_id)
+            # print "\nFrame number %d with name %s" % (count, im.frame_id)
 
             # now work out which voxels are in front of or behind the depth
             # image and location in camera image of each voxel
@@ -224,7 +224,7 @@ class Fusion(VoxelAccumulator):
 
         for count, im in enumerate(self.video.frames):
 
-            print "Fusing frame number %d with name %s" % (count, im.frame_id)
+            # print "Fusing frame number %d with name %s" % (count, im.frame_id)
 
             if filtering:
                 depth = self._filter_depth(im.depth)

@@ -17,8 +17,8 @@ import yaml
 import shutil
 import collections
 
-import paths
-import parameters
+import real_data_paths as paths
+import real_params as parameters
 
 from common import voxlets
 from common import scene
@@ -26,18 +26,15 @@ from common import scene
 import sklearn.metrics
 
 print "Loading model..."
-with open(paths.RenderedData.voxlets_path + '/models/oma.pkl', 'rb') as f:
+with open(paths.voxlet_model_oma_path, 'rb') as f:
     model_without_implicit = pickle.load(f)
 print "Done loading model..."
 
-combine_renders = False
-render_predictions = False
-render_top_view = False
-save_prediction_grids = False
+combine_renders = True
+render_predictions = True
+render_top_view = True
+save_prediction_grids = True
 save_scores_to_yaml = True
-copy_to_dropbox = False and paths.host_name == 'biryani'
-dropbox_path = paths.RenderedData.new_dropbox_dir()
-print dropbox_path
 
 # this overrides all other parameters. Means we don't botther with orables etc
 only_prediction = False
@@ -48,10 +45,10 @@ print "MAIN LOOP"
 # better off being GPU...)
 def process_sequence(sequence):
 
-    sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
+    sc = scene.Scene(parameters.mu,
         model_without_implicit.voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
-        save_grids=False, load_implicit=False)
+        save_grids=False, load_implicit=False, voxel_normals='gt_tsdf')
     # sc.santity_render(save_folder='/tmp/')
 
     test_type = 'oma_choose_nearest'
@@ -64,11 +61,11 @@ def process_sequence(sequence):
                       parameters.VoxletPrediction.sampling_grid_size)
 
     # Path where any renders will be saved to
-    gen_renderpath = paths.RenderedData.voxlet_prediction_img_path % \
+    gen_renderpath = paths.voxlet_prediction_img_path % \
         (test_type, sequence['name'], '%s')
 
     print "-> Creating folder"
-    fpath = paths.RenderedData.voxlet_prediction_folderpath % \
+    fpath = paths.voxlet_prediction_folderpath % \
         (test_type, sequence['name'])
     if not os.path.exists(fpath):
         os.makedirs(fpath)
@@ -77,7 +74,7 @@ def process_sequence(sequence):
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
         render_type=[], add_ground_plane=True,
-        combine_segments_separately=False, feature_collapse_type='pca', use_binary=parameters.use_binary)
+        combine_segments_separately=False, feature_collapse_type='pca')
     pred_voxlets_exisiting = rec.keeping_existing
 
     if only_prediction:
@@ -90,42 +87,13 @@ def process_sequence(sequence):
         print gen_renderpath % 'top_view'
 
 
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    full_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[],oracle='gt', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
-    # full_oracle_voxlets = rec.keeping_existing
-
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[],oracle='pca', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
-    oracle_voxlets_existing = rec.keeping_existing
-
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    nn_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='nn', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
-    nn_oracle_voxlets_existing = rec.keeping_existing
-
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    greedy_oracle_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binaryt)
-    greedy_oracle_voxlets_existing = rec.keeping_existing
-
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    weight_empty_lower = rec.fill_in_output_grid_oma(
-        render_type=[], oracle='greedy_add', add_ground_plane=True, feature_collapse_type='pca', weight_empty_lower=0.5)
-    weight_empty_lower_existing = rec.keeping_existing
-
     combines = collections.OrderedDict()
     combines['input'] = {'name':'Input image'}
     combines['gt'] = {'name':'Ground truth', 'grid':sc.gt_tsdf}
     combines['visible'] = {'name':'Visible surfaces', 'grid':sc.im_tsdf}
-    combines['OR1'] = {'name':'Full oracle (OR1)', 'grid':full_oracle_voxlets}
-    combines['OR2'] = {'name':'Oracle using PCA (OR2)', 'grid':oracle_voxlets}
-    combines['OR3'] = {'name':'Oracle using NN (OR3)', 'grid':nn_oracle_voxlets}
-    combines['OR4'] = {'name':'Oracle using greedy (OR4)', 'grid':greedy_oracle_voxlets}
-    combines['weight_empty_lower'] = {'name':'Empty voxlets weighted lower', 'grid':weight_empty_lower}
-    # combines['implicit'] = {'name':'Implicit prediction', 'grid':sc.implicit_tsdf}
     combines['pred_voxlets'] = {'name':'Voxlets', 'grid':pred_voxlets}
+    combines['pred_voxlets_exisiting'] = {'name':'Voxlets existing', 'grid':pred_voxlets_exisiting}
+
 
     if render_predictions:
         print "-> Rendering"
@@ -140,7 +108,7 @@ def process_sequence(sequence):
 
     if save_prediction_grids:
         print "-> Saving prediction grids"
-        with open('/tmp/combines.pkl', 'w') as f:
+        with open(fpath + 'all_grids.pkl', 'w') as f:
             pickle.dump(combines, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     # must save the input view to the save folder
@@ -148,7 +116,7 @@ def process_sequence(sequence):
 
     if combine_renders:
         print "-> Combining renders"
-        su, sv = 3, 4
+        su, sv = 2, 3
 
         fig = plt.figure(figsize=(25, 10), dpi=1000)
         plt.subplots(su, sv)
@@ -186,10 +154,6 @@ def process_sequence(sequence):
         all_savename = gen_renderpath.replace('png', 'pdf') % fname
         plt.savefig(all_savename, dpi=400)
 
-        # Saving to the dropbox...
-        if copy_to_dropbox:
-            shutil.copy(all_savename, dropbox_path)
-
     if save_scores_to_yaml:
         print "-> Writing scores to YAML"
         results_dict = {}
@@ -210,7 +174,8 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if parameters.multicore:
+if True:
+    # parameters.multicore:
     import multiprocessing
     pool = multiprocessing.Pool(parameters.cores)
     mapper = pool.map
@@ -223,7 +188,8 @@ if __name__ == '__main__':
     # temp = [s for s in paths.RenderedData.test_sequence() if s['name'] == 'd2p8ae7t0xi81q3y_SEQ']
     # print temp
     tic = time()
-    mapper(process_sequence, paths.RenderedData.test_sequence()[:48], chunksize=1)
+    mapper(process_sequence, paths.test_data)
+    # [:48], chunksize=1)
     print "In total took %f s" % (time() - tic)
 
 

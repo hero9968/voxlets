@@ -240,7 +240,7 @@ class Normals(object):
         '''
         compute the normals from a voxel grid
         '''
-        offset = 4
+        offset = 3
         xyz = im.get_world_xyz()
         inliers = np.ravel(im.mask)
 
@@ -282,3 +282,43 @@ class Normals(object):
 
 
         # return diffs.T
+
+class SampledFeatures(object):
+    '''
+    samples features from a voxel grid
+    '''
+
+    def __init__(self, num_rings, radius, height_offset):
+        '''
+        units are in real world space I think...
+        '''
+        self.num_rings = num_rings
+        self.radius = radius
+        self.height_offset = height_offset
+
+    def sample(self, grid, point, normal):
+        # let's get the ring sorted out first...
+
+        start_angle = np.rad2deg(np.arctan2(normal[1], normal[0]))
+
+        # computing all the offsets and angles efficiently
+        offsets = self.radius * (1 + np.arange(self.num_rings))
+        rad_angles = np.deg2rad(start_angle + np.array(range(0, 360, 45)))
+
+        rows = (float(point[0]) - np.outer(offsets, np.sin(rad_angles))).astype(int).flatten()
+        cols = (float(point[1]) + np.outer(offsets, np.cos(rad_angles))).astype(int).flatten()
+        rows.append(point[0])
+        cols.append(point[1])
+
+        print "jumping by ", self.height_offset / grid.vox_size
+        for height in range(0, grid.V.shape[2], self.height_offset / grid.vox_size):
+            temp = np.vstack((rows, cols, heights))
+            points.append(temp)
+
+        points = np.array(points)
+
+        # world_sample_locations =
+
+        grid.world_to_idx(world_sample_locations)
+
+

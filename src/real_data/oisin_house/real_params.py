@@ -2,7 +2,7 @@ import numpy as np
 import socket
 
 # some parameters can live here for now...
-mu = 0.015
+mu = 0.025
 voxel_size = 0.005
 
 
@@ -37,7 +37,7 @@ class Voxlet(object):
 
     one_side_bins = 20
     shape = (one_side_bins, 2*one_side_bins, 2*one_side_bins)
-    size = 0.0175  # edge size of a single voxel
+    size = 0.005  # edge size of a single voxel
     # centre is relative to the ijk origin at the bottom corner of the voxlet
     # z height of centre takes into account the origin offset
     actual_size = np.array(shape) * size
@@ -70,3 +70,15 @@ class VoxletTraining(object):
 
     decimation_rate = 2
     feature_transform = 'pca' # - what to do with the feature after extraction...
+
+
+class VoxletPrediction(object):
+    '''
+    parameters for prediction stage of voxlet algorithm
+    '''
+    if small_sample:
+        number_samples = 300  # number of points to sample from image
+    else:
+        number_samples = 300
+
+    sampling_grid_size = 0.1

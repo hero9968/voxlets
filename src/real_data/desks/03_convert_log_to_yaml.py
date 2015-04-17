@@ -70,16 +70,15 @@ def read_log(scene_path):
 
         # ^^ this is good
 
-
-
         # print "Warning - using M2 instead of R"
         framedict['pose'] = R.flatten().tolist()
         framedict['camera'] = 1
         framedict['intrinsics'] = [579.679000, 0, 320.000000,   0, 579.679000, 240.000000,   0, 0, 1]
         framedict['id'] = '%02d_%04d' % (framedict['camera'], framedict['frame'])
         framedict['depth_scaling'] = float(2**16) / 1000
-        framedict['image'] = 'images/%05d.pgm' % framedict['frame']
-        framedict['rgb'] = 'images/%05d.ppm' % framedict['frame']
+        framedict['image'] = 'frames/%05d.pgm' % framedict['frame']
+        framedict['rgb'] = 'frames/%05d.ppm' % framedict['frame']
+        framedict['mask'] = 'frames/mask_%s.png' % framedict['id']
 
         np.set_printoptions(precision=3, formatter={'float':lambda x: '%0.9f' % x})
         # if int(original[0]) == 110:

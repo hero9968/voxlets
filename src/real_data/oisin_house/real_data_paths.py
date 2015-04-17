@@ -6,14 +6,13 @@ host_name = socket.gethostname()
 print host_name
 
 if host_name == 'troll' or host_name == 'biryani':
-    sds
-    data_folder = '/media/ssd/data/desks/'
+    data_folder = '/media/ssd/data/oisin_house/'
     converter_path = ''
 else:
     data_folder = '/Users/Michael/projects/shape_sharing/data/oisin_house/'
     converter_path = '/Users/Michael/projects/InfiniTAM_Alt/convertor/voxels_to_ply.py'
 
-raw_data = data_folder + ''
+raw_data = data_folder + 'data/'
 
 scene_names = [o
           for o in os.listdir(raw_data)
@@ -25,12 +24,27 @@ scenes = [{'folder':raw_data,
            'scene':scene}
            for scene in scene_names]
 
-# yaml_train_location = data_folder + 'train_test/train.yaml'
-# with open(yaml_train_location, 'r') as f:
-#     train_data = yaml.load(f)
+yaml_train_location = data_folder + 'train_test/train.yaml'
+yaml_test_location = data_folder + 'train_test/test.yaml'
+with open(yaml_train_location, 'r') as f:
+    train_data = yaml.load(f)
 
-# for t in train_data:
-#     t['folder'] = raw_data
+with open(yaml_test_location, 'r') as f:
+    test_data = yaml.load(f)
+
+
+sequences = []
+for t in scenes:
+    temp = []
+    t['folder'] = raw_data
+    fpath = t['folder'] + t['scene'] + '/test_frame.txt'
+    with open(fpath, 'r') as f:
+        frames = [int(l) for l in f]
+    for fr in frames:
+        t['frames'] = [fr]
+        t['name'] = t['scene'] + '_' + str(t['frames'])
+        temp.append(t)
+    sequences.append(temp)
 
 # saving...
 models_folder = data_folder + 'models/'
@@ -41,4 +55,5 @@ voxlets_data_path = models_folder + 'training_voxlets/'
 voxlet_model_oma_path = models_folder + 'models/oma.pkl'
 
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
-# voxlet_prediction_folder_path = base_path + "/voxlets/bigbird/predictions/%s/"
+voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
+voxlet_prediction_folderpath = data_folder + '/predictions/%s/%s/'

@@ -13,22 +13,22 @@ logging.basicConfig(level=logging.DEBUG)
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import scene, voxlets
 
-import paths
-import parameters
+import real_data_paths as paths
+import real_params as parameters
 
 # features_iso_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_iso.pkl'
 # with open(features_iso_savepath, 'rb') as f:
 #     features_iso = pickle.load(f)
 
-pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
+pca_savepath = paths.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
-mask_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'masks_pca.pkl'
+mask_pca_savepath = paths.voxlets_dictionary_path + 'masks_pca.pkl'
 with open(mask_pca_savepath, 'rb') as f:
     mask_pca = pickle.load(f)
 
-features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
+features_pca_savepath = paths.voxlets_dictionary_path + 'features_pca.pkl'
 with open(features_pca_savepath, 'rb') as f:
     features_pca = pickle.load(f)
 
@@ -36,8 +36,8 @@ with open(features_pca_savepath, 'rb') as f:
 print "PCA components is shape ", pca.components_.shape
 print "Features PCA components is shape ", features_pca.components_.shape
 
-if not os.path.exists(paths.RenderedData.voxlets_data_path):
-    os.makedirs(paths.RenderedData.voxlets_data_path)
+if not os.path.exists(paths.voxlets_data_path):
+    os.makedirs(paths.voxlets_data_path)
 
 
 def decimate_flatten(sbox):
@@ -58,9 +58,9 @@ def process_sequence(sequence):
 
     logging.info("Processing " + sequence['name'])
 
-    sc = scene.Scene(parameters.RenderedVoxelGrid.mu, parameters.Voxlet)
+    sc = scene.Scene(parameters.mu, parameters.Voxlet)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
-        save_grids=False, load_implicit=parameters.VoxletTraining.use_implicit)
+        save_grids=False, load_implicit=False, voxel_normals='gt_tsdf')
     # sc.santity_render(save_folder='/tmp/')
 
     # just using reconstructor for sampling the points...
@@ -82,11 +82,7 @@ def process_sequence(sequence):
         view_shoeboxes = [sc.extract_single_voxlet(
             idx, extract_from='im_tsdf', post_transform=sbox_flatten) for idx in idxs]
         all_features = np.vstack(view_shoeboxes)
-        all_features[np.isnan(all_features)] = -parameters.RenderedVoxelGrid.mu
-
-        if parameters.use_binary:
-            all_features = (all_features > 0).astype(np.float16)
-
+        all_features[np.isnan(all_features)] = -parameters.mu
         np_features = features_pca.transform(all_features)
 
     elif parameters.VoxletTraining.feature_transform == 'decimate':
@@ -94,7 +90,7 @@ def process_sequence(sequence):
         view_shoeboxes = [sc.extract_single_voxlet(
             idx, extract_from='im_tsdf', post_transform=decimate_flatten) for idx in idxs]
         np_features = np.vstack(view_shoeboxes)
-        np_features[np.isnan(np_features)] = -parameters.RenderedVoxelGrid.mu
+        np_features[np.isnan(np_features)] = -parameters.mu
 
     np_sboxes = np.vstack(gt_shoeboxes)
 
@@ -102,25 +98,26 @@ def process_sequence(sequence):
     np_masks = np.isnan(np_sboxes).astype(np.float16)
     np_sboxes[np_masks == 1] = np.nanmax(np_sboxes)
 
-    if parameters.use_binary:
-        np_sboxes = (np_sboxes > 0).astype(np.float16)
-
     # must do the pca now after doing the mask trick
     np_sboxes = pca.transform(np_sboxes)
     np_masks = mask_pca.transform(np_masks)
 
     '''replace all the nans in the shoeboxes from the image view'''
+
+
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
     logging.debug("...Features are shape " + str(np_features.shape))
 
     print "Took %f s" % (time() - t1)
     t1 = time()
 
-    savepath = paths.RenderedData.voxlets_data_path + \
-        sequence['name'] + '.mat'
+    savepath = paths.voxlets_data_path + \
+        sequence['name'] + '.pkl'
     logging.debug("Saving to " + savepath)
     D = dict(shoeboxes=np_sboxes, features=np_features, masks=np_masks)
-    scipy.io.savemat(savepath, D, do_compression=True)
+    with open(savepath, 'w') as f:
+        pickle.dump(D, f, protocol=pickle.HIGHEST_PROTOCOL)
+    
 
 
 if parameters.multicore:
@@ -135,5 +132,5 @@ else:
 if __name__ == "__main__":
 
     tic = time()
-    mapper(process_sequence, paths.RenderedData.train_sequence())
+    mapper(process_sequence, paths.train_data)
     print "In total took %f s" % (time() - tic)

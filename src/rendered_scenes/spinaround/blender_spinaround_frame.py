@@ -17,6 +17,16 @@ bpy.ops.import_scene.obj(filepath=meshpath, axis_forward='X', axis_up='Z')
 scene = bpy.data.scenes['Scene']
 scene.frame_end = 20
 
+# remove holes from mesh
+for obj in scene.objects:
+    if obj.type == 'MESH':
+        scene.objects.active = obj
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.fill_holes()
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+
 # setting the final output filename and rendering
 scene.render.filepath = savepath
 #CompositorNodeOutputFile.base_path = \

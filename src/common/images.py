@@ -257,7 +257,7 @@ class RGBDImage(object):
             mask_image_path = os.path.join(scene_folder, dictionary['mask'])
         else:
             mask_image_path = \
-                scene_folder + '/images/mask_%s.png' % dictionary['id']
+                scene_folder + '/frames/mask_%s.png' % dictionary['id']
 
         if os.path.exists(mask_image_path):
             im.mask = scipy.misc.imread(mask_image_path) == 255
