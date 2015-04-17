@@ -256,11 +256,15 @@ class RGBDImage(object):
         else:
             mask_image_path = \
                 scene_folder + '/frames/mask_%s.png' % dictionary['id']
+            mask_image_path2 = \
+                scene_folder + '/images/mask_%s.png' % dictionary['id']
 
         if os.path.exists(mask_image_path):
             im.mask = scipy.misc.imread(mask_image_path) == 255
+        elif os.path.exists(mask_image_path2):
+            im.mask = scipy.misc.imread(mask_image_path2) == 255
         else:
-            print mask_image_path
+            print "Couldn't load ", mask_image_path
 
         # setting the frame id
         im.frame_id = dictionary['id']
