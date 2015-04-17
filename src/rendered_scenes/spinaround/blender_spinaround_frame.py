@@ -6,6 +6,8 @@ import bpy
 import sys, os
 import numpy as np
 
+quick_render = True
+
 #meshpath = os.getenv('meshpath')
 meshpath= os.getenv('BLENDERSAVEFILE') + '.obj'
 savepath = os.getenv('BLENDERSAVEFILE')
@@ -35,5 +37,9 @@ scene.render.filepath = savepath
 
 #scene.node_tree.nodes['File Output.001'].base_path = \
 #    save_path + name + '/' + str(count)
+
+if quick_render:
+    # makes for a grainy render, but much quicker!
+    scene.cycles.samples = 40
 
 bpy.ops.render.render(write_still=True, animation=False)
