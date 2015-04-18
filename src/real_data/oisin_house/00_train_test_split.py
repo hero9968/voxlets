@@ -1,6 +1,7 @@
 from sklearn.cross_validation import train_test_split
 import real_data_paths as paths
 import yaml
+import random
 
 test_size = 0.25
 
@@ -15,6 +16,10 @@ test = list(itertools.chain(*test))
 
 print len(train)
 print len(test)
+
+random.seed(10)
+random.scramble(train)
+random.scramble(test)
 
 with open(paths.yaml_train_location, 'w') as f:
     yaml.dump(train, f)

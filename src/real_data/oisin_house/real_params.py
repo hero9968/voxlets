@@ -57,7 +57,7 @@ class VoxletTraining(object):
     # PCA and kmeans
     pca_number_points_from_each_image = 250
     number_pca_dims = 400
-    pca_subsample_length = 50000  # max number of examples to use for pca
+    pca_subsample_length = 10000  # max number of examples to use for pca
 
     # actual voxlet extraction
     if small_sample:

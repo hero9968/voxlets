@@ -12,7 +12,7 @@ else:
     data_folder = '/Users/Michael/projects/shape_sharing/data/oisin_house/'
     converter_path = '/Users/Michael/projects/InfiniTAM_Alt/convertor/voxels_to_ply.py'
 
-raw_data = data_folder + 'data/'
+raw_data = data_folder + 'data1/'
 
 scene_names = [o
           for o in os.listdir(raw_data)
@@ -33,21 +33,27 @@ with open(yaml_test_location, 'r') as f:
     test_data = yaml.load(f)
 
 
+from copy import deepcopy
+
 sequences = []
 for t in scenes:
-    temp = []
     t['folder'] = raw_data
     fpath = t['folder'] + t['scene'] + '/test_frame.txt'
+
     with open(fpath, 'r') as f:
         frames = [int(l) for l in f]
+
+    temp = []
     for fr in frames:
-        t['frames'] = [fr]
-        t['name'] = t['scene'] + '_' + str(t['frames'])
-        temp.append(t)
+        this_t = deepcopy(t)
+        this_t['frames'] = [fr]
+        this_t['name'] = this_t['scene'] + '_' + str(this_t['frames'])
+        temp.append(this_t)
+
     sequences.append(temp)
 
 # saving...
-models_folder = data_folder + 'models/'
+models_folder = data_folder + 'models_full_split/'
 
 voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
 voxlets_dictionary_path = models_folder + 'dictionary/'

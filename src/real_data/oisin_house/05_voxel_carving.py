@@ -66,7 +66,7 @@ def process_sequence(sequence):
 if parameters.multicore:
     import multiprocessing
     import functools
-    pool = multiprocessing.Pool(6)
+    pool = multiprocessing.Pool(4)
     mapper = pool.map
 else:
     mapper = map
