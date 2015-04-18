@@ -124,8 +124,8 @@ for sequence in paths.scenes:
     # getting the origin
     origin = plane_xyz[1] * voxel_size * 1000
 
-    # push the origin 10 mm below the plane for breathing room
-    origin -= z * 10
+    # push the origin 30 mm below the plane for breathing room
+    origin -= z * 30
 
     # getting the size of the box...
     size_x = np.linalg.norm(plane_xyz[0] - plane_xyz[1]) * voxel_size * 1000

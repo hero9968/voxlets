@@ -24,7 +24,7 @@ else:
 if small_sample:
     print "WARNING: Just computing on a small sample"
 
-pca_number_points_from_each_image = 100
+pca_number_points_from_each_image = 250
 
 
 class Voxlet(object):
@@ -37,7 +37,7 @@ class Voxlet(object):
 
     one_side_bins = 20
     shape = (one_side_bins, 2*one_side_bins, 2*one_side_bins)
-    size = 0.005  # edge size of a single voxel
+    size = 0.0075  # edge size of a single voxel
     # centre is relative to the ijk origin at the bottom corner of the voxlet
     # z height of centre takes into account the origin offset
     actual_size = np.array(shape) * size
@@ -56,8 +56,7 @@ class VoxletTraining(object):
     '''
     # PCA and kmeans
     pca_number_points_from_each_image = 250
-    number_pca_dims = 60
-    number_clusters = 50
+    number_pca_dims = 400
     pca_subsample_length = 50000  # max number of examples to use for pca
 
     # actual voxlet extraction

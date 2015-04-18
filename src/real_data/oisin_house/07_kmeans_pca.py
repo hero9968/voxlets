@@ -25,26 +25,6 @@ def pca_randomized(X_in, local_subsample_length, num_pca_dims):
     pca.fit(X)
     return pca
 
-
-def cluster_data(X, local_subsample_length, num_clusters):
-
-    # take subsample
-    if local_subsample_length > X.shape[0]:
-        X_subset = X
-    else:
-        to_use_for_clustering = \
-            np.random.randint(0, X.shape[0], size=(local_subsample_length))
-        X_subset = X[to_use_for_clustering, :]
-
-    print X.shape
-    print X_subset.shape
-
-    # doing clustering
-    km = MiniBatchKMeans(n_clusters=num_clusters)
-    km.fit(X_subset)
-    return km
-
-
 # initialise lists
 shoeboxes = []
 features = []
@@ -97,25 +77,13 @@ for name, np_array in zip(
         parameters.VoxletTraining.pca_subsample_length,
         parameters.VoxletTraining.number_pca_dims)
 
-    print "Doing Kmeans"
-    km = cluster_data(
-        np_array,
-        parameters.VoxletTraining.pca_subsample_length,
-        parameters.VoxletTraining.number_clusters)
-
     try:
         pca_savepath = paths.voxlets_dictionary_path + name + \
             '_pca.pkl'
-        kmeans_savepath = paths.voxlets_dictionary_path + name + \
-            '_kmean.pkl'
 
         print "Saving to " + pca_savepath
         with open(pca_savepath, 'wb') as f:
             pickle.dump(pca, f, pickle.HIGHEST_PROTOCOL)
-
-        print "Saving to " + kmeans_savepath
-        with open(kmeans_savepath, 'wb') as f:
-            pickle.dump(km, f, pickle.HIGHEST_PROTOCOL)
 
     except:
         import pdb; pdb.set_trace()
