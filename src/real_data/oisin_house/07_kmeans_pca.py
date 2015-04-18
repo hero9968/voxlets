@@ -48,8 +48,9 @@ for count, sequence in enumerate(paths.train_data):
         print "SMALL SAMPLE: Stopping"
         break
 
-np_all_sboxes = np.concatenate(shoeboxes, axis=0)
-np_all_features = np.concatenate(features, axis=0)
+np_all_sboxes = np.concatenate(shoeboxes, axis=0).astype(np.float16)
+np_all_features = np.concatenate(features, axis=0).astype(np.float16)
+shoeboxes = features = None
 print "All sboxes shape is " + str(np_all_sboxes.shape)
 print "Features shape is " + str(np_all_features.shape)
 print np_all_features.dtype

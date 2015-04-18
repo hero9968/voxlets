@@ -13,6 +13,7 @@ import os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from time import time
 import scipy.misc  # for image saving
+import scipy.io
 import yaml
 import shutil
 import collections
@@ -34,10 +35,13 @@ combine_renders = True
 render_predictions = True
 render_top_view = True
 save_prediction_grids = True
+save_simple = True
 save_scores_to_yaml = True
 
 # this overrides all other parameters. Means we don't botther with orables etc
 only_prediction = False
+
+
 
 print "MAIN LOOP"
 # Note: if parallelising, should either do here (at top level) or at the
@@ -51,7 +55,7 @@ def process_sequence(sequence):
         save_grids=False, load_implicit=False, voxel_normals='gt_tsdf')
     # sc.santity_render(save_folder='/tmp/')
 
-    test_type = 'oma_choose_nearest'
+    test_type = 'oma_choose_nearest_400pca_narrow_band'
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
@@ -70,12 +74,16 @@ def process_sequence(sequence):
     if not os.path.exists(fpath):
         os.makedirs(fpath)
 
+    print "-> Doing prediction"
+
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True,
-        combine_segments_separately=False, feature_collapse_type='pca')
+        add_ground_plane=True, feature_collapse_type='pca')
     pred_voxlets_exisiting = rec.keeping_existing
+
+    print "-> Doing the empty voxlet thing"
+    rec.save_empty_voxel_counts(fpath)
 
     if only_prediction:
         pred_voxlets.render_view(gen_renderpath % 'pred_voxlets')
@@ -110,6 +118,12 @@ def process_sequence(sequence):
         print "-> Saving prediction grids"
         with open(fpath + 'all_grids.pkl', 'w') as f:
             pickle.dump(combines, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    if save_simple:
+        for name, dic in combines.iteritems():
+            if name != 'input':
+                D = dict(grid=dic['grid'].V, name=name, vox_size=dic['grid'].vox_size)
+                scipy.io.savemat(fpath + ('%s.mat' % name), D)
 
     # must save the input view to the save folder
     scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
@@ -153,6 +167,7 @@ def process_sequence(sequence):
         fname = 'all_' + sequence['name']
         all_savename = gen_renderpath.replace('png', 'pdf') % fname
         plt.savefig(all_savename, dpi=400)
+        plt.close()
 
     if save_scores_to_yaml:
         print "-> Writing scores to YAML"
@@ -174,10 +189,10 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if True:
+if False:
     # parameters.multicore:
     import multiprocessing
-    pool = multiprocessing.Pool(parameters.cores)
+    pool = multiprocessing.Pool(3)
     mapper = pool.map
 else:
     mapper = map
