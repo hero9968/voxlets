@@ -50,9 +50,7 @@ def cluster_data(X, local_subsample_length, num_clusters):
 shoeboxes = []
 features = []
 
-for count, sequence in enumerate(paths.RenderedData.train_sequence()[:400]):
-
-    print "Processing " + sequence['name']
+for count, sequence in enumerate(paths.RenderedData.train_sequence()[:300]):
 
     # loading the data
     loadpath = paths.RenderedData.voxlets_dict_data_path + \
@@ -60,6 +58,9 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()[:400]):
     print "Loading from " + loadpath
 
     D = scipy.io.loadmat(loadpath)
+    if ('shoeboxes' not in D) or ('features' not in D):
+        continue
+
     shoeboxes.append(D['shoeboxes'].astype(np.float16))
     features.append(D['features'].astype(np.float16))
 

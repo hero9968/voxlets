@@ -103,7 +103,7 @@ class VoxletTraining(object):
         forest_subsample_length = 25000  # max num examples to use to train forest
     else:
         number_points_from_each_image = 500
-        forest_subsample_length = 500000  # max num examples to use to train forest
+        forest_subsample_length = 50000  # max num examples to use to train forest
 
     decimation_rate = 2
     feature_transform = 'pca' # - what to do with the feature after extraction...
