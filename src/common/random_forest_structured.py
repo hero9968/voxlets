@@ -10,16 +10,16 @@ class ForestParams:
     def __init__(self):
         self.num_tests = 2000
         self.min_sample_cnt = 5
-        self.max_depth = 12
-        self.num_trees = 50
+        self.max_depth = 14
+        self.num_trees = 40
         self.bag_size = 0.5
-        self.train_parallel = True
+        self.train_parallel = False
 
         # structured learning params
         #self.pca_dims = 5
-        self.num_dims_for_pca = 50 # number of dimensions that pca gets reduced to
+        self.num_dims_for_pca = 30 # number of dimensions that pca gets reduced to
         self.sub_sample_exs_pca = True  # can also subsample the number of exs we use for PCA
-        self.num_exs_for_pca = 5000
+        self.num_exs_for_pca = 2500
 
         self.oob_score = False
         self.oob_importance = False
@@ -86,6 +86,8 @@ class Tree:
         self.label_dims = 0  # dimensionality of label space
 
     def build_tree(self, X, Y, node):
+        print X.shape, Y.shape
+        print node.exs_at_node.shape
         if (node.node_id < ((2**self.tree_params.max_depth)-1)) and (node.impurity > 0.0) \
                 and (self.optimize_node(np.take(X, node.exs_at_node, 0), np.take(Y, node.exs_at_node, 0), node)):
                 self.num_nodes += 2
@@ -131,12 +133,15 @@ class Tree:
         #exs_at_node = np.arange(Y.shape[0])
 
         # bagging
+        num_to_sample = int(float(Y.shape[0])*self.tree_params.bag_size)
+
         if extracted_from == None:
-            exs_at_node = np.random.choice(Y.shape[0], int(Y.shape[0]*self.tree_params.bag_size), replace=False)
+            print "selecting from all the examples"
+            exs_at_node = np.random.choice(Y.shape[0], num_to_sample, replace=False)
         else:
             ids = np.unique(extracted_from)
             ids_for_this_tree = \
-                np.random.choice(ids.shape[0], int(ids.shape[0]*self.tree_params.bag_size), replace=False)
+                np.random.choice(ids.shape[0], int(float(ids.shape[0])*self.tree_params.bag_size), replace=False)
 
             print "ids ", ids.shape
             print "ids_for_this_tree", ids_for_this_tree.shape
@@ -145,12 +150,26 @@ class Tree:
             exs_at_node = []
             for this_id in ids_for_this_tree:
                 exs_at_node.append(np.where(extracted_from == this_id)[0])
+            exs_at_node = np.hstack(exs_at_node)
+            print "node exs is ", np.array(exs_at_node).shape
+            print X.shape
+            print Y.shape
+            print extracted_from.shape
+            print exs_at_node
             exs_at_node = np.unique(np.array(exs_at_node))
+
+            if exs_at_node.shape[0] > num_to_sample:
+                exs_at_node = np.random.choice(exs_at_node, num_to_sample, replace=False)
 
             print np.unique(extracted_from[exs_at_node])
 
             print "exs_at_node ", exs_at_node.shape
             print "exs_at_node ", exs_at_node.dtype
+            print "extracted_from", extracted_from.shape
+            print exs_at_node.max()
+            print exs_at_node.min()
+            print X.shape
+            print Y.shape
 
         exs_at_node.sort()
 

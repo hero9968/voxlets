@@ -251,8 +251,8 @@ class Normals(object):
         padded[np.isnan(padded)] = np.nanmin(padded)
 
         idx = vgrid.world_to_idx(xyz[inliers]) + offset + t
-        print idx
-        print idx.shape
+        # print idx
+        # print idx.shape
         ds = np.eye(3) * offset
 
         diffs = []
@@ -269,8 +269,8 @@ class Normals(object):
         length[length==0] = 0.0001
 
         diffs /= length
-        print np.isnan(diffs).sum()
-        print diffs.shape
+        # print np.isnan(diffs).sum()
+        # print diffs.shape
 
         # now convert the normals to image space instead of world space...
         image_norms = np.dot(im.cam.inv_H[:3, :3], diffs).T

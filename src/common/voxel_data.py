@@ -243,7 +243,6 @@ class WorldVoxels(Voxels):
         waits until now to initialise so it can be the correct size
         '''
         grid_size = np.max(indices, axis=0)+1
-        print grid_size
         Voxels.__init__(self, grid_size, np.int8)
         #print indices[:, 0]
         self.V[indices[:, 0], indices[:, 1], indices[:, 2]] = 1
