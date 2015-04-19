@@ -19,7 +19,9 @@ import subprocess as sp
 from sklearn.neighbors import NearestNeighbors
 import mesh
 import sklearn.metrics
-
+import collections
+import random
+import scipy.misc
 #import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -183,7 +185,7 @@ class VoxletPredictor(object):
         X, Y = self._remove_nans(X, Y)
 
         if subsample_length > 0 and subsample_length < X.shape[0]:
-            X, Y = self._subsample(X, Y, subsample_length)
+            X, Y, scene_ids = self._subsample(X, Y, scene_ids, subsample_length)
 
         print "After subsampling and removing nans...", subsample_length
         self._print_shapes(X, Y)
@@ -198,8 +200,8 @@ class VoxletPredictor(object):
 
         # must save the training data in this class, as the forest only saves
         # an index into the training set...
-        self.training_Y = Y
-        self.training_X = X
+        self.training_Y = Y.astype(np.float16)
+        self.training_X = X.astype(np.float16)
 
         # Unpythonic comparison but nessary in case it is numpy array
         if masks != None:
@@ -216,7 +218,7 @@ class VoxletPredictor(object):
         median_item_idx = mu_dist.argmin()
         return median_item_idx
 
-    def predict(self, X, how_to_choose='medioid', visible_voxlet=None):
+    def predict(self, X, how_to_choose='medioid', distance_measure='just_empty', visible_voxlet=None):
         '''
         Returns a voxlet prediction for a single X
         '''
@@ -267,27 +269,109 @@ class VoxletPredictor(object):
             # print "Tree predictions has shape ", tree_predictions.shape
 
             # the 0.9 is in case the PCA etc makes the nanmin not exacrtly correct
-            dims_to_use_for_distance = \
-                visible_voxlet.flatten() > np.nanmin(visible_voxlet) * 0.9
-            self.dims_to_use_for_distance_cache = dims_to_use_for_distance
-            # print "Dims being used for the distance has shape, sum:"
-            # print dims_to_use_for_distance.shape
-            # print dims_to_use_for_distance.sum()
 
-            # print tree_predictions[:, dims_to_use_for_distance].shape
-            # print visible_voxlet.flatten()[dims_to_use_for_distance].shape
-            distances = np.linalg.norm(
-                visible_voxlet.flatten()[dims_to_use_for_distance] -
-                tree_predictions[:, dims_to_use_for_distance], axis=1)
+            # now we must be careful - use the biggest of the overlaps
+            # between the predicted and the visible
+            all_dims = []
+            distances = []
 
-            # print "Distances has shape ", distances.shape
+            if distance_measure == 'largest_of_free_zones':
+                dims_to_use_for_distance1 = \
+                    visible_voxlet.flatten() > np.nanmin(visible_voxlet) * 0.9
 
-            to_use = distances.argmin()
-            self.min_dist = distances[to_use]
-            # print "Now actually using ", to_use
+                # print "Nan count in visible: ", np.isnan(visible_voxlet).sum()
+
+                for tree_prediction in tree_predictions:
+                    dims_to_use_for_distance2 = \
+                        tree_prediction.flatten() > np.nanmin(visible_voxlet) * 0.9
+                    # see which zone is bigger...
+                    # print dims_to_use_for_distance1.sum(), dims_to_use_for_distance2.sum()
+                    if dims_to_use_for_distance1.sum() > dims_to_use_for_distance2.sum():
+                        # print "1 WINS"
+                        dims_to_use_for_distance = np.copy(dims_to_use_for_distance1)
+                    else:
+                        # print "2 WINS"
+                        dims_to_use_for_distance = np.copy(dims_to_use_for_distance2)
+
+                    all_dims.append(dims_to_use_for_distance)
+                    vec_dist = np.linalg.norm(
+                        visible_voxlet.flatten()[dims_to_use_for_distance] -
+                        tree_prediction[dims_to_use_for_distance])
+
+                    distances.append(vec_dist / float(dims_to_use_for_distance.sum()))
+
+                distances = np.array(distances)
+                self._distances_cache = distances
+                to_use = distances.argmin()
+                self.min_dist = distances[to_use]
+                self.dims_to_use_for_distance_cache = all_dims[to_use]
+
+                final_predictions = tree_predictions[to_use]
+
+            elif distance_measure == 'narrow_band':
+                # now use the narrow band only...
+                narrow_band = np.logical_and(
+                    visible_voxlet.flatten() > np.nanmin(visible_voxlet) * 0.9,
+                    visible_voxlet.flatten() < np.nanmax(visible_voxlet) * 0.9)
+
+                narrow_band_distances = []
+
+                mu = np.nanmax(tree_predictions)
+
+                # narrow_band_wiggles = []
+                for tree_prediction in tree_predictions:
+                    # doing some wiggling...
+
+                    # scales = [-mu/2, 0, mu/2]
+                    # temp_dists = [np.linalg.norm(
+                    #     visible_voxlet.flatten()[narrow_band] -
+                    #     self._tsdf_scale(tree_prediction[narrow_band], scale, mu)) / \
+                    #     float(narrow_band.sum())
+                    #     for scale in scales]
+
+                    narrow_band_distances.append(np.linalg.norm(
+                        visible_voxlet.flatten()[narrow_band] -
+                        tree_prediction[narrow_band]) / \
+                        float(narrow_band.sum()))
+
+                    # minimum_distance_under_wiggle_idx = np.argmin(np.array(temp_dists))
+                    # narrow_band_wiggles.append(scales[minimum_distance_under_wiggle_idx])
+
+                # print tree_predictions[:, dims_to_use_for_distance].shape
+                # print visible_voxlet.flatten()[dims_to_use_for_distance].shape
+                distances = np.array(narrow_band_distances)
+                # print "dists are ", distances
+                self._distances_cache = distances
+
+                # print "Distances has shape ", distances.shape
+
+                to_use = distances.argmin()
+                self.min_dist = distances[to_use]
+                # this is nasty but hopefully ok...
+                self.dims_to_use_for_distance_cache = narrow_band
+
+                final_predictions = tree_predictions[to_use]
+                    # self._tsdf_scale(
+                    # narrow_band_wiggles[to_use], mu)
+
+            elif distance_measure == 'just_empty':
+                # This is the original measure I used to use, just looking at the
+                # voxels known to be empty...
+                dims_to_use_for_distance = \
+                    visible_voxlet.flatten() > np.nanmin(visible_voxlet) * 0.9
+                distances = np.linalg.norm(
+                    visible_voxlet.flatten()[dims_to_use_for_distance] -
+                    tree_predictions[:, dims_to_use_for_distance], axis=1)
+
+                to_use = distances.argmin()
+                self.min_dist = distances[to_use]
+                # this is nasty but hopefully ok...
+                self.dims_to_use_for_distance_cache = dims_to_use_for_distance
+                self._distances_cache = distances
+
+                final_predictions = tree_predictions[to_use]
 
             # print "Retrieving this one...", index_predictions[to_use]
-            final_predictions = tree_predictions[to_use]
 
             if True:
                 compressed_mask = self.training_masks[index_predictions[to_use]]
@@ -305,6 +389,13 @@ class VoxletPredictor(object):
             raise Exception('Do not understand')
 
         return (final_predictions, all_masks)
+
+    def _tsdf_scale(self, V, scale, mu):
+        # apply some wiggle to the scale factor on the tsdf
+        final_V = V + scale
+        final_V[final_V>mu] = mu
+        final_V[final_V<-mu] = -mu
+        return final_V
 
     def save(self, savepath):
         '''
@@ -335,13 +426,13 @@ class VoxletPredictor(object):
         Y = Y[~to_remove, :]
         return X, Y
 
-    def _subsample(self, X, Y, subsample_length):
+    def _subsample(self, X, Y, scene_ids, subsample_length):
 
         rand_exs = np.sort(np.random.choice(
             X.shape[0],
             np.minimum(subsample_length, X.shape[0]),
             replace=False))
-        return X.take(rand_exs, 0), Y.take(rand_exs, 0)
+        return X.take(rand_exs, 0), Y.take(rand_exs, 0), scene_ids.take(rand_exs, 0)
 
     def _print_shapes(self, X, Y):
         print "X has shape ", X.shape
@@ -373,7 +464,7 @@ class VoxletPredictor(object):
                 os.makedirs(leaf_folder_path)
 
             if len(node.exs_at_node) > max_per_leaf:
-                ids_to_render = node.exs_at_node[:max_per_leaf]
+                ids_to_render = random.sample(node.exs_at_node, max_per_leaf)
             else:
                 ids_to_render = node.exs_at_node
 
@@ -382,6 +473,9 @@ class VoxletPredictor(object):
                 V = self.pca.inverse_transform(self.training_Y[example_id])
                 render_single_voxlet(V.reshape(self.voxlet_params.shape),
                     leaf_folder_path + str(count) + '.png')
+
+            with open(leaf_folder_path + ('total_%d.txt' % len(node.exs_at_node))) as f:
+                f.write(len(node.exs_at_node))
 
             # Now doing the average mask and plotting slices through it
             mean_mask = self._get_mean_mask(ids_to_render)
@@ -393,6 +487,7 @@ class VoxletPredictor(object):
                 plt.clim(0, 1)
                 plt.title('Slice_id = %d' % slice_id)
                 plt.savefig(leaf_folder_path + 'slices.pdf')
+                plt.close()
 
     def _get_mean_mask(self, training_idxs):
         '''
@@ -428,35 +523,58 @@ class Reconstructer(object):
         sampling points from the test image
         '''
 
-        # Over-sample the points to begin with
-        sampled_idxs = \
-            self.sc.im.random_sample_from_mask(4*num_to_sample, additional_mask=additional_mask)
-        linear_idxs = sampled_idxs[:, 0] * self.sc.im.mask.shape[1] + \
-            sampled_idxs[:, 1]
+        if False:
+            # perhaps add in some kind of thing to make sure that we don't take normals pointing the wrong way
+            xyz = self.sc.im.get_world_xyz()
 
-        # Now I want to choose points according to the x-y grid
-        # First, discretise the location of each point
-        xyz = self.sc.im.get_world_xyz()
-        sampled_xy = xyz[linear_idxs, :2]
-        sampled_xy /= sample_grid_size
-        sampled_xy = np.round(sampled_xy).astype(int)
-
-        sample_dict = {}
-        for idx, row in zip(sampled_idxs, sampled_xy):
-            if (row[0], row[1]) in sample_dict:
-                sample_dict[(row[0], row[1])].append(idx)
+            good_normals = self.sc.im.normals[:, 2].reshape((480, 640)) < -0.5
+            if additional_mask:
+                additional_mask = np.logical_and(additional_mask, good_normals)
             else:
-                sample_dict[(row[0], row[1])] = [idx]
+                additional_mask = good_normals
 
-        sampled_points = []
-        while len(sampled_points) < num_to_sample:
+            # Over-sample the points to begin with
+            sampled_idxs = \
+                self.sc.im.random_sample_from_mask(4*num_to_sample, additional_mask=additional_mask)
+            linear_idxs = sampled_idxs[:, 0] * self.sc.im.mask.shape[1] + \
+                sampled_idxs[:, 1]
 
-            for key, value in sample_dict.iteritems():
-                # add the top item to the sampled points
-                if len(value) > 0 and len(sampled_points) < num_to_sample:
-                    sampled_points.append(value.pop())
+            # Now I want to choose points according to the x-y grid
+            # First, discretise the location of each point
+            sampled_xy = xyz[linear_idxs, :2]
+            sampled_xy /= sample_grid_size
+            sampled_xy = np.round(sampled_xy).astype(int)
 
-        self.sampled_idxs = np.array(sampled_points)
+            sample_dict = {}
+            for idx, row in zip(sampled_idxs, sampled_xy):
+                if (row[0], row[1]) in sample_dict:
+                    sample_dict[(row[0], row[1])].append(idx)
+                else:
+                    sample_dict[(row[0], row[1])] = [idx]
+
+            sampled_points = []
+            while len(sampled_points) < num_to_sample:
+
+                for key, value in sample_dict.iteritems():
+                    # add the top item to the sampled points
+                    if len(value) > 0 and len(sampled_points) < num_to_sample:
+                        sampled_points.append(value.pop())
+
+            self.sampled_idxs = np.array(sampled_points)
+        else:
+            sample_rate = copy.copy(self.sc.im.depth)
+
+            shape = self.sc.im.depth.shape
+            sample_rate[self.sc.im.mask==0] = 0
+            sample_rate[self.sc.im.normals[:, 2].reshape(shape) > -0.1] = 0
+            sample_rate[self.sc.im.get_world_normals()[:, 2].reshape(shape) > 0.7] = 0
+
+            sample_rate /= sample_rate.sum()
+
+            samples = np.random.choice(shape[0]*shape[1], num_to_sample, p=sample_rate.flatten())
+            self.sampled_idxs = np.array(np.unravel_index(samples, shape)).T
+
+
 
     def _initialise_voxlet(self, index):
         '''
@@ -511,7 +629,8 @@ class Reconstructer(object):
             use_implicit=False, oracle=None, add_ground_plane=False,
             combine_segments_separately=False, accum_only_predict_true=False,
             feature_collapse_type=None, feature_collapse_param=None,
-            weight_empty_lower=None, use_binary=None, how_to_choose='closest'):
+            weight_empty_lower=None, use_binary=None, how_to_choose='closest',
+            distance_measure='narrow_band'):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -560,10 +679,13 @@ class Reconstructer(object):
 
         self.all_pred_cache = []
 
-        if oracle == 'true_greedy':
-            self.possible_predictions = []
+        # if oracle == 'true_greedy' or oracle == 'true_greedy_gt':
+        self.possible_predictions = []
 
         A = B = C = D = E = 0
+
+        self.empty_voxels_in_voxlet_count = []
+        self.gt_minus_predictions = []
 
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
@@ -590,25 +712,6 @@ class Reconstructer(object):
             feature_vector = self._feature_collapse(features_voxlet.V.flatten(),
                 feature_collapse_type, feature_collapse_param)
 
-            A += time.time() - tic; tic = time.time()
-            # print "time A :", A
-            "classify according to the forest"
-            voxlet_prediction, mask = \
-                self.model.predict(np.atleast_2d(feature_vector), how_to_choose=how_to_choose, visible_voxlet=features_voxlet.V)
-            self.cached_voxlet_prediction = voxlet_prediction
-            # self.all_pred_cache.append(voxlet_prediction)
-
-            B += time.time() - tic; tic = time.time()
-            # print "time B :", B
-
-            # flipping the mask direction here:
-            weights_to_use = 1-mask
-            weights_to_use = weights_to_use.flatten()
-            if weight_empty_lower:
-                print "Weights has shape, ", weights_to_use.shape
-                print "Voxlet prediction has shape ", voxlet_prediction.shape
-                weights_to_use[voxlet_prediction > 0] *= weight_empty_lower
-
             # getting the GT voxlet - useful for the oracles and rendering
             gt_voxlet = self._initialise_voxlet(idx)
             gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
@@ -619,10 +722,12 @@ class Reconstructer(object):
             "Replace the prediction - if an oracle has been specified!"
             if oracle == 'gt':
                 voxlet_prediction = gt_voxlet.V.flatten()
+                weights_to_use = voxlet_prediction * 0 + 1
 
             elif oracle == 'pca':
                 temp = self.model.pca.transform(gt_voxlet.V.flatten())
                 voxlet_prediction = self.model.pca.inverse_transform(temp)
+                weights_to_use = voxlet_prediction * 0 + 1
 
             elif oracle == 'nn':
                 # getting the closest match in the training data...
@@ -631,6 +736,35 @@ class Reconstructer(object):
                 closest_training_Y = self.model.pca.inverse_transform(
                     self.model.training_Y[indices[0], :])
                 voxlet_prediction = closest_training_Y
+                weights_to_use = voxlet_prediction * 0 + 1
+
+            else:
+                # Doing a real prediction!
+
+                A += time.time() - tic; tic = time.time()
+                # print "time A :", A
+                "classify according to the forest"
+                voxlet_prediction, mask = \
+                    self.model.predict(np.atleast_2d(feature_vector), how_to_choose=how_to_choose,
+                        distance_measure=distance_measure, visible_voxlet=features_voxlet.V)
+                self.cached_voxlet_prediction = voxlet_prediction
+                # self.all_pred_cache.append(voxlet_prediction)
+
+                self.empty_voxels_in_voxlet_count.append(
+                    (voxlet_prediction > 0).sum().astype(float) / float(voxlet_prediction.size))
+                self.gt_minus_predictions.append(
+                    np.linalg.norm(voxlet_prediction - gt_voxlet.V.flatten()))
+
+                B += time.time() - tic; tic = time.time()
+                # print "time B :", B
+
+                # flipping the mask direction here:
+                weights_to_use = 1-mask
+                weights_to_use = weights_to_use.flatten()
+                if weight_empty_lower:
+                    print "Weights has shape, ", weights_to_use.shape
+                    print "Voxlet prediction has shape ", voxlet_prediction.shape
+                    weights_to_use[voxlet_prediction > 0] *= weight_empty_lower
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
@@ -694,8 +828,11 @@ class Reconstructer(object):
                     raise Exception('Why????')
                     self.segement_accums[this_point_label].add_voxlet(transformed_voxlet, accum_only_predict_true, weights=weights_to_use)
                 else:
-                    self.accum.add_voxlet(transformed_voxlet,
-                        accum_only_predict_true, weights=weights_to_use)
+                    try:
+                        self.accum.add_voxlet(transformed_voxlet,
+                            accum_only_predict_true, weights=weights_to_use)
+                    except:
+                        import pdb; pdb.set_trace()
 
                 E += time.time() - tic; tic = time.time()
                 # print "time E :", E
@@ -729,34 +866,98 @@ class Reconstructer(object):
                 # Here want to now save slices at the corect high
                 # in the extracted and predicted voxlets
                 sf_x, sf_y = 2, 2
+                plt.subplots(sf_x, sf_y)
+                plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.95, wspace=0.02, hspace=0.02)
+
                 plt.subplot(sf_x, sf_y, 1)
-                plt.imshow(feature_vector.reshape(self.model.voxlet_params.shape[:2]), interpolation='nearest')
+                plt.imshow(features_voxlet.V.reshape(self.model.voxlet_params.shape)[:, :, 15], interpolation='nearest')
+                plt.axis('off')
                 plt.clim((-self.sc.mu, self.sc.mu))
                 plt.title('Features voxlet')
 
                 plt.subplot(sf_x, sf_y, 2)
                 plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
+                plt.axis('off')
                 plt.clim((-self.sc.mu, self.sc.mu))
                 plt.title('Forest prediction')
 
+
+                # getting the world space coords
+                world_xyz = self.sc.im.get_world_xyz()
+                world_norms = self.sc.im.get_world_normals()
+
+                # convert to linear idx
+                point_idx = idx[0] * self.sc.im.mask.shape[1] + idx[1]
+
+                temp = self.sc.gt_tsdf.world_to_idx(
+                    world_xyz[point_idx, None])[0][:2]
+                t_norm = world_norms[point_idx, :2]
+                t_norm /= np.linalg.norm(t_norm)
+
+                '''PLOTTING THE VOX LOCATION ON THE GT'''
                 plt.subplot(sf_x, sf_y, 3)
-                # extracting the nearest training neighbour
-                ans, indices = self.nbrs.kneighbors(feature_vector)
-                NN = self.model.training_X[indices[0], :].reshape(self.model.voxlet_params.shape[:2])
-                plt.imshow(NN, interpolation='nearest')
-                plt.clim((-self.sc.mu, self.sc.mu))
-                plt.title('Nearest neighbour (X)')
+                # np.nanmean(self.sc.gt_tsdf.V, axis=2)
+                plt.imshow(self.sc.gt_tsdf.V[:, :, 15])
+                # , cmap=plt.get_cmap('Greys'))
+                plt.hold(True)
+                self._plot_voxlet(temp, t_norm)
+                plt.axis('off')
+                plt.ylim(0, self.sc.gt_tsdf.V.shape[0])
+                plt.xlim(0, self.sc.gt_tsdf.V.shape[1])
 
+                '''PLOTTING THE VOX LOCATION ON THE IM TSDF'''
                 plt.subplot(sf_x, sf_y, 4)
-                # extracting the nearest training neighbour
+                # np.nanmean(self.sc.gt_tsdf.V, axis=2)
+                tempim = self.sc.im_tsdf.V[:, :, 15]
+                tempim[np.isnan(tempim)] = 0
+                plt.imshow(tempim)
+                plt.hold(True)
+                self._plot_voxlet(temp, t_norm)
+                plt.axis('off')
+                plt.ylim(0, self.sc.gt_tsdf.V.shape[0])
+                plt.xlim(0, self.sc.gt_tsdf.V.shape[1])
 
-                NN_Y = self.model.pca.inverse_transform(self.model.training_Y[indices[0], :])
-                NN_Y = NN_Y.reshape(self.model.voxlet_params.shape)[:, :, 15]
-                plt.imshow(NN_Y, interpolation='nearest')
-                plt.clim((-self.sc.mu, self.sc.mu))
-                plt.title('Nearest neighbour (Y)')
+                # check the folder exists...
+                if not os.path.exists(render_savepath + '/slices/'):
+                    os.makedirs(render_savepath + '/slices/')
+                saving_to = render_savepath + ('/slices/slice_%06d.png' % count)
+                plt.savefig(saving_to)
+                plt.close()
 
-                plt.savefig(savepath % (count, 'slice'))
+            if 'tree_predictions' in render_type:
+                sf_x, sf_y = 6, 6
+                plt.subplots(sf_x, sf_y)
+                plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.95, wspace=0.02, hspace=0.02)
+                sorted_idxs = np.argsort(self.model._distances_cache)
+                for counter, sorted_idx in enumerate(sorted_idxs):
+                    plt.subplot(sf_x, sf_y, counter+1)
+                    pred_idx = self.model._cached_predictions[0][sorted_idx]
+                    pred = self.model.pca.inverse_transform(self.model.training_Y[pred_idx])
+                    # print pred.shape, self.model.voxlet_params.shape
+                    plt.imshow(pred.reshape(self.model.voxlet_params.shape)[:, :, 15])
+                    plt.clim((-self.sc.mu, self.sc.mu))
+                    plt.axis('off')
+
+                if not os.path.exists(render_savepath + '/predictions/'):
+                    os.makedirs(render_savepath + '/predictions/')
+                plt.savefig(render_savepath + ('/predictions/pred_%06d.png' % count))
+                plt.close()
+
+            if 'tree_predictions' in render_type and 'slice' in render_type:
+
+                plt.figure(figsize=(20, 20))
+                plt.subplots(1, 2)
+                plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.95, wspace=0.02, hspace=0.02)
+                plt.subplot(121)
+                plt.imshow(scipy.misc.imread(render_savepath + ('/slices/slice_%06d.png' % count)))
+                plt.axis('off')
+                plt.subplot(122)
+                plt.imshow(scipy.misc.imread(render_savepath + ('/predictions/pred_%06d.png' % count)))
+                plt.axis('off')
+                if not os.path.exists(render_savepath + '/combined_slices/'):
+                    os.makedirs(render_savepath + '/combined_slices/')
+                plt.savefig(render_savepath + ('/combined_slices/combined_%06d.png' % count))
+                plt.close()
 
             if 'matplotlib' in render_type:
 
@@ -782,12 +983,13 @@ class Reconstructer(object):
                 plt.tight_layout()
                 savepath = render_savepath + '/compiled_%03d.png' % count
                 plt.savefig(savepath)
+                plt.close()
 
         if oracle == 'true_greedy' or oracle == 'true_greedy_gt':
             # in true greedy, then we wait until here to add everything together...
             # sort so the smallest possible predictions are at the front...
-            stop_points = [10, 25, 50, 100]
-            results = {}
+            stop_points = [10, 50, 100]
+            results = collections.OrderedDict()
             self.possible_predictions.sort(key=lambda x: x['distance'])
             for count, prediction in enumerate(self.possible_predictions):
                 # add this one in...
@@ -795,6 +997,11 @@ class Reconstructer(object):
                     accum_only_predict_true, weights=prediction['weights'])
                 if count in stop_points:
                     results[count] = copy.deepcopy(self.accum.compute_average())
+                    # good for memory...
+                    results[count].sumV = []
+                    results[count].countV = []
+            # self.possible_predictions = []
+
 
             return results
 
@@ -832,8 +1039,40 @@ class Reconstructer(object):
             average.V += 0.5
             self.keeping_existing.V += 0.5
 
+        # good for memory...
+        average.sumV = []
+        average.countV = []
+
         return average
 
+    def save_empty_voxel_counts(self, fpath):
+        # Save how many voxels are empty in each of the voxlet predictions
+        with open(fpath + 'empty_voxel_count.txt', 'w') as f:
+            for empty_ans in self.empty_voxels_in_voxlet_count:
+                f.write('%0.5f\n' % empty_ans)
+
+        # Do some kind of histogram?
+        plt.figure()
+        plt.hist(np.array(self.empty_voxels_in_voxlet_count), 100)
+        plt.xlim(0, 1.0)
+        plt.xlabel('Fraction of voxels which are empty in the voxlet')
+        plt.ylabel('Count')
+        plt.savefig(fpath + 'empty_voxel_count.png')
+        plt.close()
+
+    def save_difference_from_predictions(self, fpath):
+        # Save how many voxels are empty in each of the voxlet predictions
+        with open(fpath + 'gt_minus_predictions.txt', 'w') as f:
+            for empty_ans in self.gt_minus_predictions:
+                f.write('%0.5f\n' % empty_ans)
+
+        # Do some kind of histogram?
+        plt.figure()
+        plt.hist(np.array(self.gt_minus_predictions), 100)
+        plt.xlabel('Ground truth minus the voxlet prediction')
+        plt.ylabel('Count')
+        plt.savefig(fpath + 'gt_minus_predictions.png')
+        plt.close()
 
 
     def _feature_collapse(self, X, feature_collapse_type, parameter):
@@ -848,6 +1087,12 @@ class Reconstructer(object):
 
         else:
             raise Exception('Unknown feature collapse type')
+
+    def plot_sampled_points(self, savepath=None):
+        plt.imshow(self.sc.im.depth)
+        plt.hold(True)
+        plt.plot(self.sampled_idxs[:, 1], self.sampled_idxs[:, 0], 'ro')
+        plt.hold(False)
 
     def plot_voxlet_top_view(self, savepath=None):
         '''
@@ -869,6 +1114,7 @@ class Reconstructer(object):
 
         plt.subplot(133)
         plt.imshow(top_view, cmap=plt.get_cmap('Greys'))
+        plt.hold(True)
 
         # getting the world space coords
         world_xyz = self.sc.im.get_world_xyz()
@@ -886,11 +1132,12 @@ class Reconstructer(object):
 
         plt.axis('off')
 
-        plt.subplot(132).set_xlim(plt.subplot(133).get_xlim())
-        plt.subplot(132).set_ylim(plt.subplot(133).get_ylim())
+        plt.subplot(133).set_xlim(plt.subplot(132).get_xlim())
+        plt.subplot(133).set_ylim(plt.subplot(132).get_ylim())
 
         if savepath:
             plt.savefig(savepath.replace('png', 'pdf'), dpi=400)
+            plt.close()
 
     def _get_voxlet_corners(self):
 
