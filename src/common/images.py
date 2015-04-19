@@ -4,6 +4,7 @@ classes etc for dealing with depth images
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.misc
+import scipy.io
 import scipy.ndimage
 from copy import deepcopy
 import yaml
@@ -73,6 +74,14 @@ class RGBDImage(object):
             f.read(8)
             self.depth = \
                 np.fromfile(f, dtype=np.float32).reshape(480, 640)
+
+    def load_depth_from_mat(self, fpath):
+        '''
+        used for nyu data
+        '''
+        self.depth = scipy.io.loadmat(fpath)['depth']
+        self.depth[self.depth == 0] = np.nan
+        print "Loaded depth of shape ", self.depth.shape
 
     # def write_depth_to_pgm(self, pgm_path):
     #     with open(pgm_path, 'w') as f:
@@ -230,6 +239,8 @@ class RGBDImage(object):
             im.load_depth_from_pgm(depth_image_path)
         elif depth_image_path.endswith('dat'):
             im.load_depth_from_dat(depth_image_path)
+        elif depth_image_path.endswith('mat'):
+            im.load_depth_from_mat(depth_image_path)
         else:
             im.load_depth_from_img(depth_image_path)
 
