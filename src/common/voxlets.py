@@ -137,6 +137,18 @@ def render_single_voxlet(V, savepath, level=0):
     print "Moving render to " + savepath
     shutil.move('/tmp/temp_voxlet.png', savepath)
 
+def voxlet_class_to_dict(params_class):
+    voxlet_params = {}
+    voxlet_params['tall_voxlets'] = params_class.tall_voxlets
+    voxlet_params['one_side_bins'] = params_class.one_side_bins
+    voxlet_params['shape'] = params_class.shape
+    voxlet_params['size'] = params_class.size
+    voxlet_params['actual_size'] = params_class.actual_size
+    voxlet_params['centre'] = params_class.centre
+    if hasattr(params_class, 'tall_voxlet_height'):
+        voxlet_params['tall_voxlet_height'] = params_class.tall_voxlet_height
+    return voxlet_params
+
 
 class VoxletPredictor(object):
     '''
@@ -155,7 +167,7 @@ class VoxletPredictor(object):
         pass
 
     def set_voxlet_params(self, voxlet_params):
-        self.voxlet_params = voxlet_params
+        self.voxlet_params = voxlet_class_to_dict(voxlet_params)
 
     def set_pca(self, pca_in):
         self.pca = pca_in

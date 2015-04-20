@@ -63,3 +63,17 @@ voxlet_model_oma_path = models_folder + 'models/oma.pkl'
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
 voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
 voxlet_prediction_folderpath = data_folder + '/predictions/%s/%s/'
+
+
+def new_dropbox_dir():
+    '''
+    creates a new dropbox directory for results
+    '''
+    base_path = \
+        os.path.expanduser('~/Dropbox/PhD/Projects/Shape_sharing_data/oisin_house_predictions/res_%04d/')
+    count = 0
+    while os.path.exists(base_path % count):
+        count += 1
+    os.mkdir(base_path % count)
+    assert os.path.exists(base_path % count)
+    return base_path % count

@@ -62,7 +62,7 @@ def process_sequence(sequence):
 
     logging.info("Processing " + sequence['name'])
 
-    sc = scene.Scene(parameters.RenderedVoxelGrid.mu, parameters.Voxlet)
+    sc = scene.Scene(parameters.RenderedVoxelGrid.mu, voxlets.voxlet_class_to_dict(parameters.Voxlet))
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, load_implicit=parameters.VoxletTraining.use_implicit)
     # sc.santity_render(save_folder='/tmp/')

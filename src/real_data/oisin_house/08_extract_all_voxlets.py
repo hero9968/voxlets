@@ -60,7 +60,7 @@ def process_sequence(sequence):
     logging.info("Processing " + sequence['name'])
 
     try:
-        sc = scene.Scene(parameters.mu, parameters.Voxlet)
+        sc = scene.Scene(parameters.mu, voxlets.voxlet_class_to_dict(parameters.Voxlet))
         sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
             save_grids=False, load_implicit=False, voxel_normals='gt_tsdf')
         # sc.santity_render(save_folder='/tmp/')

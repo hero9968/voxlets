@@ -27,24 +27,36 @@ from common import scene
 import sklearn.metrics
 
 print "Loading model..."
+print "WARNING " * 10
 # with open(paths.voxlet_model_oma_path.replace('_full_split', ''), 'rb') as f:
 with open(paths.voxlet_model_oma_path, 'rb') as f:
     model_without_implicit = pickle.load(f)
+
+print model_without_implicit.voxlet_params['shape']
+print model_without_implicit.voxlet_params['tall_voxlets']
+
 print "Done loading model..."
 
-combine_renders = False
+render_gt = True
+combine_renders = True
 render_predictions = True
-render_top_view = False
+render_top_view = True
 do_greedy_oracles = True
 # save_prediction_grids = True
 save_simple = False
 save_scores_to_yaml = True
 distance_experiments = False
 
+
+copy_to_dropbox = True and paths.host_name == 'biryani'
+dropbox_path = paths.new_dropbox_dir()
+print dropbox_path
+
+
 # this overrides all other parameters. Means we don't botther with orables etc
 only_prediction = False
 
-test_type = 'oma_full_split_with_greedy'
+test_type = 'brand_new_short_voxlets'
 
 def save_render_assess(dic, sc):
     '''
@@ -56,7 +68,7 @@ def save_render_assess(dic, sc):
         (test_type, sc.sequence['name'], '%s')
 
     if render_predictions:
-        dic['grid'].render_view(gen_renderpath % dic['desc'])
+        dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True)
 
     if save_simple:
         D = dict(grid=dic['grid'].V, name=dic['desc'], vox_size=dic['grid'].vox_size)
@@ -82,7 +94,7 @@ def combine_renders(rec, combines, su, sv, gen_renderpath, savename):
             raise Exception("Error! Final subplot is reserved for the ROC curve")
 
         plt.subplot(su, sv, count + 1)
-        plt.imshow(scipy.misc.imread(gen_renderpath % name)[:240, 300:600, :])
+        plt.imshow(scipy.misc.imread(gen_renderpath % name))
         plt.axis('off')
         plt.title(dic['name'], fontsize=10)
 
@@ -129,11 +141,12 @@ def process_sequence(sequence):
     # sc.santity_render(save_folder='/tmp/')
 
     combines = collections.OrderedDict()
-    combines['input'] = {'name':'Input image'}
-    combines['gt'] = save_render_assess(
-        {'name':'Ground truth', 'grid':sc.gt_tsdf, 'desc':'gt'}, sc)
-    combines['visible'] = save_render_assess(
-        {'name':'Visible surfaces', 'grid':sc.im_tsdf, 'desc':'visible'}, sc)
+    if render_gt:
+        combines['input'] = {'name':'Input image'}
+        combines['gt'] = save_render_assess(
+            {'name':'Ground truth', 'grid':sc.gt_tsdf, 'desc':'gt'}, sc)
+        combines['visible'] = save_render_assess(
+            {'name':'Visible surfaces', 'grid':sc.im_tsdf, 'desc':'visible'}, sc)
 
     print "-> Reconstructing with oma forest"
     rec = voxlets.Reconstructer(
@@ -146,10 +159,15 @@ def process_sequence(sequence):
     gen_renderpath = paths.voxlet_prediction_img_path % \
         (test_type, sequence['name'], '%s')
 
+    scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
+
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        add_ground_plane=True, feature_collapse_type='pca', render_type=['slice', 'tree_predictions'], render_savepath=fpath)
+        add_ground_plane=True, feature_collapse_type='pca', render_type=[],
+        weight_empty_lower=0.8)
+    # 'slice', 'tree_predictions'], render_savepath=fpath)
+
     pred_voxlets_exisiting = rec.keeping_existing
 
     print "-> Doing the empty voxlet thing"
@@ -189,6 +207,10 @@ def process_sequence(sequence):
         all_savename = gen_renderpath.replace('png', 'pdf') % fname
 
         combine_renders(rec, combines, su, sv, gen_renderpath, all_savename)
+
+        # Saving to the dropbox...
+        if copy_to_dropbox:
+            shutil.copy(all_savename, dropbox_path)
 
     if do_greedy_oracles:
         print "-> DOING GREEDY ORACLES"
@@ -282,7 +304,7 @@ if __name__ == '__main__':
     # temp = [s for s in paths.RenderedData.test_sequence() if s['name'] == 'd2p8ae7t0xi81q3y_SEQ']
     # print temp
     tic = time()
-    mapper(process_sequence, paths.test_data[6:])
+    mapper(process_sequence, paths.test_data)
     # [:48], chunksize=1)
     print "In total took %f s" % (time() - tic)
 

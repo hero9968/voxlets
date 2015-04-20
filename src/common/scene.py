@@ -199,17 +199,17 @@ class Scene(object):
         # convert to linear idx
         point_idx = index[0] * self.im.mask.shape[1] + index[1]
 
-        shoebox = voxel_data.ShoeBox(self.voxlet_params.shape, np.float32)
+        shoebox = voxel_data.ShoeBox(self.voxlet_params['shape'], np.float32)
         shoebox.V *= 0
         shoebox.V += self.mu  # set the outside area to -mu
-        shoebox.set_p_from_grid_origin(self.voxlet_params.centre)  # m
-        shoebox.set_voxel_size(self.voxlet_params.size)  # m
+        shoebox.set_p_from_grid_origin(self.voxlet_params['centre'])  # m
+        shoebox.set_voxel_size(self.voxlet_params['size'])  # m
 
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
 
-        if self.voxlet_params.tall_voxlets:
-            start_z = self.voxlet_params.tall_voxlet_height
+        if self.voxlet_params['tall_voxlets']:
+            start_z = self.voxlet_params['tall_voxlet_height']
         else:
             start_z = world_xyz[point_idx, 2]
 

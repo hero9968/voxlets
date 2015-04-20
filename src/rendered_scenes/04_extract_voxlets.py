@@ -28,11 +28,15 @@ if not os.path.exists(paths.RenderedData.voxlets_dict_data_path):
 def flatten_sbox(sbox):
     return sbox.V.flatten()
 
+vox_params = {}
+
+
 
 def process_sequence(sequence):
 
     print "Processing " + sequence['name']
-    sc = scene.Scene(parameters.RenderedVoxelGrid.mu, parameters.Voxlet)
+    sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
+        voxlets.voxlet_class_to_dict(parameters.Voxlet))
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, save_grids=False)
     # sc.santity_render(save_folder='/tmp/')
 
