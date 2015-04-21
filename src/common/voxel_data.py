@@ -562,18 +562,38 @@ class WorldVoxels(Voxels):
 
         return world_k_col, world_z_col
 
-    def render_view(self, savepath):
+    def render_view(self, savepath, xy_centre=None, ground_height=None):
         '''
         render a single view of a voxel grid, using blender...
+        ground height is in meters
         '''
         # convert nans to the minimum
         temp = self.copy()
         #temp.V[np.isnan(temp.V)] = temp.V[~np.isnan(temp.V)].min()
+
+        # put in a ground plane...
+        if ground_height:
+            height_voxels = float(ground_height) / float(temp.vox_size)
+            temp.V[:, :, :height_voxels] = -10
+            temp_slice = temp.V[:, :, height_voxels]
+            temp_slice[np.isnan(temp_slice)] = 10
+            temp.V[:, :, height_voxels] = temp_slice
+
+        # temp.V[:, :, 5] = 10
+
         #pickle.dump(self, open('/tmp/temp_voxel_grid.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
         ms = mesh.Mesh()
         ms.from_volume(temp, 0)
         #pickle.dump(ms, open('/tmp/temp_mesh.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
         ms.remove_nan_vertices()
+
+        if xy_centre:
+            # T = ms.vertices[:, :2]
+            cen = temp.origin + (np.array(temp.V.shape) * temp.vox_size) / 2.0
+            ms.vertices[:, :2] -= cen[:2]
+            ms.vertices[:, 2] -= 0.05
+            ms.vertices *= 1.5
+
         ms.write_to_obj(savepath + '.obj')
 
         blend_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/spin.blend')
