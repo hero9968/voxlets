@@ -32,7 +32,6 @@ sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
 import voxel_utils as vu
 
-
 def render_diff_view(grid1, grid2, savepath):
     '''
     renders grid1, and any nodes not in grid2 get done in a different colour
@@ -94,18 +93,23 @@ def plot_mesh(verts, faces, ax):
     ax.axis('off')
 
 
-def render_single_voxlet(V, savepath, level=0):
+def render_single_voxlet(V, savepath, level=0, short=False):
 
     assert V.ndim == 3
     print V.min(), V.max(), V.shape
 
     # renders a voxlet using the .blend file...
     temp = V.copy()
-    print savepath
-    print "Minmax is ", temp.min(), temp.max()
+    # print savepath
+    # print "Minmax is ", temp.min(), temp.max()
 
-    V[:, :, -2:] = np.nanmax(V)
-    verts, faces = measure.marching_cubes(V, level)
+    # V[:, :, :] = np.nanmax(V)
+    # add a bit around the edge, and adjust origin accordingly...
+    crap = ((100.0, 100.0), (100.0, 100.0), (100.0, 100.0))
+    temp = np.pad(temp, pad_width=1, mode='constant', constant_values=crap)
+
+    verts, faces = measure.marching_cubes(temp, level)
+    verts -= 0.005
 
     if np.any(np.isnan(verts)):
         import pdb; pdb.set_trace()
@@ -116,14 +120,20 @@ def render_single_voxlet(V, savepath, level=0):
 
     verts *= 0.0175 # parameters.Voxlet.size << bit of a magic number here...
     verts *= 10.0  # so its a reasonable scale for blender
-    print verts.min(axis=0), verts.max(axis=0)
+    # print verts.min(axis=0), verts.max(axis=0)
     D = dict(verts=verts, faces=faces)
     with open('/tmp/vertsfaces.pkl', 'wb') as f:
         pickle.dump(D, f)
     vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
 
+    if short:
+        blender_filepath = paths.RenderedData.voxlet_render_blend.replace('.blend', '_short.blend')
+        print blender_filepath
+    else:
+        blender_filepath = paths.RenderedData.voxlet_render_blend
+
     sp.call([paths.blender_path,
-         paths.RenderedData.voxlet_render_blend,
+         blender_filepath,
          "-b", "-P",
          paths.RenderedData.voxlet_render_script],
          stdout=open(os.devnull, 'w'),
@@ -237,6 +247,7 @@ class VoxletPredictor(object):
         # each tree predicts which index in the test set to use...
         # rows = test data (X), cols = tree
 
+        print X.shape
         index_predictions = self.forest.test(X).astype(int)
         self._cached_predictions = index_predictions
         # must extract original test data from the indices
@@ -341,10 +352,10 @@ class VoxletPredictor(object):
                     #     float(narrow_band.sum())
                     #     for scale in scales]
 
-                    narrow_band_distances.append(np.linalg.norm(
-                        visible_voxlet.flatten()[narrow_band] -
-                        tree_prediction[narrow_band]) / \
-                        float(narrow_band.sum()))
+                    SE = (visible_voxlet.flatten()[narrow_band] - tree_prediction[narrow_band])**2
+                    MSE = np.mean(SE)
+                    RMSE = np.sqrt(MSE)
+                    narrow_band_distances.append(RMSE)
 
                     # minimum_distance_under_wiggle_idx = np.argmin(np.array(temp_dists))
                     # narrow_band_wiggles.append(scales[minimum_distance_under_wiggle_idx])
@@ -483,7 +494,7 @@ class VoxletPredictor(object):
             # Rendering each example at this node
             for count, example_id in enumerate(ids_to_render):
                 V = self.pca.inverse_transform(self.training_Y[example_id])
-                render_single_voxlet(V.reshape(self.voxlet_params.shape),
+                render_single_voxlet(V.reshape(self.voxlet_params['shape']),
                     leaf_folder_path + str(count) + '.png')
 
             with open(leaf_folder_path + ('total_%d.txt' % len(node.exs_at_node))) as f:
@@ -508,7 +519,7 @@ class VoxletPredictor(object):
         '''
         all_masks = [self.masks_pca.inverse_transform(self.training_masks[idx])
                      for idx in training_idxs]
-        return np.array(all_masks).mean(axis=0).reshape(self.voxlet_params.shape)
+        return np.array(all_masks).mean(axis=0).reshape(self.voxlet_params['shape'])
 
 
 
@@ -525,7 +536,7 @@ class Reconstructer(object):
     def set_model(self, model):
         self.model = model
 
-        self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_Y)
+        # self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_Y)
 
     def set_scene(self, sc_in):
         self.sc = sc_in
@@ -577,9 +588,10 @@ class Reconstructer(object):
             sample_rate = copy.copy(self.sc.im.depth)
 
             shape = self.sc.im.depth.shape
+            sample_rate[self.sc.im.get_world_xyz()[:, 2].reshape(shape) < 0.035] = 0
             sample_rate[self.sc.im.mask==0] = 0
             sample_rate[self.sc.im.normals[:, 2].reshape(shape) > -0.1] = 0
-            sample_rate[self.sc.im.get_world_normals()[:, 2].reshape(shape) > 0.7] = 0
+            sample_rate[self.sc.im.get_world_normals()[:, 2].reshape(shape) > 0.98] = 0
 
             sample_rate /= sample_rate.sum()
 
@@ -603,20 +615,20 @@ class Reconstructer(object):
         point_idx = index[0] * self.sc.im.mask.shape[1] + index[1]
 
         # creating the voxlett10
-        shoebox = voxel_data.ShoeBox(self.model.voxlet_params.shape)  # grid size
+        shoebox = voxel_data.ShoeBox(self.model.voxlet_params['shape'])  # grid size
 
         # creating the voxlet
-        shoebox = voxel_data.ShoeBox(self.model.voxlet_params.shape, np.float32)  # grid size
-        shoebox.set_p_from_grid_origin(self.model.voxlet_params.centre)  # m
-        shoebox.set_voxel_size(self.model.voxlet_params.size)  # m
+        shoebox = voxel_data.ShoeBox(self.model.voxlet_params['shape'], np.float32)  # grid size
+        shoebox.set_p_from_grid_origin(self.model.voxlet_params['centre'])  # m
+        shoebox.set_voxel_size(self.model.voxlet_params['size'])  # m
         shoebox.V *= 0
         shoebox.V += self.sc.mu  # set the outside area to mu
 
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
 
-        if self.model.voxlet_params.tall_voxlets:
-            start_z = self.model.voxlet_params.tall_voxlet_height
+        if self.model.voxlet_params['tall_voxlets']:
+            start_z = self.model.voxlet_params['tall_voxlet_height']
         else:
             start_z = world_xyz[point_idx, 2]
 
@@ -642,7 +654,7 @@ class Reconstructer(object):
             combine_segments_separately=False, accum_only_predict_true=False,
             feature_collapse_type=None, feature_collapse_param=None,
             weight_empty_lower=None, use_binary=None, how_to_choose='closest',
-            distance_measure='narrow_band'):
+            distance_measure='narrow_band', cobweb=False):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -674,12 +686,17 @@ class Reconstructer(object):
             MUST use only with a forest trained on binary predictions...
         '''
 
-        # saving
-        with open('/tmp/grid.pkl', 'wb') as f:
-            pickle.dump(self.sc.gt_tsdf, f)
+        if cobweb:
+            cobwebengine = features.CobwebEngine(0.01, mask=self.sc.im.mask)
+            cobwebengine.set_image(self.sc.im)
+            self.cobwebengine=cobwebengine
 
-        with open('/tmp/im.pkl', 'wb') as f:
-            pickle.dump(self.sc.im, f)
+        # saving
+        # with open('/tmp/grid.pkl', 'wb') as f:
+        #     pickle.dump(self.sc.gt_tsdf, f)
+
+        # with open('/tmp/im.pkl', 'wb') as f:
+        #     pickle.dump(self.sc.im, f)
 
         if combine_segments_separately:
             # Create a separate accumulator for each segment in the image...
@@ -721,8 +738,13 @@ class Reconstructer(object):
             if use_binary:
                 features_voxlet.V = (features_voxlet.V > 0).astype(np.float16)
 
-            feature_vector = self._feature_collapse(features_voxlet.V.flatten(),
-                feature_collapse_type, feature_collapse_param)
+            if cobweb:
+                feature_vector = cobwebengine.get_cobweb(idx)
+                feature_vector[np.isnan(feature_vector)] = -5.0
+                # print feature_vector
+            else:
+                feature_vector = self._feature_collapse(features_voxlet.V.flatten(),
+                    feature_collapse_type, feature_collapse_param)
 
             # getting the GT voxlet - useful for the oracles and rendering
             gt_voxlet = self._initialise_voxlet(idx)
@@ -774,14 +796,14 @@ class Reconstructer(object):
                 weights_to_use = 1-mask
                 weights_to_use = weights_to_use.flatten()
                 if weight_empty_lower:
-                    print "Weights has shape, ", weights_to_use.shape
-                    print "Voxlet prediction has shape ", voxlet_prediction.shape
+                    # print "Weights has shape, ", weights_to_use.shape
+                    # print "Voxlet prediction has shape ", voxlet_prediction.shape
                     weights_to_use[voxlet_prediction > 0] *= weight_empty_lower
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx)
             transformed_voxlet.V = voxlet_prediction.reshape(
-                self.model.voxlet_params.shape)
+                self.model.voxlet_params['shape'])
 
             D += time.time() - tic; tic = time.time()
             # print "time D :", D
@@ -833,6 +855,13 @@ class Reconstructer(object):
                 Di['voxlet'] = transformed_voxlet
                 Di['mask'] = mask
                 Di['weights'] = weights_to_use
+
+                # saving this voxlet's position on a floorplan
+                world_ij_grid = self.sc.gt_tsdf.world_xy_meshgrid()
+                _, valid = transformed_voxlet.world_to_idx(world_ij_grid, detect_out_of_range=True)
+                Di['floorplan'] = copy.copy(self.sc.gt_tsdf.V[:, :, 0]) * 0
+                Di['floorplan'][valid.reshape(Di['floorplan'].shape)] = 1
+
                 self.possible_predictions.append(Di)
             else:
                 # Standard method - adding voxlet in regardless
@@ -882,7 +911,7 @@ class Reconstructer(object):
                 plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.95, wspace=0.02, hspace=0.02)
 
                 plt.subplot(sf_x, sf_y, 1)
-                plt.imshow(features_voxlet.V.reshape(self.model.voxlet_params.shape)[:, :, 15], interpolation='nearest')
+                plt.imshow(features_voxlet.V.reshape(self.model.voxlet_params['shape'])[:, :, 15], interpolation='nearest')
                 plt.axis('off')
                 plt.clim((-self.sc.mu, self.sc.mu))
                 plt.title('Features voxlet')
@@ -945,8 +974,7 @@ class Reconstructer(object):
                     plt.subplot(sf_x, sf_y, counter+1)
                     pred_idx = self.model._cached_predictions[0][sorted_idx]
                     pred = self.model.pca.inverse_transform(self.model.training_Y[pred_idx])
-                    # print pred.shape, self.model.voxlet_params.shape
-                    plt.imshow(pred.reshape(self.model.voxlet_params.shape)[:, :, 15])
+                    plt.imshow(pred.reshape(self.model.voxlet_params['shape'])[:, :, 15])
                     plt.clim((-self.sc.mu, self.sc.mu))
                     plt.axis('off')
 
@@ -986,7 +1014,7 @@ class Reconstructer(object):
 
                 for vol_count, (V, title) in enumerate(vols):
 
-                    verts, faces = measure.marching_cubes(V.reshape(self.model.voxlet_params.shape), 0)
+                    verts, faces = measure.marching_cubes(V.reshape(self.model.voxlet_params['shape']), 0)
 
                     ax = fig.add_subplot(2, 2, vol_count+1, projection='3d', aspect='equal')
                     plot_mesh(verts, faces, ax)
@@ -1000,19 +1028,38 @@ class Reconstructer(object):
         if oracle == 'true_greedy' or oracle == 'true_greedy_gt':
             # in true greedy, then we wait until here to add everything together...
             # sort so the smallest possible predictions are at the front...
-            stop_points = [10, 50, 100]
+
+            # this is when to save the grid for visualisation purposes...
+            stop_points = [10, 50, 100, 200]
+
             results = collections.OrderedDict()
             self.possible_predictions.sort(key=lambda x: x['distance'])
+
+            # # create a floor plan of the union of all floor plans...
+            # all_fplans = np.dstack([p['floorplan'] for p in self.possible_predictions])
+            # self.union_fplan = np.any(all_fplans, axis=2)
+
+            # now create a blank floorplan which keeps track of how much area has been filled...
+            # filled_fplan = self.union_fplan.copy().astype(bool) * 0
+
             for count, prediction in enumerate(self.possible_predictions):
+
+                # print "The potential new energies are ", self._eval_union_cost(
+                #     self.union_fplan, filled_fplan, all_fplans)
+
                 # add this one in...
                 self.accum.add_voxlet(prediction['voxlet'],
                     accum_only_predict_true, weights=prediction['weights'])
+                # filled_fplan = np.logical_or(filled_fplan, prediction['floorplan'])
+
                 if count in stop_points:
                     results[count] = copy.deepcopy(self.accum.compute_average())
                     # good for memory...
                     results[count].sumV = []
                     results[count].countV = []
-            # self.possible_predictions = []
+
+                # print "energies are ", self._eval_union_cost(
+                #     self.union_fplan, filled_fplan, all_fplans)
 
 
             return results
@@ -1040,11 +1087,12 @@ class Reconstructer(object):
         self.keeping_existing = keeping_existing
 
         if add_ground_plane:
+
             # Adding in the ground plane
-            self.keeping_existing.V[:, :, :4] = -self.sc.mu
-            self.keeping_existing.V[:, :, 4] = self.sc.mu
-            average.V[:, :, :4] = -self.sc.mu
-            average.V[:, :, 4] = self.sc.mu
+            self.keeping_existing.V[:, :, :add_ground_plane] = -self.sc.mu
+            self.keeping_existing.V[:, :, add_ground_plane] = self.sc.mu
+            average.V[:, :, :add_ground_plane] = -self.sc.mu
+            average.V[:, :, add_ground_plane] = self.sc.mu
 
         if use_binary:
             # making sure the level set is at zero!
@@ -1055,7 +1103,12 @@ class Reconstructer(object):
         average.sumV = []
         average.countV = []
 
+        # removing the excess from the grid...
+        self.remove_excess = average.copy()
+        self.remove_excess.V[self.sc.im_tsdf.V > 0] = self.sc.mu
+
         return average
+
 
     def save_empty_voxel_counts(self, fpath):
         # Save how many voxels are empty in each of the voxlet predictions
@@ -1153,8 +1206,8 @@ class Reconstructer(object):
 
     def _get_voxlet_corners(self):
 
-        v_size = self.model.voxlet_params.size * np.array(self.model.voxlet_params.shape)
-        cen = self.model.voxlet_params.centre
+        v_size = self.model.voxlet_params['size'] * np.array(self.model.voxlet_params['shape'])
+        cen = self.model.voxlet_params['centre']
 
         c1 = [-cen[0], cen[1]]
         c2 = [cen[0], cen[1]]
@@ -1177,6 +1230,57 @@ class Reconstructer(object):
 
         t_corners = np.dot(R, corners.T).T + point
         plt.plot(t_corners[:, 1], t_corners[:, 0], '-g', lw=1)
+
+
+class EnergySolver(object):
+    '''
+    strange class to solve the final energy function
+    '''
+    def __init__(self, prediction_dics, accum):
+        # this is a dictionary of all the predictions
+        blank_grid = accum.blank_copy()
+
+        self.pred_dics = prediction_dics
+
+        # seeing which cells would be full if *all* the cells were full
+        temp = blank_grid.blank_copy()
+        for p in self.possible_predictions:
+            temp.add_voxlet(p['voxlet'])
+        self.union_fplan = temp.countV > 0
+        self.num_possible_voxels = np.sum(self.union_fplan)
+        print "There are %d possible voxels " % self.num_possible_voxels
+
+        # this is where we will fill all the predictions into
+        self.accum = accum
+
+
+    def solve(alpha, beta):
+        pass
+        # get the full f_plan
+
+        # alpha beta are parameters...
+
+        # get the current floorplan from the grid
+
+
+    def _eval_union_cost(self, union_fplan, current_fplan, proposed_additions):
+        '''
+        evaluates the new value of the energy function under each of the
+        proposed additions, which is a list of proposed additions...
+        '''
+
+        full_fplan = np.atleast_3d(union_fplan) * \
+            (np.atleast_3d(current_fplan.astype(bool)) + proposed_additions.astype(bool))
+        # print "full_fplan is ", full_fplan.shape, full_fplan.max(), full_fplan.min()
+        sums = np.sum(np.sum(full_fplan, axis=0), axis=0)
+        # print "energy is shape ", energy.shape
+        energies = 1 - sums.astype(np.float32) / float(np.sum(union_fplan))
+        # print "energies are ", energies.min(), energies.max()
+        return energies
+
+
+
+
 
 
 class VoxelGridCollection(object):
