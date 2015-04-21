@@ -16,6 +16,7 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib as mpl
+from copy import copy
 
 
 # helper function related to features...
@@ -35,7 +36,7 @@ class CobwebEngine(object):
     A different type of patch engine, only looking at points in the compass directions
     '''
 
-    def __init__(self, t, fixed_patch_size=False):
+    def __init__(self, t, fixed_patch_size=False, mask=None):
 
         # the stepsize at a depth of 1 m
         self.t = float(t)
@@ -49,14 +50,22 @@ class CobwebEngine(object):
         #   step varies linearly with depth. t is the size of step at depth of 1.0
         self.fixed_patch_size = fixed_patch_size
 
+        self.mask = mask
+
     def set_image(self, im):
         self.im = im
+        self.depth = copy(self.im.depth)
+        if self.mask != None:
+            self.depth[self.mask==0] = np.nan
+            self.depth[im.get_world_xyz()[:, 2].reshape(im.depth.shape) < 0.035] = np.nan
 
     def get_cobweb(self, index):
         '''extracts cobweb for a single index point'''
         row, col = index
 
         start_angle = 0#self.im.angles[row, col]
+        # take the start depth from the full image...
+        # all other depths come from whatever the mask says...
         start_depth = self.im.depth[row, col]
 
         focal_length = self.im.cam.estimate_focal_length()
@@ -66,7 +75,7 @@ class CobwebEngine(object):
             offset_dist = (focal_length * self.t) / start_depth
 
         # computing all the offsets and angles efficiently
-        offsets = offset_dist * np.array([1, 2, 3, 4, 5, 6])
+        offsets = offset_dist * np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         rad_angles = np.deg2rad(start_angle + np.array(range(0, 360, 45)))
 
         rows_to_take = (float(row) - np.outer(offsets, np.sin(rad_angles))).astype(int).flatten()
@@ -78,15 +87,16 @@ class CobwebEngine(object):
 
         # working out which indices are within the image bounds
         to_use = np.logical_and.reduce((rows_to_take >= 0,
-                                        rows_to_take < self.im.depth.shape[0],
+                                        rows_to_take < self.depth.shape[0],
                                         cols_to_take >= 0,
-                                        cols_to_take < self.im.depth.shape[1]))
+                                        cols_to_take < self.depth.shape[1]))
         rows_to_take = rows_to_take[to_use]
         cols_to_take = cols_to_take[to_use]
 
         # computing the diff vals and slotting into the correct place in the cobweb feature
-        vals = self.im.depth[rows_to_take, cols_to_take] - self.im.depth[row, col]
+        vals = self.depth[rows_to_take, cols_to_take] - self.depth[row, col]
         cobweb[to_use] = vals
+        self.rows, self.cols = rows_to_take, cols_to_take
         return np.copy(cobweb.flatten())
 
     def extract_patches(self, indices):

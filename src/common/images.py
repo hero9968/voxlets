@@ -14,6 +14,44 @@ import sys
 import mesh
 import features
 
+from skimage.restoration import denoise_bilateral
+import scipy.interpolate
+
+
+def fill_in_nans(depth):
+    # a boolean array of (width, height) which False where there are
+    # missing values and True where there are valid (non-missing) values
+    mask = ~np.isnan(depth)
+
+    # location of valid values
+    xym = np.where(mask)
+
+    # location of missing values
+    xymis = np.where(~mask)
+
+    # the valid values of the input image
+    data0 = np.ravel( depth[mask] )
+
+    # three separate interpolators for the separate color channels
+    interp0 = scipy.interpolate.NearestNDInterpolator( xym, data0 )
+
+    # interpolate the whole image, one color channel at a time
+    guesses = interp0(xymis) #np.ravel(xymis[0]), np.ravel(xymis[1]))
+    depth = deepcopy(depth)
+    depth[xymis[0], xymis[1]] = guesses
+    return depth
+
+from scipy.ndimage.filters import median_filter
+
+def filter_depth(depth):
+    temp = fill_in_nans(depth)
+    # temp_denoised = \
+    # print temp.dtype
+    #     denoise_bilateral(temp, sigma_range=30.0, sigma_spatial=14.5)
+    temp_denoised = median_filter(temp / 10.0, size=10) * 10.0
+    temp_denoised[np.isnan(depth)] = np.nan
+    return temp_denoised
+
 
 class RGBDImage(object):
 
