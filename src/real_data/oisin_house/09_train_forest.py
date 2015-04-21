@@ -32,7 +32,7 @@ with open(features_pca_savepath, 'rb') as f:
     features_pca = pickle.load(f)
 
 masks_pca_savepath = paths.voxlets_dictionary_path + 'masks_pca.pkl'
-with open(features_pca_savepath, 'rb') as f:
+with open(masks_pca_savepath, 'rb') as f:
     masks_pca = pickle.load(f)
 
 ####################################################################
@@ -51,8 +51,8 @@ for count, sequence in enumerate(paths.train_data):
     print "Loading from " + loadpath
 
     with open(loadpath, 'r') as f:
-        D = pickle.load(f) 
-    features.append(D['features'])
+        D = pickle.load(f)
+    features.append(D['cobweb'])
     pca_representation.append(D['shoeboxes'])
     masks.append(D['masks'])
     scene_ids.append(np.ones(D['features'].shape[0]) * count)
@@ -72,6 +72,10 @@ print "Masks is ", np_masks.shape
 print "Features is ", np_features.shape
 print "Scene ids is ", np_scene_ids.shape
 
+# print np_scene_ids
+large_value = -5.0
+np_features[np.isnan(np_features)] = large_value
+
 ####################################################################
 print "Training the model"
 ####################################################################
@@ -87,4 +91,4 @@ model.train(
 model.set_pca(pca)
 model.set_masks_pca(masks_pca)
 model.set_feature_pca(features_pca)
-model.save(paths.voxlet_model_oma_path)
+model.save(paths.voxlet_model_oma_path.replace('.pkl', '_cobweb.pkl'))

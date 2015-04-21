@@ -29,8 +29,14 @@ import sklearn.metrics
 print "Loading model..."
 print "WARNING " * 10
 # with open(paths.voxlet_model_oma_path.replace('_full_split', ''), 'rb') as f:
-with open(paths.voxlet_model_oma_path, 'rb') as f:
-    model_without_implicit = pickle.load(f)
+cobweb = True
+
+if cobweb:
+    with open(paths.voxlet_model_oma_path.replace('.pkl', '_cobweb.pkl'), 'rb') as f:
+        model_without_implicit = pickle.load(f)
+else:
+    with open(paths.voxlet_model_oma_path, 'rb') as f:
+        model_without_implicit = pickle.load(f)
 
 print model_without_implicit.voxlet_params['shape']
 print model_without_implicit.voxlet_params['tall_voxlets']
@@ -54,7 +60,7 @@ print dropbox_path
 
 
 # this overrides all other parameters. Means we don't botther with orables etc
-only_prediction = False
+only_prediction = True
 
 test_type = 'brand_new_short_voxlets'
 
@@ -148,7 +154,7 @@ def process_sequence(sequence):
         combines['visible'] = save_render_assess(
             {'name':'Visible surfaces', 'grid':sc.im_tsdf, 'desc':'visible'}, sc)
 
-    print "-> Reconstructing with oma forest"
+    print "-> Sampling the points"
     rec = voxlets.Reconstructer(
         reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_scene(sc)
@@ -159,16 +165,30 @@ def process_sequence(sequence):
     gen_renderpath = paths.voxlet_prediction_img_path % \
         (test_type, sequence['name'], '%s')
 
+    print "-> Saving the input rgb, depth and mask"
     scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
 
+    plt.imshow(sc.im.depth)
+    plt.axis('off')
+    plt.savefig(gen_renderpath % 'input_depth')
+    plt.close()
+
+    plt.imshow(sc.im.mask)
+    plt.axis('off')
+    plt.plot(rec.sampled_idxs[:, 1], rec.sampled_idxs[:, 0], 'ro')
+    plt.savefig(gen_renderpath % 'input_mask')
+    plt.close()
+
+    print "-> Predicting with OMA forest"
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_model(model_without_implicit)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        add_ground_plane=True, feature_collapse_type='pca', render_type=[],
-        weight_empty_lower=0.8)
+        add_ground_plane=False, feature_collapse_type='pca', render_type=[],
+        weight_empty_lower=None, cobweb=cobweb)
     # 'slice', 'tree_predictions'], render_savepath=fpath)
 
     pred_voxlets_exisiting = rec.keeping_existing
+    pred_remove_excess = rec.remove_excess
 
     print "-> Doing the empty voxlet thing"
     rec.save_empty_voxel_counts(fpath)
@@ -176,6 +196,8 @@ def process_sequence(sequence):
     combines['pred_voxlets'] = save_render_assess({'name':'Voxlets', 'grid':pred_voxlets, 'desc':'pred_voxlets'}, sc)
     combines['pred_voxlets_exisiting'] = save_render_assess(
         {'name':'Voxlets existing', 'grid':pred_voxlets_exisiting, 'desc':'pred_voxlets_exisiting'}, sc)
+    combines['pred_remove_excess'] = save_render_assess(
+        {'name':'Voxlets removed excess', 'grid':pred_remove_excess, 'desc':'pred_remove_excess'}, sc)
 
     if render_top_view:
         print "-> Rendering top view"
@@ -190,7 +212,7 @@ def process_sequence(sequence):
         for d_measure in ['narrow_band', 'largest_of_free_zones', 'just_empty']:
             rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
             narrow_band = rec.fill_in_output_grid_oma(
-                add_ground_plane=True, feature_collapse_type='pca', distance_measure=d_measure)
+                add_ground_plane=False, feature_collapse_type='pca', distance_measure=d_measure, cobweb=cobweb)
             combines[d_measure] = save_render_assess(
                 {'name':d_measure, 'grid':narrow_band, 'desc':d_measure}, sc)
 
@@ -227,8 +249,8 @@ def process_sequence(sequence):
             print "in outer loop" , d_measure
             rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
             true_greedy = rec.fill_in_output_grid_oma(
-                render_type=[], add_ground_plane=True, feature_collapse_type='pca',
-                oracle='true_greedy', distance_measure=d_measure)
+                render_type=[], add_ground_plane=False, feature_collapse_type='pca',
+                oracle='true_greedy', distance_measure=d_measure, cobweb=cobweb)
 
             for key, result in true_greedy.iteritems():
                 print "In innder loop ", key
@@ -244,7 +266,7 @@ def process_sequence(sequence):
         all_savename = gen_renderpath.replace('png', 'pdf') % fname
 
         print "-> COMBINING GREEDY ORACLES"
-        combine_renders(rec, greedy_combines, 3, 4, gen_renderpath, all_savename)
+        combine_renders(rec, greedy_combines, 4, 5, gen_renderpath, all_savename)
 
         # hack to align the plotting
         # combines['blankblank'] = []

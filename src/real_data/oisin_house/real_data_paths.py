@@ -26,6 +26,7 @@ scenes = [{'folder':raw_data,
 
 yaml_train_location = data_folder + 'train_test/train.yaml'
 yaml_test_location = data_folder + 'train_test/test.yaml'
+
 with open(yaml_train_location, 'r') as f:
     train_data = yaml.load(f)
 
@@ -53,7 +54,7 @@ for t in scenes:
     sequences.append(temp)
 
 # saving...
-models_folder = data_folder + 'models_full_split/'
+models_folder = data_folder + 'models_full_split_not_tall/'
 
 voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
 voxlets_dictionary_path = models_folder + 'dictionary/'
