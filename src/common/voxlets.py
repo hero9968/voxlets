@@ -363,6 +363,7 @@ class VoxletPredictor(object):
                 # print tree_predictions[:, dims_to_use_for_distance].shape
                 # print visible_voxlet.flatten()[dims_to_use_for_distance].shape
                 distances = np.array(narrow_band_distances)
+                print "dists are ", distances
                 # print "dists are ", distances
                 self._distances_cache = distances
 
@@ -394,24 +395,39 @@ class VoxletPredictor(object):
 
                 final_predictions = tree_predictions[to_use]
 
+            elif distance_measure == 'medioid':
+
+                to_use = self._medioid_idx(tree_predictions)
+                final_predictions = tree_predictions[to_use]
+
+            elif distance_measure == 'mean':
+
+                final_predictions = np.mean(tree_predictions, axis=0)
+
             # print "Retrieving this one...", index_predictions[to_use]
 
-            if True:
-                compressed_mask = self.training_masks[index_predictions[to_use]]
-                all_masks = np.vstack([self.masks_pca.inverse_transform(compressed_mask)])
-            else:
-                print "WARNINGG" * 10
+            if distance_measure == 'mean':
+
                 these_masks_compressed = [self.training_masks[idx] for idx in index_predictions]
                 # Must inverse transform *before* taking the mean -
                 # I don't want to take mean in PCA space
                 these_masks_full = \
                     self.masks_pca.inverse_transform(np.array(these_masks_compressed))
+
                 all_masks = np.mean(these_masks_full, axis=0)
+            else:
+                compressed_mask = self.training_masks[index_predictions[to_use]]
+                all_masks = np.vstack([self.masks_pca.inverse_transform(compressed_mask)])
 
         else:
             raise Exception('Do not understand')
 
         return (final_predictions, all_masks)
+
+    # def _medioid_idx(self, X):
+    #     mu = X.mean(0)
+    #     mu_dist = np.sqrt(((X - mu[np.newaxis, ...])**2).sum(1))
+    #     return mu_dist.argmin()
 
     def _tsdf_scale(self, V, scale, mu):
         # apply some wiggle to the scale factor on the tsdf
