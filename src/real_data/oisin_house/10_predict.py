@@ -27,9 +27,8 @@ from common import scene
 import sklearn.metrics
 
 print "Loading model..."
-print "WARNING " * 10
-# with open(paths.voxlet_model_oma_path.replace('_full_split', ''), 'rb') as f:
 cobweb = True
+print paths.voxlet_model_oma_path
 
 if cobweb:
     with open(paths.voxlet_model_oma_path.replace('.pkl', '_cobweb.pkl'), 'rb') as f:
@@ -44,25 +43,25 @@ print model_without_implicit.voxlet_params['tall_voxlets']
 print "Done loading model..."
 
 render_gt = True
-combine_renders = True
+combining_renders = True
 render_predictions = True
-render_top_view = True
-do_greedy_oracles = True
+render_top_view = False
+do_greedy_oracles = False
 # save_prediction_grids = True
-save_simple = False
+save_simple = True
 save_scores_to_yaml = True
-distance_experiments = False
+distance_experiments = True
 
 
-copy_to_dropbox = True and paths.host_name == 'biryani'
+copy_to_dropbox = False and paths.host_name == 'biryani'
 dropbox_path = paths.new_dropbox_dir()
 print dropbox_path
 
 
 # this overrides all other parameters. Means we don't botther with orables etc
-only_prediction = True
+only_prediction = False
 
-test_type = 'brand_new_short_voxlets'
+test_type = 'double_training_data_floating_voxlets'
 
 def save_render_assess(dic, sc):
     '''
@@ -74,11 +73,11 @@ def save_render_assess(dic, sc):
         (test_type, sc.sequence['name'], '%s')
 
     if render_predictions:
-        dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True)
+        dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True,ground_height=0.03)
 
     if save_simple:
         D = dict(grid=dic['grid'].V, name=dic['desc'], vox_size=dic['grid'].vox_size)
-        scipy.io.savemat(gen_renderpath.replace('png', 'mat'), D)
+        scipy.io.savemat(gen_renderpath.replace('png', 'mat') % dic['desc'], D)
 
     dic['results'] = sc.evaluate_prediction(dic['grid'].V)
 
@@ -207,21 +206,23 @@ def process_sequence(sequence):
     if only_prediction:
         return
 
+    descs = ['narrow_band', 'mean', 'medioid']
     if distance_experiments:
         # here I'm doing an experiment to see which distance measure makes sense to use...
-        for d_measure in ['narrow_band', 'largest_of_free_zones', 'just_empty']:
+        names = ['Mean', 'Narrow Band', 'Medioid']
+        for d_measure, name in zip(descs, names):
             rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
             narrow_band = rec.fill_in_output_grid_oma(
                 add_ground_plane=False, feature_collapse_type='pca', distance_measure=d_measure, cobweb=cobweb)
-            combines[d_measure] = save_render_assess(
-                {'name':d_measure, 'grid':narrow_band, 'desc':d_measure}, sc)
+            combines[name] = save_render_assess(
+                {'name':name, 'grid':narrow_band, 'desc':name}, sc)
 
 
 
     # must save the input view to the save folder
     scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
 
-    if combine_renders:
+    if combining_renders:
         print "-> Combining renders"
         su, sv = 3, 3
 
@@ -296,6 +297,7 @@ def process_sequence(sequence):
                 results_dict[test_key] = \
                     {'description': dic['name'],
                      'auc':         float(dic['results']['auc']),
+                     'iou':         float(dic['results']['iou']),
                      'precision':   float(dic['results']['precision']),
                      'recall':      float(dic['results']['recall'])}
 
@@ -307,7 +309,7 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if False:
+if True:
     # parameters.multicore:
     import multiprocessing
     pool = multiprocessing.Pool(3)
