@@ -27,9 +27,9 @@ pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
-features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
-with open(features_pca_savepath, 'rb') as f:
-    features_pca = pickle.load(f)
+# features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
+# with open(features_pca_savepath, 'rb') as f:
+#     features_pca = pickle.load(f)
 
 masks_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'masks_pca.pkl'
 with open(masks_pca_savepath, 'rb') as f:
@@ -51,12 +51,12 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     print "Loading from " + loadpath
 
     D = scipy.io.loadmat(loadpath)
-    features.append(D['features'])
+    features.append(D['cobweb'])
     pca_representation.append(D['shoeboxes'])
     masks.append(D['masks'])
-    scene_ids.append(np.ones(D['features'].shape[0]) * count)
+    scene_ids.append(np.ones(D['cobweb'].shape[0]) * count)
 
-    print D['features'].shape, D['shoeboxes'].shape
+    print D['cobweb'].shape, D['shoeboxes'].shape
     if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
         break
@@ -68,7 +68,7 @@ np_scene_ids = np.concatenate(scene_ids, axis=0).astype(int)
 
 print "Sbox pca representation is shape", np_pca_representation.shape
 print "Masks is ", np_masks.shape
-print "Features is ", np_features.shape
+# print "Features is ", np_features.shape
 print "Scene ids is ", np_scene_ids.shape
 
 if not parameters.scene_bagging:
@@ -88,5 +88,5 @@ model.train(
     scene_ids=np_scene_ids)
 model.set_pca(pca)
 model.set_masks_pca(masks_pca)
-model.set_feature_pca(features_pca)
+# model.set_feature_pca(features_pca)
 model.save(paths.RenderedData.voxlet_model_oma_path)

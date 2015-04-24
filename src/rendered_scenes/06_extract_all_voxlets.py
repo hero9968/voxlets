@@ -11,7 +11,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import scene, voxlets
+from common import scene, voxlets, features
 
 import paths
 import parameters
@@ -39,6 +39,7 @@ print "Features PCA components is shape ", features_pca.components_.shape
 if not os.path.exists(paths.RenderedData.voxlets_data_path):
     os.makedirs(paths.RenderedData.voxlets_data_path)
 
+cobwebengine = features.CobwebEngine(0.01, mask=True)
 
 def decimate_flatten(sbox):
     return sbox.V[::2, ::2, ::2].flatten()
@@ -81,32 +82,8 @@ def process_sequence(sequence):
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=sbox_flatten) for idx in idxs]
 
-    if parameters.VoxletTraining.feature_transform == 'pca':
-
-        view_shoeboxes = [sc.extract_single_voxlet(
-            idx, extract_from='im_tsdf', post_transform=sbox_flatten) for idx in idxs]
-        all_features = np.vstack(view_shoeboxes)
-        all_features[np.isnan(all_features)] = -parameters.RenderedVoxelGrid.mu
-
-        if parameters.use_binary:
-            all_features = (all_features > 0).astype(np.float16)
-
-        np_features = features_pca.transform(all_features)
-
-    elif parameters.VoxletTraining.feature_transform == 'decimate':
-
-        view_shoeboxes = [sc.extract_single_voxlet(
-            idx, extract_from='im_tsdf', post_transform=decimate_flatten) for idx in idxs]
-        np_features = np.vstack(view_shoeboxes)
-        np_features[np.isnan(np_features)] = -parameters.RenderedVoxelGrid.mu
-
-    elif parameters.VoxletTraining.feature_transform == 'sample':
-
-        view_shoeboxes = [sc.extract_single_voxlet(
-            idx, extract_from='im_tsdf', post_transform=sample_sbox) for idx in idxs]
-        np_features = np.vstack(view_shoeboxes)
-        np_features[np.isnan(np_features)] = -parameters.RenderedVoxelGrid.mu
-
+    cobwebengine.set_image(sc.im)
+    np_cobweb = np.array(cobwebengine.extract_patches(idxs))
 
     np_sboxes = np.vstack(gt_shoeboxes)
 
@@ -123,7 +100,6 @@ def process_sequence(sequence):
 
     '''replace all the nans in the shoeboxes from the image view'''
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
-    logging.debug("...Features are shape " + str(np_features.shape))
 
     print "Took %f s" % (time() - t1)
     t1 = time()
@@ -131,7 +107,7 @@ def process_sequence(sequence):
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
     logging.debug("Saving to " + savepath)
-    D = dict(shoeboxes=np_sboxes, features=np_features, masks=np_masks)
+    D = dict(shoeboxes=np_sboxes, masks=np_masks, cobweb=np_cobweb)
     scipy.io.savemat(savepath, D, do_compression=True)
 
 

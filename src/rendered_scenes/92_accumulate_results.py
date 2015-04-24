@@ -5,13 +5,14 @@ import os
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 import yaml
 import paths
-
-test_types = ['oma', 'oma_no_masks', 'oma_with_weights_broke_maybe']
+# Choose nearest I think has just one mask for each prediction
+test_types = ['tall_and_floating_oracles']
+# test_types = ['oma', 'oma_masks', 'oma_choose_nearest', 'oma_choose_nearest_average_mask', 'oma_medioid']
 
 def get_all_scores(test_type):
     all_scores = []
 
-    for sequence in paths.RenderedData.test_sequence()[1:16]:
+    for sequence in paths.RenderedData.test_sequence()[:40]:
 
         # print sequence['name']
 
@@ -34,21 +35,26 @@ def get_mean_score(test, all_scores, score_type):
             all_this_scores.append(sc[test][score_type])
     # print np.array(all_this_scores)
     # print "Score for %s, %s is length %d" % (test, score_type, len(all_this_scores))
+    # print np.array(all_this_scores)
     return np.array(all_this_scores).mean()
 
 tests = ['OR1',
-         'OR2',
-         'OR3',
-         'OR4',
-         'pred_voxlets']
+          'OR2',
+          'OR3',
+          'OR4',
+          'pred_voxlets']
+    # 'weight_empty_lower']
 
+print 'Test & precision & recall & iou'
 for test_type in test_types:
     print test_type
     all_scores = get_all_scores(test_type)
     for test in tests:
 
-        mean_auc = get_mean_score(test, all_scores, 'auc')
+        # mean_auc = get_mean_score(test, all_scores, 'auc')
         mean_precision = get_mean_score(test, all_scores, 'precision')
         mean_recall = get_mean_score(test, all_scores, 'recall')
+        mean_iou = get_mean_score(test, all_scores, 'iou')
 
-        print '%s & %0.3f & %0.3f & %0.3f \\\\' % (test, mean_precision, mean_recall, mean_auc)
+        print '%s & %0.3f & %0.3f & %0.3f \\\\' % \
+            (test, mean_precision, mean_recall, mean_iou)

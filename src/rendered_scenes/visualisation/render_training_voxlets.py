@@ -24,6 +24,7 @@ def render_single_voxlet(V, savepath, level=0):
 
     # renders a voxlet using the .blend file...
     temp = V.copy()
+    # temp = np.pad(temp, ((1, 1), (1, 1), (1, 1)), 'constant',
 
     #V[:, :, -2:] = parameters.RenderedVoxelGrid.mu
     verts, faces = measure.marching_cubes(V, level)
@@ -32,7 +33,6 @@ def render_single_voxlet(V, savepath, level=0):
     verts *= 10.0  # so its a reasonable scale for blender
     print verts.min(axis=0), verts.max(axis=0)
     vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
-
     sp.call([paths.blender_path,
              paths.RenderedData.voxlet_render_blend,
              "-b", "-P",
@@ -66,6 +66,7 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
 
 np_all_sboxes = np.concatenate(pca_representation, axis=0)
 print np_all_sboxes.shape
+np.random.shuffle(np_all_sboxes)
 
 pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes' + '_pca.pkl'
 
