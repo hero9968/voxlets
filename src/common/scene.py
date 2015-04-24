@@ -50,7 +50,7 @@ class Scene(object):
         return frames
 
     def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True,
-            save_grids=False, load_implicit=False, voxel_normals=False):
+            save_grids=False, load_implicit=False, voxel_normals=False, carve=True):
         '''
         loads a sequence of images, the associated gt voxel grid,
         carves the visible tsdf from the images, does segmentation
@@ -82,21 +82,22 @@ class Scene(object):
             sequence['folder'] + sequence['scene'], frame_data)
 
         # while I'm here - might as well save the image as a voxel grid
-        video = images.RGBDVideo()
-        video.frames = [self.im]
-        carver = carving.Fusion()
-        carver.set_video(video)
-        carver.set_voxel_grid(self.gt_tsdf.blank_copy())
-        self.im_tsdf, self.im_visible = carver.fuse(self.mu)
+        if carve:
+            video = images.RGBDVideo()
+            video.frames = [self.im]
+            carver = carving.Fusion()
+            carver.set_video(video)
+            carver.set_voxel_grid(self.gt_tsdf.blank_copy())
+            self.im_tsdf, self.im_visible = carver.fuse(self.mu)
 
-        # computing normals...
-        norm_engine = features.Normals()
-        if voxel_normals and voxel_normals == 'im_tsdf':
-            self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
-        elif voxel_normals:
-            self.im.normals = norm_engine.voxel_normals(self.im, self.gt_tsdf)
-        else:
-            self.im.normals = norm_engine.compute_normals(self.im)
+            # computing normals...
+            norm_engine = features.Normals()
+            if voxel_normals and voxel_normals == 'im_tsdf':
+                self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
+            elif voxel_normals:
+                self.im.normals = norm_engine.voxel_normals(self.im, self.gt_tsdf)
+            else:
+                self.im.normals = norm_engine.compute_normals(self.im)
 
         # load in the implicit prediction...
         if load_implicit:

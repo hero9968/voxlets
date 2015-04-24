@@ -40,6 +40,9 @@ with open('/media/ssd/data/oisin_house/models_full_split_tall/models/oma_cobweb.
 
 print model_tall.pca.components_.shape
 
+
+
+
 print "Done loading model..."
 
 just_render_gt = False  # this overwrites the existing
@@ -188,6 +191,9 @@ def process_sequence(sequence):
     plt.savefig(gen_renderpath % 'input_mask')
     plt.close()
 
+    for model in rec.models:
+        model.reset_voxlet_counts()
+
     print "-> Predicting with OMA forest"
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     rec.set_probability_model_one(0.75)
@@ -195,8 +201,11 @@ def process_sequence(sequence):
     pred_voxlets = rec.fill_in_output_grid_oma(
         add_ground_plane=False, feature_collapse_type='pca', render_type=[],
         weight_empty_lower=None, cobweb=cobweb)
-    # 'slice', 'tree_predictions'], render_savepath=fpath)
 
+    # saving the voxlet counts for each of the models...
+    rec.save_voxlet_counts(fpath)
+
+    # 'slice', 'tree_predictions'], render_savepath=fpath)
     pred_voxlets_exisiting = rec.keeping_existing
     pred_remove_excess = rec.remove_excess
 
@@ -227,8 +236,6 @@ def process_sequence(sequence):
                 add_ground_plane=False, feature_collapse_type='pca', distance_measure=d_measure, cobweb=cobweb)
             combines[name] = save_render_assess(
                 {'name':name, 'grid':narrow_band, 'desc':name}, sc)
-
-
 
     # must save the input view to the save folder
     scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
