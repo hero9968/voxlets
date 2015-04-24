@@ -24,7 +24,7 @@ if not os.path.exists(paths.voxlets_dict_data_path):
 def flatten_sbox(sbox):
     return sbox.V.flatten()
 
-with open(paths.train_location, 'r') as f:
+with open(paths.test_location, 'r') as f:
     train_objects = [l.strip() for l in f]
 
 with open(paths.poses_to_use, 'r') as f:
@@ -32,6 +32,8 @@ with open(paths.poses_to_use, 'r') as f:
 
 from copy import deepcopy
 
+outdir = '/media/ssd/data/bb/all_rgb/'
+import scipy.misc
 
 # now creating some sequences...
 train_data = []
@@ -46,7 +48,7 @@ for train_object in train_objects:
     grid = voxel_data.WorldVoxels()
     grid.populate_from_vox_file(fp)
 
-    for pose in poses[::3]:
+    for pose in poses:
 
         sequence['name'] = train_object + '_' + pose
         sequence['pose_id'] = pose
@@ -58,6 +60,8 @@ for train_object in train_objects:
         sc.gt_tsdf_separate = grid.V
         print sc.im.rgb.shape
 
+        savepath = outdir + sequence['name'] + '.png'
+        scipy.misc.imsave(savepath, sc.im.rgb)
         # # just using the reconstructor for its point sampling routine!
         # rec = voxlets.Reconstructer(
         #     reconstruction_type='kmeans_on_pca',combine_type='modal_vote')
