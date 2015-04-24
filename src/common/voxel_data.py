@@ -207,6 +207,35 @@ class WorldVoxels(Voxels):
     def __init__(self):
         pass
 
+    def init_and_populate(self, indices):
+        '''initialises the grid and populates, based on the indices in idx
+        waits until now to initialise so it can be the correct size
+        '''
+        grid_size = np.max(indices, axis=0)+1
+        print grid_size
+        Voxels.__init__(self, grid_size, np.int8)
+        #print indices[:, 0]
+        self.V[indices[:, 0], indices[:, 1], indices[:, 2]] = 1
+
+
+    def populate_from_vox_file(self, filepath):
+        '''
+        Loads 3d locations from my custom .vox file.
+        My .vox file is almost but not quite a yaml
+        Seemed that using pyyaml was incredibly slow so did this instead... bit of a hack!2
+        '''
+        f = open(filepath, 'r')
+        f.readline() # origin:
+        self.set_origin(np.array(f.readline().split(" ")).astype(float))
+        f.readline() # extents:
+        f.readline() # extents - don't care about this
+        f.readline() # voxel_size:
+        self.set_voxel_size(float(f.readline().strip()))
+        f.readline() # vox:
+        idx = np.array([line.split() for line in f]).astype(int)
+        f.close()
+        self.init_and_populate(idx)
+
     def set_voxel_size(self, vox_size):
         '''should be scalar'''
         self.vox_size = vox_size

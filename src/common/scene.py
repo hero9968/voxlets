@@ -61,7 +61,13 @@ class Scene(object):
         # load in the ground truth grid for this scene, and converting nans
         vox_location = sequence['folder'] + sequence['scene'] + \
             '/ground_truth_tsdf.pkl'
-        self.gt_tsdf = voxel_data.load_voxels(vox_location)
+        if sequence['folder'][-3:-1] == 'ta':
+            # we are in the training data - this has less floor
+            self.set_gt_tsdf(voxel_data.load_voxels(vox_location), 0.015)
+        else:
+            self.set_gt_tsdf(voxel_data.load_voxels(vox_location), 0.035)
+        print self.gt_tsdf.origin
+
         self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -self.mu
         self.gt_tsdf.set_origin(self.gt_tsdf.origin,
                 self.gt_tsdf.R)
@@ -110,7 +116,7 @@ class Scene(object):
         if segment and segment_with_gt:
 
             self.gt_labels = self._segment_tsdf_project_2d(
-                self.gt_tsdf, z_threshold=2, floor_height=4)
+                self.gt_tsdf, z_threshold=1, floor_height=4)
 
             self.gt_labels_separate = \
                 self._separate_binary_grids(self.gt_labels.V, True)
@@ -200,8 +206,8 @@ class Scene(object):
         point_idx = index[0] * self.im.mask.shape[1] + index[1]
 
         shoebox = voxel_data.ShoeBox(self.voxlet_params['shape'], np.float32)
-        shoebox.V *= 0
-        shoebox.V += self.mu  # set the outside area to -mu
+        shoebox.V *= np.nan
+        # shoebox.V += self.mu  # set the outside area to -mu
         shoebox.set_p_from_grid_origin(self.voxlet_params['centre'])  # m
         shoebox.set_voxel_size(self.voxlet_params['size'])  # m
 
@@ -242,6 +248,9 @@ class Scene(object):
 
             shoebox.fill_from_grid(self.implicit_tsdf)
 
+        elif extract_from == 'actual_tsdf':
+            shoebox.fill_from_grid(self.gt_tsdf)
+
         else:
             raise Exception("Don't know how to extract from %s" % extract_from)
 
@@ -252,8 +261,15 @@ class Scene(object):
         else:
             return shoebox
 
-    def set_gt_tsdf(self, tsdf_in):
-        self.gt_tsdf = tsdf_in
+    def set_gt_tsdf(self, tsdf_in, floor_height):
+        print "Warning - I think these should be uncommented for training..."
+        # floor_height_in_vox = float(floor_height) / float(tsdf_in.vox_size)
+        # if floor_height_in_vox > 15:
+            # raise Exception("This seems excessive")
+        self.gt_tsdf = deepcopy(tsdf_in)
+        # self.gt_tsdf.V = tsdf_in.V[:, :, floor_height_in_vox:]
+        # self.gt_tsdf.origin[2] += floor_height
+
 
     def set_im_tsdf(self, tsdf_in):
         '''
@@ -424,26 +440,43 @@ class Scene(object):
         voxels_to_evaluate = np.logical_and(
             temp, self.get_visible_frustrum().reshape(temp.shape))
         floor_t = self.gt_tsdf.blank_copy()
-        floor_t.V[:, :, :4] = 1
+        floor_t.V[:, :, :6] = 1
         voxels_to_evaluate = np.logical_and(floor_t.V == 0, voxels_to_evaluate)
+        self.voxels_to_evaluate = voxels_to_evaluate
 
         # getting the ground truth TSDF voxels
-        gt = self.gt_tsdf.V[voxels_to_evaluate] > 0
-        gt[np.isnan(gt)] = -self.mu
+        gt = self.gt_tsdf.V[voxels_to_evaluate] < 0
+        if np.isnan(gt).sum() > 0:
+            raise Exception('Oops, should not be nans here')
 
         # Getting the relevant predictions
         V_to_eval = V[voxels_to_evaluate]
         V_to_eval[np.isnan(V_to_eval)] = +self.mu
 
+        # now doing IOU
+        union = np.logical_or(gt, (V_to_eval < 0))
+        intersection = np.logical_and(gt, (V_to_eval < 0))
+        self.union = union
+        self.intersection = intersection
+
+        tp = np.logical_and(gt, V_to_eval < 0).sum()
+        tn = np.logical_and(~gt, V_to_eval > 0).sum()
+        fp = np.logical_and(~gt, V_to_eval < 0).sum()
+        fn = np.logical_and(gt, V_to_eval > 0).sum()
+
+
         # Now doing the final evaluation
         results = {}
+        results['iou'] = float(intersection.sum()) / float(union.sum())
         results['auc'] = sklearn.metrics.roc_auc_score(gt, V_to_eval)
-        results['precision'] = sklearn.metrics.precision_score(gt, V_to_eval > 0)
-        results['recall'] = sklearn.metrics.recall_score(gt, V_to_eval > 0)
+        results['precision'] = float(tp) / (float(tp) + float(fp))
+        # sklearn.metrics.precision_score(gt, V_to_eval < 0)
+        results['recall'] = float(tp) / (float(tp) + float(fn))
+        # sklearn.metrics.recall_score(gt, V_to_eval < 0)
 
         fpr, tpr, _ = sklearn.metrics.roc_curve(gt, V_to_eval)
-        results['fpr'] = fpr
-        results['tpr'] = tpr
+        # results['fpr'] = fpr
+        # results['tpr'] = tpr
 
         return results
 

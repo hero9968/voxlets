@@ -363,7 +363,7 @@ class VoxletPredictor(object):
                 # print tree_predictions[:, dims_to_use_for_distance].shape
                 # print visible_voxlet.flatten()[dims_to_use_for_distance].shape
                 distances = np.array(narrow_band_distances)
-                print "dists are ", distances
+                # print "dists are ", distances
                 # print "dists are ", distances
                 self._distances_cache = distances
 
@@ -416,9 +416,11 @@ class VoxletPredictor(object):
 
                 all_masks = np.mean(these_masks_full, axis=0)
             else:
-                compressed_mask = self.training_masks[index_predictions[to_use]]
-                all_masks = np.vstack([self.masks_pca.inverse_transform(compressed_mask)])
-
+                if hasattr(self, 'training_masks'):
+                    compressed_mask = self.training_masks[index_predictions[to_use]]
+                    all_masks = np.vstack([self.masks_pca.inverse_transform(compressed_mask)])
+                else:
+                    all_masks = (final_predictions * 0) + 1
         else:
             raise Exception('Do not understand')
 
@@ -552,7 +554,8 @@ class Reconstructer(object):
     def set_model(self, model):
         self.model = model
 
-        # self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_Y)
+        if not hasattr(self.model, '__iter__'):
+            self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_Y)
 
     def set_scene(self, sc_in):
         self.sc = sc_in
@@ -616,7 +619,7 @@ class Reconstructer(object):
 
 
 
-    def _initialise_voxlet(self, index):
+    def _initialise_voxlet(self, index, model):
         '''
         given a point in an image, creates a new voxlet at an appropriate
         position and rotation in world space
@@ -631,20 +634,20 @@ class Reconstructer(object):
         point_idx = index[0] * self.sc.im.mask.shape[1] + index[1]
 
         # creating the voxlett10
-        shoebox = voxel_data.ShoeBox(self.model.voxlet_params['shape'])  # grid size
+        shoebox = voxel_data.ShoeBox(model.voxlet_params['shape'])  # grid size
 
         # creating the voxlet
-        shoebox = voxel_data.ShoeBox(self.model.voxlet_params['shape'], np.float32)  # grid size
-        shoebox.set_p_from_grid_origin(self.model.voxlet_params['centre'])  # m
-        shoebox.set_voxel_size(self.model.voxlet_params['size'])  # m
+        shoebox = voxel_data.ShoeBox(model.voxlet_params['shape'], np.float32)  # grid size
+        shoebox.set_p_from_grid_origin(model.voxlet_params['centre'])  # m
+        shoebox.set_voxel_size(model.voxlet_params['size'])  # m
         shoebox.V *= 0
         shoebox.V += self.sc.mu  # set the outside area to mu
 
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
 
-        if self.model.voxlet_params['tall_voxlets']:
-            start_z = self.model.voxlet_params['tall_voxlet_height']
+        if model.voxlet_params['tall_voxlets']:
+            start_z = model.voxlet_params['tall_voxlet_height']
         else:
             start_z = world_xyz[point_idx, 2]
 
@@ -664,6 +667,9 @@ class Reconstructer(object):
 
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
+
+    def set_probability_model_one(self, ini):
+        self.prob_model_one = ini
 
     def fill_in_output_grid_oma(self, render_type=[], render_savepath=None,
             use_implicit=False, oracle=None, add_ground_plane=False,
@@ -735,6 +741,15 @@ class Reconstructer(object):
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
 
+            if hasattr(self.model, '__iter__'):
+                # randomly choose model to use...
+                if np.random.rand() > self.prob_model_one:
+                    model_to_use = self.model[1]
+                else:
+                    model_to_use = self.model[0]
+            else:
+                model_to_use = self.model
+
             tic = time.time()
             # find the segment index of this voxlet
             # this_point_label = self.sc.visible_im_label[idx[0], idx[1]]
@@ -746,7 +761,7 @@ class Reconstructer(object):
             # this_idx_grid = self.sc.im_tsdf
 
             "extract features from the tsdf volume"
-            features_voxlet = self._initialise_voxlet(idx)
+            features_voxlet = self._initialise_voxlet(idx, model_to_use)
             features_voxlet.fill_from_grid(this_idx_grid)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -self.sc.mu
             self.cached_feature_voxlet = features_voxlet.V
@@ -763,7 +778,7 @@ class Reconstructer(object):
                     feature_collapse_type, feature_collapse_param)
 
             # getting the GT voxlet - useful for the oracles and rendering
-            gt_voxlet = self._initialise_voxlet(idx)
+            gt_voxlet = self._initialise_voxlet(idx, model_to_use)
             gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
 
             C += time.time() - tic; tic = time.time()
@@ -775,16 +790,16 @@ class Reconstructer(object):
                 weights_to_use = voxlet_prediction * 0 + 1
 
             elif oracle == 'pca':
-                temp = self.model.pca.transform(gt_voxlet.V.flatten())
-                voxlet_prediction = self.model.pca.inverse_transform(temp)
+                temp = model_to_use.pca.transform(gt_voxlet.V.flatten())
+                voxlet_prediction = model_to_use.pca.inverse_transform(temp)
                 weights_to_use = voxlet_prediction * 0 + 1
 
             elif oracle == 'nn':
                 # getting the closest match in the training data...
                 _, indices = self.nbrs.kneighbors(
-                    self.model.pca.transform(gt_voxlet.V.flatten()))
-                closest_training_Y = self.model.pca.inverse_transform(
-                    self.model.training_Y[indices[0], :])
+                    model_to_use.pca.transform(gt_voxlet.V.flatten()))
+                closest_training_Y = model_to_use.pca.inverse_transform(
+                    model_to_use.training_Y[indices[0], :])
                 voxlet_prediction = closest_training_Y
                 weights_to_use = voxlet_prediction * 0 + 1
 
@@ -795,7 +810,7 @@ class Reconstructer(object):
                 # print "time A :", A
                 "classify according to the forest"
                 voxlet_prediction, mask = \
-                    self.model.predict(np.atleast_2d(feature_vector), how_to_choose=how_to_choose,
+                    model_to_use.predict(np.atleast_2d(feature_vector), how_to_choose=how_to_choose,
                         distance_measure=distance_measure, visible_voxlet=features_voxlet.V)
                 self.cached_voxlet_prediction = voxlet_prediction
                 # self.all_pred_cache.append(voxlet_prediction)
@@ -817,9 +832,9 @@ class Reconstructer(object):
                     weights_to_use[voxlet_prediction > 0] *= weight_empty_lower
 
             # adding the shoebox into the result
-            transformed_voxlet = self._initialise_voxlet(idx)
+            transformed_voxlet = self._initialise_voxlet(idx, model_to_use)
             transformed_voxlet.V = voxlet_prediction.reshape(
-                self.model.voxlet_params['shape'])
+                model_to_use.voxlet_params['shape'])
 
             D += time.time() - tic; tic = time.time()
             # print "time D :", D
@@ -862,11 +877,11 @@ class Reconstructer(object):
                 Di = {}
                 # The distance used depends on if we are comparing to the ground truth or the observed data...
                 if oracle == 'true_greedy':
-                    Di['distance'] = self.model.min_dist
+                    Di['distance'] = model_to_use.min_dist
                 elif oracle == 'true_greedy_gt':
                     Di['distance'] = np.linalg.norm(
-                        transformed_voxlet.V.flatten()[self.model.dims_to_use_for_distance_cache.flatten()] -
-                        gt_voxlet.V.flatten()[self.model.dims_to_use_for_distance_cache.flatten()])
+                        transformed_voxlet.V.flatten()[model_to_use.dims_to_use_for_distance_cache.flatten()] -
+                        gt_voxlet.V.flatten()[model_to_use.dims_to_use_for_distance_cache.flatten()])
 
                 Di['voxlet'] = transformed_voxlet
                 Di['mask'] = mask
@@ -908,7 +923,7 @@ class Reconstructer(object):
                     savepath % (count, 'predicted'))
 
                 # doing rendering of the ground truth grid
-                gt_voxlet = self._initialise_voxlet(idx)
+                gt_voxlet = self._initialise_voxlet(idx, model_to_use)
                 gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
                 render_single_voxlet(gt_voxlet.V,
                     savepath % (count, 'gt'))
@@ -927,7 +942,7 @@ class Reconstructer(object):
                 plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.95, wspace=0.02, hspace=0.02)
 
                 plt.subplot(sf_x, sf_y, 1)
-                plt.imshow(features_voxlet.V.reshape(self.model.voxlet_params['shape'])[:, :, 15], interpolation='nearest')
+                plt.imshow(features_voxlet.V.reshape(model_to_use.voxlet_params['shape'])[:, :, 15], interpolation='nearest')
                 plt.axis('off')
                 plt.clim((-self.sc.mu, self.sc.mu))
                 plt.title('Features voxlet')
@@ -985,12 +1000,12 @@ class Reconstructer(object):
                 sf_x, sf_y = 6, 6
                 plt.subplots(sf_x, sf_y)
                 plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.95, wspace=0.02, hspace=0.02)
-                sorted_idxs = np.argsort(self.model._distances_cache)
+                sorted_idxs = np.argsort(model_to_use._distances_cache)
                 for counter, sorted_idx in enumerate(sorted_idxs):
                     plt.subplot(sf_x, sf_y, counter+1)
-                    pred_idx = self.model._cached_predictions[0][sorted_idx]
-                    pred = self.model.pca.inverse_transform(self.model.training_Y[pred_idx])
-                    plt.imshow(pred.reshape(self.model.voxlet_params['shape'])[:, :, 15])
+                    pred_idx = model_to_use._cached_predictions[0][sorted_idx]
+                    pred = model_to_use.pca.inverse_transform(model_to_use.training_Y[pred_idx])
+                    plt.imshow(pred.reshape(model_to_use.voxlet_params['shape'])[:, :, 15])
                     plt.clim((-self.sc.mu, self.sc.mu))
                     plt.axis('off')
 
@@ -1030,7 +1045,7 @@ class Reconstructer(object):
 
                 for vol_count, (V, title) in enumerate(vols):
 
-                    verts, faces = measure.marching_cubes(V.reshape(self.model.voxlet_params['shape']), 0)
+                    verts, faces = measure.marching_cubes(V.reshape(model_to_use.voxlet_params['shape']), 0)
 
                     ax = fig.add_subplot(2, 2, vol_count+1, projection='3d', aspect='equal')
                     plot_mesh(verts, faces, ax)
@@ -1123,7 +1138,7 @@ class Reconstructer(object):
         self.remove_excess = average.copy()
         self.remove_excess.V[self.sc.im_tsdf.V > 0] = self.sc.mu
 
-        return average
+        return self.remove_excess
 
 
     def save_empty_voxel_counts(self, fpath):
@@ -1222,8 +1237,13 @@ class Reconstructer(object):
 
     def _get_voxlet_corners(self):
 
-        v_size = self.model.voxlet_params['size'] * np.array(self.model.voxlet_params['shape'])
-        cen = self.model.voxlet_params['centre']
+        if hasattr(self.model, '__iter__'):
+            model_to_use = self.model[0]
+        else:
+            model_to_use = self.model
+
+        v_size = model_to_use.voxlet_params['size'] * np.array(model_to_use.voxlet_params['shape'])
+        cen = model_to_use.voxlet_params['centre']
 
         c1 = [-cen[0], cen[1]]
         c2 = [cen[0], cen[1]]
