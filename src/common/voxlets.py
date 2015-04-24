@@ -240,6 +240,12 @@ class VoxletPredictor(object):
         median_item_idx = mu_dist.argmin()
         return median_item_idx
 
+    def reset_voxlet_counts(self):
+        '''
+        Reset the counter which counts how many times each training example is used
+        '''
+        self.voxlet_counter = np.zeros(self.training_Y.shape[0])
+
     def predict(self, X, how_to_choose='medioid', distance_measure='just_empty', visible_voxlet=None):
         '''
         Returns a voxlet prediction for a single X
@@ -374,6 +380,10 @@ class VoxletPredictor(object):
                 self.dims_to_use_for_distance_cache = narrow_band
 
                 final_predictions = tree_predictions[to_use]
+
+                # update the counter which counts how many times each voxlet is used
+                if hasattr(self, 'voxlet_counter'):
+                    self.voxlet_counter[index_predictions[to_use]] += 1
                     # self._tsdf_scale(
                     # narrow_band_wiggles[to_use], mu)
 
@@ -711,7 +721,6 @@ class Reconstructer(object):
         # if oracle == 'true_greedy' or oracle == 'true_greedy_gt':
         self.possible_predictions = []
 
-        A = B = C = D = E = 0
 
         self.empty_voxels_in_voxlet_count = []
         self.gt_minus_predictions = []
@@ -750,9 +759,6 @@ class Reconstructer(object):
             gt_voxlet = self._initialise_voxlet(idx)
             gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
 
-            C += time.time() - tic; tic = time.time()
-            # print "time C :", C
-
             "Replace the prediction - if an oracle has been specified!"
             if oracle == 'gt':
                 voxlet_prediction = gt_voxlet.V.flatten()
@@ -789,9 +795,6 @@ class Reconstructer(object):
                 self.gt_minus_predictions.append(
                     np.linalg.norm(voxlet_prediction - gt_voxlet.V.flatten()))
 
-                B += time.time() - tic; tic = time.time()
-                # print "time B :", B
-
                 # flipping the mask direction here:
                 weights_to_use = 1-mask
                 weights_to_use = weights_to_use.flatten()
@@ -804,9 +807,6 @@ class Reconstructer(object):
             transformed_voxlet = self._initialise_voxlet(idx)
             transformed_voxlet.V = voxlet_prediction.reshape(
                 self.model.voxlet_params['shape'])
-
-            D += time.time() - tic; tic = time.time()
-            # print "time D :", D
 
             if oracle == 'greedy_add':
                 if combine_segments_separately:
@@ -875,34 +875,11 @@ class Reconstructer(object):
                     except:
                         import pdb; pdb.set_trace()
 
-                E += time.time() - tic; tic = time.time()
-                # print "time E :", E
-
             if 'blender' in render_type and render_savepath:
-
-                # create a path of where to save the rendering
-                savepath = render_savepath + '/%03d_%s.png'
-
-                # doing rendering of the extracted grid
-                render_single_voxlet(features_voxlet.V,
-                    savepath % (count, 'extracted'))
-
-                # doing rendering of the predicted grid
-                render_single_voxlet(transformed_voxlet.V,
-                    savepath % (count, 'predicted'))
-
-                # doing rendering of the ground truth grid
-                gt_voxlet = self._initialise_voxlet(idx)
-                gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
-                render_single_voxlet(gt_voxlet.V,
-                    savepath % (count, 'gt'))
-
-                # render the closest voxlet in all of the leaf nodes to the GT
-
-                render_single_voxlet(best_voxlet_V,
-                    savepath % (count, 'gt'))
+                self._blender_render(features_voxlet, transformed_voxlet, render_savepath)
 
             if 'slice' in render_type:
+                self._render-sl
                 '''Plotting slices'''
                 # Here want to now save slices at the corect high
                 # in the extracted and predicted voxlets
@@ -1109,6 +1086,35 @@ class Reconstructer(object):
 
         return average
 
+    def _blender_render(self, features_voxlet, transformed_voxlet, render_savepath):
+            # create a path of where to save the rendering
+            savepath = render_savepath + '/%03d_%s.png'
+
+            # doing rendering of the extracted grid
+            render_single_voxlet(features_voxlet.V,
+                savepath % (count, 'extracted'))
+
+            # doing rendering of the predicted grid
+            render_single_voxlet(transformed_voxlet.V,
+                savepath % (count, 'predicted'))
+
+            # doing rendering of the ground truth grid
+            gt_voxlet = self._initialise_voxlet(idx)
+            gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
+            render_single_voxlet(gt_voxlet.V,
+                savepath % (count, 'gt'))
+
+            # render the closest voxlet in all of the leaf nodes to the GT
+            render_single_voxlet(best_voxlet_V,
+                savepath % (count, 'gt'))
+
+    def save_voxlet_counts(self, fpath):
+        # for each model...
+        for model_idx, model in enumerate(self.models):
+            # writes a count of how many of each voxlet was used
+            with open(fpath + 'voxlet_count_%02d.txt' % idx, 'w'):
+                for count in model.voxlet_counter:
+                    f.write("%d, ", count)
 
     def save_empty_voxel_counts(self, fpath):
         # Save how many voxels are empty in each of the voxlet predictions
@@ -1116,7 +1122,7 @@ class Reconstructer(object):
             for empty_ans in self.empty_voxels_in_voxlet_count:
                 f.write('%0.5f\n' % empty_ans)
 
-        # Do some kind of histogram?
+        # Do some kind of histogram plot
         plt.figure()
         plt.hist(np.array(self.empty_voxels_in_voxlet_count), 100)
         plt.xlim(0, 1.0)
