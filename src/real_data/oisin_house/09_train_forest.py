@@ -27,10 +27,6 @@ pca_savepath = paths.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
-features_pca_savepath = paths.voxlets_dictionary_path + 'features_pca.pkl'
-with open(features_pca_savepath, 'rb') as f:
-    features_pca = pickle.load(f)
-
 masks_pca_savepath = paths.voxlets_dictionary_path + 'masks_pca.pkl'
 with open(masks_pca_savepath, 'rb') as f:
     masks_pca = pickle.load(f)
@@ -43,7 +39,7 @@ pca_representation = []
 masks = []
 scene_ids = []
 
-for count, sequence in enumerate(paths.train_data):
+for count, sequence in enumerate(paths.all_train_data):
 
     # loading the data
     loadpath = paths.voxlets_data_path + \
@@ -55,9 +51,9 @@ for count, sequence in enumerate(paths.train_data):
     features.append(D['cobweb'])
     pca_representation.append(D['shoeboxes'])
     masks.append(D['masks'])
-    scene_ids.append(np.ones(D['features'].shape[0]) * count)
+    scene_ids.append(np.ones(D['cobweb'].shape[0]) * count)
 
-    print D['features'].shape, D['shoeboxes'].shape
+    print D['cobweb'].shape, D['shoeboxes'].shape
     if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
         break
@@ -90,5 +86,4 @@ model.train(
     scene_ids=np_scene_ids)
 model.set_pca(pca)
 model.set_masks_pca(masks_pca)
-model.set_feature_pca(features_pca)
 model.save(paths.voxlet_model_oma_path.replace('.pkl', '_cobweb.pkl'))

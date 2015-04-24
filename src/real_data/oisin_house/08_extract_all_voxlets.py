@@ -28,13 +28,8 @@ mask_pca_savepath = paths.voxlets_dictionary_path + 'masks_pca.pkl'
 with open(mask_pca_savepath, 'rb') as f:
     mask_pca = pickle.load(f)
 
-features_pca_savepath = paths.voxlets_dictionary_path + 'features_pca.pkl'
-with open(features_pca_savepath, 'rb') as f:
-    features_pca = pickle.load(f)
-
 
 print "PCA components is shape ", pca.components_.shape
-print "Features PCA components is shape ", features_pca.components_.shape
 
 if not os.path.exists(paths.voxlets_data_path):
     os.makedirs(paths.voxlets_data_path)
@@ -86,21 +81,6 @@ def process_sequence(sequence):
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=sbox_flatten) for idx in idxs]
 
-    if parameters.VoxletTraining.feature_transform == 'pca':
-
-        view_shoeboxes = [sc.extract_single_voxlet(
-            idx, extract_from='im_tsdf', post_transform=sbox_flatten) for idx in idxs]
-        all_features = np.vstack(view_shoeboxes)
-        all_features[np.isnan(all_features)] = -parameters.mu
-        np_features = features_pca.transform(all_features)
-
-    elif parameters.VoxletTraining.feature_transform == 'decimate':
-
-        view_shoeboxes = [sc.extract_single_voxlet(
-            idx, extract_from='im_tsdf', post_transform=decimate_flatten) for idx in idxs]
-        np_features = np.vstack(view_shoeboxes)
-        np_features[np.isnan(np_features)] = -parameters.mu
-
     cobwebengine.set_image(sc.im)
     np_cobweb = np.array(cobwebengine.extract_patches(idxs))
 
@@ -118,7 +98,6 @@ def process_sequence(sequence):
 
 
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
-    logging.debug("...Features are shape " + str(np_features.shape))
 
     print "Took %f s" % (time() - t1)
     t1 = time()
@@ -126,7 +105,7 @@ def process_sequence(sequence):
     savepath = paths.voxlets_data_path + \
         sequence['name'] + '.pkl'
     logging.debug("Saving to " + savepath)
-    D = dict(shoeboxes=np_sboxes, features=np_features, masks=np_masks, cobweb=np_cobweb)
+    D = dict(shoeboxes=np_sboxes, masks=np_masks, cobweb=np_cobweb)
     with open(savepath, 'w') as f:
         pickle.dump(D, f, protocol=pickle.HIGHEST_PROTOCOL)
     # except:
@@ -147,7 +126,7 @@ else:
 if __name__ == "__main__":
 
     tic = time()
-    mapper(process_sequence, paths.train_data)
+    mapper(process_sequence, paths.all_train_data)
     print "In total took %f s" % (time() - tic)
 
 logf.close()

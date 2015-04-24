@@ -30,18 +30,19 @@ print "Loading model..."
 cobweb = True
 print paths.voxlet_model_oma_path
 
-if cobweb:
-    with open(paths.voxlet_model_oma_path.replace('.pkl', '_cobweb.pkl'), 'rb') as f:
-        model_without_implicit = pickle.load(f)
-else:
-    with open(paths.voxlet_model_oma_path, 'rb') as f:
-        model_without_implicit = pickle.load(f)
 
-print model_without_implicit.voxlet_params['shape']
-print model_without_implicit.voxlet_params['tall_voxlets']
+with open('/media/ssd/data/oisin_house/models_full_split_not_tall/models/oma_cobweb.pkl', 'rb') as f:
+    model_short = pickle.load(f)
+
+print model_short.pca.components_.shape
+with open('/media/ssd/data/oisin_house/models_full_split_tall/models/oma_cobweb.pkl', 'rb') as f:
+    model_tall = pickle.load(f)
+
+print model_tall.pca.components_.shape
 
 print "Done loading model..."
 
+just_render_gt = False  # this overwrites the existing
 render_gt = True
 combining_renders = True
 render_predictions = True
@@ -61,7 +62,7 @@ print dropbox_path
 # this overrides all other parameters. Means we don't botther with orables etc
 only_prediction = False
 
-test_type = 'double_training_data_floating_voxlets'
+test_type = 'mixed_voxlets2'
 
 def save_render_assess(dic, sc):
     '''
@@ -73,7 +74,12 @@ def save_render_assess(dic, sc):
         (test_type, sc.sequence['name'], '%s')
 
     if render_predictions:
-        dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True,ground_height=0.03)
+        if dic['name']=='visible':
+            dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True,ground_height=0.03)
+        else:
+            print "WARNING - not rendeing " * 20
+
+            # dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True,ground_height=0.03)
 
     if save_simple:
         D = dict(grid=dic['grid'].V, name=dic['desc'], vox_size=dic['grid'].vox_size)
@@ -132,10 +138,11 @@ print "MAIN LOOP"
 def process_sequence(sequence):
 
     print "Processing ", sequence['name']
-    sc = scene.Scene(parameters.mu,
-        model_without_implicit.voxlet_params)
+    sc = scene.Scene(parameters.mu, [])
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, load_implicit=False, voxel_normals='gt_tsdf')
+    print sc.gt_tsdf.origin
+
 
     print "-> Creating folder"
     fpath = paths.voxlet_prediction_folderpath % \
@@ -152,6 +159,9 @@ def process_sequence(sequence):
             {'name':'Ground truth', 'grid':sc.gt_tsdf, 'desc':'gt'}, sc)
         combines['visible'] = save_render_assess(
             {'name':'Visible surfaces', 'grid':sc.im_tsdf, 'desc':'visible'}, sc)
+
+    if just_render_gt:
+        return
 
     print "-> Sampling the points"
     rec = voxlets.Reconstructer(
@@ -180,7 +190,8 @@ def process_sequence(sequence):
 
     print "-> Predicting with OMA forest"
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    rec.set_model(model_without_implicit)
+    rec.set_probability_model_one(0.75)
+    rec.set_model([model_short, model_tall])
     pred_voxlets = rec.fill_in_output_grid_oma(
         add_ground_plane=False, feature_collapse_type='pca', render_type=[],
         weight_empty_lower=None, cobweb=cobweb)
@@ -209,7 +220,7 @@ def process_sequence(sequence):
     descs = ['narrow_band', 'mean', 'medioid']
     if distance_experiments:
         # here I'm doing an experiment to see which distance measure makes sense to use...
-        names = ['Mean', 'Narrow Band', 'Medioid']
+        names = ['Narrow Band', 'Name', 'Medioid']
         for d_measure, name in zip(descs, names):
             rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
             narrow_band = rec.fill_in_output_grid_oma(
@@ -312,7 +323,7 @@ def process_sequence(sequence):
 if True:
     # parameters.multicore:
     import multiprocessing
-    pool = multiprocessing.Pool(3)
+    pool = multiprocessing.Pool(4)
     mapper = pool.map
 else:
     mapper = map

@@ -29,7 +29,7 @@ def pca_randomized(X_in, local_subsample_length, num_pca_dims):
 shoeboxes = []
 features = []
 
-for count, sequence in enumerate(paths.train_data):
+for count, sequence in enumerate(paths.all_train_data[::3]):
 
     print "Processing " + sequence['name']
 
@@ -68,8 +68,8 @@ print "There are %d nans in sboxes" % np.isnan(np_all_sboxes).sum()
 np_all_features[np.isnan(np_all_features)] = -parameters.mu
 
 for name, np_array in zip(
-        ('shoeboxes', 'features', 'masks'),
-        (np_all_sboxes, np_all_features, np_all_masks)):
+        ('shoeboxes', 'masks'),
+        (np_all_sboxes, np_all_masks)):
 
     # clustering the sboxes - but only a subsample of them for speed!
     print "Doing PCA"

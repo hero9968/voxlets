@@ -31,34 +31,34 @@ class Voxlet(object):
     '''
     class for voxlet parameters
     '''
-    # setting some voxlet params here
-    # NOTE BE VERY CAREFUL IF EDITING THESE
-    tall_voxlets = False
-
-    one_side_bins = 20
-    shape = (one_side_bins, 2*one_side_bins, int(one_side_bins))
-    size = 0.0075  # edge size of a single voxel
-    # centre is relative to the ijk origin at the bottom corner of the voxlet
-    # z height of centre takes into account the origin offset
-    actual_size = np.array(shape) * size
-    centre = np.array((actual_size[0] * 0.5,
-                       actual_size[1] * 0.25,
-                       actual_size[2] * 0.5))
-
-
-    # tall_voxlets = True
+    # # setting some voxlet params here
+    # # NOTE BE VERY CAREFUL IF EDITING THESE
+    # tall_voxlets = False
 
     # one_side_bins = 20
-    # shape = (one_side_bins, 2*one_side_bins, int(2.5*one_side_bins))
+    # shape = (one_side_bins, 2*one_side_bins, int(one_side_bins))
     # size = 0.0075  # edge size of a single voxel
     # # centre is relative to the ijk origin at the bottom corner of the voxlet
     # # z height of centre takes into account the origin offset
     # actual_size = np.array(shape) * size
     # centre = np.array((actual_size[0] * 0.5,
     #                    actual_size[1] * 0.25,
-    #                    0.375+0.03))
+    #                    actual_size[2] * 0.5))
 
-    # tall_voxlet_height = 0.375
+
+    tall_voxlets = True
+
+    one_side_bins = 20
+    shape = (one_side_bins, 2*one_side_bins, int(2.5*one_side_bins))
+    size = 0.0075  # edge size of a single voxel
+    # centre is relative to the ijk origin at the bottom corner of the voxlet
+    # z height of centre takes into account the origin offset
+    actual_size = np.array(shape) * size
+    centre = np.array((actual_size[0] * 0.5,
+                       actual_size[1] * 0.25,
+                       0.375+0.03))
+
+    tall_voxlet_height = 0.375
 
 
 
@@ -68,7 +68,7 @@ class VoxletTraining(object):
     (Although the forest paramters are elsewhere currently)
     '''
     # PCA and kmeans
-    pca_number_points_from_each_image = 250
+    pca_number_points_from_each_image = 200
     number_pca_dims = 400
     pca_subsample_length = 10000  # max number of examples to use for pca
 
