@@ -3,6 +3,7 @@ import time
 import cPickle
 import pdb
 from joblib import Parallel, delayed
+from multiprocessing import Pool
 from sklearn.decomposition import RandomizedPCA
 
 
@@ -13,8 +14,8 @@ class ForestParams:
         self.max_depth = 25
         self.num_trees = 40
         self.bag_size = 0.5
-        self.train_parallel = False
-        self.njobs = 4
+        self.train_parallel = True
+        self.njobs = 8
 
         # structured learning params
         #self.pca_dims = 5
@@ -99,8 +100,8 @@ class Tree:
                 self.build_tree(X, Y, node.right_node)
         else:
             depth = np.floor(np.log2(node.node_id+1))
-            print "Leaf node: In tree %d \t depth %d \t %d examples" % \
-                (int(self.tree_id), int(depth), node.exs_at_node.shape[0])
+            # print "Leaf node: In tree %d \t depth %d \t %d examples" % \
+            #     (int(self.tree_id), int(depth), node.exs_at_node.shape[0])
 
     def discretize_labels(self, y):
 
@@ -143,16 +144,12 @@ class Tree:
         # bagging
         num_to_sample = int(float(Y.shape[0])*self.tree_params.bag_size)
 
-        if extracted_from == None:
-            print "selecting from all the examples"
+        if extracted_from is None:
             exs_at_node = np.random.choice(Y.shape[0], num_to_sample, replace=False)
         else:
             ids = np.unique(extracted_from)
             ids_for_this_tree = \
                 np.random.choice(ids.shape[0], int(float(ids.shape[0])*self.tree_params.bag_size), replace=False)
-
-            print "ids ", ids.shape
-            print "ids_for_this_tree", ids_for_this_tree.shape
 
             # http://stackoverflow.com/a/15866830/279858
             exs_at_node = []
@@ -201,8 +198,6 @@ class Tree:
             u = ((pred_Y - gt_Y)**2).sum()
             v = ((gt_Y - gt_Y.mean(axis=0))**2).sum()
             self.oob_score = (1- u/v)
-
-            print self.oob_score
 
     def calc_importance(self):
         ''' borrows from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/tree/_tree.pyx
@@ -258,7 +253,7 @@ class Tree:
 
 
 
-    def test(self, X, max_depth):
+    def test(self, X, max_depth=np.inf):
         op = np.zeros(X.shape[0])
         # check out apply() in tree.pyx in scikitlearn
 
@@ -361,12 +356,24 @@ class Tree:
 
 
 ## Parallel training helper - used to train trees in parallel
-def train_forest_helper(t_id, X, Y, extracted_from, params, seed):
+def train_forest_helper(parameters_tuple):
+    t_id, seed, params = parameters_tuple
     print 'tree', t_id
     np.random.seed(seed)
     tree = Tree(t_id, params)
     tree.train(X, Y, extracted_from)
     return tree
+
+
+def _init(X_in, Y_in, extracted_from_in):
+    """
+    Each pool process calls this initializer. Load the array to be populated
+    into that process's global namespace
+    """
+    global X, Y, extracted_from
+    X = X_in
+    Y = Y_in
+    extracted_from = extracted_from_in
 
 
 class Forest:
@@ -397,9 +404,16 @@ class Forest:
             #print 'Parallel training'
             # need to seed the random number generator for each process
             seeds = np.random.random_integers(0, np.iinfo(np.int32).max, self.params.num_trees)
-            self.trees.extend(Parallel(n_jobs=self.params.njobs)
-                (delayed(train_forest_helper)(t_id, X, Y, extracted_from, self.params, seeds[t_id])
-                                             for t_id in range(self.params.num_trees)))
+
+            # these are the arguments which are different for each tree
+            per_tree_args = ((t_id, seeds[t_id], self.params)
+                for t_id in range(self.params.num_trees))
+
+            # data which is to be shared across all processes are passed as initargs
+            pool = Pool(processes=4, initializer=_init, initargs=(X, Y, extracted_from))
+
+            self.trees.extend(pool.map(train_forest_helper, per_tree_args))
+
         else:
             #print 'Standard training'
             for t_id in range(self.params.num_trees):
