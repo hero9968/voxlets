@@ -8,9 +8,9 @@ from sklearn.decomposition import RandomizedPCA
 
 class ForestParams:
     def __init__(self):
-        self.num_tests = 400
+        self.num_tests = 500
         self.min_sample_cnt = 5
-        self.max_depth = 14
+        self.max_depth = 25
         self.num_trees = 40
         self.bag_size = 0.5
         self.train_parallel = False
@@ -18,7 +18,7 @@ class ForestParams:
 
         # structured learning params
         #self.pca_dims = 5
-        self.num_dims_for_pca = 30 # number of dimensions that pca gets reduced to
+        self.num_dims_for_pca = 100 # number of dimensions that pca gets reduced to
         self.sub_sample_exs_pca = True  # can also subsample the number of exs we use for PCA
         self.num_exs_for_pca = 2500
 
@@ -30,7 +30,8 @@ class Node:
 
     def __init__(self, node_id, exs_at_node, impurity, probability, medoid_id, tree_id):
         self.node_id = node_id
-        print "In tree %d \t node %d" % (int(tree_id), int(node_id))
+        depth = np.floor(np.log2(node_id+1))
+        # print "In tree %d \t node %d \t depth %d" % (int(tree_id), int(node_id), int(depth))
         self.exs_at_node = exs_at_node
         self.impurity = impurity
         self.num_exs = float(exs_at_node.shape[0])
@@ -92,6 +93,10 @@ class Tree:
                 self.num_nodes += 2
                 self.build_tree(X, Y, node.left_node)
                 self.build_tree(X, Y, node.right_node)
+        else:
+            depth = np.floor(np.log2(node.node_id+1))
+            print "Leaf node: In tree %d \t depth %d \t %d examples" % \
+                (int(self.tree_id), int(depth), node.exs_at_node.shape[0])
 
     def discretize_labels(self, y):
 
@@ -249,18 +254,20 @@ class Tree:
 
 
 
-    def test(self, X):
+    def test(self, X, max_depth):
         op = np.zeros(X.shape[0])
         # check out apply() in tree.pyx in scikitlearn
 
         # single dim test
         for ex_id in range(X.shape[0]):
             node = self.root
-            while not node.is_leaf:
+            depth = 0
+            while not (node.is_leaf or depth >= max_depth):
                 if X[ex_id, node.test_ind1] < node.test_thresh:
                     node = node.right_node
                 else:
                     node = node.left_node
+                depth += 1
             # return medoid id
             op[ex_id] = node.medoid_id
         return op
@@ -398,14 +405,14 @@ class Forest:
                 self.trees.append(tree)
         #print 'num trees ', len(self.trees)
 
-    def test(self, X):
+    def test(self, X, max_depth=np.inf):
         if np.any(np.isnan(X)):
             raise Exception('nans should not be present in test X')
 
         # return the medoid id at each leaf
         op = np.zeros((X.shape[0], len(self.trees)))
         for tt, tree in enumerate(self.trees):
-            op[:, tt] = tree.test(X)
+            op[:, tt] = tree.test(X, max_depth)
         return op
 
     def delete_trees(self):
