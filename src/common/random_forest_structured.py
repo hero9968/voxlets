@@ -14,7 +14,7 @@ class ForestParams:
         self.num_trees = 40
         self.bag_size = 0.5
         self.train_parallel = False
-        self.njobs = 4
+        self.njobs = 8
 
         # structured learning params
         #self.pca_dims = 5
@@ -99,8 +99,8 @@ class Tree:
                 self.build_tree(X, Y, node.right_node)
         else:
             depth = np.floor(np.log2(node.node_id+1))
-            print "Leaf node: In tree %d \t depth %d \t %d examples" % \
-                (int(self.tree_id), int(depth), node.exs_at_node.shape[0])
+            # print "Leaf node: In tree %d \t depth %d \t %d examples" % \
+            #     (int(self.tree_id), int(depth), node.exs_at_node.shape[0])
 
     def discretize_labels(self, y):
 
@@ -144,15 +144,11 @@ class Tree:
         num_to_sample = int(float(Y.shape[0])*self.tree_params.bag_size)
 
         if extracted_from == None:
-            print "selecting from all the examples"
             exs_at_node = np.random.choice(Y.shape[0], num_to_sample, replace=False)
         else:
             ids = np.unique(extracted_from)
             ids_for_this_tree = \
                 np.random.choice(ids.shape[0], int(float(ids.shape[0])*self.tree_params.bag_size), replace=False)
-
-            print "ids ", ids.shape
-            print "ids_for_this_tree", ids_for_this_tree.shape
 
             # http://stackoverflow.com/a/15866830/279858
             exs_at_node = []
@@ -258,7 +254,7 @@ class Tree:
 
 
 
-    def test(self, X, max_depth):
+    def test(self, X, max_depth=np.inf):
         op = np.zeros(X.shape[0])
         # check out apply() in tree.pyx in scikitlearn
 
