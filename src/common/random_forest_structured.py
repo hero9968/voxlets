@@ -2,7 +2,6 @@ import numpy as np
 import time
 import cPickle
 import pdb
-from joblib import Parallel, delayed
 from multiprocessing import Pool
 from sklearn.decomposition import RandomizedPCA
 
@@ -355,8 +354,10 @@ class Tree:
         return successful_split
 
 
-## Parallel training helper - used to train trees in parallel
 def train_forest_helper(parameters_tuple):
+    '''
+    Parallel training helper - used to train trees in parallel
+    '''
     t_id, seed, params = parameters_tuple
     print 'tree', t_id
     np.random.seed(seed)
@@ -366,10 +367,10 @@ def train_forest_helper(parameters_tuple):
 
 
 def _init(X_in, Y_in, extracted_from_in):
-    """
-    Each pool process calls this initializer. Load the array to be populated
-    into that process's global namespace
-    """
+    '''
+    Each pool process calls this initializer. Here we load the array(s) to be
+    shared into that process's global namespace
+    '''
     global X, Y, extracted_from
     X = X_in
     Y = Y_in
@@ -410,7 +411,7 @@ class Forest:
                 for t_id in range(self.params.num_trees))
 
             # data which is to be shared across all processes are passed as initargs
-            pool = Pool(processes=4, initializer=_init, initargs=(X, Y, extracted_from))
+            pool = Pool(processes=self.params.njobs, initializer=_init, initargs=(X, Y, extracted_from))
 
             self.trees.extend(pool.map(train_forest_helper, per_tree_args))
 
