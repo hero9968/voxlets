@@ -41,7 +41,7 @@ class Node:
 
         # just saving the probability of class 1 for now
         self.probability = probability
-        self.medoid_id = medoid_id  # if leaf store the medoid id that lands here
+        self.medoid_id = medoid_id
 
     def update_node(self, test_ind1, test_thresh, info_gain):
         self.test_ind1 = test_ind1
@@ -49,18 +49,23 @@ class Node:
         self.info_gain = info_gain
         self.is_leaf = False
 
-    def find_medoid_id(self, Y_pca):
-        mu = Y_pca.mean(0)
-        mu_dist = np.sqrt(((Y_pca - mu[np.newaxis, ...])**2).sum(1))
+    def find_medoid_id(self, y_local):
+        mu = y_local.mean(0)
+        mu_dist = np.sqrt(((y_local - mu[np.newaxis, ...])**2).sum(1))
         return mu_dist.argmin()
 
-    def create_child(self, test_res, impurity, prob, y_pca, child_type):
+    def create_child(self, test_res, impurity, prob, y_local, child_type):
+        # test_res is binary and the same shape[0] as y_local
+        assert test_res.shape[0] == y_local.shape[0]
+        assert self.exs_at_node.shape[0] == y_local.shape[0]
+
         # save absolute location in dataset
         inds_local = np.where(test_res)[0]
         inds = self.exs_at_node[inds_local]
 
-        # find medoid to store at node
-        med_id = inds[self.find_medoid_id(y_pca.take(inds_local, 0))]
+        # work out which values of y will be at the child node
+        y_at_the_child = y_local.take(inds, 0)
+        med_id = inds[self.find_medoid_id(y_at_the_child)]
 
         if child_type == 'left':
             self.left_node = Node(2*self.node_id+1, inds, impurity, prob, med_id, self.tree_id)
@@ -348,8 +353,8 @@ class Tree:
             #if info_gain[best_split] > self.tree_params.min_info_gain:
             # create new child nodes and update current node
             node.update_node(test_inds1[best_split], test_thresh[best_split], info_gain[best_split])
-            node.create_child(~test_res[:, best_split], impurity_l[best_split], prob_l[1, best_split], y_pca, 'left')
-            node.create_child(test_res[:, best_split], impurity_r[best_split], prob_r[1, best_split], y_pca, 'right')
+            node.create_child(~test_res[:, best_split], impurity_l[best_split], prob_l[1, best_split], y_local, 'left')
+            node.create_child(test_res[:, best_split], impurity_r[best_split], prob_r[1, best_split], y_local, 'right')
 
             successful_split = True
 
