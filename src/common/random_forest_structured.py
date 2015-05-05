@@ -2,7 +2,7 @@ import numpy as np
 import time
 import cPickle
 import pdb
-from joblib import Parallel, delayed
+from multiprocessing import Pool
 from sklearn.decomposition import RandomizedPCA
 
 
@@ -13,7 +13,7 @@ class ForestParams:
         self.max_depth = 25
         self.num_trees = 40
         self.bag_size = 0.5
-        self.train_parallel = False
+        self.train_parallel = True
         self.njobs = 8
 
         # structured learning params
@@ -198,8 +198,6 @@ class Tree:
             v = ((gt_Y - gt_Y.mean(axis=0))**2).sum()
             self.oob_score = (1- u/v)
 
-            print self.oob_score
-
     def calc_importance(self):
         ''' borrows from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/tree/_tree.pyx
         '''
@@ -356,13 +354,27 @@ class Tree:
         return successful_split
 
 
-## Parallel training helper - used to train trees in parallel
-def train_forest_helper(t_id, X, Y, extracted_from, params, seed):
+def train_forest_helper(parameters_tuple):
+    '''
+    Parallel training helper - used to train trees in parallel
+    '''
+    t_id, seed, params = parameters_tuple
     print 'tree', t_id, X.shape[0], Y.shape[0]
     np.random.seed(seed)
     tree = Tree(t_id, params)
     tree.train(X, Y, extracted_from)
     return tree
+
+
+def _init(X_in, Y_in, extracted_from_in):
+    '''
+    Each pool process calls this initializer. Here we load the array(s) to be
+    shared into that process's global namespace
+    '''
+    global X, Y, extracted_from
+    X = X_in
+    Y = Y_in
+    extracted_from = extracted_from_in
 
 
 class Forest:
@@ -393,9 +405,16 @@ class Forest:
             #print 'Parallel training'
             # need to seed the random number generator for each process
             seeds = np.random.random_integers(0, np.iinfo(np.int32).max, self.params.num_trees)
-            self.trees.extend(Parallel(n_jobs=self.params.njobs)
-                (delayed(train_forest_helper)(t_id, X, Y, extracted_from, self.params, seeds[t_id])
-                                             for t_id in range(self.params.num_trees)))
+
+            # these are the arguments which are different for each tree
+            per_tree_args = ((t_id, seeds[t_id], self.params)
+                for t_id in range(self.params.num_trees))
+
+            # data which is to be shared across all processes are passed as initargs
+            pool = Pool(processes=self.params.njobs, initializer=_init, initargs=(X, Y, extracted_from))
+
+            self.trees.extend(pool.map(train_forest_helper, per_tree_args))
+
         else:
             #print 'Standard training'
             for t_id in range(self.params.num_trees):
