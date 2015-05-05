@@ -143,7 +143,7 @@ class Tree:
         # bagging
         num_to_sample = int(float(Y.shape[0])*self.tree_params.bag_size)
 
-        if extracted_from == None:
+        if extracted_from is None:
             exs_at_node = np.random.choice(Y.shape[0], num_to_sample, replace=False)
         else:
             ids = np.unique(extracted_from)
@@ -358,7 +358,7 @@ class Tree:
 
 ## Parallel training helper - used to train trees in parallel
 def train_forest_helper(t_id, X, Y, extracted_from, params, seed):
-    print 'tree', t_id
+    print 'tree', t_id, X.shape[0], Y.shape[0]
     np.random.seed(seed)
     tree = Tree(t_id, params)
     tree.train(X, Y, extracted_from)
