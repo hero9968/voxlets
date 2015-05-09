@@ -26,15 +26,49 @@ from common import scene
 import sklearn.metrics
 
 print "Loading model..."
-with open(paths.RenderedData.voxlets_path + '/models/oma.pkl', 'rb') as f:
-    model_without_implicit = pickle.load(f)
+# with open('/media/ssd/data/rendered_arrangements/floating_voxlets/models/oma.pkl', 'rb') as f:
+#     floating_model = pickle.load(f)
+
+with open('/media/ssd/data/rendered_arrangements/voxlets/models/oma.pkl', 'rb') as f:
+    tall_model = pickle.load(f)
+
+
+
+class Voxlet(object):
+    '''
+    class for voxlet parameters
+    '''
+    # setting some voxlet params here
+    # NOTE BE VERY CAREFUL IF EDITING THESE
+    tall_voxlets = True
+
+    one_side_bins = 20
+    shape = (one_side_bins, 2*one_side_bins, 2*one_side_bins)
+    size = 0.0175  # edge size of a single voxel
+    # centre is relative to the ijk origin at the bottom corner of the voxlet
+    # z height of centre takes into account the origin offset
+    actual_size = np.array(shape) * size
+    centre = np.array((actual_size[0] * 0.5,
+                       actual_size[1] * 0.25,
+                       0.375+0.03))
+
+    tall_voxlet_height = 0.375
+
+tall_model.voxlet_params = voxlets.voxlet_class_to_dict(Voxlet)
+
 print "Done loading model..."
 
+# print model_without_implicit
+# model_without_implicit.set_voxlet_params(parameters.Voxlet)
+
+# to_predict = ['eu33x4vsa3gmuk89_SEQ', 'fjgt8hqqtkqaasdv_SEQ', 'vdcoc4lc2qpm3qr0_SEQ', 'jpop9l44loazrg6q_SEQ', 'z5crp98v05ddx6z6_SEQ']
+
 do_oracles = True
-combine_renders = True
-render_predictions = True
-render_top_view = True
-save_prediction_grids = True
+combine_renders = False
+do_greedy = False
+render_predictions = False
+render_top_view = False
+save_prediction_grids = False
 save_scores_to_yaml = True
 copy_to_dropbox = False and paths.host_name == 'biryani'
 dropbox_path = paths.RenderedData.new_dropbox_dir()
@@ -43,7 +77,7 @@ print dropbox_path
 # this overrides all other parameters. Means we don't botther with orables etc
 only_prediction = False
 
-test_type = 'true_greedy_oracles_pca400'
+test_type = 'tall_and_floating_oracles'
 
 def save_render_assess(dic, sc):
     '''
@@ -55,7 +89,10 @@ def save_render_assess(dic, sc):
         (test_type, sc.sequence['name'], '%s')
 
     if render_predictions:
-        dic['grid'].render_view(gen_renderpath % dic['desc'])
+        if dic['desc']=='visible':
+            dic['grid'].render_view(gen_renderpath % dic['desc'])
+        else:
+            dic['grid'].render_view(gen_renderpath % dic['desc'], ground_height=0.06)
 
     dic['results'] = sc.evaluate_prediction(dic['grid'].V)
 
@@ -71,8 +108,11 @@ print "MAIN LOOP"
 # better off being GPU...)
 def process_sequence(sequence):
 
+    # if sequence['name'] not in to_predict:
+    #     return
+
     sc = scene.Scene(parameters.RenderedVoxelGrid.mu,
-        model_without_implicit.voxlet_params)
+        tall_model.voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, load_implicit=False)
     # sc.santity_render(save_folder='/tmp/')
@@ -94,7 +134,8 @@ def process_sequence(sequence):
     if not os.path.exists(fpath):
         os.makedirs(fpath)
 
-    rec.set_model(model_without_implicit)
+    rec.set_model(tall_model)
+    rec.set_probability_model_one(0.0)
 
     combines = collections.OrderedDict()
     combines['input'] = {'name':'Input image'}
@@ -105,16 +146,15 @@ def process_sequence(sequence):
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
     pred_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True,
-        combine_segments_separately=False, feature_collapse_type='pca', use_binary=parameters.use_binary)
+        render_type=[], add_ground_plane=None,
+        combine_segments_separately=False, feature_collapse_type='pca',
+        use_binary=parameters.use_binary)
     combines['pred_voxlets'] = save_render_assess({'name':'Voxlets', 'grid':pred_voxlets, 'desc':'pred_voxlets'}, sc)
     pred_voxlets = None
 
-
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    rec.set_model(model_without_implicit)
     pred_voxlets_medioid = rec.fill_in_output_grid_oma(
-        add_ground_plane=True, how_to_choose='medioid',
+        add_ground_plane=6, how_to_choose='medioid',
         feature_collapse_type='pca')
     combines['pred_voxlets_medioid'] = \
         save_render_assess({'name':'Voxlets medioid', 'grid':pred_voxlets_medioid, 'desc':'pred_voxlets_medioid'}, sc)
@@ -125,30 +165,31 @@ def process_sequence(sequence):
 
     print '''DOING GREEDY ORACLES'''
 
-    # true greedy oracle prediction - without the ground truth
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    true_greedy = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True, feature_collapse_type='pca',
-        oracle='true_greedy')
+    if do_greedy:
+        # true greedy oracle prediction - without the ground truth
+        rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+        true_greedy = rec.fill_in_output_grid_oma(
+            render_type=[], add_ground_plane=None, feature_collapse_type='pca',
+            oracle='true_greedy')
 
-    for key, result in true_greedy.iteritems():
-        dic = {'desc':'true_greedy_%04d' % key, 'name': 'True greedy %04d' % key, 'grid': result}
-        combines['true_greedy_%04d' % key] = save_render_assess(dic, sc)
-    true_greedy = None
+        for key, result in true_greedy.iteritems():
+            dic = {'desc':'true_greedy_%04d' % key, 'name': 'True greedy %04d' % key, 'grid': result}
+            combines['true_greedy_%04d' % key] = save_render_assess(dic, sc)
+        true_greedy = None
 
-    # hack to align the plotting
-    # combines['blankblank'] = []
+        # hack to align the plotting
+        # combines['blankblank'] = []
 
-    # true greedy oracle prediction -with the ground truth
-    rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    true_greedy_gt = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True, feature_collapse_type='pca',
-        oracle='true_greedy_gt')
+        # true greedy oracle prediction -with the ground truth
+        rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+        true_greedy_gt = rec.fill_in_output_grid_oma(
+            render_type=[], add_ground_plane=None, feature_collapse_type='pca',
+            oracle='true_greedy_gt')
 
-    for key, result in true_greedy_gt.iteritems():
-        dic = {'desc':'true_greedy_gt_%04d' % key, 'name': 'True greedy GT %04d' % key, 'grid': result}
-        combines['true_greedy_gt_%04d' % key] = save_render_assess(dic, sc)
-    true_greedy_gt = None
+        for key, result in true_greedy_gt.iteritems():
+            dic = {'desc':'true_greedy_gt_%04d' % key, 'name': 'True greedy GT %04d' % key, 'grid': result}
+            combines['true_greedy_gt_%04d' % key] = save_render_assess(dic, sc)
+        true_greedy_gt = None
 
     if render_top_view:
         print "-> Rendering top view"
@@ -160,21 +201,27 @@ def process_sequence(sequence):
     if do_oracles:
         rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
         full_oracle_voxlets = rec.fill_in_output_grid_oma(
-            render_type=[],oracle='gt', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
+            render_type=[],oracle='gt', add_ground_plane=None, feature_collapse_type='pca', use_binary=parameters.use_binary)
         combines['OR1'] = save_render_assess({'desc':'OR1', 'name':'Full oracle (OR1)', 'grid':full_oracle_voxlets}, sc)
         full_oracle_voxlets = None
 
         rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
         oracle_voxlets = rec.fill_in_output_grid_oma(
-            render_type=[],oracle='pca', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
+            render_type=[],oracle='pca', add_ground_plane=None, feature_collapse_type='pca', use_binary=parameters.use_binary)
         combines['OR2'] = save_render_assess({'desc':'OR2', 'name':'Oracle using PCA (OR2)', 'grid':oracle_voxlets}, sc)
         oracle_voxlets = None
 
         rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
         nn_oracle_voxlets = rec.fill_in_output_grid_oma(
-            render_type=[], oracle='nn', add_ground_plane=True, feature_collapse_type='pca', use_binary=parameters.use_binary)
+            render_type=[], oracle='nn', add_ground_plane=None, feature_collapse_type='pca', use_binary=parameters.use_binary)
         combines['OR3'] = save_render_assess({'desc':'OR3', 'name':'Oracle using NN (OR3)', 'grid':nn_oracle_voxlets}, sc)
         nn_oracle_voxlets = None
+
+        rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+        greedy_oracle_voxlets = rec.fill_in_output_grid_oma(
+            render_type=[], oracle='greedy_add', add_ground_plane=None, feature_collapse_type='pca', use_binary=parameters.use_binary)
+        combines['OR4'] = save_render_assess({'desc':'OR3', 'name':'Oracle using NN (OR4)', 'grid':greedy_oracle_voxlets}, sc)
+        greedy_oracle_voxlets = None
 
     # if save_prediction_grids:
     #     print "-> Saving prediction grids"
@@ -244,6 +291,7 @@ def process_sequence(sequence):
                 results_dict[test_key] = \
                     {'description': dic['name'],
                      'auc':         float(dic['results']['auc']),
+                     'iou':         float(dic['results']['iou']),
                      'precision':   float(dic['results']['precision']),
                      'recall':      float(dic['results']['recall'])}
 
@@ -255,7 +303,8 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if parameters.multicore:
+if True:
+    # parameters.multicore:
     import multiprocessing
     pool = multiprocessing.Pool(4)
     mapper = pool.map
@@ -268,7 +317,8 @@ if __name__ == '__main__':
     # temp = [s for s in paths.RenderedData.test_sequence() if s['name'] == 'd2p8ae7t0xi81q3y_SEQ']
     # print temp
     tic = time()
-    mapper(process_sequence, paths.RenderedData.test_sequence()[10:48], chunksize=1)
+    mapper(process_sequence, paths.RenderedData.test_sequence()[:40])
+    # , chunksize=1)
     print "In total took %f s" % (time() - tic)
 
 

@@ -55,7 +55,7 @@ class CobwebEngine(object):
     def set_image(self, im):
         self.im = im
         self.depth = copy(self.im.depth)
-        if self.mask != None:
+        if self.mask is not None:
             self.depth[self.mask==0] = np.nan
             self.depth[im.get_world_xyz()[:, 2].reshape(im.depth.shape) < 0.035] = np.nan
 
@@ -195,7 +195,7 @@ class Normals(object):
         arr[:, 2] /= lens
         return arr
 
-    def compute_normals(self, im):
+    def compute_normals(self, im, stepsize=1):
         '''
         one method of computing normals
         '''
@@ -205,9 +205,9 @@ class Normals(object):
         y = xyz[1, :].reshape(im.depth.shape)
         z = xyz[2, :].reshape(im.depth.shape)
 
-        dx0, dx1 = np.gradient(x)
-        dy0, dy1 = np.gradient(y)
-        dz0, dz1 = np.gradient(z)
+        dx0, dx1 = np.gradient(x, stepsize)
+        dy0, dy1 = np.gradient(y, stepsize)
+        dz0, dz1 = np.gradient(z, stepsize)
 
         dxyz0 = np.vstack((dx0.flatten(), dy0.flatten(), dz0.flatten()))
         dxyz1 = np.vstack((dx1.flatten(), dy1.flatten(), dz1.flatten()))

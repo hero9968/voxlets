@@ -11,10 +11,10 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import scene, voxlets, features
+from common import scene, voxlets
 
-import paths
-import parameters
+import real_data_paths as paths
+import real_params as parameters
 
 # features_iso_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_iso.pkl'
 # with open(features_iso_savepath, 'rb') as f:
@@ -39,7 +39,6 @@ print "Features PCA components is shape ", features_pca.components_.shape
 if not os.path.exists(paths.RenderedData.voxlets_data_path):
     os.makedirs(paths.RenderedData.voxlets_data_path)
 
-cobwebengine = features.CobwebEngine(0.01, mask=True)
 
 def decimate_flatten(sbox):
     return sbox.V[::2, ::2, ::2].flatten()
@@ -48,10 +47,6 @@ def decimate_flatten(sbox):
 def pca_flatten(sbox):
     """Applied to the GT shoeboxes after extraction"""
     return pca.transform(sbox.V.flatten())
-
-
-def sample_sbox(sbox):
-    return sbox.flatten()[parameters.VoxletTraining.voxlet_samples]
 
 
 def sbox_flatten(sbox):
@@ -63,9 +58,9 @@ def process_sequence(sequence):
 
     logging.info("Processing " + sequence['name'])
 
-    sc = scene.Scene(parameters.RenderedVoxelGrid.mu, voxlets.voxlet_class_to_dict(parameters.Voxlet))
+    sc = scene.Scene(parameters.mu, parameters.Voxlet)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
-        save_grids=False, load_implicit=parameters.VoxletTraining.use_implicit)
+        save_grids=False, load_implicit=False, voxel_normals='gt_tsdf')
     # sc.santity_render(save_folder='/tmp/')
 
     # just using reconstructor for sampling the points...
@@ -82,8 +77,20 @@ def process_sequence(sequence):
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=sbox_flatten) for idx in idxs]
 
-    cobwebengine.set_image(sc.im)
-    np_cobweb = np.array(cobwebengine.extract_patches(idxs))
+    if parameters.VoxletTraining.feature_transform == 'pca':
+
+        view_shoeboxes = [sc.extract_single_voxlet(
+            idx, extract_from='im_tsdf', post_transform=sbox_flatten) for idx in idxs]
+        all_features = np.vstack(view_shoeboxes)
+        all_features[np.isnan(all_features)] = -parameters.mu
+        np_features = features_pca.transform(all_features)
+
+    elif parameters.VoxletTraining.feature_transform == 'decimate':
+
+        view_shoeboxes = [sc.extract_single_voxlet(
+            idx, extract_from='im_tsdf', post_transform=decimate_flatten) for idx in idxs]
+        np_features = np.vstack(view_shoeboxes)
+        np_features[np.isnan(np_features)] = -parameters.mu
 
     np_sboxes = np.vstack(gt_shoeboxes)
 
@@ -91,15 +98,15 @@ def process_sequence(sequence):
     np_masks = np.isnan(np_sboxes).astype(np.float16)
     np_sboxes[np_masks == 1] = np.nanmax(np_sboxes)
 
-    if parameters.use_binary:
-        np_sboxes = (np_sboxes > 0).astype(np.float16)
-
     # must do the pca now after doing the mask trick
     np_sboxes = pca.transform(np_sboxes)
     np_masks = mask_pca.transform(np_masks)
 
     '''replace all the nans in the shoeboxes from the image view'''
+
+
     logging.debug("...Shoeboxes are shape " + str(np_sboxes.shape))
+    logging.debug("...Features are shape " + str(np_features.shape))
 
     print "Took %f s" % (time() - t1)
     t1 = time()
@@ -107,7 +114,7 @@ def process_sequence(sequence):
     savepath = paths.RenderedData.voxlets_data_path + \
         sequence['name'] + '.mat'
     logging.debug("Saving to " + savepath)
-    D = dict(shoeboxes=np_sboxes, masks=np_masks, cobweb=np_cobweb)
+    D = dict(shoeboxes=np_sboxes, features=np_features, masks=np_masks)
     scipy.io.savemat(savepath, D, do_compression=True)
 
 
@@ -123,5 +130,5 @@ else:
 if __name__ == "__main__":
 
     tic = time()
-    mapper(process_sequence, paths.RenderedData.train_sequence())
+    mapper(process_sequence, paths.train_data)
     print "In total took %f s" % (time() - tic)

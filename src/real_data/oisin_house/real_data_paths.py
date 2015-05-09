@@ -12,7 +12,7 @@ else:
     data_folder = '/Users/Michael/projects/shape_sharing/data/oisin_house/'
     converter_path = '/Users/Michael/projects/InfiniTAM_Alt/convertor/voxels_to_ply.py'
 
-raw_data = data_folder + 'data1/'
+raw_data = data_folder + 'data2/'
 
 scene_names = [o
           for o in os.listdir(raw_data)
@@ -25,10 +25,16 @@ scenes = [{'folder':raw_data,
            for scene in scene_names]
 
 yaml_train_location = data_folder + 'train_test/train.yaml'
+yaml_train_location2 = data_folder + 'train_test/train2.yaml'
 yaml_test_location = data_folder + 'train_test/test.yaml'
 
 with open(yaml_train_location, 'r') as f:
-    train_data = yaml.load(f)
+    temp_train_data = yaml.load(f)
+
+with open(yaml_train_location2, 'r') as f:
+    temp_train_data2 = yaml.load(f)
+
+all_train_data = temp_train_data + temp_train_data2
 
 with open(yaml_test_location, 'r') as f:
     test_data = yaml.load(f)
@@ -54,12 +60,12 @@ for t in scenes:
     sequences.append(temp)
 
 # saving...
-models_folder = data_folder + 'models_full_split_not_tall/'
+models_folder = data_folder + 'models_full_split_floating_different_split/'
 
 voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
 voxlets_dictionary_path = models_folder + 'dictionary/'
 voxlets_data_path = models_folder + 'training_voxlets/'
-voxlet_model_oma_path = models_folder + 'models/oma.pkl'
+voxlet_model_oma_path = models_folder + 'models/oma_tall.pkl'
 
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
 voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'

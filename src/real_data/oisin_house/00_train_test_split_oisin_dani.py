@@ -5,7 +5,7 @@ import os
 from copy import deepcopy
 random.seed(10)
 
-warning - make sure training on the dark scenes and testing on bright ones, for visualisation purposes...
+# warning - make sure training on the dark scenes and testing on bright ones, for visualisation purposes...
 def add_to_scene(t):
 
     t['folder'] = raw_data
@@ -23,8 +23,9 @@ def add_to_scene(t):
     return temp
 
 
-for (folder, saveloc) in zip(['data1/', 'data/'],
-    [paths.yaml_train_location, paths.yaml_test_location]):
+for (folder, saveloc) in zip(['data/', 'data2/'],
+    [paths.yaml_train_location, paths.yaml_train_location2]):
+
 
     raw_data = paths.data_folder + folder
 

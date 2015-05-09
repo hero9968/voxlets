@@ -1,26 +1,37 @@
 from __future__ import print_function
 
+'''
+Improvements:
+1. Better plotting of the voxlets
+    - 3D rendering Better
+    - floor plane?
+    -
+2. Top down view...
+3. Use depth image
+    - Show which region of depth image falls into voxlet?
+
+'''
+
 # from pylab import arange, plot, sin, ginput, show
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.misc import imread
 
-H, W = 200, 300
-N = 50
+base_path = '/media/ssd/data/oisin_house/predictions/different_data_split/saved_00233_[134]/'
 
 # generating data
-main_im = np.random.rand(H, W)
-points = np.random.rand(N, 2)
-points[:, 0] *= W
-points[:, 1] *= H
+main_im = imread(base_path + 'input.png')
+H, W, _ = main_im.shape
+points = np.loadtxt(open(base_path + 'sampled_locations.txt'), delimiter=',').astype(int)[:, ::-1]
+N = points.shape[0]
 
-voxlet_ims = [np.random.rand(20, 20) for _ in range(N)]
+voxlet_ims = [imread(base_path + 'voxlets/compiled_%03d.png' % f) for f in range(N)]
 
 # initial plotting
 plt.subplot(121)
 plt.imshow(main_im)
 plt.plot(points[:, 0], points[:, 1], 'bo')
 plt.axis('off')
-
 
 while True:
 

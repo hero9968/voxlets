@@ -17,6 +17,8 @@ import features
 from skimage.restoration import denoise_bilateral
 import scipy.interpolate
 
+import h5py
+
 
 def fill_in_nans(depth):
     # a boolean array of (width, height) which False where there are
@@ -81,6 +83,25 @@ class RGBDImage(object):
         self.depth = np.array(f['depth']).astype(np.float32) / 10000
         self.depth[self.depth == 0] = np.nan
         self.assert_depth_rgb_equal()
+
+    def load_mask_from_pbm(self, mask_path, scale_factor=[]):
+        self.mask = self.read_pbm(mask_path)
+        if scale_factor:
+            self.mask = scipy.misc.imresize(self.mask, scale_factor)
+
+    def read_pbm(self, fname):
+        '''
+        reads a pbm image. not tested in the general case but works on the
+        masks
+        '''
+        with open(fname) as f:
+            data = [x for x in f if not x.startswith('#')]  # remove comments
+
+        header = data.pop(0).split()
+        dimensions = [int(header[2]), int(header[1])]
+
+        arr = np.fromstring(data.pop(0), dtype=np.uint8)
+        return np.unpackbits(arr).reshape(dimensions)
 
     def load_depth_from_pgm(self, pgm_path):
         ''' the kinfu routine hack i made does pgm like this'''
@@ -247,6 +268,15 @@ class RGBDImage(object):
     def set_intrinsics(self, K):
         self.K = K
         self.inv_K = np.linalg.inv(K)
+
+
+    def load_depth_from_h5(self, depth_path):
+        self._clear_cache
+        f = h5py.File(depth_path, 'r')
+        self.depth = np.array(f['depth']).astype(np.float32) / 10000
+        self.depth[self.depth == 0] = np.nan
+        self.assert_depth_rgb_equal()
+
 
     def disp_channels(self):
         '''plots both the depth and rgb and mask next to each other'''

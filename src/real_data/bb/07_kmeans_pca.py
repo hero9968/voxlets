@@ -29,31 +29,38 @@ def pca_randomized(X_in, local_subsample_length, num_pca_dims):
 shoeboxes = []
 features = []
 
-for count, sequence in enumerate(paths.all_train_data[::3]):
+for count, sequence in enumerate(paths.train_data):
 
-    print "Processing " + sequence['name']
+    # print "Processing " + sequence['name']
 
     # loading the data
     loadpath = paths.voxlets_dict_data_path + \
         sequence['name'] + '.pkl'
     print "Loading from " + loadpath
 
-    with open(loadpath, 'r') as f:
-        D = pickle.load(f)
+    try:
+        with open(loadpath, 'r') as f:
+            D = pickle.load(f)
+        print D['shoeboxes'].shape
 
-    shoeboxes.append(D['shoeboxes'].astype(np.float16))
-    features.append(D['features'].astype(np.float16))
+    except:
+        print "failed"
+        continue
+
+    shoeboxes.append(D['shoeboxes'].reshape(50, -1).astype(np.float16))
+    print D['shoeboxes'].shape
+    # features.append(D['cobweb'].astype(np.float16))
 
     if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
         break
 
 np_all_sboxes = np.concatenate(shoeboxes, axis=0).astype(np.float16)
-np_all_features = np.concatenate(features, axis=0).astype(np.float16)
+# np_all_features = np.concatenate(features, axis=0).astype(np.float16)
 shoeboxes = features = None
 print "All sboxes shape is " + str(np_all_sboxes.shape)
-print "Features shape is " + str(np_all_features.shape)
-print np_all_features.dtype
+# print "Features shape is " + str(np_all_features.shape)
+# print np_all_features.dtype
 print np_all_sboxes.dtype
 
 print "There are %d nans in sboxes" % np.isnan(np_all_sboxes).sum()
@@ -65,7 +72,7 @@ np_all_sboxes[np_all_masks == 1] = np.nanmax(np_all_sboxes)
 print "There are %d nans in sboxes" % np.isnan(np_all_sboxes).sum()
 
 # Replacing nans with a low number in the features, hopefully will work...
-np_all_features[np.isnan(np_all_features)] = -parameters.mu
+# np_all_features[np.isnan(np_all_features)] = -parameters.mu
 
 for name, np_array in zip(
         ('shoeboxes', 'masks'),

@@ -7,8 +7,8 @@ import cPickle as pickle
 import sys
 import os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-import paths
-import parameters
+import real_data_paths as paths
+import real_params as parameters
 from common import voxlets
 import time
 
@@ -27,12 +27,12 @@ pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'shoeboxes_pca.pkl'
 with open(pca_savepath, 'rb') as f:
     pca = pickle.load(f)
 
-# features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
-# with open(features_pca_savepath, 'rb') as f:
-#     features_pca = pickle.load(f)
+features_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'features_pca.pkl'
+with open(features_pca_savepath, 'rb') as f:
+    features_pca = pickle.load(f)
 
 masks_pca_savepath = paths.RenderedData.voxlets_dictionary_path + 'masks_pca.pkl'
-with open(masks_pca_savepath, 'rb') as f:
+with open(features_pca_savepath, 'rb') as f:
     masks_pca = pickle.load(f)
 
 ####################################################################
@@ -43,7 +43,7 @@ pca_representation = []
 masks = []
 scene_ids = []
 
-for count, sequence in enumerate(paths.RenderedData.train_sequence()):
+for count, sequence in enumerate(paths.train_data):
 
     # loading the data
     loadpath = paths.RenderedData.voxlets_data_path + \
@@ -51,28 +51,25 @@ for count, sequence in enumerate(paths.RenderedData.train_sequence()):
     print "Loading from " + loadpath
 
     D = scipy.io.loadmat(loadpath)
-    features.append(D['cobweb'])
+    features.append(D['features'])
     pca_representation.append(D['shoeboxes'])
     masks.append(D['masks'])
-    scene_ids.append(np.ones(D['cobweb'].shape[0]) * count)
+    scene_ids.append(np.ones(D['features'].shape[0]) * count)
 
-    print D['cobweb'].shape, D['shoeboxes'].shape
+    print D['features'].shape, D['shoeboxes'].shape
     if count > parameters.max_sequences:
         print "SMALL SAMPLE: Stopping"
         break
 
-np_pca_representation = np.vstack(pca_representation).astype(np.float16)
-np_masks = np.vstack(masks).astype(np.float16)
-np_features = np.concatenate(features, axis=0).astype(np.float16)
+np_pca_representation = np.vstack(pca_representation)
+np_masks = np.vstack(masks)
+np_features = np.concatenate(features, axis=0)
 np_scene_ids = np.concatenate(scene_ids, axis=0).astype(int)
 
 print "Sbox pca representation is shape", np_pca_representation.shape
 print "Masks is ", np_masks.shape
-# print "Features is ", np_features.shape
+print "Features is ", np_features.shape
 print "Scene ids is ", np_scene_ids.shape
-
-if not parameters.scene_bagging:
-    np_scene_ids = None
 
 ####################################################################
 print "Training the model"
@@ -88,5 +85,5 @@ model.train(
     scene_ids=np_scene_ids)
 model.set_pca(pca)
 model.set_masks_pca(masks_pca)
-# model.set_feature_pca(features_pca)
+model.set_feature_pca(features_pca)
 model.save(paths.RenderedData.voxlet_model_oma_path)
