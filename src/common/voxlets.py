@@ -1002,8 +1002,8 @@ class Reconstructer(object):
                 '''create range of items'''
                 vols = ((features_voxlet.V, 'Observed'),
                            (transformed_voxlet.V, 'Predicted'),
-                           (gt_voxlet.V, 'gt'),
-                           (closest_training_Y, 'closest training Y'))
+                           (gt_voxlet.V, 'gt'))
+                           # (closest_training_Y, 'closest training Y'))
 
                 for vol_count, (V, title) in enumerate(vols):
 
