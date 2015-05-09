@@ -86,5 +86,5 @@ else:
 if __name__ == '__main__':
 
     tic = time()
-    mapper(process_sequence, paths.train_data)
+    mapper(process_sequence, paths.all_train_data)
     print "In total took %f s" % (time() - tic)

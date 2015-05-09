@@ -23,7 +23,7 @@ def add_to_scene(t):
     return temp
 
 
-for (folder, saveloc) in zip(['data1/', 'data2/'],
+for (folder, saveloc) in zip(['data/', 'data2/'],
     [paths.yaml_train_location, paths.yaml_train_location2]):
 
 

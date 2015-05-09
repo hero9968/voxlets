@@ -115,31 +115,26 @@ class Tree:
         return y_pca, y_bin
 
     def pca(self, y):
+
         # select a random subset of Y dimensions (possibly gives robustness as well as speed)
         rand_dims = np.sort(np.random.choice(y.shape[1], np.minimum(self.tree_params.num_dims_for_pca, y.shape[1]), replace=False))
-        y = y.take(rand_dims, 1)
-        y_sub = y
+        y_dim_subset = y.take(rand_dims, 1)
 
-        '''
+        pca = RandomizedPCA(n_components=1) # compute for all components
+
         # optional: select a subset of exs (not so important if PCA is fast)
         if self.tree_params.sub_sample_exs_pca:
             rand_exs = np.sort(np.random.choice(y.shape[0], np.minimum(self.tree_params.num_exs_for_pca, y.shape[0]), replace=False))
-            y_sub = y.take(rand_exs, 0)
+            pca.fit(y_dim_subset.take(rand_exs, 0))
+            return pca.transform(y_dim_subset)
 
-        # perform PCA
-        y_sub_mean = np.mean(y_sub, 0)
-        y_sub = y_sub - y_sub_mean
-        (l, M) = np.linalg.eig(np.dot(y_sub.T, y_sub))
-        y_ds = np.dot(y-y_sub_mean, M[:, 0:self.tree_params.pca_dims])
-        '''
-        pca = RandomizedPCA(n_components=1) # compute for all components
-        y_ds = pca.fit_transform(y_sub)
-        return y_ds
+        else:
+            # perform PCA
+            return pca.fit_transform(y_dim_subset)
 
     def train(self, X, Y, extracted_from):
         # no bagging
         #exs_at_node = np.arange(Y.shape[0])
-
         # bagging
         num_to_sample = int(float(Y.shape[0])*self.tree_params.bag_size)
 
@@ -250,6 +245,32 @@ class Tree:
 
             # print self.oob_importance
 
+
+    def test_fast(self, X, max_depth):
+        op = np.zeros((X.shape[0]))
+        tree = self.compact_tree  # work around as I don't think I can pass self.compact_tree
+
+        #in memory: for non leaf  node - 0 is lchild index, 1 is rchild, 2 is dim to test, 3 is threshold
+        #in memory: for leaf node - 0 is leaf indicator -1, 1 is the medoid id
+        code = """
+        int ex_id, node_loc, depth;
+        for (ex_id=0; ex_id<NX[0]; ex_id++) {
+            node_loc = 0;
+            depth = 0
+            while (tree[node_loc] != -1 && depth < max_depth) {
+                if (X2(ex_id, int(tree[node_loc+2]))  <  tree[node_loc+3]) {
+                    node_loc = tree[node_loc+1];  // right node
+                }
+                else {
+                    node_loc = tree[node_loc];  // left node
+                }
+                depth++;
+            }
+            op[ex_id] = tree[node_loc + 1];  // medoid id
+        }
+        """
+        inline(code, ['X', 'op', 'tree', 'max_depth'])
+        return op
 
 
     def test(self, X, max_depth=np.inf):

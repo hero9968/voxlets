@@ -55,7 +55,7 @@ class CobwebEngine(object):
     def set_image(self, im):
         self.im = im
         self.depth = copy(self.im.depth)
-        if self.mask != None:
+        if self.mask is not None:
             self.depth[self.mask==0] = np.nan
             self.depth[im.get_world_xyz()[:, 2].reshape(im.depth.shape) < 0.035] = np.nan
 

@@ -19,7 +19,7 @@ import sklearn.metrics
 import cPickle as pickle
 import subprocess as sp
 import shutil
-import paths
+import rendering
 import mesh
 import os
 import sys
@@ -629,7 +629,7 @@ class WorldVoxels(Voxels):
         blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/blender_spinaround_frame.py')
         subenv = os.environ.copy()
         subenv['BLENDERSAVEFILE'] = savepath
-        sp.call([paths.blender_path,
+        sp.call([rendering.blender_path,
                  blend_path,
                  "-b", "-P",
                  blend_py_path],

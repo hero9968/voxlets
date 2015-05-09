@@ -13,6 +13,7 @@ class Mesh(object):
         self.faces = []
         self.norms = []
 
+
     def load_from_ply(self, filename):
         '''
         loads faces and vertices from a ply file
@@ -235,6 +236,7 @@ class Mesh(object):
 
         self.faces = self.faces[~faces_to_remove, :]
 
+import h5py
 
 class Camera(object):
     '''
@@ -249,6 +251,30 @@ class Camera(object):
     def set_intrinsics(self, K):
         self.K = K
         self.inv_K = np.linalg.inv(K)
+
+
+    def load_bigbird_matrices(self, folder, modelname, imagename):
+        '''
+        loads the extrinsics and intrinsics for a bigbird camera
+        camera name is something like 'NP5'
+        '''
+        cameraname, angle = imagename.split('_')
+
+        # loading the pose and calibration files
+        calib = h5py.File(folder.replace('_cropped','') + modelname + "/calibration.h5", 'r')
+        pose_path = folder.replace('_cropped','') + modelname + "/poses/NP5_" + angle + "_pose.h5"
+        pose = h5py.File(pose_path, 'r')
+
+        # extracting extrinsic and intrinsic matrices
+        np5_to_this_camera = np.array(calib['H_' + cameraname + '_from_NP5'])
+        mesh_to_np5 = np.linalg.inv(np.array(pose['H_table_from_reference_camera']))
+
+        intrinsics = np.array(calib[cameraname +'_depth_K'])
+
+        # applying to the camera
+        self.set_extrinsics(np.linalg.inv(np5_to_this_camera.dot(mesh_to_np5)))
+        self.set_intrinsics(intrinsics)
+
 
     def set_extrinsics(self, H):
         '''

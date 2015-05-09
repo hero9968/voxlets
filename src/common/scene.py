@@ -1,6 +1,5 @@
 '''
-quick class to store data about a SCENE!
-
+Class for data about a scene, i.e. a voxel grid plus frames with camera poses
 '''
 
 import numpy as np
@@ -12,18 +11,24 @@ import images
 import features
 import carving
 import cPickle as pickle
-import paths
 import yaml
-
+from copy import deepcopy
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+import scipy.misc
+import mesh
+import h5py
+
+from copy import copy
+from scipy.ndimage.interpolation import zoom
+
 
 class Scene(object):
     '''
-    stores voxel grid, also labels and perhaps the video of depth images
-    will probably have methods to do segmentation etc
+    Stores voxel grid, labels and the video of depth images
+    Also has methods to do segmentation etc
     '''
     def __init__(self, mu, voxlet_params):
         self.gt_tsdf = None
@@ -34,14 +39,13 @@ class Scene(object):
 
     def _load_scene_data(self, scene_dir, frame_idxs=None):
         '''
-        returns a list of frames from a scene
-        if frames then returns only the specified frame numbers
+        Returns a list of frames from a scene
+        If frames then returns only the specified frame numbers
         '''
         with open(scene_dir + '/poses.yaml', 'r') as f:
             frames = yaml.load(f)
 
-        # Using "!= None" because if I don't and frame_idxs==0 then this fails
-        if frame_idxs != None:
+        if frame_idxs is not None:
             if isinstance(frame_idxs, list):
                 frames = [frames[idx] for idx in frame_idxs]
             else:
@@ -49,8 +53,172 @@ class Scene(object):
 
         return frames
 
+    def load_bigbird_matrices(self, folder, modelname, imagename):
+        '''
+        loads the extrinsics and intrinsics for a bigbird camera
+        camera name is something like 'NP5'
+        '''
+        cameraname, angle = imagename.split('_')
+
+        # loading the pose and calibration files
+        calib = h5py.File(folder + modelname + "/calibration.h5", 'r')
+        pose_path = paths.bigbird_folder + modelname + "/poses/NP5_" + angle + "_pose.h5"
+        pose = h5py.File(pose_path, 'r')
+
+        # extracting extrinsic and intrinsic matrices
+        np5_to_this_camera = np.array(calib['H_' + cameraname + '_from_NP5'])
+        mesh_to_np5 = np.linalg.inv(np.array(pose['H_table_from_reference_camera']))
+
+        intrinsics = np.array(calib[cameraname + '_depth_K'])
+
+        # applying to the camera
+        # self.set_extrinsics(np5_to_this_camera.dot(mesh_to_np5))
+        # self.set_intrinsics(intrinsics)
+        return np5_to_this_camera.dot(mesh_to_np5), intrinsics
+        calib.close()
+        pose.close()
+
+
+    def load_bb_sequence(self, sequence, voxel_normals=True):
+        '''
+        load from the bigbird dataset
+        '''
+        # self.sequence = sequence
+        # rgbpath = sequence['folder'] + '/' + sequence['scene'] + '/' + sequence['pose_id'] + '.jpg'
+        # depthpath = sequence['folder'] + '/' + sequence['scene'] + '/' + sequence['pose_id'] + '.h5'
+        # maskpath = sequence['folder'] + '/' + sequence['scene'] + '/masks/' + sequence['pose_id'] + '_mask.pbm'
+
+        # self.im = images.RGBDImage()
+        # self.im.rgb = zoom(scipy.misc.imread(rgbpath), (0.5, 0.5, 1.0))[:480, :, :]
+        # # self.im.load_mask_from_pbm()
+        # self.im.load_depth_from_h5(depthpath)
+
+        # self.im.load_mask_from_pbm(maskpath, 0.5)
+        # self.im.mask = self.im.mask[:480, :]
+        # # self.im.mask[np.isnan(self.im.depth)] = 0
+
+        # self.im.cam = mesh.Camera()
+        # mats = self.load_bigbird_matrices(sequence['folder'], sequence['scene'], sequence['pose_id'])
+        # self.im.cam.set_extrinsics(mats[0])
+        # self.im.cam.set_intrinsics(mats[1])
+
+
+        # print self.im.rgb
+        matpath = sequence['folder'] + '/' + sequence['scene'] + '/' + sequence['pose_id'] + '.mat'
+        D = scipy.io.loadmat(matpath)
+        left, right, top, bottom = D['aabb'][0]
+        # print D.keys()
+        self.im = images.RGBDImage()
+        self.im.depth = np.nan * np.zeros((480, 640))
+        self.im.depth[top:bottom+1, left:right+1] = D['orig_d']
+
+        self.im.rgb = D['rgb']
+        # np.zeros((480, 640, 3)).astype(np.uint8)
+        # self.im.rgb[top:bottom+1, left:right+1] =
+        # print self.im.rgb.shape
+
+        # clean up the mask
+        thresh = np.median(D['orig_d'].flatten()[D['mask'].flatten()==1]) + 0.2
+        temp_mask = np.logical_and.reduce((D['orig_d'] < thresh, D['orig_d'] >0, D['mask']==1))
+
+        self.TT = np.zeros((480, 640)).astype(np.uint8)
+        self.TT[top:bottom+1, left:right+1] = D['mask']
+
+        self.im.mask = np.zeros((480, 640))
+        # .astype(np.uint8)
+        self.im.mask[top:bottom+1, left:right+1] = temp_mask
+
+        self.im.depth[self.im.depth==0] = np.nan
+        # + 0.02
+        # self.im.rgb = D['rgb']
+
+        self.im.cam = mesh.Camera()
+        self.im.cam.load_bigbird_matrices(sequence['folder'], sequence['scene'], sequence['pose_id'])
+
+        # self.im.cam.set_extrinsics(np.linalg.inv(D['T'][0][0][2]).T)
+
+        # self.im.cam.set_intrinsics(D['T'][0][0][1])
+        # print D['T'][0][0][1]
+        # print D['T'][0][0][2]
+
+        self.gt_im_label = copy(self.im.mask) + 100
+        # extr = D['T'][0][0][2].T
+
+        # ne = features.Normals()
+        rec_mask = np.zeros((480, 640))
+        rec_mask[top:bottom+1, left:right+1] = 1
+        self.im.normals = np.zeros((480*640, 3)) * np.nan
+        old_shape = [3, D['mask'].shape[1], D['mask'].shape[0]]
+        self.im.normals[rec_mask.flatten()==1, :] = D['norms'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
+        # self.im.mask = np.logical_and(self.im.mask, ~np.isnan(self.im.normals[:, 2].reshape(self.im.depth.shape)))
+
+        # np.any(np.abs(self.im.normals)==1, axis
+
+
+
+
+        # # loading the GT mesh...
+        # vox_path = '/media/ssd/data/bigbird_meshes/' + sequence['scene'] + '/meshes/voxelised.vox'
+        # self.populate_from_vox_file(idx_path)
+
+        # xyz =  D['xyz'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
+        # self.im._cached_world_xyz = self._apply_normalised_homo_transform(D['xyz'], np.linalg.inv(extr))
+        # print D['xyz'].shape
+
+    def norrms(self):
+        # while I'm here - might as well save the image as a voxel grid
+
+        video = images.RGBDVideo()
+        video.frames = [self.im]
+        carver = carving.Fusion()
+        carver.set_video(video)
+        carver.set_voxel_grid(self.gt_tsdf.blank_copy())
+        self.im_tsdf, self.im_visible = carver.fuse(self.mu)
+        # video = images.RGBDVideo()
+        # video.frames = [self.im]
+        # carver = carving.Fusion()
+        # carver.set_video(video)
+        # carver.set_voxel_grid(self.gt_tsdf.blank_copy())
+        # self.im_tsdf, self.im_visible = carver.fuse(self.mu)
+        # norm_engine = features.Normals()
+        # self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
+
+    def populate_from_vox_file(self, filepath):
+        '''
+        Loads 3d locations from my custom .vox file.
+        My .vox file is almost but not quite a yaml
+        Seemed that using pyyaml was incredibly slow so did this instead... bit of a hack!2
+        '''
+        f = open(filepath, 'r')
+        f.readline() # origin:
+        self.set_origin(np.array(f.readline().split(" ")).astype(float))
+        f.readline() # extents:
+        f.readline() # extents - don't care about this
+        f.readline() # voxel_size:
+        self.set_voxel_size(float(f.readline().strip()))
+        f.readline() # vox:
+        idx = np.array([line.split() for line in f]).astype(int)
+        f.close()
+        self.init_and_populate(idx)
+
+    def _apply_normalised_homo_transform(self, xyz, trans):
+        '''
+        applies homogeneous transform, and also does the normalising...
+        '''
+        temp = self._apply_homo_transformation(xyz, trans)
+        return temp[:, :3] / temp[:, 3][:, np.newaxis]
+
+    def _apply_homo_transformation(self, xyz, trans):
+        '''
+        apply a 4x4 transformation matrix to the vertices
+        '''
+        n = xyz.shape[0]
+        temp = np.concatenate((xyz, np.ones((n, 1))), axis=1).T
+        temp_transformed = trans.dot(temp).T
+        return temp_transformed
+
     def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True,
-            save_grids=False, load_implicit=False, voxel_normals=False, carve=True):
+            save_grids=False, voxel_normals=False, carve=True):
         '''
         loads a sequence of images, the associated gt voxel grid,
         carves the visible tsdf from the images, does segmentation
@@ -66,7 +234,6 @@ class Scene(object):
             self.set_gt_tsdf(voxel_data.load_voxels(vox_location), 0.015)
         else:
             self.set_gt_tsdf(voxel_data.load_voxels(vox_location), 0.035)
-        print self.gt_tsdf.origin
 
         self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -self.mu
         self.gt_tsdf.set_origin(self.gt_tsdf.origin,
@@ -98,11 +265,6 @@ class Scene(object):
                 self.im.normals = norm_engine.voxel_normals(self.im, self.gt_tsdf)
             else:
                 self.im.normals = norm_engine.compute_normals(self.im)
-
-        # load in the implicit prediction...
-        if load_implicit:
-            with open(paths.RenderedData.implicit_prediction_dir % sequence['name'] + 'prediction.pkl') as f:
-                self.implicit_tsdf = pickle.load(f)
 
         '''
         HERE SEGMENTING USING THE GROUND TRUTH
@@ -137,48 +299,7 @@ class Scene(object):
             - image_labels ???
         '''
 
-        # if segment:
-        #     # segmenting with just the visible voxels
-        #     self.visible_labels = self._segment_tsdf_project_2d(
-        #         self.im_tsdf, z_threshold=2, floor_height=4)
-
-        #     # #### >> transfer the labels from the voxel grid to the image
-        #     self.visible_im_label = self.im.label_from_grid(self.visible_labels)
-
-        #     # expanding these labels to also cover all the unobserved regions
-        #     uv, to_project_idxs = self.im_tsdf.project_unobserved_voxels(self.im)
-        #     inside_image = self.im.find_points_inside_image(uv)
-
-        #     # labels of all the non-nan voxels inside the image...
-        #     vox_labels = self.visible_im_label[
-        #         uv[inside_image, 1], uv[inside_image, 0]]
-
-        #     # now propograte these labels back to the main grid
-        #     temp = to_project_idxs[inside_image]
-        #     self.visible_labels.V.ravel()[temp] = vox_labels
-        #     # << ####
-
-        #     print "Separate out the partial tsdf into different 'layers' in a grid..."
-
-        #     self.visible_labels_separate = \
-        #         self._separate_binary_grids(self.visible_labels.V, True)
-
-        #     temp = self.im_tsdf.copy()
-        #     temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
-
-        #     self.visible_tsdf_separate = \
-        #         self._label_grids_to_tsdf_grids(temp, self.visible_labels_separate)
-
-
-        # # transfer the labels from the voxel grid tothe image
-        # self.im.label_from_grid(self.gt_labels)
-
-        # temp = self.im_tsdf.copy()
-        # temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
-
-
         if save_grids:
-
             # save this as a voxel grid...
             savepath = paths.RenderedData.voxlet_prediction_path_short % \
                 ('partial_tsdf', sequence['name'])
@@ -229,32 +350,24 @@ class Scene(object):
 
         # getting a copy of the voxelgrid, in which only the specified label exists
         if extract_from == 'gt_tsdf':
-
             this_point_label = self.gt_im_label[index[0], index[1]]
             temp_vgrid = self.gt_tsdf_separate[this_point_label]
             shoebox.fill_from_grid(temp_vgrid)
 
         elif extract_from == 'visible_tsdf':
-
             this_point_label = self.visible_im_label[index[0], index[1]]
             temp_vgrid = self.visible_tsdf_separate[this_point_label]
             #print "WARNING - in scene - not using separate grids at the moment..."
             shoebox.fill_from_grid(temp_vgrid)
 
         elif extract_from == 'im_tsdf':
-
             shoebox.fill_from_grid(self.im_tsdf)
-
-        elif extract_from == 'implicit_tsdf':
-
-            shoebox.fill_from_grid(self.implicit_tsdf)
 
         elif extract_from == 'actual_tsdf':
             shoebox.fill_from_grid(self.gt_tsdf)
 
         else:
             raise Exception("Don't know how to extract from %s" % extract_from)
-
 
         # convert the indices to world xyz space
         if post_transform:
@@ -263,13 +376,13 @@ class Scene(object):
             return shoebox
 
     def set_gt_tsdf(self, tsdf_in, floor_height):
-        print "Warning - I think these should be uncommented for training..."
-        # floor_height_in_vox = float(floor_height) / float(tsdf_in.vox_size)
-        # if floor_height_in_vox > 15:
-            # raise Exception("This seems excessive")
+        print "Warning - I think these should be re-commented for testing..."
+        floor_height_in_vox = float(floor_height) / float(tsdf_in.vox_size)
+        if floor_height_in_vox > 15:
+            raise Exception("This seems excessive")
         self.gt_tsdf = deepcopy(tsdf_in)
-        # self.gt_tsdf.V = tsdf_in.V[:, :, floor_height_in_vox:]
-        # self.gt_tsdf.origin[2] += floor_height
+        self.gt_tsdf.V = tsdf_in.V[:, :, floor_height_in_vox:]
+        self.gt_tsdf.origin[2] += floor_height
 
 
     def set_im_tsdf(self, tsdf_in):
@@ -341,15 +454,6 @@ class Scene(object):
         plt.imshow(self.gt_im_label)
         plt.axis('off')
         plt.title('GT Image labels')
-
-        #
-
-        # for idx in [5, 6, 7, 8, 9, 10, 11]:
-        #     plt.subplot(u, v, idx)
-        #     temp = self.label_grid_tsdf[idx-5]
-        #     temp.V[np.isnan(temp.V)] = np.nanmin(temp.V)
-        #     plt.imshow(temp.V[:, :, 15])
-        #     #label_grid_tsdf
 
         plt.savefig(save_folder + '/' + self.sequence['name'] + '.png')
 
@@ -465,7 +569,6 @@ class Scene(object):
         fp = np.logical_and(~gt, V_to_eval < 0).sum()
         fn = np.logical_and(gt, V_to_eval > 0).sum()
 
-
         # Now doing the final evaluation
         results = {}
         results['iou'] = float(intersection.sum()) / float(union.sum())
@@ -476,8 +579,8 @@ class Scene(object):
         # sklearn.metrics.recall_score(gt, V_to_eval < 0)
 
         fpr, tpr, _ = sklearn.metrics.roc_curve(gt, V_to_eval)
-        # results['fpr'] = fpr
-        # results['tpr'] = tpr
+        results['fpr'] = fpr
+        results['tpr'] = tpr
 
         return results
 

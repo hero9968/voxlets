@@ -10,7 +10,6 @@ import os
 import time
 import shutil
 import copy
-import paths
 import voxel_data
 import random_forest_structured as srf
 import features
@@ -24,128 +23,12 @@ import random
 import scipy.misc
 #import matplotlib
 # matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
 import voxel_utils as vu
 
-def render_diff_view(grid1, grid2, savepath):
-    '''
-    renders grid1, and any nodes not in grid2 get done in a different colour
-    '''
-    # convert nans to the minimum
-    ms1 = mesh.Mesh()
-    ms1.from_volume(grid1, 0)
-    ms1.remove_nan_vertices()
-
-    ms2 = mesh.Mesh()
-    ms2.from_volume(grid2, 0)
-    ms2.remove_nan_vertices()
-
-    # now do a sort of setdiff between the two...
-    print "Bulding dictionary", ms2.vertices.shape
-    ms2_dict = {}
-    for v in ms2.vertices:
-        vt = (100*v).astype(int)
-        ms2_dict[(vt[0], vt[1], vt[2])] = 1
-
-    print "Done bulding dictionary", ms1.vertices.shape
-
-    # label each vertex in ms1
-    labels = np.zeros(ms1.vertices.shape[0])
-    for count, v in enumerate(ms1.vertices):
-        vt = (100*v).astype(int)
-        if (vt[0], vt[1], vt[2]) in ms2_dict:
-            labels[count] = 1
-    print "Done checking dictionary"
-
-    # memory problem?
-    ms1.write_to_ply('/tmp/temp.ply', labels)
-
-    sp.call([paths.blender_path,
-             "../rendered_scenes/spinaround/spin.blend",
-             "-b", "-P",
-             "../rendered_scenes/spinaround/blender_spinaround_frame_ply.py"],
-             stdout=open(os.devnull, 'w'),
-             close_fds=True)
-
-    #now copy file from /tmp/.png to the savepath...
-    print "Moving render to " + savepath
-    shutil.move('/tmp/.png', savepath)
-
-
-
-
-def plot_mesh(verts, faces, ax):
-    mesh = Poly3DCollection(verts[faces])
-    mesh.set_alpha(0.8)
-    mesh.set_edgecolor((1.0, 0.5, 0.5))
-    ax.add_collection3d(mesh)
-
-    ax.set_aspect('equal')
-    MAX = 20
-    for direction in (0, 1):
-        for point in np.diag(direction * MAX * np.array([1,1,1])):
-            ax.plot([point[0]], [point[1]], [point[2]], 'w')
-    ax.axis('off')
-
-
-def render_single_voxlet(V, savepath, level=0, short=False):
-
-    assert V.ndim == 3
-    print V.min(), V.max(), V.shape
-
-    # renders a voxlet using the .blend file...
-    temp = V.copy()
-    # print savepath
-    # print "Minmax is ", temp.min(), temp.max()
-
-    # V[:, :, :] = np.nanmax(V)
-    # add a bit around the edge, and adjust origin accordingly...
-    crap = ((100.0, 100.0), (100.0, 100.0), (100.0, 100.0))
-    temp = np.pad(temp, pad_width=1, mode='constant', constant_values=crap)
-
-    verts, faces = measure.marching_cubes(temp, level)
-    verts -= 0.005
-
-    if np.any(np.isnan(verts)):
-        import pdb; pdb.set_trace()
-
-    D = dict(verts=verts, faces=faces)
-    with open('/tmp/vertsfaces.pkl', 'wb') as f:
-        pickle.dump(D, f)
-
-    verts *= 0.0175 # parameters.Voxlet.size << bit of a magic number here...
-    verts *= 10.0  # so its a reasonable scale for blender
-    # print verts.min(axis=0), verts.max(axis=0)
-    D = dict(verts=verts, faces=faces)
-    with open('/tmp/vertsfaces.pkl', 'wb') as f:
-        pickle.dump(D, f)
-    vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
-
-    if short:
-        blender_filepath = paths.RenderedData.voxlet_render_blend.replace('.blend', '_short.blend')
-        print blender_filepath
-    else:
-        blender_filepath = paths.RenderedData.voxlet_render_blend
-
-    sp.call([paths.blender_path,
-         blender_filepath,
-         "-b", "-P",
-         paths.RenderedData.voxlet_render_script],
-         stdout=open(os.devnull, 'w'),
-         close_fds=True)
-
-    #now copy file from /tmp/.png to the savepath...
-    folderpath = os.path.split(savepath)[0]
-    if not os.path.exists(folderpath):
-        os.makedirs(folderpath)
-
-    print "Moving render to " + savepath
-    shutil.move('/tmp/temp_voxlet.png', savepath)
+from rendering import plot_mesh, render_leaf_nodes, render_single_voxlet
 
 def voxlet_class_to_dict(params_class):
     voxlet_params = {}
@@ -174,7 +57,10 @@ class VoxletPredictor(object):
     ordering I have now...
     '''
     def __init__(self):
-        pass
+        self.max_depth = np.inf
+
+    def set_max_depth(self, max_depth):
+        self.max_depth = max_depth
 
     def set_voxlet_params(self, voxlet_params):
         self.voxlet_params = voxlet_class_to_dict(voxlet_params)
@@ -226,7 +112,7 @@ class VoxletPredictor(object):
         self.training_X = X.astype(np.float16)
 
         # Unpythonic comparison but nessary in case it is numpy array
-        if masks != None:
+        if masks is not None:
             self.training_masks = masks
 
     def _medioid_idx(self, data):
@@ -253,8 +139,7 @@ class VoxletPredictor(object):
         # each tree predicts which index in the test set to use...
         # rows = test data (X), cols = tree
 
-        print X.shape
-        index_predictions = self.forest.test(X).astype(int)
+        index_predictions = self.forest.test(X, max_depth=self.max_depth).astype(int)
         self._cached_predictions = index_predictions
         # must extract original test data from the indices
 
@@ -454,12 +339,12 @@ class VoxletPredictor(object):
         I'm doing this as a method of the class so I can do the appropriate
         checks, as performed below
         '''
-        if not hasattr(self, 'pca'):
-            raise Exception(
-                "pca attribute not set - this is important for prediction")
+        # if not hasattr(self, 'pca'):
+        #     raise Exception(
+        #         "pca attribute not set - this is important for prediction")
 
-        if not hasattr(self, 'forest'):
-            raise Exception("Forest not trained it seems")
+        # if not hasattr(self, 'forest'):
+        #     raise Exception("Forest not trained it seems")
         tic = time.time()
 
         with open(savepath, 'wb') as f:
@@ -488,57 +373,6 @@ class VoxletPredictor(object):
     def _print_shapes(self, X, Y):
         print "X has shape ", X.shape
         print "Y has shape ", Y.shape
-
-    def render_leaf_nodes(self, folder_path, max_per_leaf=10, tree_id=0):
-        '''
-        renders all the voxlets at leaf nodes of a tree to a folder
-        '''
-        leaf_nodes = self.forest.trees[tree_id].leaf_nodes()
-
-        print len(leaf_nodes)
-
-        print "\n Sum of all leaf nodes is:"
-        print sum([node.num_exs for node in leaf_nodes])
-
-        print self.training_Y.shape
-
-        if not os.path.exists(folder_path):
-            raise Exception("Could not find path %s" % folder_path)
-
-        print "Leaf node shapes are:"
-        for node in leaf_nodes:
-            print node.node_id, '\t', node.num_exs
-            leaf_folder_path = folder_path + '/' + str(node.node_id) + '/'
-
-            if not os.path.exists(leaf_folder_path):
-                print "Creating folder %s" % leaf_folder_path
-                os.makedirs(leaf_folder_path)
-
-            if len(node.exs_at_node) > max_per_leaf:
-                ids_to_render = random.sample(node.exs_at_node, max_per_leaf)
-            else:
-                ids_to_render = node.exs_at_node
-
-            # Rendering each example at this node
-            for count, example_id in enumerate(ids_to_render):
-                V = self.pca.inverse_transform(self.training_Y[example_id])
-                render_single_voxlet(V.reshape(self.voxlet_params['shape']),
-                    leaf_folder_path + str(count) + '.png')
-
-            with open(leaf_folder_path + ('total_%d.txt' % len(node.exs_at_node))) as f:
-                f.write(len(node.exs_at_node))
-
-            # Now doing the average mask and plotting slices through it
-            mean_mask = self._get_mean_mask(ids_to_render)
-            plt.figure(figsize=(10, 10))
-            for count, slice_id in enumerate(range(0, mean_mask.shape[2], 10)):
-                if count+1 > 3*3: break
-                plt.subplot(3, 3, count+1)
-                plt.imshow(mean_mask[:, :, slice_id], interpolation='nearest', cmap=plt.cm.gray)
-                plt.clim(0, 1)
-                plt.title('Slice_id = %d' % slice_id)
-                plt.savefig(leaf_folder_path + 'slices.pdf')
-                plt.close()
 
     def _get_mean_mask(self, training_idxs):
         '''
@@ -750,6 +584,9 @@ class Reconstructer(object):
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sampled_idxs):
 
+            sys.stdout.write('>> [%d]' % count)
+            sys.stdout.flush()
+
             if hasattr(self.model, '__iter__'):
                 # randomly choose model to use...
                 if np.random.rand() > self.prob_model_one:
@@ -812,8 +649,6 @@ class Reconstructer(object):
             else:
                 # Doing a real prediction!
 
-                A += time.time() - tic; tic = time.time()
-                # print "time A :", A
                 "classify according to the forest"
                 voxlet_prediction, mask = \
                     model_to_use.predict(np.atleast_2d(feature_vector), how_to_choose=how_to_choose,
@@ -907,92 +742,11 @@ class Reconstructer(object):
                         import pdb; pdb.set_trace()
 
             if 'blender' in render_type and render_savepath:
-
-                # create a path of where to save the rendering
-                savepath = render_savepath + '/%03d_%s.png'
-
-                # doing rendering of the extracted grid
-                render_single_voxlet(features_voxlet.V,
-                    savepath % (count, 'extracted'))
-
-                # doing rendering of the predicted grid
-                render_single_voxlet(transformed_voxlet.V,
-                    savepath % (count, 'predicted'))
-
-                # doing rendering of the ground truth grid
-                gt_voxlet = self._initialise_voxlet(idx, model_to_use)
-                gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
-                render_single_voxlet(gt_voxlet.V,
-                    savepath % (count, 'gt'))
-
-                # render the closest voxlet in all of the leaf nodes to the GT
-
-                render_single_voxlet(best_voxlet_V,
-                    savepath % (count, 'gt'))
+                self._blender_render(render_savepath, count,
+                    features_voxlet, transformed_voxlet, gt_voxlet)
 
             if 'slice' in render_type:
-                self._render-sl
-                '''Plotting slices'''
-                # Here want to now save slices at the corect high
-                # in the extracted and predicted voxlets
-                sf_x, sf_y = 2, 2
-                plt.subplots(sf_x, sf_y)
-                plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.95, wspace=0.02, hspace=0.02)
-
-                plt.subplot(sf_x, sf_y, 1)
-                plt.imshow(features_voxlet.V.reshape(model_to_use.voxlet_params['shape'])[:, :, 15], interpolation='nearest')
-                plt.axis('off')
-                plt.clim((-self.sc.mu, self.sc.mu))
-                plt.title('Features voxlet')
-
-                plt.subplot(sf_x, sf_y, 2)
-                plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
-                plt.axis('off')
-                plt.clim((-self.sc.mu, self.sc.mu))
-                plt.title('Forest prediction')
-
-
-                # getting the world space coords
-                world_xyz = self.sc.im.get_world_xyz()
-                world_norms = self.sc.im.get_world_normals()
-
-                # convert to linear idx
-                point_idx = idx[0] * self.sc.im.mask.shape[1] + idx[1]
-
-                temp = self.sc.gt_tsdf.world_to_idx(
-                    world_xyz[point_idx, None])[0][:2]
-                t_norm = world_norms[point_idx, :2]
-                t_norm /= np.linalg.norm(t_norm)
-
-                '''PLOTTING THE VOX LOCATION ON THE GT'''
-                plt.subplot(sf_x, sf_y, 3)
-                # np.nanmean(self.sc.gt_tsdf.V, axis=2)
-                plt.imshow(self.sc.gt_tsdf.V[:, :, 15])
-                # , cmap=plt.get_cmap('Greys'))
-                plt.hold(True)
-                self._plot_voxlet(temp, t_norm)
-                plt.axis('off')
-                plt.ylim(0, self.sc.gt_tsdf.V.shape[0])
-                plt.xlim(0, self.sc.gt_tsdf.V.shape[1])
-
-                '''PLOTTING THE VOX LOCATION ON THE IM TSDF'''
-                plt.subplot(sf_x, sf_y, 4)
-                # np.nanmean(self.sc.gt_tsdf.V, axis=2)
-                tempim = self.sc.im_tsdf.V[:, :, 15]
-                tempim[np.isnan(tempim)] = 0
-                plt.imshow(tempim)
-                plt.hold(True)
-                self._plot_voxlet(temp, t_norm)
-                plt.axis('off')
-                plt.ylim(0, self.sc.gt_tsdf.V.shape[0])
-                plt.xlim(0, self.sc.gt_tsdf.V.shape[1])
-
-                # check the folder exists...
-                if not os.path.exists(render_savepath + '/slices/'):
-                    os.makedirs(render_savepath + '/slices/')
-                saving_to = render_savepath + ('/slices/slice_%06d.png' % count)
-                plt.savefig(saving_to)
-                plt.close()
+                self._render_slice()
 
             if 'tree_predictions' in render_type:
                 sf_x, sf_y = 6, 6
@@ -1038,8 +792,7 @@ class Reconstructer(object):
                 '''create range of items'''
                 vols = ((features_voxlet.V, 'Observed'),
                            (transformed_voxlet.V, 'Predicted'),
-                           (gt_voxlet.V, 'gt'),
-                           (closest_training_Y, 'closest training Y'))
+                           (gt_voxlet.V, 'gt'))
 
                 for vol_count, (V, title) in enumerate(vols):
 
@@ -1051,6 +804,8 @@ class Reconstructer(object):
 
                 plt.tight_layout()
                 savepath = render_savepath + '/compiled_%03d.png' % count
+                if not os.path.exists(render_savepath):
+                    os.makedirs(render_savepath)
                 plt.savefig(savepath)
                 plt.close()
 
@@ -1138,35 +893,108 @@ class Reconstructer(object):
 
         return self.remove_excess
 
-    def _blender_render(self, features_voxlet, transformed_voxlet, render_savepath):
+    def _render_slice(self, features_voxlet, transformed_voxlet):
+        '''Plotting slices'''
+        # Here want to now save slices at the corect high
+        # in the extracted and predicted voxlets
+        sf_x, sf_y = 2, 2
+        plt.subplots(sf_x, sf_y)
+        plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.95, wspace=0.02, hspace=0.02)
+
+        plt.subplot(sf_x, sf_y, 1)
+        plt.imshow(features_voxlet.V.reshape(model_to_use.voxlet_params['shape'])[:, :, 15], interpolation='nearest')
+        plt.axis('off')
+        plt.clim((-self.sc.mu, self.sc.mu))
+        plt.title('Features voxlet')
+
+        plt.subplot(sf_x, sf_y, 2)
+        plt.imshow(transformed_voxlet.V[:, :, 15], interpolation='nearest')
+        plt.axis('off')
+        plt.clim((-self.sc.mu, self.sc.mu))
+        plt.title('Forest prediction')
+
+
+        # getting the world space coords
+        world_xyz = self.sc.im.get_world_xyz()
+        world_norms = self.sc.im.get_world_normals()
+
+        # convert to linear idx
+        point_idx = idx[0] * self.sc.im.mask.shape[1] + idx[1]
+
+        temp = self.sc.gt_tsdf.world_to_idx(
+            world_xyz[point_idx, None])[0][:2]
+        t_norm = world_norms[point_idx, :2]
+        t_norm /= np.linalg.norm(t_norm)
+
+        '''PLOTTING THE VOX LOCATION ON THE GT'''
+        plt.subplot(sf_x, sf_y, 3)
+        # np.nanmean(self.sc.gt_tsdf.V, axis=2)
+        plt.imshow(self.sc.gt_tsdf.V[:, :, 15])
+        # , cmap=plt.get_cmap('Greys'))
+        plt.hold(True)
+        self._plot_voxlet(temp, t_norm)
+        plt.axis('off')
+        plt.ylim(0, self.sc.gt_tsdf.V.shape[0])
+        plt.xlim(0, self.sc.gt_tsdf.V.shape[1])
+
+        '''PLOTTING THE VOX LOCATION ON THE IM TSDF'''
+        plt.subplot(sf_x, sf_y, 4)
+        # np.nanmean(self.sc.gt_tsdf.V, axis=2)
+        tempim = self.sc.im_tsdf.V[:, :, 15]
+        tempim[np.isnan(tempim)] = 0
+        plt.imshow(tempim)
+        plt.hold(True)
+        self._plot_voxlet(temp, t_norm)
+        plt.axis('off')
+        plt.ylim(0, self.sc.gt_tsdf.V.shape[0])
+        plt.xlim(0, self.sc.gt_tsdf.V.shape[1])
+
+        # check the folder exists...
+        if not os.path.exists(render_savepath + '/slices/'):
+            os.makedirs(render_savepath + '/slices/')
+        saving_to = render_savepath + ('/slices/slice_%06d.png' % count)
+        plt.savefig(saving_to)
+        plt.close()
+
+
+    def _blender_render(self, render_savepath, voxlet_id,
+        features_voxlet, transformed_voxlet, gt_voxlet):
             # create a path of where to save the rendering
             savepath = render_savepath + '/%03d_%s.png'
+            print "Shape is ", features_voxlet.V.shape[2]
+
+            if features_voxlet.V.shape[2]==20:
+                height = 'short'
+            elif features_voxlet.V.shape[2]==50:
+                height = 'tall'
+            else:
+                raise Exception('Do not recognise height %d' % features_voxlet.V.shape[2])
 
             # doing rendering of the extracted grid
             render_single_voxlet(features_voxlet.V,
-                savepath % (count, 'extracted'))
+                savepath % (voxlet_id, 'extracted'), height=height)
 
             # doing rendering of the predicted grid
             render_single_voxlet(transformed_voxlet.V,
-                savepath % (count, 'predicted'))
+                savepath % (voxlet_id, 'predicted'), height=height)
 
             # doing rendering of the ground truth grid
-            gt_voxlet = self._initialise_voxlet(idx)
-            gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
             render_single_voxlet(gt_voxlet.V,
-                savepath % (count, 'gt'))
+                savepath % (voxlet_id, 'gt'), height=height)
 
             # render the closest voxlet in all of the leaf nodes to the GT
-            render_single_voxlet(best_voxlet_V,
-                savepath % (count, 'gt'))
+            # render_single_voxlet(best_voxlet_V,
+            #     savepath % (count, 'gt'), short=isshort)
 
     def save_voxlet_counts(self, fpath):
         # for each model...
-        for model_idx, model in enumerate(self.models):
+        for model_idx, model in enumerate(self.model):
             # writes a count of how many of each voxlet was used
-            with open(fpath + 'voxlet_count_%02d.txt' % idx, 'w'):
-                for count in model.voxlet_counter:
-                    f.write("%d, ", count)
+            with open(fpath + 'voxlet_count_%02d.txt' % model_idx, 'w') as f:
+                non_zero_locations = np.where(model.voxlet_counter)[0]
+                non_zero_values = model.voxlet_counter[non_zero_locations]
+                for loc, val in zip(non_zero_locations, non_zero_values):
+                    f.write("%d, %d\n" % (loc, val))
 
     def save_empty_voxel_counts(self, fpath):
         # Save how many voxels are empty in each of the voxlet predictions
@@ -1259,7 +1087,7 @@ class Reconstructer(object):
         plt.subplot(133).set_ylim(plt.subplot(132).get_ylim())
 
         if savepath:
-            plt.savefig(savepath.replace('png', 'pdf'), dpi=400)
+            plt.savefig(savepath, dpi=400)
             plt.close()
 
     def _get_voxlet_corners(self):
@@ -1293,86 +1121,3 @@ class Reconstructer(object):
 
         t_corners = np.dot(R, corners.T).T + point
         plt.plot(t_corners[:, 1], t_corners[:, 0], '-g', lw=1)
-
-
-class EnergySolver(object):
-    '''
-    strange class to solve the final energy function
-    '''
-    def __init__(self, prediction_dics, accum):
-        # this is a dictionary of all the predictions
-        blank_grid = accum.blank_copy()
-
-        self.pred_dics = prediction_dics
-
-        # seeing which cells would be full if *all* the cells were full
-        temp = blank_grid.blank_copy()
-        for p in self.possible_predictions:
-            temp.add_voxlet(p['voxlet'])
-        self.union_fplan = temp.countV > 0
-        self.num_possible_voxels = np.sum(self.union_fplan)
-        print "There are %d possible voxels " % self.num_possible_voxels
-
-        # this is where we will fill all the predictions into
-        self.accum = accum
-
-
-    def solve(alpha, beta):
-        pass
-        # get the full f_plan
-
-        # alpha beta are parameters...
-
-        # get the current floorplan from the grid
-
-
-    def _eval_union_cost(self, union_fplan, current_fplan, proposed_additions):
-        '''
-        evaluates the new value of the energy function under each of the
-        proposed additions, which is a list of proposed additions...
-        '''
-
-        full_fplan = np.atleast_3d(union_fplan) * \
-            (np.atleast_3d(current_fplan.astype(bool)) + proposed_additions.astype(bool))
-        # print "full_fplan is ", full_fplan.shape, full_fplan.max(), full_fplan.min()
-        sums = np.sum(np.sum(full_fplan, axis=0), axis=0)
-        # print "energy is shape ", energy.shape
-        energies = 1 - sums.astype(np.float32) / float(np.sum(union_fplan))
-        # print "energies are ", energies.min(), energies.max()
-        return energies
-
-
-
-
-
-
-class VoxelGridCollection(object):
-    '''
-    class for doing things to a list of same-sized voxelgrids
-    Not ready to use yet - but might be good one day!
-    '''
-    def __init__(self):
-        raise Exception("Not ready to use!")
-
-    def set_voxelgrids(self, voxgrids_in):
-        self.voxgrids = voxgrids_in
-
-    def cluster_voxlets(self, num_clusters, subsample_length):
-
-        '''helper function to cluster voxlets'''
-
-        # convert to np array
-        np_all_sboxes = np.concatenate(shoeboxes, axis=0)
-        all_sboxes = np.array([sbox.V.flatten() for sbox in self.voxlist]).astype(np.float16)
-
-        # take subsample
-        if local_subsample_length > X.shape[0]:
-            X_subset = X
-        else:
-            to_use_for_clustering = \
-                np.random.randint(0, X.shape[0], size=(local_subsample_length))
-            X_subset = X[to_use_for_clustering, :]
-
-        # doing clustering
-        km = MiniBatchKMeans(n_clusters=num_clusters)
-        km.fit(X_subset)

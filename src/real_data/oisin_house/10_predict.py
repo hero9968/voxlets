@@ -27,45 +27,39 @@ from common import scene
 import sklearn.metrics
 
 print "Loading model..."
-cobweb = True
-print paths.voxlet_model_oma_path
 
-
-with open('/media/ssd/data/oisin_house/models_full_split_not_tall/models/oma_cobweb.pkl', 'rb') as f:
+with open('/media/ssd/data/oisin_house/models_full_split_floating_different_split/models/oma_tall_cobweb_deep25.pkl', 'rb') as f:
     model_short = pickle.load(f)
 
 print model_short.pca.components_.shape
-with open('/media/ssd/data/oisin_house/models_full_split_tall/models/oma_cobweb.pkl', 'rb') as f:
+with open('/media/ssd/data/oisin_house/models_full_split_tall_different_split/models/oma_tall_cobweb_deep25.pkl', 'rb') as f:
     model_tall = pickle.load(f)
 
 print model_tall.pca.components_.shape
 
-
-
-
 print "Done loading model..."
 
+cobweb = True
 just_render_gt = False  # this overwrites the existing
-render_gt = True
-combining_renders = True
+render_gt = False
+combining_renders = False
 render_predictions = True
 render_top_view = False
 do_greedy_oracles = False
 # save_prediction_grids = True
 save_simple = True
 save_scores_to_yaml = True
-distance_experiments = True
-
+distance_experiments = False
+max_depth = 25
 
 copy_to_dropbox = False and paths.host_name == 'biryani'
 dropbox_path = paths.new_dropbox_dir()
 print dropbox_path
 
-
 # this overrides all other parameters. Means we don't botther with orables etc
-only_prediction = False
+only_prediction = True
 
-test_type = 'mixed_voxlets2'
+test_type = 'different_data_split_dw_empty'
 
 def save_render_assess(dic, sc):
     '''
@@ -78,9 +72,9 @@ def save_render_assess(dic, sc):
 
     if render_predictions:
         if dic['name']=='visible':
-            dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True,ground_height=0.03)
+            dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True)
         else:
-            print "WARNING - not rendeing " * 20
+            dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True,ground_height=0.03)
 
             # dic['grid'].render_view(gen_renderpath % dic['desc'], xy_centre=True,ground_height=0.03)
 
@@ -140,16 +134,16 @@ print "MAIN LOOP"
 # better off being GPU...)
 def process_sequence(sequence):
 
+    # test_type = 'depth_experiments/%02d/' % max_depth
+
     print "Processing ", sequence['name']
     sc = scene.Scene(parameters.mu, [])
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
-        save_grids=False, load_implicit=False, voxel_normals='gt_tsdf')
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, voxel_normals='gt_tsdf')
     print sc.gt_tsdf.origin
 
 
     print "-> Creating folder"
-    fpath = paths.voxlet_prediction_folderpath % \
-        (test_type, sequence['name'])
+    fpath = paths.voxlet_prediction_folderpath % (test_type, sequence['name'])
     if not os.path.exists(fpath):
         os.makedirs(fpath)
     print "-> Doing prediction"
@@ -191,16 +185,24 @@ def process_sequence(sequence):
     plt.savefig(gen_renderpath % 'input_mask')
     plt.close()
 
-    for model in rec.models:
-        model.reset_voxlet_counts()
-
     print "-> Predicting with OMA forest"
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    rec.set_probability_model_one(0.75)
+    rec.set_probability_model_one(0.5)
     rec.set_model([model_short, model_tall])
+    for model in rec.model:
+        model.reset_voxlet_counts()
+        model.set_max_depth(max_depth)
+    # if sequence['name'] == 'saved_00233_[134]':
+    #     pred_voxlets = rec.fill_in_output_grid_oma(
+    #         add_ground_plane=False, feature_collapse_type='pca', render_type=['matplotlib'],
+    #         weight_empty_lower=None, cobweb=cobweb, render_savepath=fpath + '/voxlets/')
+    #     with open(fpath + '/sampled_locations.txt', 'w') as f:
+    #         for loc in rec.sampled_idxs:
+    #             f.write('%d, %d\n' % (loc[0], loc[1]))
+    # else:
     pred_voxlets = rec.fill_in_output_grid_oma(
-        add_ground_plane=False, feature_collapse_type='pca', render_type=[],
-        weight_empty_lower=None, cobweb=cobweb)
+        add_ground_plane=False, feature_collapse_type='pca', render_type='blender',
+        render_savepath=fpath + '/voxlets/', weight_empty_lower=0.5, cobweb=cobweb)
 
     # saving the voxlet counts for each of the models...
     rec.save_voxlet_counts(fpath)
@@ -226,10 +228,10 @@ def process_sequence(sequence):
     if only_prediction:
         return
 
-    descs = ['narrow_band', 'mean', 'medioid']
+    descs = ['mean', 'medioid']
     if distance_experiments:
         # here I'm doing an experiment to see which distance measure makes sense to use...
-        names = ['Narrow Band', 'Name', 'Medioid']
+        names = ['Name', 'Medioid']
         for d_measure, name in zip(descs, names):
             rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
             narrow_band = rec.fill_in_output_grid_oma(
@@ -327,10 +329,10 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if True:
+if False:
     # parameters.multicore:
     import multiprocessing
-    pool = multiprocessing.Pool(4)
+    pool = multiprocessing.Pool(3)
     mapper = pool.map
 else:
     mapper = map
