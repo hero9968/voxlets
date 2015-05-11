@@ -389,9 +389,8 @@ class Reconstructer(object):
     does the final prediction
     '''
 
-    def __init__(self, reconstruction_type, combine_type):
-        self.reconstruction_type = reconstruction_type
-        self.combine_type = combine_type
+    def __init__(self):
+        pass
 
     def set_model(self, model):
         self.model = model

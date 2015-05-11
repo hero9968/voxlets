@@ -241,6 +241,9 @@ class Fusion(VoxelAccumulator):
             # eqn 6&7 for the real method, which operates along camera rays!)
             surface_to_voxel_dist_s = depth_to_voxels_s - observed_depths_s
 
+            # ignoring due to nans in the comparisons
+            np.seterr(invalid='ignore')
+
             # finding indices of voxels which can be legitimately updated,
             # according to eqn 9 and the text after eqn 12
             valid_voxels_s = surface_to_voxel_dist_s <= mu

@@ -52,12 +52,10 @@ def process_sequence(sequence, voxlet_params):
 
     print "--> Processing " + sequence['scene']
     sc = scene.Scene(parameters['mu'], voxlet_params)
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
-        save_grids=False, voxel_normals=True)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, voxel_normals='gt_tsdf')
 
     # just using the reconstructor for its point sampling routine!
-    rec = voxlets.Reconstructer(
-        reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+    rec = voxlets.Reconstructer()
     rec.set_scene(sc)
     rec.sample_points(parameters['pca_number_points_from_each_image'],
                       additional_mask=sc.gt_im_label != 0)
@@ -82,10 +80,10 @@ def extract_all_voxlets(voxlet_params_in):
     # this allows for passing multiple arguments to the mapper
     func = functools.partial(process_sequence, voxlet_params=voxlet_params_in)
 
-    voxlet_list = mapper(func, paths.all_train_data[10:13])
+    voxlet_list = mapper(func, paths.all_train_data)
 
     print "length is ", len(voxlet_list)
-    np_voxlets = np.vstack(voxlet_list)
+    np_voxlets = np.vstack(voxlet_list).astype(np.float16)
 
     print "-> Shoeboxes are shape " + str(np_voxlets.shape)
     return np_voxlets
@@ -133,10 +131,12 @@ if __name__ == '__main__':
         render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath)
 
         print "-> Doing the PCA"
-        pca_savepath = paths.voxlets_dictionary_path + 'voxlets_pca2.pkl'
+        pca_savepath = paths.voxlets_dictionary_path + \
+            '_%s_voxlets_pca.pkl' % voxlet_params['name']
         fit_and_save_pca(np_voxlets, pca_savepath)
 
-        pca_savepath = paths.voxlets_dictionary_path + 'masks_pca2.pkl'
+        pca_savepath = paths.voxlets_dictionary_path + \
+            '_%s_masks_pca.pkl' % voxlet_params['name']
         fit_and_save_pca(np_masks, pca_savepath)
 
         print "In total took %f s" % (time() - tic)
