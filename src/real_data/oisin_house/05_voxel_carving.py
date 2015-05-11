@@ -1,6 +1,6 @@
 import numpy as np
 import real_data_paths as paths
-import real_params as parameters
+import system_setup
 import cPickle as pickle
 import os, sys
 import yaml
@@ -10,6 +10,9 @@ sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import images
 from common import voxel_data
 from common import carving
+
+parameters_path = './training_params.yaml'
+parameters = yaml.load(open(parameters_path))
 
 def get_scene_pose(scene):
     with open(scene + '/scene_pose.yaml') as f:
@@ -31,7 +34,7 @@ def process_sequence(sequence):
     # load the scene parameters...
     scene_pose = get_scene_pose(scene)
     vgrid_size = np.array(scene_pose['size'])
-    voxel_size = parameters.voxel_size
+    voxel_size = parameters['voxel_size']
     vgrid_shape = vgrid_size / voxel_size
 
     # initialise voxel grid (could add helper function to make it explicit...?)
@@ -44,7 +47,7 @@ def process_sequence(sequence):
     carver = carving.Fusion()
     carver.set_video(vid)
     carver.set_voxel_grid(vox)
-    vox, visible = carver.fuse(mu=parameters.mu, filtering=False, measure_in_frustrum=True)
+    vox, visible = carver.fuse(mu=parameters['mu'], filtering=False, measure_in_frustrum=True)
     in_frustrum = carver.in_frustrum
 
     print "Saving...", scene
@@ -63,10 +66,10 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if parameters.multicore:
+if system_setup.multicore:
     import multiprocessing
     import functools
-    pool = multiprocessing.Pool(4)
+    pool = multiprocessing.Pool(system_setup.cores)
     mapper = pool.map
 else:
     mapper = map
