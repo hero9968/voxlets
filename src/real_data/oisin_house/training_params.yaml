@@ -27,6 +27,7 @@ voxlets:
         # centre is relative to the ijk origin at the bottom corner of the voxlet
         # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25, 0.5]
+        tall_voxlet_height: 0.375
 
 pca_number_points_from_each_image: 200
 number_pca_dims: 400

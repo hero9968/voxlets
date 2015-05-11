@@ -330,17 +330,28 @@ class Scene(object):
         shoebox = voxel_data.ShoeBox(self.voxlet_params['shape'], np.float32)
         shoebox.V *= np.nan
         # shoebox.V += self.mu  # set the outside area to -mu
-        shoebox.set_p_from_grid_origin(self.voxlet_params['centre'])  # m
-        shoebox.set_voxel_size(self.voxlet_params['size'])  # m
 
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
 
         if self.voxlet_params['tall_voxlets']:
             start_z = self.voxlet_params['tall_voxlet_height']
+            vox_centre = \
+                np.array(self.voxlet_params['shape'][:2]) * \
+                self.voxlet_params['size'] * \
+                np.array(self.voxlet_params['relative_centre'][:2])
+            vox_centre = np.append(vox_centre, start_z)
+            # print "cen is ", vox_centre
         else:
+            vox_centre = \
+                np.array(self.voxlet_params['shape']) * \
+                self.voxlet_params['size'] * \
+                np.array(self.voxlet_params['relative_centre'])
+            # print "cen is ", vox_centre
             start_z = world_xyz[point_idx, 2]
 
+        shoebox.set_p_from_grid_origin(vox_centre)  # m
+        shoebox.set_voxel_size(self.voxlet_params['size'])  # m
         shoebox.initialise_from_point_and_normal(
             np.array([start_x, start_y, start_z]),
             world_norms[point_idx],

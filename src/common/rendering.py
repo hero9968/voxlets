@@ -7,6 +7,13 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from skimage import measure
 import cPickle as pickle
+import subprocess as sp
+import shutil
+
+sys.path.append(os.path.expanduser(
+    '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
+
+import voxel_utils as vu
 
 # Setting some paths
 if sys.platform == 'darwin':
@@ -24,7 +31,9 @@ voxlet_render_script = os.path.expanduser(
         '~/projects/shape_sharing/src/rendered_scenes/visualisation/single_voxlet_blender_render.py')
 
 
-def render_single_voxlet(V, savepath, level=0, height='tall', actually_render=True, speed='slow'):
+def render_single_voxlet(
+    V, savepath, level=0, height='tall',
+    actually_render=True, speed='slow', keep_obj=False):
 
     assert V.ndim == 3
 
@@ -81,7 +90,8 @@ def render_single_voxlet(V, savepath, level=0, height='tall', actually_render=Tr
         print "Moving render to " + savepath
         shutil.move('/tmp/temp_voxlet.png', savepath)
 
-    shutil.move('/tmp/temp_voxlet.obj', savepath + '.obj')
+    if keep_obj:
+        shutil.move('/tmp/temp_voxlet.obj', savepath + '.obj')
 
 
 def plot_mesh(verts, faces, ax):
@@ -139,6 +149,47 @@ def render_leaf_nodes(model, folder_path, max_per_leaf=10, tree_id=0):
 
         # # Now doing the average mask and plotting slices through it
         # mean_mask = self._get_mean_mask(ids_to_render)
+        # plt.figure(figsize=(10, 10))
+        # for count, slice_id in enumerate(range(0, mean_mask.shape[2], 10)):
+        #     if count+1 > 3*3: break
+        #     plt.subplot(3, 3, count+1)
+        #     plt.imshow(mean_mask[:, :, slice_id], interpolation='nearest', cmap=plt.cm.gray)
+        #     plt.clim(0, 1)
+        #     plt.title('Slice_id = %d' % slice_id)
+        #     plt.savefig(leaf_folder_path + 'slices.pdf')
+        #     plt.close()
+
+
+def plot_slices(arrs, savepath, titles=None):
+
+    if len(arrs) == 1:
+        u, v = 1, 1
+    elif len(arrs) == 2:
+        u, v = 1, 2
+    elif len(arrs) == 3:
+        u, v = 1, 3
+    else:
+        raise Exception('I did not see this coming')
+
+    slice_id = 20
+
+    for idx, arr in enumerate(arrs):
+        plt.subplot(u, v, idx+1)
+        plt.imshow(arr[:, slice_id, :], interpolation='nearest', cmap=plt.cm.bwr)
+
+        if titles:
+            plt.title(titles[idx])
+
+        if idx == 0:
+            maxi = np.max(np.abs(arr))
+            plt.clim(-maxi, maxi)
+        elif idx == 1:
+            plt.clim(0, 1)
+
+    plt.savefig(savepath)
+    plt.close()
+
+    # mean_mask = self._get_mean_mask(ids_to_render)
         # plt.figure(figsize=(10, 10))
         # for count, slice_id in enumerate(range(0, mean_mask.shape[2], 10)):
         #     if count+1 > 3*3: break

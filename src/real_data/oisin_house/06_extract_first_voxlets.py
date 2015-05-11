@@ -8,11 +8,15 @@ import sys
 import os
 from time import time
 import scipy.io
+import yaml
+import functools
+from sklearn.decomposition import RandomizedPCA
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import voxlets, scene
+from common import voxlets, scene, rendering
 
 import real_data_paths as paths
+import system_setup
 
 if not os.path.exists(paths.voxlets_dict_data_path):
     os.makedirs(paths.voxlets_dict_data_path)
@@ -25,14 +29,29 @@ def flatten_sbox(sbox):
     return sbox.V.flatten()
 
 
-def process_sequence(sequence):
+def fit_and_save_pca(np_array, savepath):
+
+    if parameters['pca_subsample_length'] < np_array.shape[0]:
+        idxs = np.random.choice(
+            np_array.shape[0], parameters['pca_subsample_length'], replace=False)
+        np_array = np_array[idxs]
+
+    # fit the pca model
+    pca = RandomizedPCA(n_components=parameters['number_pca_dims'])
+    pca.fit(np_array)
+
+    with open(savepath, 'wb') as f:
+        pickle.dump(pca, f, pickle.HIGHEST_PROTOCOL)
+
+
+def process_sequence(sequence, voxlet_params):
 
     if not os.path.exists(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.pkl'):
         print "Failed"
         return
-    # try:
-    print "Processing " + sequence['scene']
-    sc = scene.Scene(parameters['mu'], voxlets.voxlet_class_to_dict(parameters.Voxlet))
+
+    print "--> Processing " + sequence['scene']
+    sc = scene.Scene(parameters['mu'], voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
         save_grids=False, voxel_normals=True)
 
@@ -41,50 +60,83 @@ def process_sequence(sequence):
         reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
     rec.set_scene(sc)
     rec.sample_points(parameters['pca_number_points_from_each_image'],
-                      parameters['sampling_grid_size'],
                       additional_mask=sc.gt_im_label != 0)
     idxs = rec.sampled_idxs
 
-    print "-> Extracting voxlets"
-    t1 = time()
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=flatten_sbox) for idx in idxs]
-    print "-> Took %f s" % (time() - t1)
 
     return np.array(gt_shoeboxes)
 
 
 # need to import these *after* the pool helper has been defined
-if  parameters.multicore:
+if system_setup.multicore:
     import multiprocessing
-    import functools
-    pool = multiprocessing.Pool(parameters.cores)
-    mapper = pool.map
+    mapper = multiprocessing.Pool(system_setup.cores).map
 else:
     mapper = map
 
 
-def extract_all_voxlets(voxlet_params):
+def extract_all_voxlets(voxlet_params_in):
 
-    voxlets = mapper(process_sequence, paths.all_train_data[:3])
-    print "length is ", len(voxlets)
-    np_voxlets = np.vstack(voxlets)
+    # this allows for passing multiple arguments to the mapper
+    func = functools.partial(process_sequence, voxlet_params=voxlet_params_in)
+
+    voxlet_list = mapper(func, paths.all_train_data[10:13])
+
+    print "length is ", len(voxlet_list)
+    np_voxlets = np.vstack(voxlet_list)
+
     print "-> Shoeboxes are shape " + str(np_voxlets.shape)
     return np_voxlets
 
 
+def render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath):
+    # render views of some of the extracted voxlets to a folder for inspection
+
+    num_to_render = 20
+    idxs = np.random.choice(np_voxlets.shape[0], num_to_render)
+
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    for count, idx in enumerate(idxs):
+        # doing 3d render
+        arrs = (np_voxlets[idx].reshape(voxlet_params['shape']),
+                np_masks[idx].reshape(voxlet_params['shape']))
+
+        savepath = folderpath + '/%03d_voxlet.png' % count
+        rendering.render_single_voxlet(
+            arrs[0], savepath, height=voxlet_params['name'], speed='quick')
+
+        # saving the slice
+        savepath = folderpath + '/%03d_slice.png' % count
+        rendering.plot_slices(arrs, savepath, titles=['TSDF', 'Mask'])
+
 
 if __name__ == '__main__':
 
-
+    # Repeat for each type of voxlet in the parameters
     for voxlet_params in parameters['voxlets']:
+
         tic = time()
 
         print "-> Extracting the voxlets, type %s" % voxlet_params['name']
-        voxlets = extract_all_voxlets(voxlet_params)
+        np_voxlets = extract_all_voxlets(voxlet_params)
+
+        print "-> Extracting masks"
+        np_masks = np.isnan(np_voxlets).astype(np.float16)
+        np_voxlets[np_masks == 1] = parameters['mu']
+
+        print "-> Rendering"
+        folderpath = paths.voxlets_dictionary_path + '/renders/' + voxlet_params['name'] + '/'
+        render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath)
 
         print "-> Doing the PCA"
+        pca_savepath = paths.voxlets_dictionary_path + 'voxlets_pca2.pkl'
+        fit_and_save_pca(np_voxlets, pca_savepath)
 
-        print "-> Saving the PCA"
+        pca_savepath = paths.voxlets_dictionary_path + 'masks_pca2.pkl'
+        fit_and_save_pca(np_masks, pca_savepath)
 
         print "In total took %f s" % (time() - tic)

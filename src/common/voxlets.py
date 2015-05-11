@@ -8,13 +8,11 @@ import cPickle as pickle
 import sys
 import os
 import time
-import shutil
 import copy
 import voxel_data
 import random_forest_structured as srf
 import features
 from skimage import measure
-import subprocess as sp
 from sklearn.neighbors import NearestNeighbors
 import mesh
 import sklearn.metrics
@@ -26,7 +24,7 @@ import scipy.misc
 
 sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
-import voxel_utils as vu
+
 
 from rendering import plot_mesh, render_leaf_nodes, render_single_voxlet
 
@@ -404,7 +402,7 @@ class Reconstructer(object):
     def set_scene(self, sc_in):
         self.sc = sc_in
 
-    def sample_points(self, num_to_sample, sample_grid_size, additional_mask=None):
+    def sample_points(self, num_to_sample, sample_grid_size=None, additional_mask=None):
         '''
         sampling points from the test image
         '''
