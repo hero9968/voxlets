@@ -7,19 +7,15 @@ import cPickle as pickle
 import sys
 import os
 from time import time
-import scipy.io
 import yaml
 import functools
 from sklearn.decomposition import RandomizedPCA
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import voxlets, scene, rendering
+from common import scene, rendering
 
 import real_data_paths as paths
 import system_setup
-
-if not os.path.exists(paths.voxlets_dict_data_path):
-    os.makedirs(paths.voxlets_dict_data_path)
 
 parameters_path = './training_params.yaml'
 parameters = yaml.load(open(parameters_path))
@@ -31,13 +27,13 @@ def flatten_sbox(sbox):
 
 def fit_and_save_pca(np_array, savepath):
 
-    if parameters['pca_subsample_length'] < np_array.shape[0]:
+    if parameters['pca']['subsample_length'] < np_array.shape[0]:
         idxs = np.random.choice(
-            np_array.shape[0], parameters['pca_subsample_length'], replace=False)
+            np_array.shape[0], parameters['pca']['subsample_length'], replace=False)
         np_array = np_array[idxs]
 
     # fit the pca model
-    pca = RandomizedPCA(n_components=parameters['number_pca_dims'])
+    pca = RandomizedPCA(n_components=parameters['pca']['number_dims'])
     pca.fit(np_array)
 
     with open(savepath, 'wb') as f:
@@ -54,13 +50,9 @@ def process_sequence(sequence, voxlet_params):
     sc = scene.Scene(parameters['mu'], voxlet_params)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, voxel_normals='gt_tsdf')
 
-    # just using the reconstructor for its point sampling routine!
-    rec = voxlets.Reconstructer()
-    rec.set_scene(sc)
-    rec.sample_points(parameters['pca_number_points_from_each_image'],
+    # sampling points and extracting voxlets at these locations
+    idxs = sc.sample_points(parameters['pca']['number_points_from_each_image'],
                       additional_mask=sc.gt_im_label != 0)
-    idxs = rec.sampled_idxs
-
     gt_shoeboxes = [sc.extract_single_voxlet(
         idx, extract_from='gt_tsdf', post_transform=flatten_sbox) for idx in idxs]
 
@@ -119,6 +111,11 @@ if __name__ == '__main__':
 
         tic = time()
 
+        pca_savefolder = paths.voxlets_dictionary_path % voxlet_params['name']
+
+        if not os.path.exists(pca_savefolder):
+            os.makedirs(pca_savefolder)
+
         print "-> Extracting the voxlets, type %s" % voxlet_params['name']
         np_voxlets = extract_all_voxlets(voxlet_params)
 
@@ -131,12 +128,7 @@ if __name__ == '__main__':
         render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath)
 
         print "-> Doing the PCA"
-        pca_savepath = paths.voxlets_dictionary_path + \
-            '_%s_voxlets_pca.pkl' % voxlet_params['name']
-        fit_and_save_pca(np_voxlets, pca_savepath)
-
-        pca_savepath = paths.voxlets_dictionary_path + \
-            '_%s_masks_pca.pkl' % voxlet_params['name']
-        fit_and_save_pca(np_masks, pca_savepath)
+        fit_and_save_pca(np_voxlets, pca_savefolder + 'voxlets_pca.pkl')
+        fit_and_save_pca(np_masks, pca_savefolder + 'masks_pca.pkl')
 
         print "In total took %f s" % (time() - tic)

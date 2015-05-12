@@ -29,21 +29,43 @@ voxlets:
     relative_centre: [0.5, 0.25]
     tall_voxlet_height: 0.375
 
-pca_number_points_from_each_image: 200
-number_pca_dims: 400
+pca:
+    number_points_from_each_image: 200
+    number_dims: 400
 
-# max number of examples to use for pca
-pca_subsample_length: 10000
+    # max number of examples to use for pca
+    subsample_length: 10000
 
 number_points_from_each_image: 1500
 
 # distance between points on the cobweb feature
 cobweb_offset: 0.01
 
-# max num examples to use to train forest
-forest_subsample_length: 500000
-
 # number of points to sample from image at test time
 number_samples: 300
 
-# sampling_grid_size = 0.1
+# sampling_grid_size: 0.1
+
+# if a feature is out of the inlier mask, give it this value
+out_of_range_feature: -5.0
+
+# max num examples to use to train forest
+forest_subsample_length: 500000
+
+forest:
+    num_tests: 500
+    min_sample_cnt: 5
+    max_depth: 25
+    num_trees: 4
+    bag_size: 0.5
+    train_parallel: True
+    njobs: 8
+
+    # structured learning params
+    #pca_dims: 5
+    num_dims_for_pca: 100 # number of dimensions that pca gets reduced to
+    sub_sample_exs_pca: True  # can also subsample the number of exs we use for PCA
+    num_exs_for_pca: 2500
+
+    oob_score: True
+    oob_importance: False

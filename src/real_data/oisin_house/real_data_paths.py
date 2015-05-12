@@ -36,6 +36,10 @@ with open(yaml_train_location2, 'r') as f:
 
 all_train_data = temp_train_data + temp_train_data2
 
+import system_setup
+if system_setup.small_sample:
+    all_train_data = all_train_data[:system_setup.max_sequences]
+
 with open(yaml_test_location, 'r') as f:
     test_data = yaml.load(f)
 
@@ -60,12 +64,12 @@ for t in scenes:
     sequences.append(temp)
 
 # saving...
-models_folder = data_folder + 'models_full_split_floating_different_split/'
+models_folder = data_folder + 'models/%s/'
 
-voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
+# voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
 voxlets_dictionary_path = models_folder + 'dictionary/'
 voxlets_data_path = models_folder + 'training_voxlets/'
-voxlet_model_oma_path = models_folder + 'models/oma_tall.pkl'
+voxlet_model_path = models_folder + 'model.pkl'
 
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
 voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'

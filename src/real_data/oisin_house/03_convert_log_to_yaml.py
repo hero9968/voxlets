@@ -1,58 +1,26 @@
 # But first let's load the video and do a sanity render...
-import math
 import yaml
 import numpy as np
 import os
+import sys
 
 # here will load the log file and convert to my format...
 import real_data_paths as paths
 
 log_name = 'log.txt'
 
-
-def quaternion_matrix(quaternion):
-    """Return homogeneous rotation matrix from quaternion.
-
-    >>> M = quaternion_matrix([0.99810947, 0.06146124, 0, 0])
-    >>> numpy.allclose(M, rotation_matrix(0.123, [1, 0, 0]))
-    True
-    >>> M = quaternion_matrix([1, 0, 0, 0])
-    >>> numpy.allclose(M, numpy.identity(4))
-    True
-    >>> M = quaternion_matrix([0, 1, 0, 0])
-    >>> numpy.allclose(M, numpy.diag([1, -1, -1, 1]))
-    True
-    Assumes [w, x, y, z] I think...
-    """
-    _EPS = np.finfo(float).eps * 4.0
-
-    q = np.array(quaternion, dtype=np.float64, copy=True)
-    n = np.dot(q, q)
-    if n < _EPS:
-        return np.identity(4)
-    q *= math.sqrt(2.0 / n)
-    q = np.outer(q, q)
-    return np.array([
-        [1.0-q[2, 2]-q[3, 3],     q[1, 2]-q[3, 0],     q[1, 3]+q[2, 0], 0.0],
-        [    q[1, 2]+q[3, 0], 1.0-q[1, 1]-q[3, 3],     q[2, 3]-q[1, 0], 0.0],
-        [    q[1, 3]-q[2, 0],     q[2, 3]+q[1, 0], 1.0-q[1, 1]-q[2, 2], 0.0],
-        [                0.0,                 0.0,                 0.0, 1.0]])
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+from common import transformations
 
 
 def read_log(scene_path):
 
     frames = []
     f = open(scene_path + '/' + log_name, 'r')
-    # f2 = open(scene_path + '/log_M.txt', 'r')
-    # for l, l2 in zip(f, f2):
+
     for l in f:
-        # original = map(float, l2.strip().split())
-        # print original[0]
-        # print original[1:4]
-        # M2 = np.array(original[4:]).reshape(4, 4)
         # modifying M2...
         rotter = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-        # M3 = np.dot(M2, rotter)
 
         framedict = {}
         data = map(float, l.strip().split())
@@ -61,13 +29,12 @@ def read_log(scene_path):
 
         # vv this is good
         t = data[2:5]
-        R = np.array(quaternion_matrix(data[5:]))
+        R = np.array(transformations.quaternion_matrix(data[5:]))
         R[:3, 3] = R[:3, 3] = np.dot(np.linalg.inv(R[:3, :3]), -np.array(t))
         R = np.dot(rotter, R)
         R[:, 2] *= -1
         R[:3, :3] = np.linalg.inv(R[:3, :3])
         R[1, -1] *= -1
-
         # ^^ this is good
 
         # print "Warning - using M2 instead of R"
@@ -79,13 +46,8 @@ def read_log(scene_path):
         framedict['image'] = 'frames/%05d.pgm' % framedict['frame']
         framedict['rgb'] = 'frames/%05d.ppm' % framedict['frame']
 
-        np.set_printoptions(precision=3, formatter={'float':lambda x: '%0.9f' % x})
-        # if int(original[0]) == 110:
-        #     print np.linalg.det(M3)
-        #     print np.linalg.det(R)
-        #     print t
-        #     print '\n'
         frames.append(framedict)
+
     return frames
 
 
@@ -127,12 +89,12 @@ def convert_log_to_canonical(frames, scene_pose):
 
 for sequence in paths.scenes:
 
-    scene = sequence['folder'] + sequence['scene']
+    scene_name = sequence['folder'] + sequence['scene']
 
-    scene_pose = get_scene_pose(scene)
-    print scene_pose
-    print "Doing ", scene
+    scene_pose = get_scene_pose(scene_name)
 
-    log = read_log(scene)
+    print "Doing ", scene_name
+
+    log = read_log(scene_name)
     log = convert_log_to_canonical(log, scene_pose)
-    dump_log(log, scene)
+    dump_log(log, scene_name)

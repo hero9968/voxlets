@@ -19,26 +19,11 @@ import sklearn.metrics
 import collections
 import random
 import scipy.misc
-#import matplotlib
-# matplotlib.use('Agg')
 
 sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
 
-
 from rendering import plot_mesh, render_leaf_nodes, render_single_voxlet
-
-def voxlet_class_to_dict(params_class):
-    voxlet_params = {}
-    voxlet_params['tall_voxlets'] = params_class.tall_voxlets
-    voxlet_params['one_side_bins'] = params_class.one_side_bins
-    voxlet_params['shape'] = params_class.shape
-    voxlet_params['size'] = params_class.size
-    voxlet_params['actual_size'] = params_class.actual_size
-    voxlet_params['centre'] = params_class.centre
-    if hasattr(params_class, 'tall_voxlet_height'):
-        voxlet_params['tall_voxlet_height'] = params_class.tall_voxlet_height
-    return voxlet_params
 
 
 class VoxletPredictor(object):
@@ -61,7 +46,7 @@ class VoxletPredictor(object):
         self.max_depth = max_depth
 
     def set_voxlet_params(self, voxlet_params):
-        self.voxlet_params = voxlet_class_to_dict(voxlet_params)
+        self.voxlet_params = voxlet_params
 
     def set_pca(self, pca_in):
         self.pca = pca_in
@@ -72,7 +57,7 @@ class VoxletPredictor(object):
     def set_masks_pca(self, masks_pca_in):
         self.masks_pca = masks_pca_in
 
-    def train(self, X, Y, subsample_length=-1, masks=None, scene_ids=None):
+    def train(self, X, Y, forest_params, subsample_length=-1, masks=None, scene_ids=None):
         '''
         Runs the OMA forest code
         Y is expected to be a PCA version of the shoeboxes
@@ -97,7 +82,6 @@ class VoxletPredictor(object):
         self._print_shapes(X, Y)
 
         print "Training forest"
-        forest_params = srf.ForestParams()
         self.forest = srf.Forest(forest_params)
         tic = time.time()
         self.forest.train(X, Y, scene_ids)
@@ -400,65 +384,6 @@ class Reconstructer(object):
 
     def set_scene(self, sc_in):
         self.sc = sc_in
-
-    def sample_points(self, num_to_sample, sample_grid_size=None, additional_mask=None):
-        '''
-        sampling points from the test image
-        '''
-
-        if False:
-            # perhaps add in some kind of thing to make sure that we don't take normals pointing the wrong way
-            xyz = self.sc.im.get_world_xyz()
-
-            good_normals = self.sc.im.normals[:, 2].reshape((480, 640)) < -0.5
-            if additional_mask:
-                additional_mask = np.logical_and(additional_mask, good_normals)
-            else:
-                additional_mask = good_normals
-
-            # Over-sample the points to begin with
-            sampled_idxs = \
-                self.sc.im.random_sample_from_mask(4*num_to_sample, additional_mask=additional_mask)
-            linear_idxs = sampled_idxs[:, 0] * self.sc.im.mask.shape[1] + \
-                sampled_idxs[:, 1]
-
-            # Now I want to choose points according to the x-y grid
-            # First, discretise the location of each point
-            sampled_xy = xyz[linear_idxs, :2]
-            sampled_xy /= sample_grid_size
-            sampled_xy = np.round(sampled_xy).astype(int)
-
-            sample_dict = {}
-            for idx, row in zip(sampled_idxs, sampled_xy):
-                if (row[0], row[1]) in sample_dict:
-                    sample_dict[(row[0], row[1])].append(idx)
-                else:
-                    sample_dict[(row[0], row[1])] = [idx]
-
-            sampled_points = []
-            while len(sampled_points) < num_to_sample:
-
-                for key, value in sample_dict.iteritems():
-                    # add the top item to the sampled points
-                    if len(value) > 0 and len(sampled_points) < num_to_sample:
-                        sampled_points.append(value.pop())
-
-            self.sampled_idxs = np.array(sampled_points)
-        else:
-            sample_rate = copy.copy(self.sc.im.depth)
-
-            shape = self.sc.im.depth.shape
-            sample_rate[self.sc.im.get_world_xyz()[:, 2].reshape(shape) < 0.035] = 0
-            sample_rate[self.sc.im.mask==0] = 0
-            sample_rate[self.sc.im.normals[:, 2].reshape(shape) > -0.1] = 0
-            sample_rate[self.sc.im.get_world_normals()[:, 2].reshape(shape) > 0.98] = 0
-
-            sample_rate /= sample_rate.sum()
-
-            samples = np.random.choice(shape[0]*shape[1], num_to_sample, p=sample_rate.flatten())
-            self.sampled_idxs = np.array(np.unravel_index(samples, shape)).T
-
-
 
     def _initialise_voxlet(self, index, model):
         '''

@@ -3,7 +3,8 @@ import socket
 
 host_name = socket.gethostname()
 
-if host_name == 'troll' or host_name == 'biryani':
+if False:
+    # host_name == 'troll' or host_name == 'biryani':
     small_sample = False
     max_sequences = 500
     cores = 8
@@ -11,5 +12,5 @@ if host_name == 'troll' or host_name == 'biryani':
 else:
     small_sample = True
     max_sequences = 20
-    cores = 4
-    multicore = False
+    cores = 8
+    multicore = True

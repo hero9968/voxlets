@@ -155,7 +155,63 @@ class Scene(object):
         # np.any(np.abs(self.im.normals)==1, axis
 
 
+    def sample_points(self, num_to_sample, sample_grid_size=None, additional_mask=None):
+        '''
+        Sampling locations at which to extract/place voxlets
+        '''
+        if False:
+            # perhaps add in some kind of thing to make sure that we don't take normals pointing the wrong way
+            xyz = self.im.get_world_xyz()
 
+            good_normals = self.im.normals[:, 2].reshape((480, 640)) < -0.5
+            if additional_mask:
+                additional_mask = np.logical_and(additional_mask, good_normals)
+            else:
+                additional_mask = good_normals
+
+            # Over-sample the points to begin with
+            sampled_idxs = \
+                self.im.random_sample_from_mask(4*num_to_sample, additional_mask=additional_mask)
+            linear_idxs = sampled_idxs[:, 0] * self.im.mask.shape[1] + \
+                sampled_idxs[:, 1]
+
+            # Now I want to choose points according to the x-y grid
+            # First, discretise the location of each point
+            sampled_xy = xyz[linear_idxs, :2]
+            sampled_xy /= sample_grid_size
+            sampled_xy = np.round(sampled_xy).astype(int)
+
+            sample_dict = {}
+            for idx, row in zip(sampled_idxs, sampled_xy):
+                if (row[0], row[1]) in sample_dict:
+                    sample_dict[(row[0], row[1])].append(idx)
+                else:
+                    sample_dict[(row[0], row[1])] = [idx]
+
+            sampled_points = []
+            while len(sampled_points) < num_to_sample:
+
+                for key, value in sample_dict.iteritems():
+                    # add the top item to the sampled points
+                    if len(value) > 0 and len(sampled_points) < num_to_sample:
+                        sampled_points.append(value.pop())
+
+            self.sampled_idxs = np.array(sampled_points)
+        else:
+            sample_rate = copy(self.im.depth)
+
+            shape = self.im.depth.shape
+            sample_rate[self.im.get_world_xyz()[:, 2].reshape(shape) < 0.035] = 0
+            sample_rate[self.im.mask==0] = 0
+            sample_rate[self.im.normals[:, 2].reshape(shape) > -0.1] = 0
+            sample_rate[self.im.get_world_normals()[:, 2].reshape(shape) > 0.98] = 0
+
+            sample_rate /= sample_rate.sum()
+
+            samples = np.random.choice(shape[0]*shape[1], num_to_sample, p=sample_rate.flatten())
+            self.sampled_idxs = np.array(np.unravel_index(samples, shape)).T
+
+        return self.sampled_idxs
 
         # # loading the GT mesh...
         # vox_path = '/media/ssd/data/bigbird_meshes/' + sequence['scene'] + '/meshes/voxelised.vox'
@@ -165,23 +221,23 @@ class Scene(object):
         # self.im._cached_world_xyz = self._apply_normalised_homo_transform(D['xyz'], np.linalg.inv(extr))
         # print D['xyz'].shape
 
-    def norrms(self):
-        # while I'm here - might as well save the image as a voxel grid
+    # def norrms(self):
+    #     # while I'm here - might as well save the image as a voxel grid
 
-        video = images.RGBDVideo()
-        video.frames = [self.im]
-        carver = carving.Fusion()
-        carver.set_video(video)
-        carver.set_voxel_grid(self.gt_tsdf.blank_copy())
-        self.im_tsdf, self.im_visible = carver.fuse(self.mu)
-        # video = images.RGBDVideo()
-        # video.frames = [self.im]
-        # carver = carving.Fusion()
-        # carver.set_video(video)
-        # carver.set_voxel_grid(self.gt_tsdf.blank_copy())
-        # self.im_tsdf, self.im_visible = carver.fuse(self.mu)
-        # norm_engine = features.Normals()
-        # self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
+    #     video = images.RGBDVideo()
+    #     video.frames = [self.im]
+    #     carver = carving.Fusion()
+    #     carver.set_video(video)
+    #     carver.set_voxel_grid(self.gt_tsdf.blank_copy())
+    #     self.im_tsdf, self.im_visible = carver.fuse(self.mu)
+    #     # video = images.RGBDVideo()
+    #     # video.frames = [self.im]
+    #     # carver = carving.Fusion()
+    #     # carver.set_video(video)
+    #     # carver.set_voxel_grid(self.gt_tsdf.blank_copy())
+    #     # self.im_tsdf, self.im_visible = carver.fuse(self.mu)
+    #     # norm_engine = features.Normals()
+    #     # self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
 
     def populate_from_vox_file(self, filepath):
         '''

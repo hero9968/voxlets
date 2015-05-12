@@ -6,24 +6,45 @@ from multiprocessing import Pool
 from sklearn.decomposition import RandomizedPCA
 
 
-class ForestParams:
-    def __init__(self):
-        self.num_tests = 500
-        self.min_sample_cnt = 5
-        self.max_depth = 25
-        self.num_trees = 40
-        self.bag_size = 0.5
-        self.train_parallel = True
-        self.njobs = 8
+# class ForestParams:
+#     def __init__(self):
+#         self.num_tests = 500
+#         self.min_sample_cnt = 5
+#         self.max_depth = 25
+#         self.num_trees = 40
+#         self.bag_size = 0.5
+#         self.train_parallel = True
+#         self.njobs = 8
 
-        # structured learning params
-        #self.pca_dims = 5
-        self.num_dims_for_pca = 100 # number of dimensions that pca gets reduced to
-        self.sub_sample_exs_pca = True  # can also subsample the number of exs we use for PCA
-        self.num_exs_for_pca = 2500
+#         # structured learning params
+#         #self.pca_dims = 5
+#         self.num_dims_for_pca = 100 # number of dimensions that pca gets reduced to
+#         self.sub_sample_exs_pca = True  # can also subsample the number of exs we use for PCA
+#         self.num_exs_for_pca = 2500
 
-        self.oob_score = True
-        self.oob_importance = False
+#         self.oob_score = True
+#         self.oob_importance = False
+
+def example_forest_params():
+    '''
+    Returns a dictionary of some example forest params
+    '''
+    return {
+        num_tests: 500,
+        min_sample_cnt: 5,
+        max_depth: 25,
+        num_trees: 4,
+        bag_size: 0.5,
+        train_parallel: True,
+        njobs: 8,
+
+        num_dims_for_pca: 100,
+        sub_sample_exs_pca: True,
+        num_exs_for_pca: 2500,
+
+        oob_score: True,
+        oob_importance: False}
+
 
 
 class Node:
@@ -92,7 +113,7 @@ class Tree:
         self.label_dims = 0  # dimensionality of label space
 
     def build_tree(self, X, Y, node):
-        if (node.node_id < ((2**self.tree_params.max_depth)-1)) and (node.impurity > 0.0) \
+        if (node.node_id < ((2**self.tree_params['max_depth'])-1)) and (node.impurity > 0.0) \
                 and (self.optimize_node(np.take(X, node.exs_at_node, 0), np.take(Y, node.exs_at_node, 0), node)):
                 self.num_nodes += 2
                 self.build_tree(X, Y, node.left_node)
@@ -100,7 +121,7 @@ class Tree:
         else:
             depth = np.floor(np.log2(node.node_id+1))
             # print "Leaf node: In tree %d \t depth %d \t %d examples" % \
-            #     (int(self.tree_id), int(depth), node.exs_at_node.shape[0])
+                # (int(self.tree_id), int(depth), node.exs_at_node.shape[0])
 
     def discretize_labels(self, y):
 
@@ -117,14 +138,14 @@ class Tree:
     def pca(self, y):
 
         # select a random subset of Y dimensions (possibly gives robustness as well as speed)
-        rand_dims = np.sort(np.random.choice(y.shape[1], np.minimum(self.tree_params.num_dims_for_pca, y.shape[1]), replace=False))
+        rand_dims = np.sort(np.random.choice(y.shape[1], np.minimum(self.tree_params['num_dims_for_pca'], y.shape[1]), replace=False))
         y_dim_subset = y.take(rand_dims, 1)
 
         pca = RandomizedPCA(n_components=1) # compute for all components
 
         # optional: select a subset of exs (not so important if PCA is fast)
-        if self.tree_params.sub_sample_exs_pca:
-            rand_exs = np.sort(np.random.choice(y.shape[0], np.minimum(self.tree_params.num_exs_for_pca, y.shape[0]), replace=False))
+        if self.tree_params['sub_sample_exs_pca']:
+            rand_exs = np.sort(np.random.choice(y.shape[0], np.minimum(self.tree_params['num_exs_for_pca'], y.shape[0]), replace=False))
             pca.fit(y_dim_subset.take(rand_exs, 0))
             return pca.transform(y_dim_subset)
 
@@ -136,14 +157,14 @@ class Tree:
         # no bagging
         #exs_at_node = np.arange(Y.shape[0])
         # bagging
-        num_to_sample = int(float(Y.shape[0])*self.tree_params.bag_size)
+        num_to_sample = int(float(Y.shape[0])*self.tree_params['bag_size'])
 
         if extracted_from is None:
             exs_at_node = np.random.choice(Y.shape[0], num_to_sample, replace=False)
         else:
             ids = np.unique(extracted_from)
             ids_for_this_tree = \
-                np.random.choice(ids.shape[0], int(float(ids.shape[0])*self.tree_params.bag_size), replace=False)
+                np.random.choice(ids.shape[0], int(float(ids.shape[0])*self.tree_params['bag_size']), replace=False)
 
             # http://stackoverflow.com/a/15866830/279858
             exs_at_node = []
@@ -177,7 +198,7 @@ class Tree:
 
         self.num_feature_dims = X.shape[1]
 
-        if self.tree_params.oob_score:
+        if self.tree_params['oob_score']:
 
             # oob score is cooefficient of determintion R^2 of the prediction
             # oob score is in [0, 1], lower values are worse
@@ -320,11 +341,11 @@ class Tree:
     def node_split(self, x_local):
         # left node is false, right is true
         # single dim test
-        test_inds_1 = np.sort(np.random.random_integers(0, x_local.shape[1]-1, self.tree_params.num_tests))
+        test_inds_1 = np.sort(np.random.random_integers(0, x_local.shape[1]-1, self.tree_params['num_tests']))
         x_local_expand = x_local.take(test_inds_1, 1)
         x_min = x_local_expand.min(0)
         x_max = x_local_expand.max(0)
-        test_thresh = (x_max - x_min)*np.random.random_sample(self.tree_params.num_tests) + x_min
+        test_thresh = (x_max - x_min)*np.random.random_sample(self.tree_params['num_tests']) + x_min
         #valid_var = (x_max != x_min)
 
         test_res = x_local_expand < test_thresh
@@ -344,7 +365,7 @@ class Tree:
         # count examples left and right
         num_exs_l = (~test_res).sum(axis=0).astype('float')
         num_exs_r = x_local.shape[0] - num_exs_l  # i.e. num_exs_r = test_res.sum(axis=0).astype('float')
-        valid_inds = (num_exs_l >= self.tree_params.min_sample_cnt) & (num_exs_r >= self.tree_params.min_sample_cnt)
+        valid_inds = (num_exs_l >= self.tree_params['min_sample_cnt']) & (num_exs_r >= self.tree_params['min_sample_cnt'])
 
         successful_split = False
         if valid_inds.sum() > 0:
@@ -421,24 +442,24 @@ class Forest:
         if np.any(np.isnan(Y)):
             raise Exception('nans should not be present in training Y')
 
-        if self.params.train_parallel:
+        if self.params['train_parallel']:
             # TODO Can I make this faster by sharing the data?
             #print 'Parallel training'
             # need to seed the random number generator for each process
-            seeds = np.random.random_integers(0, np.iinfo(np.int32).max, self.params.num_trees)
+            seeds = np.random.random_integers(0, np.iinfo(np.int32).max, self.params['num_trees'])
 
             # these are the arguments which are different for each tree
             per_tree_args = ((t_id, seeds[t_id], self.params)
-                for t_id in range(self.params.num_trees))
+                for t_id in range(self.params['num_trees']))
 
             # data which is to be shared across all processes are passed as initargs
-            pool = Pool(processes=self.params.njobs, initializer=_init, initargs=(X, Y, extracted_from))
+            pool = Pool(processes=self.params['njobs'], initializer=_init, initargs=(X, Y, extracted_from))
 
             self.trees.extend(pool.map(train_forest_helper, per_tree_args))
 
         else:
             #print 'Standard training'
-            for t_id in range(self.params.num_trees):
+            for t_id in range(self.params['num_trees']):
                 print 'tree', t_id
                 tree = Tree(t_id, self.params)
                 tree.train(X, Y, extracted_from)
