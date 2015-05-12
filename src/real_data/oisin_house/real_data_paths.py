@@ -1,6 +1,8 @@
 import os
 import yaml
 import socket
+import system_setup
+from copy import deepcopy
 
 host_name = socket.gethostname()
 print host_name
@@ -36,15 +38,15 @@ with open(yaml_train_location2, 'r') as f:
 
 all_train_data = temp_train_data + temp_train_data2
 
-import system_setup
-if system_setup.small_sample:
-    all_train_data = all_train_data[:system_setup.max_sequences]
 
 with open(yaml_test_location, 'r') as f:
     test_data = yaml.load(f)
 
+if system_setup.small_sample:
+    all_train_data = all_train_data[:system_setup.max_sequences]
+    test_data = test_data[:system_setup.max_sequences]
 
-from copy import deepcopy
+
 
 sequences = []
 for t in scenes:
@@ -73,7 +75,12 @@ voxlet_model_path = models_folder + 'model.pkl'
 
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
 voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
-voxlet_prediction_folderpath = data_folder + '/predictions/%s/%s/'
+
+# first %s is the test batch category name, second is the sequence name
+prediction_folderpath = data_folder + '/predictions/%s/%s/'
+
+# final %s is the actual test being done
+prediction_path = data_folder + '/predictions/%s/%s/%s.pkl'
 
 
 def new_dropbox_dir():

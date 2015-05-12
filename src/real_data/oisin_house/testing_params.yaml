@@ -1,8 +1,6 @@
+batch_name: 'small_dataset_trial'
 
-
-
-
-default_params: &DEFAULT
+general_params: &DEFAULT_GENERAL
     # number of points to sample from image at test time
     number_samples: 300
 
@@ -12,9 +10,75 @@ default_params: &DEFAULT
     # how deep to go in the forest
     max_depth: 25
 
+    # I know, this should be taken from the models...
+    mu: 0.025
+
+default_reconstruction_params: &DEFAULT_RECONSTRUCTION
+    weight_empty_lower: 0.5
+    feature_type: 'cobweb'
+
 tests:
   - name: 'ground_truth'
-    <<: *DEFAULT
-    type: 'ground_truth'
+    <<: *DEFAULT_GENERAL
+    ground_truth: True
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
 
-  - name: 'tiger'
+  - name: 'visible'
+    <<: *DEFAULT_GENERAL
+    visible: True
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+
+  - name: 'standard_cobweb'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+
+  - name: 'medioid'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+        how_to_choose: 'medioid'
+
+  - name: 'mean'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+        how_to_choose: 'mean'
+
+  - name: 'pca_oracle'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+        oracle: 'pca'
+
+  - name: 'ground_truth_oracle'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+        oracle: 'ground_truth'
+
+  - name: 'nn_oracle'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+        oracle: 'nn'
+
+  - name: 'greedy_oracle'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+        oracle: 'greedy_add'
+
+  - name: 'greedy_oracle_normal'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+        oracle: 'true_greedy'
+
+  - name: 'greedy_oracle_gt'
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+        oracle: 'true_greedy_gt'
