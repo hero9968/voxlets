@@ -90,6 +90,7 @@ if __name__ == '__main__':
 
         model.set_pca(pca)
         model.set_masks_pca(mask_pca)
+        model.forest.make_lightweight()
 
         print "-> Saving to ", savepath
         model.save(savepath)

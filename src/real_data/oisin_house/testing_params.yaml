@@ -1,0 +1,20 @@
+
+
+
+
+default_params: &DEFAULT
+    # number of points to sample from image at test time
+    number_samples: 300
+
+    # which models to load...
+    models_to_use: ['short', 'tall']
+
+    # how deep to go in the forest
+    max_depth: 25
+
+tests:
+  - name: 'ground_truth'
+    <<: *DEFAULT
+    type: 'ground_truth'
+
+  - name: 'tiger'

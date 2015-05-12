@@ -41,9 +41,6 @@ number_points_from_each_image: 1500
 # distance between points on the cobweb feature
 cobweb_offset: 0.01
 
-# number of points to sample from image at test time
-number_samples: 300
-
 # sampling_grid_size: 0.1
 
 # if a feature is out of the inlier mask, give it this value

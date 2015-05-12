@@ -321,12 +321,6 @@ class VoxletPredictor(object):
         I'm doing this as a method of the class so I can do the appropriate
         checks, as performed below
         '''
-        # if not hasattr(self, 'pca'):
-        #     raise Exception(
-        #         "pca attribute not set - this is important for prediction")
-
-        # if not hasattr(self, 'forest'):
-        #     raise Exception("Forest not trained it seems")
         tic = time.time()
 
         with open(savepath, 'wb') as f:
