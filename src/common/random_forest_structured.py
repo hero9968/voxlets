@@ -425,10 +425,16 @@ class Forest:
         self.params = params
         self.trees = []
 
-    #def save(self, filename):
-        # TODO make lightweight version for saving
-        #with open(filename, 'wb') as fid:
-        #    cPickle.dump(self, fid)
+    def make_lightweight(self):
+        for tree in self.trees:
+            del tree
+
+    def save(self, filename):
+        # make lightweight version for saving
+        self.make_lightweight()
+
+        with open(filename, 'wb') as fid:
+            cPickle.dump(self, fid)
 
     def train(self, X, Y, extracted_from=None):
         '''
