@@ -606,14 +606,15 @@ class Scene(object):
         assert(V.shape[1] == self.gt_tsdf.V.shape[1])
         assert(V.shape[2] == self.gt_tsdf.V.shape[2])
 
-        temp = np.logical_or(self.im_tsdf.V < 0, np.isnan(self.im_tsdf.V))
-
         # deciding which voxels to evaluate over...
+        temp = np.logical_or(self.im_tsdf.V < 0, np.isnan(self.im_tsdf.V))
         voxels_to_evaluate = np.logical_and(
             temp, self.get_visible_frustrum().reshape(temp.shape))
+
         floor_t = self.gt_tsdf.blank_copy()
         floor_t.V[:, :, :6] = 1
         voxels_to_evaluate = np.logical_and(floor_t.V == 0, voxels_to_evaluate)
+
         self.voxels_to_evaluate = voxels_to_evaluate
 
         # getting the ground truth TSDF voxels
@@ -624,30 +625,26 @@ class Scene(object):
         # Getting the relevant predictions
         V_to_eval = V[voxels_to_evaluate]
         V_to_eval[np.isnan(V_to_eval)] = +self.mu
+        prediction = V_to_eval < 0
 
         # now doing IOU
-        union = np.logical_or(gt, (V_to_eval < 0))
-        intersection = np.logical_and(gt, (V_to_eval < 0))
-        self.union = union
-        self.intersection = intersection
+        union = np.logical_or(gt, prediction)
+        intersection = np.logical_and(gt, prediction)
 
-        tp = np.logical_and(gt, V_to_eval < 0).sum()
-        tn = np.logical_and(~gt, V_to_eval > 0).sum()
-        fp = np.logical_and(~gt, V_to_eval < 0).sum()
-        fn = np.logical_and(gt, V_to_eval > 0).sum()
+        tp = float(np.logical_and(gt, prediction).sum())
+        tn = float(np.logical_and(~gt, ~prediction).sum())
+        fp = float(np.logical_and(~gt, prediction).sum())
+        fn = float(np.logical_and(gt, ~prediction).sum())
 
         # Now doing the final evaluation
         results = {}
         results['iou'] = float(intersection.sum()) / float(union.sum())
-        results['auc'] = sklearn.metrics.roc_auc_score(gt, V_to_eval)
-        results['precision'] = float(tp) / (float(tp) + float(fp))
-        # sklearn.metrics.precision_score(gt, V_to_eval < 0)
-        results['recall'] = float(tp) / (float(tp) + float(fn))
-        # sklearn.metrics.recall_score(gt, V_to_eval < 0)
+        results['auc'] = float(sklearn.metrics.roc_auc_score(gt, V_to_eval))
+        results['precision'] = tp / (tp + fp)
+        results['recall'] = tp / (tp + fn)
 
-        fpr, tpr, _ = sklearn.metrics.roc_curve(gt, V_to_eval)
-        results['fpr'] = fpr
-        results['tpr'] = tpr
+        # fpr, tpr, _ = sklearn.metrics.roc_curve(gt, V_to_eval)
+        # results['fpr'] = fpr
+        # results['tpr'] = tpr
 
         return results
-

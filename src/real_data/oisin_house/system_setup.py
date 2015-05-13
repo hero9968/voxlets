@@ -13,7 +13,7 @@ if False:
     multicore = True
 else:
     small_sample = True
-    max_sequences = 20
+    max_sequences = 4
     cores = 8
-    testing_cores = 3
-    multicore = False
+    testing_cores = 8
+    multicore = True

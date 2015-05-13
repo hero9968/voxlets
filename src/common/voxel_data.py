@@ -25,8 +25,6 @@ import os
 import sys
 
 
-
-
 def load_voxels(loadpath):
     with open(loadpath, 'rb') as f:
         return pickle.load(f)
@@ -591,7 +589,7 @@ class WorldVoxels(Voxels):
 
         return world_k_col, world_z_col
 
-    def render_view(self, savepath, xy_centre=None, ground_height=None):
+    def render_view(self, savepath, xy_centre=None, ground_height=None, keep_obj=False):
         '''
         render a single view of a voxel grid, using blender...
         ground height is in meters
@@ -636,7 +634,9 @@ class WorldVoxels(Voxels):
                  env=subenv,
                  stdout=open(os.devnull, 'w'),
                  close_fds=True)
-        # os.remove(savepath + '.obj')
+
+        if not keep_obj:
+            os.remove(savepath + '.obj')
 
         #now copy file from /tmp/.png to the savepath...
         # print "Moving render to " + savepath
@@ -719,7 +719,7 @@ class UprightAccumulator(WorldVoxels):
             self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += data_to_insert
             self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += 1
 
-        elif weights != None:
+        elif weights is not None:
             # # Doing the accumulation in a naive way here...
 
             # self_world_xyz = self.world_meshgrid()

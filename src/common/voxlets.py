@@ -121,72 +121,46 @@ class VoxletPredictor(object):
         # each tree predicts which index in the test set to use...
         # rows = test data (X), cols = tree
 
-        index_predictions = self.forest.test(X, max_depth=self.max_depth).astype(int)
+        index_predictions = self.forest.test(X, max_depth=self.max_depth).astype(int)[0]
         self._cached_predictions = index_predictions
-        # must extract original test data from the indices
 
-        if how_to_choose == 'medioid':
+        # checking - should be one prediction per tree
+        assert len(index_predictions) == len(self.forest.trees)
 
-            # this is a horrible line and needs changing...
-            medioid_idx = [pred[self._medioid_idx(self.training_Y[pred])]
-                                 for pred in index_predictions]
-            Y_pred_compressed = [self.training_Y[idx] for idx in medioid_idx]
-            Y_pred_compressed = np.array(Y_pred_compressed)
+        # now reform the original test data for each tree prediction
+        tree_predictions = \
+            self.pca.inverse_transform(self.training_Y[index_predictions])
+        mask_predictions = \
+            self.masks_pca.inverse_transform(self.training_masks[index_predictions])
 
-            all_masks = []
-            #for each prediction...
-            for row in index_predictions:
-                # Want to get the mean mask for each data point in the leaf node...
-                # Each row is a list of training examples
-                these_masks_compressed = [self.training_masks[idx] for idx in row]
-                # Must inverse transform *before* taking the mean -
-                # I don't want to take mean in PCA space
-                these_masks_full = \
-                    self.masks_pca.inverse_transform(np.array(these_masks_compressed))
-                all_masks.append(np.mean(these_masks_full, axis=0))
-            all_masks = np.vstack(all_masks)
+        # three different ways to choose which of the tree predictions to use
 
-            final_predictions = self.pca.inverse_transform(Y_pred_compressed)
-
-        elif how_to_choose == 'closest':
+        if how_to_choose == 'closest':
             # makes the prediction which is closest to the observed data...
-            # candidates = sle
-            assert X.shape[0] == 1 or len(X.shape) == 0
 
             X = X.flatten()
-            visible_voxlet.flatten()
-
-            index_predictions = index_predictions[0]
-            assert len(index_predictions) > 5 and len(index_predictions) < 1000 # should be one prediction per tree
-
-            tree_predictions = \
-                self.pca.inverse_transform(self.training_Y[index_predictions])
-            # print self.training_Y[index_predictions].shape
-            # print "Tree predictions has shape ", tree_predictions.shape
-
-            # the 0.9 is in case the PCA etc makes the nanmin not exacrtly correct
+            visible_voxlet = visible_voxlet.flatten()
 
             # now we must be careful - use the biggest of the overlaps
             # between the predicted and the visible
-            all_dims = []
-            distances = []
 
+            # three different distance measures to use...
             if distance_measure == 'largest_of_free_zones':
+
+                # the 0.9 is in case the PCA etc makes the nanmin not exacrtly correct
                 dims_to_use_for_distance1 = \
-                    visible_voxlet.flatten() > np.nanmin(visible_voxlet) * 0.9
+                    visible_voxlet > np.nanmin(visible_voxlet) * 0.9
 
-                # print "Nan count in visible: ", np.isnan(visible_voxlet).sum()
+                print "Nan count in visible: ", np.isnan(visible_voxlet).sum()
 
+                all_dims = []
                 for tree_prediction in tree_predictions:
                     dims_to_use_for_distance2 = \
                         tree_prediction.flatten() > np.nanmin(visible_voxlet) * 0.9
                     # see which zone is bigger...
-                    # print dims_to_use_for_distance1.sum(), dims_to_use_for_distance2.sum()
                     if dims_to_use_for_distance1.sum() > dims_to_use_for_distance2.sum():
-                        # print "1 WINS"
                         dims_to_use_for_distance = np.copy(dims_to_use_for_distance1)
                     else:
-                        # print "2 WINS"
                         dims_to_use_for_distance = np.copy(dims_to_use_for_distance2)
 
                     all_dims.append(dims_to_use_for_distance)
@@ -197,12 +171,7 @@ class VoxletPredictor(object):
                     distances.append(vec_dist / float(dims_to_use_for_distance.sum()))
 
                 distances = np.array(distances)
-                self._distances_cache = distances
-                to_use = distances.argmin()
-                self.min_dist = distances[to_use]
                 self.dims_to_use_for_distance_cache = all_dims[to_use]
-
-                final_predictions = tree_predictions[to_use]
 
             elif distance_measure == 'narrow_band':
                 # now use the narrow band only...
@@ -216,44 +185,12 @@ class VoxletPredictor(object):
 
                 # narrow_band_wiggles = []
                 for tree_prediction in tree_predictions:
-                    # doing some wiggling...
-
-                    # scales = [-mu/2, 0, mu/2]
-                    # temp_dists = [np.linalg.norm(
-                    #     visible_voxlet.flatten()[narrow_band] -
-                    #     self._tsdf_scale(tree_prediction[narrow_band], scale, mu)) / \
-                    #     float(narrow_band.sum())
-                    #     for scale in scales]
-
                     SE = (visible_voxlet.flatten()[narrow_band] - tree_prediction[narrow_band])**2
-                    MSE = np.mean(SE)
-                    RMSE = np.sqrt(MSE)
+                    RMSE = np.sqrt(np.mean(SE))
                     narrow_band_distances.append(RMSE)
 
-                    # minimum_distance_under_wiggle_idx = np.argmin(np.array(temp_dists))
-                    # narrow_band_wiggles.append(scales[minimum_distance_under_wiggle_idx])
-
-                # print tree_predictions[:, dims_to_use_for_distance].shape
-                # print visible_voxlet.flatten()[dims_to_use_for_distance].shape
                 distances = np.array(narrow_band_distances)
-                # print "dists are ", distances
-                # print "dists are ", distances
-                self._distances_cache = distances
-
-                # print "Distances has shape ", distances.shape
-
-                to_use = distances.argmin()
-                self.min_dist = distances[to_use]
-                # this is nasty but hopefully ok...
                 self.dims_to_use_for_distance_cache = narrow_band
-
-                final_predictions = tree_predictions[to_use]
-
-                # update the counter which counts how many times each voxlet is used
-                if hasattr(self, 'voxlet_counter'):
-                    self.voxlet_counter[index_predictions[to_use]] += 1
-                    # self._tsdf_scale(
-                    # narrow_band_wiggles[to_use], mu)
 
             elif distance_measure == 'just_empty':
                 # This is the original measure I used to use, just looking at the
@@ -264,56 +201,37 @@ class VoxletPredictor(object):
                     visible_voxlet.flatten()[dims_to_use_for_distance] -
                     tree_predictions[:, dims_to_use_for_distance], axis=1)
 
-                to_use = distances.argmin()
-                self.min_dist = distances[to_use]
-                # this is nasty but hopefully ok...
                 self.dims_to_use_for_distance_cache = dims_to_use_for_distance
-                self._distances_cache = distances
 
-                final_predictions = tree_predictions[to_use]
+            to_use = distances.argmin()
+            self.min_dist = distances[to_use]
+            self._distances_cache = distances
 
-            elif distance_measure == 'medioid':
+            final_prediction = tree_predictions[to_use]
+            final_mask = mask_predictions[to_use]
 
-                to_use = self._medioid_idx(tree_predictions)
-                final_predictions = tree_predictions[to_use]
 
-            elif distance_measure == 'mean':
+        elif how_to_choose == 'medioid':
 
-                final_predictions = np.mean(tree_predictions, axis=0)
+            to_use = self._medioid_idx(tree_predictions)
+            final_prediction = tree_predictions[to_use].flatten()
+            final_mask = mask_predictions[to_use].flatten()
 
-            # print "Retrieving this one...", index_predictions[to_use]
+        elif how_to_choose == 'mean':
 
-            if distance_measure == 'mean':
+            final_prediction = np.mean(tree_predictions, axis=0).flatten()
+            final_mask = np.mean(mask_predictions, axis=0).flatten()
 
-                these_masks_compressed = [self.training_masks[idx] for idx in index_predictions]
-                # Must inverse transform *before* taking the mean -
-                # I don't want to take mean in PCA space
-                these_masks_full = \
-                    self.masks_pca.inverse_transform(np.array(these_masks_compressed))
-
-                all_masks = np.mean(these_masks_full, axis=0)
-            else:
-                if hasattr(self, 'training_masks'):
-                    compressed_mask = self.training_masks[index_predictions[to_use]]
-                    all_masks = np.vstack([self.masks_pca.inverse_transform(compressed_mask)])
-                else:
-                    all_masks = (final_predictions * 0) + 1
         else:
-            raise Exception('Do not understand')
+            raise Exception('Unknown how_to_choose: ', how_to_choose)
 
-        return (final_predictions, all_masks)
+        if how_to_choose == 'closest' or how_to_choose == 'medioid':
+            # update the counter which counts how many times each voxlet is used
+            # can not do this if using the mean of all the trees though...
+            if hasattr(self, 'voxlet_counter'):
+                self.voxlet_counter[index_predictions[to_use]] += 1
 
-    # def _medioid_idx(self, X):
-    #     mu = X.mean(0)
-    #     mu_dist = np.sqrt(((X - mu[np.newaxis, ...])**2).sum(1))
-    #     return mu_dist.argmin()
-
-    def _tsdf_scale(self, V, scale, mu):
-        # apply some wiggle to the scale factor on the tsdf
-        final_V = V + scale
-        final_V[final_V>mu] = mu
-        final_V[final_V<-mu] = -mu
-        return final_V
+        return (final_prediction, final_mask)
 
     def save(self, savepath):
         '''
@@ -346,21 +264,6 @@ class VoxletPredictor(object):
             replace=False))
         return X.take(rand_exs, 0), Y.take(rand_exs, 0), scene_ids.take(rand_exs, 0)
 
-    def _print_shapes(self, X, Y):
-        print "X has shape ", X.shape
-        print "Y has shape ", Y.shape
-
-    def _get_mean_mask(self, training_idxs):
-        '''
-        returns the mean mask, given a set of indices into the training
-        data
-        '''
-        all_masks = [self.masks_pca.inverse_transform(self.training_masks[idx])
-                     for idx in training_idxs]
-        return np.array(all_masks).mean(axis=0).reshape(self.voxlet_params['shape'])
-
-
-
 
 class Reconstructer(object):
     '''
@@ -373,44 +276,46 @@ class Reconstructer(object):
     def set_model(self, model):
         self.model = model
 
-        if not hasattr(self.model, '__iter__'):
-            self.nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(self.model.training_Y)
-
     def set_scene(self, sc_in):
         self.sc = sc_in
 
-    def _initialise_voxlet(self, index, model):
+    def _initialise_voxlet(self, index, voxlet_params):
         '''
         given a point in an image, creates a new voxlet at an appropriate
         position and rotation in world space
         '''
         assert(index.shape[0] == 2)
-
-        # getting the xyz and normals in world space
         world_xyz = self.sc.im.get_world_xyz()
         world_norms = self.sc.im.get_world_normals()
 
         # convert to linear idx
         point_idx = index[0] * self.sc.im.mask.shape[1] + index[1]
 
-        # creating the voxlett10
-        shoebox = voxel_data.ShoeBox(model.voxlet_params['shape'])  # grid size
-
-        # creating the voxlet
-        shoebox = voxel_data.ShoeBox(model.voxlet_params['shape'], np.float32)  # grid size
-        shoebox.set_p_from_grid_origin(model.voxlet_params['centre'])  # m
-        shoebox.set_voxel_size(model.voxlet_params['size'])  # m
+        shoebox = voxel_data.ShoeBox(voxlet_params['shape'], np.float32)
         shoebox.V *= 0
         shoebox.V += self.sc.mu  # set the outside area to mu
 
         start_x = world_xyz[point_idx, 0]
         start_y = world_xyz[point_idx, 1]
 
-        if model.voxlet_params['tall_voxlets']:
-            start_z = model.voxlet_params['tall_voxlet_height']
+        if voxlet_params['tall_voxlets']:
+            start_z = voxlet_params['tall_voxlet_height']
+            vox_centre = \
+                np.array(voxlet_params['shape'][:2]) * \
+                voxlet_params['size'] * \
+                np.array(voxlet_params['relative_centre'][:2])
+            vox_centre = np.append(vox_centre, start_z)
+            # print "cen is ", vox_centre
         else:
+            vox_centre = \
+                np.array(voxlet_params['shape']) * \
+                voxlet_params['size'] * \
+                np.array(voxlet_params['relative_centre'])
+            # print "cen is ", vox_centre
             start_z = world_xyz[point_idx, 2]
 
+        shoebox.set_p_from_grid_origin(vox_centre)  # m
+        shoebox.set_voxel_size(voxlet_params['size'])  # m
         shoebox.initialise_from_point_and_normal(
             np.array([start_x, start_y, start_z]),
             world_norms[point_idx],
@@ -431,12 +336,22 @@ class Reconstructer(object):
     def set_probability_model_one(self, ini):
         self.prob_model_one = ini
 
-    def fill_in_output_grid_oma(self, render_type=[], render_savepath=None,
-            use_implicit=False, oracle=None, add_ground_plane=False,
-            combine_segments_separately=False, accum_only_predict_true=False,
-            feature_collapse_type=None, feature_collapse_param=None,
-            weight_empty_lower=None, use_binary=None, how_to_choose='closest',
-            distance_measure='narrow_band', cobweb=False):
+    def fill_in_output_grid(
+            self,
+            feature_type,
+            render_type=[],
+            render_savepath=None,
+            use_implicit=False,
+            oracle=None,
+            add_ground_plane=False,
+            combine_segments_separately=False,
+            accum_only_predict_true=False,
+            feature_collapse_type=None,
+            feature_collapse_param=None,
+            weight_empty_lower=None,
+            use_binary=None,
+            how_to_choose='closest',
+            distance_measure='narrow_band'):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -468,37 +383,27 @@ class Reconstructer(object):
             MUST use only with a forest trained on binary predictions...
         '''
 
-        if cobweb:
+        if feature_type == 'cobweb':
             cobwebengine = features.CobwebEngine(0.01, mask=self.sc.im.mask)
             cobwebengine.set_image(self.sc.im)
             self.cobwebengine=cobwebengine
 
-        # saving
-        # with open('/tmp/grid.pkl', 'wb') as f:
-        #     pickle.dump(self.sc.gt_tsdf, f)
-
-        # with open('/tmp/im.pkl', 'wb') as f:
-        #     pickle.dump(self.sc.im, f)
-
-        if combine_segments_separately:
-            # Create a separate accumulator for each segment in the image...
-            self.segement_accums = {}
-            labels = np.unique(self.sc.visible_im_label[~np.isnan(self.sc.visible_im_label)])
-            for label in labels:
-                self.segement_accums[label] = self.accum.copy()
-            self.accum = None
+        if oracle == 'nn':
+            # set up the nn classifier just once.
+            for model in self.model:
+                model.nbrs = NearestNeighbors(
+                    n_neighbors=1, algorithm='kd_tree').fit(model.training_Y)
 
         self.all_pred_cache = []
 
         # if oracle == 'true_greedy' or oracle == 'true_greedy_gt':
         self.possible_predictions = []
 
-
         self.empty_voxels_in_voxlet_count = []
         self.gt_minus_predictions = []
 
         "extract features from each shoebox..."
-        for count, idx in enumerate(self.sampled_idxs):
+        for count, idx in enumerate(self.sc.sampled_idxs):
 
             sys.stdout.write('>> [%d]' % count)
             sys.stdout.flush()
@@ -523,7 +428,7 @@ class Reconstructer(object):
             # this_idx_grid = self.sc.im_tsdf
 
             "extract features from the tsdf volume"
-            features_voxlet = self._initialise_voxlet(idx, model_to_use)
+            features_voxlet = self._initialise_voxlet(idx, model_to_use.voxlet_params)
             features_voxlet.fill_from_grid(this_idx_grid)
             features_voxlet.V[np.isnan(features_voxlet.V)] = -self.sc.mu
             self.cached_feature_voxlet = features_voxlet.V
@@ -531,7 +436,7 @@ class Reconstructer(object):
             if use_binary:
                 features_voxlet.V = (features_voxlet.V > 0).astype(np.float16)
 
-            if cobweb:
+            if feature_type=='cobweb':
                 feature_vector = cobwebengine.get_cobweb(idx)
                 feature_vector[np.isnan(feature_vector)] = -5.0
                 # print feature_vector
@@ -540,7 +445,7 @@ class Reconstructer(object):
                     feature_collapse_type, feature_collapse_param)
 
             # getting the GT voxlet - useful for the oracles and rendering
-            gt_voxlet = self._initialise_voxlet(idx, model_to_use)
+            gt_voxlet = self._initialise_voxlet(idx, model_to_use.voxlet_params)
             gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
 
             "Replace the prediction - if an oracle has been specified!"
@@ -554,13 +459,14 @@ class Reconstructer(object):
                 weights_to_use = voxlet_prediction * 0 + 1
 
             elif oracle == 'nn':
-                # getting the closest match in the training data...
-                _, indices = self.nbrs.kneighbors(
+                # getting the closest match in the training data to the gt...
+                _, indices = model_to_use.nbrs.kneighbors(
                     model_to_use.pca.transform(gt_voxlet.V.flatten()))
-                closest_training_Y = model_to_use.pca.inverse_transform(
+                voxlet_prediction = model_to_use.pca.inverse_transform(
                     model_to_use.training_Y[indices[0], :])
-                voxlet_prediction = closest_training_Y
-                weights_to_use = voxlet_prediction * 0 + 1
+                mask = model_to_use.masks_pca.inverse_transform(
+                    model_to_use.training_masks[indices[0], :])
+                weights_to_use = 1 - mask
 
             else:
                 # Doing a real prediction!
@@ -581,12 +487,10 @@ class Reconstructer(object):
                 weights_to_use = 1-mask
                 weights_to_use = weights_to_use.flatten()
                 if weight_empty_lower:
-                    # print "Weights has shape, ", weights_to_use.shape
-                    # print "Voxlet prediction has shape ", voxlet_prediction.shape
                     weights_to_use[voxlet_prediction > 0] *= weight_empty_lower
 
             # adding the shoebox into the result
-            transformed_voxlet = self._initialise_voxlet(idx, model_to_use)
+            transformed_voxlet = self._initialise_voxlet(idx, model_to_use.voxlet_params)
             transformed_voxlet.V = voxlet_prediction.reshape(
                 model_to_use.voxlet_params['shape'])
 
@@ -958,7 +862,7 @@ class Reconstructer(object):
     def plot_sampled_points(self, savepath=None):
         plt.imshow(self.sc.im.depth)
         plt.hold(True)
-        plt.plot(self.sampled_idxs[:, 1], self.sampled_idxs[:, 0], 'ro')
+        plt.plot(self.sc.sampled_idxs[:, 1], self.sc.sampled_idxs[:, 0], 'ro')
         plt.hold(False)
 
     def plot_voxlet_top_view(self, savepath=None):
@@ -987,7 +891,7 @@ class Reconstructer(object):
         world_xyz = self.sc.im.get_world_xyz()
         world_norms = self.sc.im.get_world_normals()
 
-        for index in self.sampled_idxs:
+        for index in self.sc.sampled_idxs:
             # convert to linear idx
             point_idx = index[0] * self.sc.im.mask.shape[1] + index[1]
 

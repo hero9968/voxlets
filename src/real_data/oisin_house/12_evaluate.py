@@ -7,6 +7,7 @@ from time import time
 import yaml
 import real_data_paths as paths
 import system_setup
+import collections
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from common import voxlets, scene
 
@@ -20,14 +21,12 @@ def process_sequence(sequence):
     fpath = paths.prediction_folderpath % (parameters['batch_name'], sequence['name'])
     gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
 
-    results_dict = {}
+    results_dict = collections.OrderedDict()
 
     for test_params in parameters['tests']:
 
         prediction_savepath = fpath + test_params['name'] + '.pkl'
         if os.path.exists(prediction_savepath):
-
-            print "loading ", prediction_savepath
 
             prediction = pickle.load(open(prediction_savepath))
 
@@ -43,11 +42,13 @@ def process_sequence(sequence):
         else:
             print "Could not load ", prediction_savepath
 
-    fpath = paths.prediction_folderpath % \
+    yaml_path = paths.scores_path % \
         (parameters['batch_name'], sequence['name'])
 
-    with open(fpath + 'scores.yaml', 'w') as f:
+    with open(yaml_path, 'w') as f:
         f.write(yaml.dump(results_dict, default_flow_style=False))
+
+    return results_dict
 
 
 # need to import these *after* the pool helper has been defined
@@ -58,10 +59,36 @@ else:
     mapper = map
 
 
+def get_mean_score(test, all_scores, score_type):
+    all_this_scores = []
+    for sc in all_scores:
+        if test not in sc:
+            return np.nan
+        if score_type in sc[test]:
+            all_this_scores.append(sc[test][score_type])
+
+    return np.array(all_this_scores).mean()
+
+
 if __name__ == '__main__':
 
-    mapper(process_sequence, paths.test_data)
+    results = mapper(process_sequence, paths.test_data)
 
+    # printing the accumulated table
+    scores = ['iou', 'precision', 'recall']
+
+    print '\n'
+    print ' ' * 25,
+    for score in scores:
+        print score.ljust(10),
+    print '\n' + '-' * 55
+
+    for experiment_name in results[0]:
+        print experiment_name.ljust(25),
+        for score_type in scores:
+            score = get_mean_score(experiment_name, results, score_type)
+            print ('%0.4f' % score).ljust(10),
+        print ""
 
             # results_dict[desc] = {
             #             'description': desc,
