@@ -35,7 +35,7 @@ def process_sequence(sequence, params, models):
         os.makedirs(fpath)
 
     if 'ground_truth' in params and params['ground_truth']:
-        pred_voxlets = sc.gt_tsdf
+        pred_voxlets = sc
 
     elif 'visible' in params and params['visible']:
         pred_voxlets = sc.im_tsdf

@@ -1,62 +1,71 @@
 
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import cPickle as pickle
 import sys
 import os
-sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from time import time
-import scipy.misc  # for image saving
-import scipy.io
 import yaml
-import shutil
-import collections
-
 import real_data_paths as paths
-import real_params as parameters
+import system_setup
+sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
+from common import voxlets, scene
 
-from common import voxlets
-from common import scene
-
-import sklearn.metrics
-
-
-test_type = 'mixed_voxlets2'
+parameters_path = './testing_params.yaml'
+parameters = yaml.load(open(parameters_path))
 
 
-for sequence in paths.test_data:
+def process_sequence(sequence):
 
-
-    print "Processing ", sequence['name']
-    sc = scene.Scene(parameters.mu, [])
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True,
-        save_grids=False, load_implicit=False, voxel_normals='gt_tsdf', carve=True)
-    print sc.gt_tsdf.origin
-
-    gen_renderpath = paths.voxlet_prediction_img_path % \
-        (test_type, sequence['name'], '%s')
+    print "-> Loading ground truth", sequence['name']
+    fpath = paths.prediction_folderpath % (parameters['batch_name'], sequence['name'])
+    gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
 
     results_dict = {}
-    for desc in ['pred_remove_excess', 'Name', 'Medioid']:
 
-        D = scipy.io.loadmat(gen_renderpath.replace('png', 'mat') % desc)
+    for test_params in parameters['tests']:
 
-        dic = sc.evaluate_prediction(D['grid'])
-        print dic
-        results_dict[desc] = \
-                    {'description': desc,
-                     'auc':         float(dic['auc']),
-                     'iou':         float(dic['iou']),
-                     'precision':   float(dic['precision']),
-                     'recall':      float(dic['recall'])}
+        prediction_savepath = fpath + test_params['name'] + '.pkl'
+        if os.path.exists(prediction_savepath):
 
-    # print results_dict
+            print "loading ", prediction_savepath
 
-    fpath = paths.voxlet_prediction_folderpath % \
-        (test_type, sequence['name'])
+            prediction = pickle.load(open(prediction_savepath))
+
+            # sometimes multiple predictions are stored in predicton
+            if hasattr(prediction, '__iter__'):
+                for key, item in prediction.iteritems():
+                    results_dict[test_params['name'] + str(key)] = \
+                        gt_scene.evaluate_prediction(item.V)
+            else:
+                results_dict[test_params['name']] = \
+                    gt_scene.evaluate_prediction(prediction.V)
+
+        else:
+            print "Could not load ", prediction_savepath
+
+    fpath = paths.prediction_folderpath % \
+        (parameters['batch_name'], sequence['name'])
 
     with open(fpath + 'scores.yaml', 'w') as f:
         f.write(yaml.dump(results_dict, default_flow_style=False))
 
+
+# need to import these *after* the pool helper has been defined
+if system_setup.multicore:
+    import multiprocessing
+    mapper = multiprocessing.Pool(system_setup.testing_cores).map
+else:
+    mapper = map
+
+
+if __name__ == '__main__':
+
+    mapper(process_sequence, paths.test_data)
+
+
+            # results_dict[desc] = {
+            #             'description': desc,
+            #             'auc':         float(dic['auc']),
+            #             'iou':         float(dic['iou']),
+            #             'precision':   float(dic['precision']),
+            #             'recall':      float(dic['recall'])}
