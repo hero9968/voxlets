@@ -3,26 +3,29 @@ import time
 import cPickle
 import pdb
 from joblib import Parallel, delayed
+from multiprocessing import Pool
+
 from sklearn.decomposition import RandomizedPCA
 from scipy.weave import inline
-import ipdb
+# import ipdb
 
 
 class ForestParams:
     def __init__(self):
 
-        self.num_tests = 10
-        self.min_sample_cnt = 2
+        self.num_tests = 500
+        self.min_sample_cnt = 5
         self.max_depth = 30
-        self.num_trees = 5
+        self.num_trees = 40
         self.bag_size = 0.5
         self.train_parallel = True
+        self.njobs = 8
 
         # structured learning params
         #self.pca_dims = 5
-        self.num_dims_for_pca = 512  # number of dimensions that pca gets reduced to
-        self.sub_sample_exs_pca = True  # can also subsample the number of exs we use for PCA
-        self.num_exs_for_pca = 5000
+        self.num_dims_for_pca = 100  # number of dimensions that pca gets reduced to
+        self.sub_sample_exs_pca = False  # can also subsample the number of exs we use for PCA
+        self.num_exs_for_pca = 2500
 
         self.oob_score = False
         self.oob_importance = False
@@ -123,11 +126,16 @@ class Tree:
         self.compact_tree = None  # used for fast testing forest and small memory footprint
 
     def build_tree(self, X, Y, node):
+        print "Building tree, shapes are : ", X.shape, Y.shape
         if (node.node_id < ((2**self.tree_params.max_depth)-1)) and (node.impurity > 0.0) \
                 and (self.optimize_node(X, Y, node)):
                 self.num_nodes += 2
                 self.build_tree(X, Y, node.left_node)
                 self.build_tree(X, Y, node.right_node)
+        else:
+            depth = np.floor(np.log2(node.node_id+1))
+            print "Leaf node: In tree %d \t depth %d \t %d examples" % \
+                (int(self.tree_id), int(depth), node.exs_at_node.shape[0])
 
     def discretize_labels(self, y):
 
@@ -190,7 +198,7 @@ class Tree:
             print "exs_at_node ", exs_at_node.dtype
 
         exs_at_node.sort()
-        
+
 
         # compute impurity
         #root_prob, root_impurity = self.calc_impurity(0, np.take(Y, exs_at_node), np.ones((exs_at_node.shape[0], 1), dtype='bool'),
@@ -492,13 +500,28 @@ class Tree:
         return successful_split
 
 
-## Parallel training helper - used to train trees in parallel
-def train_forest_helper(t_id, X, Y, extracted_from, params, seed):
-    #print 'tree', t_id
+def train_forest_helper(parameters_tuple):
+# def train_forest_helper(t_id, X, Y, extracted_from, params, seed):
+    '''
+    Parallel training helper - used to train trees in parallel
+    '''
+    t_id, seed, params = parameters_tuple
+    print 'tree', t_id, X.shape[0], Y.shape[0]
     np.random.seed(seed)
     tree = Tree(t_id, params)
     tree.train(X, Y, extracted_from)
     return tree
+
+
+def _init(X_in, Y_in, extracted_from_in):
+    '''
+    Each pool process calls this initializer. Here we load the array(s) to be
+    shared into that process's global namespace
+    '''
+    global X, Y, extracted_from
+    X = X_in
+    Y = Y_in
+    extracted_from = extracted_from_in
 
 
 class Forest:
@@ -507,10 +530,13 @@ class Forest:
         self.params = params
         self.trees = []
 
-    #def save(self, filename):
-        # TODO make lightweight version for saving
-        #with open(filename, 'wb') as fid:
-        #    cPickle.dump(self, fid)
+    def save(self, filename):
+        # make lightweight version for saving
+        for tree in self.trees:
+            del tree.root
+
+        with open(filename, 'wb') as fid:
+            cPickle.dump(self, fid)
 
     def train(self, X, Y, extracted_from=None):
         '''
@@ -529,9 +555,17 @@ class Forest:
             #print 'Parallel training'
             # need to seed the random number generator for each process
             seeds = np.random.random_integers(0, np.iinfo(np.int32).max, self.params.num_trees)
-            self.trees.extend(Parallel(n_jobs=-1)
-                (delayed(train_forest_helper)(t_id, X, Y, extracted_from, self.params, seeds[t_id])
-                                             for t_id in range(self.params.num_trees)))
+
+            per_tree_args = ((t_id, seeds[t_id], self.params)
+                for t_id in range(self.params.num_trees))
+
+            pool = Pool(processes=self.params.njobs, initializer=_init, initargs=(X, Y, extracted_from))
+
+            self.trees.extend(pool.map(train_forest_helper, per_tree_args))
+
+            # self.trees.extend(Parallel(n_jobs=-1)
+                # (delayed(train_forest_helper)(t_id, X, Y, extracted_from, self.params, seeds[t_id])
+                                            # for t_id in range(self.params.num_trees)))
         else:
             #print 'Standard training'
             for t_id in range(self.params.num_trees):

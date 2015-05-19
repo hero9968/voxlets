@@ -33,7 +33,7 @@ voxlet_render_script = os.path.expanduser(
 
 def render_single_voxlet(
     V, savepath, level=0, height='tall',
-    actually_render=True, speed='slow', keep_obj=False):
+    actually_render=True, speed='quick', keep_obj=False):
 
     assert V.ndim == 3
 
@@ -48,12 +48,12 @@ def render_single_voxlet(
     temp = np.pad(temp, pad_width=1, mode='constant', constant_values=crap)
 
     verts, faces = measure.marching_cubes(temp, level)
+    # now take off the pad width..
     # verts -= 0.005
 
     if height == 'tall':
-        print "Shrinking"
         # verts -= 0.01
-        verts[:, 2] -= 5
+        verts -= 1
     else:
         verts -= 1
 
@@ -108,6 +108,33 @@ def plot_mesh(verts, faces, ax):
     ax.axis('off')
 
 
+def render_leaf_medioids(model, folder_path, max_to_render=1000, tree_id=0, height='tall'):
+    '''
+    renders all the voxlets at leaf nodes of a tree to a folder
+    '''
+    leaf_nodes = model.forest.trees[tree_id].compact_leaf_nodes()
+
+    print len(leaf_nodes)
+
+    print model.training_Y.shape
+
+    if not os.path.exists(folder_path):
+        raise Exception("Could not find path %s" % folder_path)
+
+
+    print "Leaf node shapes are:"
+    # Rendering each example
+    for idx, node in enumerate(leaf_nodes):
+        savepath = folder_path + '/%05d.png' % idx
+        print "Inverting transform"
+        V = model.pca.inverse_transform(model.training_Y[idx])
+        print "Now renering"
+        render_single_voxlet(V.reshape(model.voxlet_params['shape']), savepath, height=height)
+
+        if idx > max_to_render:
+            break
+
+
 def render_leaf_nodes(model, folder_path, max_per_leaf=10, tree_id=0):
     '''
     renders all the voxlets at leaf nodes of a tree to a folder
@@ -160,31 +187,32 @@ def render_leaf_nodes(model, folder_path, max_per_leaf=10, tree_id=0):
         #     plt.close()
 
 
-def plot_slices(arrs, savepath, titles=None):
+def plot_slices(arrs, savepath, titles=None, ismask=None):
 
     if len(arrs) == 1:
         u, v = 1, 1
     elif len(arrs) == 2:
         u, v = 1, 2
     elif len(arrs) == 3:
-        u, v = 1, 3
+        u, v = 2, 2
     else:
         raise Exception('I did not see this coming')
 
-    slice_id = 20
+    slice_id = arrs[0].shape[2] / 2
 
     for idx, arr in enumerate(arrs):
         plt.subplot(u, v, idx+1)
-        plt.imshow(arr[:, slice_id, :], interpolation='nearest', cmap=plt.cm.bwr)
+        plt.imshow(arr[:, :, 10], interpolation='nearest', cmap=plt.cm.bwr)
 
         if titles:
             plt.title(titles[idx])
 
-        if idx == 0:
-            maxi = np.max(np.abs(arr))
-            plt.clim(-maxi, maxi)
-        elif idx == 1:
+        # if idx == 0:
+        maxi = np.max(np.abs(arr))
+        plt.clim(-maxi, maxi)
+        if ismask and ismask[idx]:
             plt.clim(0, 1)
+
 
     plt.savefig(savepath)
     plt.close()

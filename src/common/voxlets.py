@@ -57,6 +57,10 @@ class VoxletPredictor(object):
     def set_masks_pca(self, masks_pca_in):
         self.masks_pca = masks_pca_in
 
+    def _print_shapes(self, X, Y):
+        print "X shape is ", X.shape
+        print "Y shape is ", Y.shape
+
     def train(self, X, Y, forest_params, subsample_length=-1, masks=None, scene_ids=None):
         '''
         Runs the OMA forest code
@@ -73,10 +77,14 @@ class VoxletPredictor(object):
         print "Before removing nans"
         self._print_shapes(X, Y)
 
-        X, Y = self._remove_nans(X, Y)
+        if np.any(np.isnan(np.ravel(X))):
+            raise Exception("Found nan in X")
+        elif np.any(np.isnan(np.ravel(Y))):
+            raise Exception("Found nan in Y")
 
         if subsample_length > 0 and subsample_length < X.shape[0]:
-            X, Y, scene_ids = self._subsample(X, Y, scene_ids, subsample_length)
+            X, Y, masks, scene_ids = \
+                self._subsample(X, Y, masks, scene_ids, subsample_length)
 
         print "After subsampling and removing nans...", subsample_length
         self._print_shapes(X, Y)
@@ -120,7 +128,6 @@ class VoxletPredictor(object):
         '''
         # each tree predicts which index in the test set to use...
         # rows = test data (X), cols = tree
-
         index_predictions = self.forest.test(X, max_depth=self.max_depth).astype(int)[0]
         self._cached_predictions = index_predictions
 
@@ -130,11 +137,8 @@ class VoxletPredictor(object):
         # now reform the original test data for each tree prediction
         tree_predictions = \
             self.pca.inverse_transform(self.training_Y[index_predictions])
-        mask_predictions = \
-            self.masks_pca.inverse_transform(self.training_masks[index_predictions])
 
         # three different ways to choose which of the tree predictions to use
-
         if how_to_choose == 'closest':
             # makes the prediction which is closest to the observed data...
 
@@ -208,14 +212,16 @@ class VoxletPredictor(object):
             self._distances_cache = distances
 
             final_prediction = tree_predictions[to_use]
-            final_mask = mask_predictions[to_use]
+            final_mask = self.masks_pca.inverse_transform(
+                self.training_masks[index_predictions[to_use]])
 
 
         elif how_to_choose == 'medioid':
 
             to_use = self._medioid_idx(tree_predictions)
             final_prediction = tree_predictions[to_use].flatten()
-            final_mask = mask_predictions[to_use].flatten()
+            final_mask = self.masks_pca.inverse_transform(
+                self.training_masks[index_predictions[to_use]])
 
         elif how_to_choose == 'mean':
 
@@ -252,17 +258,18 @@ class VoxletPredictor(object):
         Removes training entries with nans in feature space
         '''
         to_remove = np.any(np.isnan(X), axis=1)
+        print "Removing %d out of %d entries due to nans" % (to_remove.sum(), to_remove.shape[0])
         X = X[~to_remove, :]
         Y = Y[~to_remove, :]
         return X, Y
 
-    def _subsample(self, X, Y, scene_ids, subsample_length):
+    def _subsample(self, X, Y, masks, scene_ids, subsample_length):
 
         rand_exs = np.sort(np.random.choice(
             X.shape[0],
             np.minimum(subsample_length, X.shape[0]),
             replace=False))
-        return X.take(rand_exs, 0), Y.take(rand_exs, 0), scene_ids.take(rand_exs, 0)
+        return X.take(rand_exs, 0), Y.take(rand_exs, 0), masks.take(rand_exs, 0), scene_ids.take(rand_exs, 0)
 
 
 class Reconstructer(object):
@@ -446,7 +453,7 @@ class Reconstructer(object):
 
             # getting the GT voxlet - useful for the oracles and rendering
             gt_voxlet = self._initialise_voxlet(idx, model_to_use.voxlet_params)
-            gt_voxlet.fill_from_grid(self.sc.gt_tsdf)
+            gt_voxlet.fill_from_grid(self.sc.gt_tsdf, method='axis_aligned')
 
             "Replace the prediction - if an oracle has been specified!"
             if oracle == 'gt':

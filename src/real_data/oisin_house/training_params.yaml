@@ -3,7 +3,6 @@ voxel_size: 0.005
 
 max_sequences: 500
 cores: 8
-pca_number_points_from_each_image: 250
 
 # setting some voxlet params here
 # NOTE BE VERY CAREFUL IF EDITING THESE
@@ -34,26 +33,41 @@ pca:
     number_dims: 400
 
     # max number of examples to use for pca
-    subsample_length: 10000
+    subsample_length: 20000
+
+    # use fewer sequences for pca then for the main training, for memory reasons
+    # however, should ensure these are taken evenly through the training set
+    # in case there is inherent ordering to the training data
+    max_sequences: 250
 
 number_points_from_each_image: 1500
+
+# which features to use, can be 'samples' or 'cobweb'
+features: ['cobweb', 'samples']
 
 # distance between points on the cobweb feature
 cobweb_offset: 0.01
 
+# voxel sampling features
+vox_num_rings: 10
+vox_radius: 0.005
+
 # sampling_grid_size: 0.1
 
 # if a feature is out of the inlier mask, give it this value
-out_of_range_feature: -5.0
+cobweb_out_of_range_feature: -5.0
+samples_out_of_range_feature: 0.025
 
 # max num examples to use to train forest
-forest_subsample_length: 500000
+forest_subsample_length: 200000
+# 50000
+# 250000
 
 forest:
-    num_tests: 500
+    num_tests: 0400
     min_sample_cnt: 5
     max_depth: 25
-    num_trees: 4
+    num_trees: 40
     bag_size: 0.5
     train_parallel: True
     njobs: 8

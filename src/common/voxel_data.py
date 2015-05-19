@@ -76,12 +76,19 @@ class Voxels(object):
         '''
         return self.V[binary_array.reshape(self.V.shape)]
 
-    def get_idxs(self, ijk):
+    def get_idxs(self, ijk, check_bounds=False):
         '''
         helper function to get the values indicated in the nx3 ijk array
+        if check_bounds, then returns a nan for each out of range location
         '''
         assert ijk.shape[1] == 3
-        return self.V[ijk[:, 0], ijk[:, 1], ijk[:, 2]]
+        if check_bounds:
+            valid = self.find_valid_idx(ijk)
+            output = np.zeros(ijk.shape[0]) * np.nan
+            output[valid] = self.V[ijk[valid, 0], ijk[valid, 1], ijk[valid, 2]]
+            return output
+        else:
+            return self.V[ijk[:, 0], ijk[:, 1], ijk[:, 2]]
 
     def set_idxs(self, ijk, values, check_bounds=False):
         '''
@@ -326,7 +333,7 @@ class WorldVoxels(Voxels):
         translated_xyz = xyz - self.origin
 
         # ...scaling
-        scaled_translated_xyz = translated_xyz / self.vox_size - 0.5
+        scaled_translated_xyz = translated_xyz / self.vox_size
 
         # finally rotating
         # note that (doing transpose twice seems to be quicker than np.dot(xyz, inv_R.T) )
@@ -335,7 +342,7 @@ class WorldVoxels(Voxels):
 #       else:
         scaled_translated_rotated_xyz = np.dot(self.inv_R, scaled_translated_xyz.T).T
 
-        idx = (scaled_translated_rotated_xyz).astype(np.int)
+        idx = np.floor(scaled_translated_rotated_xyz).astype(np.int)
     #   print self.origin
     #   print self.inv_R
     #   print self.vox_size
@@ -820,67 +827,3 @@ class ShoeBox(WorldVoxels):
         new_origin = point - np.dot(R, self.p_from_grid_origin)
 
         self.set_origin(new_origin, R)
-
-
-class VoxMetricsTSDF(object):
-    '''
-    class to do metrics on the voxel datas
-    assumes everythin is TSDF
-    '''
-
-    def __init__(self):
-        pass
-
-
-    def set_gt(self, gt):
-        self.gt = ((1.0 - (gt.flatten() + 0.03) / 0.06) > 0.5).astype(int)
-
-        # finding the bottom along the z-direction. Don't use anything below that...
-        temp = np.any(self.gt>0.5, axis=0)
-        temp = np.any(temp, axis=0)
-        print temp
-        hull_points_z = np.nonzero(temp)
-        min_z = np.min(hull_points_z)
-        tempgt = copy.deepcopy(gt) * 0 + 1
-        tempgt[:, :, :min_z] = 0
-        self.valid_points = tempgt.flatten()
-
-
-    def set_pred(self, pred):
-        self.pred = 1.0 - (pred.flatten() + 0.03) / 0.06
-        print "pred top bottom is "
-        print np.min(self.pred)
-        print np.max(self.pred)
-
-    def compute_tpr_fpr(self, thresholds):
-
-        pos = np.sum(np.logical_and(self.gt>=0.5, self.valid_points==1))
-        neg = np.sum(np.logical_and(self.gt<0.5, self.valid_points==1))
-
-        fpr = []
-        tpr = []
-
-        for thres in thresholds:
-
-            tp = np.sum(np.logical_and.reduce((self.pred>thres,
-                                                self.gt>0.5,
-                                                self.valid_points==1)))
-            tpr.append(float(tp)/float(pos))
-
-            fp = np.sum(np.logical_and.reduce((self.pred>thres,
-                                                self.gt<0.5,
-                                                self.valid_points==1)))
-            fpr.append(float(fp)/float(neg))
-
-        return np.array(tpr), np.array(fpr)
-
-    def compute_pres_recall(self):
-        print self.gt.shape
-        print self.valid_points.shape
-        pres = sklearn.metrics.precision_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1].astype(int))
-        recall = sklearn.metrics.recall_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1].astype(int))
-        return (pres, recall)
-
-    def compute_auc(self):
-        return sklearn.metrics.roc_auc_score(self.gt[self.valid_points==1], self.pred[self.valid_points==1])
-

@@ -67,9 +67,12 @@ if __name__ == '__main__':
     # Repeat for each type of voxlet in the parameters
     for voxlet_params in parameters['voxlets']:
 
-        loadpath = paths.voxlet_model_path % voxlet_params['name']
-        model = pickle.load(open(loadpath))
+        for feature in parameters['features']:
 
-        H = get_forest_stats(model.forest)
-        savefolder = paths.models_folder % voxlet_params['name']
-        format_and_save_forest_histogram(H, savefolder + 'forest_histogram.png')
+            loadpath = paths.voxlet_model_path % (voxlet_params['name'], feature)
+            loadpath = loadpath.replace('.pkl', '_full.pkl')
+            model = pickle.load(open(loadpath))
+
+            H = get_forest_stats(model.forest)
+            savefolder = paths.models_folder % voxlet_params['name']
+            format_and_save_forest_histogram(H, savefolder + 'forest_histogram.png')

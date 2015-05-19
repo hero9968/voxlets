@@ -42,9 +42,10 @@ all_train_data = temp_train_data + temp_train_data2
 with open(yaml_test_location, 'r') as f:
     test_data = yaml.load(f)
 
+test_data = test_data[:system_setup.max_test_sequences]
+
 if system_setup.small_sample:
     all_train_data = all_train_data[:system_setup.max_sequences]
-    test_data = test_data[:system_setup.max_sequences]
 
 
 
@@ -71,13 +72,19 @@ models_folder = data_folder + 'models/%s/'
 # voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
 voxlets_dictionary_path = models_folder + 'dictionary/'
 voxlets_data_path = models_folder + 'training_voxlets/'
-voxlet_model_path = models_folder + 'model.pkl'
+voxlet_model_path = models_folder + 'model_%s.pkl'
+
+# this is where to save the voxlets used for testing the models
+evaluation_data_path = models_folder + 'model_evaluation_voxlets/'
+
 
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
 voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
 
 # first %s is the test batch category name, second is the sequence name
-prediction_folderpath = data_folder + '/predictions/%s/%s/'
+prediction_folderpath = data_folder + '/predictions/%s/%s/pickles/'
+
+scores_path = data_folder + '/predictions/%s/%s/scores.yaml'
 
 # final %s is the actual test being done
 prediction_path = data_folder + '/predictions/%s/%s/%s.pkl'

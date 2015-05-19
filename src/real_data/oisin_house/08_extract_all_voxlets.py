@@ -28,7 +28,8 @@ def sbox_flatten(sbox):
 logf = open('/home/michael/Desktop/failure_log.txt', 'w')
 
 cobwebengine = features.CobwebEngine(parameters['cobweb_offset'], mask=True)
-
+sampleengine = features.SampledFeatures(
+    parameters['vox_num_rings'], parameters['vox_radius'])
 
 def process_sequence(sequence, pca, mask_pca, voxlet_params):
 
@@ -43,7 +44,7 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
         return
 
     # sampling locations to get the voxlets from
-    idxs = sc.sample_points(parameters['pca_number_points_from_each_image'],
+    idxs = sc.sample_points(parameters['number_points_from_each_image'],
                       additional_mask=sc.gt_im_label != 0)
 
     print "-> Extracting shoeboxes and features..."
@@ -54,6 +55,9 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
 
     cobwebengine.set_image(sc.im)
     np_cobweb = np.array(cobwebengine.extract_patches(idxs))
+
+    sampleengine.set_scene(sc)
+    np_samples = sampleengine.sample_idxs(idxs)
 
     # Doing the mask trick...
     np_masks = np.isnan(np_sboxes).astype(np.float16)
@@ -73,7 +77,7 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
     savepath = savefolder + sequence['name'] + '.pkl'
     print "-> Saving to " + savepath
 
-    D = dict(shoeboxes=np_sboxes, masks=np_masks, cobweb=np_cobweb)
+    D = dict(shoeboxes=np_sboxes, masks=np_masks, cobweb=np_cobweb, samples=np_samples)
     with open(savepath, 'w') as f:
         pickle.dump(D, f, protocol=pickle.HIGHEST_PROTOCOL)
 

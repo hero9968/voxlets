@@ -34,16 +34,25 @@ def write_input_images(sc, gen_renderpath):
     plt.close()
 
 
-def combine_renders(combines, su, sv, gen_renderpath, savename):
+def get_best_subplot_dims(N):
+    if N == 1:
+        return 1, 1
+    elif N == 2:
+        return 1, 2
+    elif N == 3:
+        return 1, 3
+    else:
+        return np.floor(np.sqrt(N)), np.floor(np.sqrt(N))
+
+def combine_renders(combines, gen_renderpath, savename):
 
     fig = plt.figure(figsize=(25, 10), dpi=1000)
     plt.subplots(su, sv)
     plt.subplots_adjust(left=0, bottom=0, right=0.98, top=0.98, wspace=0.02, hspace=0.02)
 
-    for count, (name, dic) in enumerate(combines.iteritems()):
+    su, sv = get_best_subplot_dims(len(combines))
 
-        if count >= su*sv:
-            raise Exception("Error! Final subplot is reserved for the ROC curve")
+    for count, (name, dic) in enumerate(combines.iteritems()):
 
         plt.subplot(su, sv, count + 1)
         plt.imshow(scipy.misc.imread(gen_renderpath % name))
@@ -58,11 +67,6 @@ def combine_renders(combines, su, sv, gen_renderpath, savename):
                  dic['results']['precision'],
                  dic['results']['recall']),
                 fontsize=6, color='white')
-
-            plt.subplot(su, sv, su*sv)
-            plt.plot(dic['results']['fpr'], dic['results']['tpr'], label=dic['name'])
-            plt.hold(1)
-            plt.legend(prop={'size':6}, loc='lower right')
 
         else:
             plt.hold(1)
@@ -110,20 +114,35 @@ def process_sequence(sequence):
     print "-> Main renders"
     for test_params in parameters['tests']:
 
+            print "Rendering ", test_params['name']
+
             prediction_savepath = fpath + test_params['name'] + '.pkl'
-            if os.path.exists(prediction_savepath):
 
-                prediction = pickle.load(open(prediction_savepath))
+            if not os.path.exists(prediction_savepath):
+                continue
 
-                savepath = (gen_renderpath % test_params['name']).replace('.png', '_slice.png')
-                slice_render(prediction, gt_scene.gt_tsdf, savepath)
-                # print "Rendering ", test_params['name']
-                # if test_params['name']=='visible':
-                #     prediction.render_view(gen_renderpath % test_params['name'],
-                #         xy_centre=True)
-                # else:
-                #     prediction.render_view(gen_renderpath % test_params['name'],
-                #         xy_centre=True, ground_height=0.03)
+            prediction = pickle.load(open(prediction_savepath))
+
+            if test_params['name']=='visible':
+                ground_height = None
+            else:
+                ground_height = 0.03
+
+            # sometimes multiple predictions are stored in predicton
+            if hasattr(prediction, '__iter__'):
+                for key, item in prediction.iteritems():
+                    savepath = (gen_renderpath % test_params['name']).replace('.png', str(key) + '.png')
+                    item.render_view(savepath, xy_centre=True, ground_height=ground_height)
+            else:
+                prediction.render_view(gen_renderpath % test_params['name'],
+                    xy_centre=True, ground_height=ground_height)
+
+
+                # savepath = (gen_renderpath % test_params['name']).replace('.png', '_slice.png')
+                # slice_render(prediction, gt_scene.gt_tsdf, savepath)
+                #
+
+
 
     # if combining_renders:
     #     print "-> Combining renders"

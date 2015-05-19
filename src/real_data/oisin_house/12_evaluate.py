@@ -1,4 +1,4 @@
-
+import matplotlib.pyplot as plt
 import numpy as np
 import cPickle as pickle
 import sys
@@ -38,6 +38,23 @@ def process_sequence(sequence):
             else:
                 results_dict[test_params['name']] = \
                     gt_scene.evaluate_prediction(prediction.V)
+
+            if test_params['name'] == 'ground_truth_oracle':
+                diff = prediction.V - gt_scene.gt_tsdf.V
+                plt.subplot(221)
+                plt.imshow(gt_scene.voxels_to_evaluate.reshape(gt_scene.gt_tsdf.V.shape)[:, :, 20])
+                plt.subplot(222)
+                plt.imshow(gt_scene.gt_tsdf.V[:, :, 20], cmap=plt.get_cmap('bwr'))
+                plt.subplot(223)
+                plt.imshow(diff[:, :, 20], cmap=plt.get_cmap('bwr'))
+                plt.clim(-0.02, 0.02)
+                plt.colorbar()
+                plt.subplot(224)
+                plt.imshow(prediction.V[:, :, 20], cmap=plt.get_cmap('bwr'))
+
+                gen_renderpath = paths.voxlet_prediction_img_path % \
+                    (parameters['batch_name'], sequence['name'], '%s')
+                plt.savefig(gen_renderpath % 'to_evaluate')
 
         else:
             print "Could not load ", prediction_savepath

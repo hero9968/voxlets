@@ -298,37 +298,63 @@ class SampledFeatures(object):
     samples features from a voxel grid
     '''
 
-    def __init__(self, num_rings, radius, height_offset):
+    def __init__(self, num_rings, radius):
         '''
         units are in real world space I think...
         '''
         self.num_rings = num_rings
         self.radius = radius
-        self.height_offset = height_offset
 
-    def sample(self, grid, point, normal):
-        # let's get the ring sorted out first...
+    def set_scene(self, sc):
+        self.sc = sc
 
-        start_angle = np.rad2deg(np.arctan2(normal[1], normal[0]))
+    def _get_sample_locations(self, point, normal):
+        '''
+        returns a Nx3 array of the *world* locations of where to sample from
+        assumes the grid to be orientated correctly with the up direction
+        pointing upwards
+        '''
+        # print "norm is ", normal
+        # print "angle is ", start_angle
+        start_angle = np.rad2deg(np.arctan2(normal[0], normal[1]))
+        ring_offsets = self.radius * (1 + np.arange(self.num_rings))
 
-        # computing all the offsets and angles efficiently
-        offsets = self.radius * (1 + np.arange(self.num_rings))
-        rad_angles = np.deg2rad(start_angle + np.array(range(0, 360, 45)))
+        # now combining...
+        all_locations = []
+        for r in ring_offsets:
+            for elevation in np.deg2rad(np.array([-45, 0, 45])):
+                z = r * np.sin(elevation)
+                cos_elevation = np.cos(elevation)
+                for azimuth in np.deg2rad(start_angle + np.arange(0, 360, 45)):
+                    x = r * np.sin(azimuth) * cos_elevation
+                    y = r * np.cos(azimuth) * cos_elevation
+                    all_locations.append([x, y, z])
 
-        rows = (float(point[0]) - np.outer(offsets, np.sin(rad_angles))).astype(int).flatten()
-        cols = (float(point[1]) + np.outer(offsets, np.cos(rad_angles))).astype(int).flatten()
-        rows.append(point[0])
-        cols.append(point[1])
+        # add top and bottom locations
+        for ring_radius in ring_offsets:
+            all_locations.append([0, 0, ring_radius])
+            all_locations.append([0, 0, -ring_radius])
 
-        print "jumping by ", self.height_offset / grid.vox_size
-        for height in range(0, grid.V.shape[2], self.height_offset / grid.vox_size):
-            temp = np.vstack((rows, cols, heights))
-            points.append(temp)
+        locations = np.array(all_locations)
 
-        points = np.array(points)
+        # finally add on the start location...
+        return locations + point
 
-        # world_sample_locations =
+    def _single_sample(self, point, normal):
+        # sampled feature for a single point
 
-        grid.world_to_idx(world_sample_locations)
+        world_sample_location = self._get_sample_locations(point, normal)
+        idxs = self.sc.im_tsdf.world_to_idx(world_sample_location)
+        sampled_values = self.sc.im_tsdf.get_idxs(idxs, check_bounds=True)
 
+        return sampled_values
 
+    def sample_idxs(self, idxs):
+        # samples at each of the N locations, and returns some shape thing
+        point_idxs = idxs[:, 0] * self.sc.im.mask.shape[1] + idxs[:, 1]
+
+        xyz = self.sc.im.get_world_xyz()
+        norms = self.sc.im.get_world_normals()
+        print "in sample idxs ", norms.shape
+        return np.vstack(
+            [self._single_sample(xyz[idx], norms[idx]) for idx in point_idxs])

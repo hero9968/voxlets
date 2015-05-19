@@ -14,21 +14,21 @@ general_params: &DEFAULT_GENERAL
     mu: 0.025
 
 default_reconstruction_params: &DEFAULT_RECONSTRUCTION
-    weight_empty_lower: 0.5
+    weight_empty_lower: 0.0
     feature_type: 'cobweb'
 
 tests:
-  - name: 'ground_truth'
-    <<: *DEFAULT_GENERAL
-    ground_truth: True
-    reconstruction_params:
-        <<: *DEFAULT_RECONSTRUCTION
+  # - name: 'ground_truth'
+  #   <<: *DEFAULT_GENERAL
+  #   ground_truth: True
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
 
-  - name: 'visible'
-    <<: *DEFAULT_GENERAL
-    visible: True
-    reconstruction_params:
-        <<: *DEFAULT_RECONSTRUCTION
+  # - name: 'visible'
+  #   <<: *DEFAULT_GENERAL
+  #   visible: True
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
 
   - name: 'standard_cobweb'
     <<: *DEFAULT_GENERAL
@@ -57,7 +57,7 @@ tests:
     <<: *DEFAULT_GENERAL
     reconstruction_params:
         <<: *DEFAULT_RECONSTRUCTION
-        oracle: 'ground_truth'
+        oracle: 'gt'
 
   - name: 'nn_oracle'
     <<: *DEFAULT_GENERAL

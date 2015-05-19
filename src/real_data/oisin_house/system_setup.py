@@ -4,12 +4,14 @@ import socket
 host_name = socket.gethostname()
 
 # note: fewer testing cores as it tends to be more memory-intensive...
-if False:
+if True:
     # host_name == 'troll' or host_name == 'biryani':
-    small_sample = False
+    small_sample = True
+    # print "WARN- should be 500" *10
     max_sequences = 500
+    max_test_sequences = 8
     cores = 8
-    testing_cores = 3
+    testing_cores = 8
     multicore = True
 else:
     small_sample = True
