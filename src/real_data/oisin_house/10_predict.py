@@ -56,6 +56,11 @@ def process_sequence(sequence, params, models):
         # parameters from the yaml file are passed as separate arguments to voxlets
         pred_voxlets = rec.fill_in_output_grid(**params['reconstruction_params'])
 
+        print "-> Saving the sampled_idxs to a file"
+        np.savetxt(fpath + 'sampled_idxs.csv', rec.sampled_idxs, delimiter=",")
+
+
+
     prediction_savepath = fpath + params['name'] + '.pkl'
     print "-> Saving the prediction to ", prediction_savepath
 

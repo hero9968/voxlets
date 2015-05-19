@@ -1,5 +1,5 @@
 import random_forest_structured as srf
-import random_forest_structured_old as srf_old
+# import random_forest_structured_old as srf_old
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -34,6 +34,7 @@ if __name__ == '__main__':
 
     # set up structured labels
     num_classes = np.unique(Y).shape[0]
+    print "There are ", num_classes
     y_st = np.zeros((Y.shape[0], num_classes))
     y_st[np.arange(Y.shape[0]), Y.astype('int')] = 1.0
     y_st_train = y_st[:train_size, :].copy()
@@ -44,7 +45,7 @@ if __name__ == '__main__':
     print '\nOMA structured forest'
 
     # RF params
-    forest_params = srf.ForestParams()
+    forest_params = srf.example_forest_params()
     forest = srf.Forest(forest_params)
 
     tic = time.time()
@@ -88,7 +89,7 @@ if __name__ == '__main__':
 
 
     print '\nsklearn'
-    forest_sc = ExtraTreesClassifier(n_estimators=forest_params.num_trees)
+    forest_sc = ExtraTreesClassifier(n_estimators=forest_params['num_trees'], max_depth=25)
     tic = time.time()
     forest_sc = forest_sc.fit(x_train, y_train)
     toc = time.time()

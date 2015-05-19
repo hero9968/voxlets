@@ -20,6 +20,16 @@ import system_setup
 parameters_path = './training_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
+# Only using a subset of training sequences
+# Ensuring to randomly sample from them, in case there is some sort of inherent
+# ordering in the training data
+if parameters['pca']['max_sequences'] < len(paths.all_train_data):
+    np.random.seed(10)
+    train_data_to_use = np.random.choice(
+        paths.all_train_data, parameters['pca']['max_sequences'], replace=False)
+else:
+    train_data_to_use = paths.all_train_data
+
 
 def flatten_sbox(sbox):
     return sbox.V.flatten()
@@ -72,7 +82,7 @@ def extract_all_voxlets(voxlet_params_in):
     # this allows for passing multiple arguments to the mapper
     func = functools.partial(process_sequence, voxlet_params=voxlet_params_in)
 
-    voxlet_list = mapper(func, paths.all_train_data)
+    voxlet_list = mapper(func, train_data_to_use)
 
     print "length is ", len(voxlet_list)
     np_voxlets = np.vstack(voxlet_list).astype(np.float16)
@@ -130,5 +140,7 @@ if __name__ == '__main__':
         print "-> Doing the PCA"
         fit_and_save_pca(np_voxlets, pca_savefolder + 'voxlets_pca.pkl')
         fit_and_save_pca(np_masks, pca_savefolder + 'masks_pca.pkl')
+
+        del np_voxlets, np_masks
 
         print "In total took %f s" % (time() - tic)

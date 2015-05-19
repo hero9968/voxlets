@@ -4,7 +4,7 @@ import cPickle
 import pdb
 from multiprocessing import Pool
 from sklearn.decomposition import RandomizedPCA
-
+from scipy.weave import inline
 
 # class ForestParams:
 #     def __init__(self):
@@ -30,20 +30,18 @@ def example_forest_params():
     Returns a dictionary of some example forest params
     '''
     return {
-        num_tests: 500,
-        min_sample_cnt: 5,
-        max_depth: 25,
-        num_trees: 4,
-        bag_size: 0.5,
-        train_parallel: True,
-        njobs: 8,
-
-        num_dims_for_pca: 100,
-        sub_sample_exs_pca: True,
-        num_exs_for_pca: 2500,
-
-        oob_score: True,
-        oob_importance: False}
+        'num_tests': 500,
+        'min_sample_cnt': 5,
+        'max_depth': 25,
+        'num_trees': 4,
+        'bag_size': 0.5,
+        'train_parallel': True,
+        'njobs': 8,
+        'num_dims_for_pca': 100,
+        'sub_sample_exs_pca': True,
+        'num_exs_for_pca': 2500,
+        'oob_score': True,
+        'oob_importance': False}
 
 
 
@@ -102,6 +100,19 @@ class Node:
 
     def test(self, X):
         return X[self.test_ind1] < self.test_thresh
+
+    def get_compact_node(self):
+        # used for fast forest
+        if not self.is_leaf:
+            node_array = np.zeros(4)
+            # dims 0 and 1 are reserved for indexing children
+            node_array[2] = self.test_ind1
+            node_array[3] = self.test_thresh
+        else:
+            node_array = np.zeros(2)
+            node_array[0] = -1  # indicates that its a leaf
+            node_array[1] = self.medoid_id  # the medoid id
+        return node_array
 
 
 class Tree:
@@ -178,7 +189,7 @@ class Tree:
                 exs_at_node = np.random.choice(exs_at_node, num_to_sample, replace=False)
 
         exs_at_node.sort()
-
+        self.bag_examples = exs_at_node
 
         # compute impurity
         #root_prob, root_impurity = self.calc_impurity(0, np.take(Y, exs_at_node), np.ones((exs_at_node.shape[0], 1), dtype='bool'),
@@ -198,6 +209,9 @@ class Tree:
 
         self.num_feature_dims = X.shape[1]
 
+        # make compact version for fast testing
+        self.compact_tree, _ = self.traverse_tree(self.root, np.zeros(0))
+
         if self.tree_params['oob_score']:
 
             # oob score is cooefficient of determintion R^2 of the prediction
@@ -213,6 +227,17 @@ class Tree:
             u = ((pred_Y - gt_Y)**2).sum()
             v = ((gt_Y - gt_Y.mean(axis=0))**2).sum()
             self.oob_score = (1- u/v)
+
+    def traverse_tree(self, node, compact_tree_in):
+        node_loc = compact_tree_in.shape[0]
+        compact_tree = np.hstack((compact_tree_in, node.get_compact_node()))
+
+        # no this assumes that the index for the left and right child nodes are the first two
+        if not node.is_leaf:
+            compact_tree, compact_tree[node_loc] = self.traverse_tree(node.left_node, compact_tree)
+            compact_tree, compact_tree[node_loc+1] = self.traverse_tree(node.right_node, compact_tree)
+
+        return compact_tree, node_loc
 
     def calc_importance(self):
         ''' borrows from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/tree/_tree.pyx
@@ -266,26 +291,27 @@ class Tree:
 
             # print self.oob_importance
 
-
     def test_fast(self, X, max_depth):
         op = np.zeros((X.shape[0]))
         tree = self.compact_tree  # work around as I don't think I can pass self.compact_tree
 
         #in memory: for non leaf  node - 0 is lchild index, 1 is rchild, 2 is dim to test, 3 is threshold
         #in memory: for leaf node - 0 is leaf indicator -1, 1 is the medoid id
+         # && depth < max_depth
+        # print tree.shape
         code = """
         int ex_id, node_loc, depth;
         for (ex_id=0; ex_id<NX[0]; ex_id++) {
             node_loc = 0;
-            depth = 0
-            while (tree[node_loc] != -1 && depth < max_depth) {
+            //depth = 0
+            while (tree[node_loc] != -1) {
                 if (X2(ex_id, int(tree[node_loc+2]))  <  tree[node_loc+3]) {
                     node_loc = tree[node_loc+1];  // right node
                 }
                 else {
                     node_loc = tree[node_loc];  // left node
                 }
-                depth++;
+                //depth++;
             }
             op[ex_id] = tree[node_loc + 1];  // medoid id
         }
@@ -293,6 +319,9 @@ class Tree:
         inline(code, ['X', 'op', 'tree', 'max_depth'])
         return op
 
+    def compact_leaf_nodes(self):
+        leaf_locations = np.where(self.compact_tree==-1)[0]
+        return self.compact_tree[leaf_locations+1]
 
     def test(self, X, max_depth=np.inf):
         op = np.zeros(X.shape[0])
@@ -426,8 +455,9 @@ class Forest:
         self.trees = []
 
     def make_lightweight(self):
+        # delete the clunky version of each tree, keeping just the compact one
         for tree in self.trees:
-            del tree
+            tree.root = None
 
     def save(self, filename):
         # make lightweight version for saving
@@ -436,16 +466,16 @@ class Forest:
         with open(filename, 'wb') as fid:
             cPickle.dump(self, fid)
 
-    def train(self, X, Y, extracted_from=None):
+    def train(self, X_local, Y_local, extracted_from_local=None):
         '''
         extracted_from is an optional array which defines a class label
         for each training example. if provided, the bagging is done at
         the level of np.unique(extracted_from)
         '''
-        if np.any(np.isnan(X)):
+        if np.any(np.isnan(X_local)):
             raise Exception('nans should not be present in training X')
 
-        if np.any(np.isnan(Y)):
+        if np.any(np.isnan(Y_local)):
             raise Exception('nans should not be present in training Y')
 
         if self.params['train_parallel']:
@@ -454,14 +484,20 @@ class Forest:
             # need to seed the random number generator for each process
             seeds = np.random.random_integers(0, np.iinfo(np.int32).max, self.params['num_trees'])
 
-            # these are the arguments which are different for each tree
+            # # these are the arguments which are different for each tree
             per_tree_args = ((t_id, seeds[t_id], self.params)
                 for t_id in range(self.params['num_trees']))
 
             # data which is to be shared across all processes are passed as initargs
-            pool = Pool(processes=self.params['njobs'], initializer=_init, initargs=(X, Y, extracted_from))
+            pool = Pool(processes=self.params['njobs'], initializer=_init,
+                initargs=(X_local, Y_local, extracted_from_local))
 
-            self.trees.extend(pool.map(train_forest_helper, per_tree_args))
+            self.trees.extend(pool.imap(train_forest_helper, per_tree_args))
+
+            # these are very important to clear up the memory issues
+            pool.close()
+            pool.join()
+
 
         else:
             #print 'Standard training'
@@ -476,10 +512,13 @@ class Forest:
         if np.any(np.isnan(X)):
             raise Exception('nans should not be present in test X')
 
+        # ensuring X is 2D
+        X = np.atleast_2d(X)
+
         # return the medoid id at each leaf
         op = np.zeros((X.shape[0], len(self.trees)))
         for tt, tree in enumerate(self.trees):
-            op[:, tt] = tree.test(X, max_depth)
+            op[:, tt] = tree.test_fast(X, max_depth)
         return op
 
     def delete_trees(self):
