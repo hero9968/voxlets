@@ -119,9 +119,8 @@ def autorotate_3d_features(distances, observed):
     hardcodes the ordering of the features so be careful!
     feature parts are: a[0], a[1:9], a[9:17], a[17:25], a[25]
     '''
-
-    assert(distances.shape[0] == 26)
-    assert(observed.shape[0] == 26)
+    assert(distances.shape[1] == 26)
+    assert(observed.shape[1] == 26)
 
     # extracting the distances which are horizontal
     observed_subpart = observed[:, 9:17]
@@ -144,10 +143,62 @@ def autorotate_3d_features(distances, observed):
 
     return distances, observed
 
+def sort_feature_set(distances, observed):
+    '''
+    sorts just one set of 8 directions
+    '''
+    assert(distances.shape[1] == 8)
+    assert(observed.shape[1] == 8)
+
+    idxs = np.argsort(distances, axis=1) + np.arange(observed.shape[0])[:, None] * 8
+    shape = distances.shape
+
+    return (distances.flatten()[idxs].reshape(shape),
+            observed.flatten()[idxs].reshape(shape))
+
+
+def sort_3d_features(distances, observed):
+    '''
+    sorts each set of 8 directions separately
+    '''
+    assert(distances.shape[1] == 26)
+    assert(observed.shape[1] == 26)
+
+    distances[:, 1:9], observed[:, 1:9] = \
+        sort_feature_set(distances[:, 1:9], observed[:, 1:9])
+
+    distances[:, 9:17], observed[:, 9:17] = \
+        sort_feature_set(distances[:, 9:17], observed[:, 9:17])
+
+    distances[:, 17:25], observed[:, 17:25] = \
+        sort_feature_set(distances[:, 17:25], observed[:, 17:25])
+
+    return distances, observed
+
+
+def sort_3d_features_together(distances, observed):
+    '''
+    sorts all the direction sets together to match the middle one
+    '''
+    assert(distances.shape[1] == 26)
+    assert(observed.shape[1] == 26)
+
+    idxs = np.argsort(distances[:, 9:17], axis=1) + \
+        np.arange(observed.shape[0])[:, None] * 8
+
+    shape = distances[:, 9:17].shape
+
+    for start in [1, 9, 17]:
+        distances[:, start:(start+8)] = \
+            distances[:, start:(start+8)].flatten()[idxs].reshape(shape)
+        observed[:, start:(start+8)] = \
+            observed[:, start:(start+8)].flatten()[idxs].reshape(shape)
+
+    return distances, observed
 
 import scipy.io
 
-def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autorotate=False):
+def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
     #Not done yet!
     '''
     given an input image, computes the line features for each direction
@@ -187,10 +238,8 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
 
         # dealing with out of range distances
         distances[distances==-1] = out_of_range_value
-        scipy.io.savemat('/tmp/distances%03d.mat' % count, dict(distances=distances))
+        # scipy.io.savemat('/tmp/distances%03d.mat' % count, dict(distances=distances))
 
-        if autorotate:
-            distances, observed = autorotate_features(distances, observed)
 
         all_distances.append(distances)
         all_observed.append(observed)
@@ -200,8 +249,8 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0, autor
 
 
 def feature_pairs_3d(
-    known_empty_voxels, known_full_voxels, gt_tsdf,
-    samples=-1, base_height=0, autorotate=False, all_voxels=False):
+    known_empty_voxels, known_full_voxels, gt_tsdf=None,
+    samples=-1, base_height=0, postprocess=None, all_voxels=False):
     '''
     samples
         is an integer defining how many feature pairs to sample.
@@ -212,24 +261,37 @@ def feature_pairs_3d(
     '''
     base_path = '/Users/Michael/projects/shape_sharing/data/'\
         'rendered_arrangements/test_sequences/dm779sgmpnihle9x/'
-    all_distances, all_observed = line_features_3d(known_empty_voxels, known_full_voxels, autorotate=autorotate)
+    all_distances, all_observed = line_features_3d(known_empty_voxels, known_full_voxels)
     #scipy.io.savemat(base_path + 'all_distances.mat', dict(all_distances=all_distances))
     # converting computed features to reshaped numpy arrays
     N = len(all_distances)
     all_distances_np = np.array(all_distances).astype(np.int16).reshape((N, -1)).T
     all_observed_np = np.array(all_observed).astype(np.int16).reshape((N, -1)).T
 
+    if postprocess == 'autorotate':
+        print "autorotating"
+        all_distances_np, all_observed_np = \
+            autorotate_3d_features(all_distances_np, all_observed_np)
+    elif postprocess == 'sort':
+        print "sorting"
+        all_distances_np, all_observed_np = \
+            sort_3d_features(all_distances_np, all_observed_np)
+    elif postprocess == 'sort_together':
+        print "sorting together"
+        all_distances_np, all_observed_np = \
+            sort_3d_features_together(all_distances_np, all_observed_np)
+    elif postprocess:
+        raise Exception('Unknown postprocess method %s' % postprocess)
 
     # get feature pairs from the cast lines
     if all_voxels:
-        voxels_to_use = np.ones(gt_tsdf.flatten().shape, dtype=bool)
+        voxels_to_use = np.ones(known_empty_voxels.flatten().shape, dtype=bool)
     else:
         voxels_to_use = np.logical_and(
             known_empty_voxels.V.flatten() == 0,
             known_full_voxels.V.flatten() == 0)
 
     Y = gt_tsdf.flatten()[voxels_to_use]
-
     X1 = all_distances_np[voxels_to_use]
     X2 = all_observed_np[voxels_to_use]
 
