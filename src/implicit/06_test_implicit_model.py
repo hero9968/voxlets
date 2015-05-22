@@ -14,20 +14,24 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic'))
-from common import paths
 from common import voxel_data
 from common import carving
 from common import images
-from common import parameters
 from common import scene
 from features import line_casting
 
+import system_setup
+import real_data_paths as paths
+
+parameters = yaml.load(open('./implicit_params.yaml'))
+modelname = parameters['modelname']
+
 print "Loading the model"
-with open(paths.RenderedData.implicit_models_dir + 'model.pkl', 'rb') as f:
+with open(paths.implicit_model_dir % modelname + 'model.pkl', 'rb') as f:
     rf = pickle.load(f)
 
-render = True
 
+render = True
 
 def plot_slice(V):
     "Todo - move to the voxel class?"
@@ -61,11 +65,11 @@ def save_plot_slice(V, GT_V, imagesavepath, imtitle=""):
 
 def process_sequence(sequence):
 
-    print "Loading sequence %s" % sequence
+    print "Loading sequence %s" % sequence['name']
 
     # this is where to save the results...
     results_foldername = \
-        paths.RenderedData.implicit_prediction_dir % sequence['name']
+        paths.implicit_predictions_dir % (modelname, sequence['name'])
     print "Creating %s" % results_foldername
     if not os.path.exists(results_foldername):
         os.makedirs(results_foldername)
@@ -75,7 +79,7 @@ def process_sequence(sequence):
         yaml.dump(sequence, f)
 
     print "Processing " + sequence['name']
-    sc = scene.Scene()
+    sc = scene.Scene(parameters['mu'], None)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=False, segment=False, save_grids=False)
 
     # getting the known full and empty voxels based on the depth image
@@ -93,7 +97,7 @@ def process_sequence(sequence):
     print "Computing the features"
     X, Y = line_casting.feature_pairs_3d(
         known_empty_voxels, known_full_voxels, sc.gt_tsdf.V,
-        samples=-1, base_height=0, autorotate=False)
+        samples=-1, base_height=0, postprocess=rf.parameters['postprocess'])
 
     # saving these features to disk for my perusal
     scipy.io.savemat(results_foldername + 'features.mat', dict(X=X, Y=Y), do_compression=True)
@@ -122,7 +126,7 @@ def process_sequence(sequence):
     pred_grid.set_indicated_voxels(unknown_voxel_idxs == 1, Y_pred)
 
     # saving
-    "Saving result to disk"
+    print "Saving result to disk"
     pred_grid.save(results_foldername + 'prediction.pkl')
     scipy.io.savemat(
         results_foldername + 'prediction.mat',
@@ -130,14 +134,22 @@ def process_sequence(sequence):
             known_full=known_full_voxels.V, known_empty=known_empty_voxels.V, dim=sc.im.rgb, rgbim=sc.im.rgb),
         do_compression=True)
 
-    "Saving the input image"
+    print "Saving the input image"
     img_savepath = results_foldername + 'input_im.png'
     scipy.misc.imsave(img_savepath, sc.im.rgb)
 
     if render:
-        pred_grid.render_view(results_foldername + 'prediction_render.png')
-        sc.im_tsdf.render_view(results_foldername + 'visible_render.png')
-        sc.gt_tsdf.render_view(results_foldername + 'gt_render.png')
+        print "Doing the rendering"
+        pred_grid.render_view(results_foldername + 'prediction_render.png',
+            xy_centre=True, ground_height=0.03, keep_obj=True)
+        sc.im_tsdf.render_view(results_foldername + 'visible_render.png',
+            xy_centre=True, keep_obj=True)
+        sc.gt_tsdf.render_view(results_foldername + 'gt_render.png',
+            xy_centre=True, keep_obj=True)
+
+    print "Evaluating"
+    results = sc.evaluate_prediction(pred_grid.V)
+    yaml.dump(results, open(results_foldername + 'eval.yaml', 'w'))
 
     img_savepath = results_foldername + 'prediction.png'
     save_plot_slice(pred_grid.V, sc.gt_tsdf.V, img_savepath, imtitle="")
@@ -146,11 +158,9 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if parameters.multicore:
+if system_setup.multicore:
     import multiprocessing
-    import functools
-    pool = multiprocessing.Pool(parameters.cores)
-    mapper = pool.map
+    mapper = multiprocessing.Pool(system_setup.cores).map
 else:
     mapper = map
 
@@ -159,5 +169,5 @@ if __name__ == '__main__':
 
     tic = time()
     print "DANGER - doing on train sequence"
-    mapper(process_sequence, paths.RenderedData.test_sequence())
+    mapper(process_sequence, paths.test_data)
     print "In total took %f s" % (time() - tic)

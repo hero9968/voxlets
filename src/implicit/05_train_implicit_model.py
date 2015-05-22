@@ -8,26 +8,29 @@ import scipy.io
 import sklearn.ensemble
 import cPickle as pickle
 import random
-
-max_training_pairs = int(1e6)
+import yaml
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import paths
-from common import parameters
+
+import system_setup
+import real_data_paths as paths
+
+parameters = yaml.load(open('./implicit_params.yaml'))
+modelname = parameters['modelname']
+
+print "Creating the save location"
+savefolder = paths.implicit_model_dir % modelname
+if not os.path.exists(savefolder):
+    os.makedirs(savefolder)
 
 all_X = []
 all_Y = []
 
-print "Creating the save location"
-if not os.path.exists(paths.RenderedData.implicit_models_dir):
-    os.makedirs(paths.RenderedData.implicit_models_dir)
-
-for sequence in paths.RenderedData.train_sequence():
+for sequence in paths.all_train_data:
 
     # loading the data and adding to arrays
     print "Loading from %s" % sequence['name']
-    seq_foldername = paths.RenderedData.implicit_training_dir % sequence['name']
-    file_to_load = seq_foldername + 'training_pairs.mat'
+    file_to_load = paths.implicit_training_dir % modelname + sequence['name'] + '.mat'
     if os.path.exists(file_to_load):
         training_pair = scipy.io.loadmat(file_to_load)
     else:
@@ -39,23 +42,27 @@ for sequence in paths.RenderedData.train_sequence():
 all_X_np = np.concatenate(all_X, axis=0).astype(np.float32)
 all_Y_np = np.concatenate(all_Y, axis=1).flatten().astype(np.float16)
 
-if all_X_np.shape[0] > max_training_pairs:
+if all_X_np.shape[0] > parameters['max_training_pairs']:
     print "Resampling %d pairs to %d pairs" % \
-        (all_X_np.shape[0], max_training_pairs)
-    idxs = random.sample(xrange(all_X_np.shape[0]), max_training_pairs)
+        (all_X_np.shape[0], parameters['max_training_pairs'])
+    idxs = np.random.choice(all_X_np.shape[0], parameters['max_training_pairs'])
     all_X_np = all_X_np[idxs, :]
     all_Y_np = all_Y_np[idxs]
 
-print all_X_np.shape
-print all_Y_np.shape
-print all_X_np.dtype
-print all_Y_np.dtype
+print all_X_np.shape, all_Y_np.shape
+print all_X_np.dtype, all_Y_np.dtype
 
 print "Training the model"
 rf = sklearn.ensemble.RandomForestRegressor(
-    n_estimators=100, oob_score=True, n_jobs=parameters.cores, max_depth=12)
+    n_estimators=parameters['forest']['ntrees'],
+    oob_score=True,
+    n_jobs=system_setup.cores,
+    max_depth=parameters['forest']['max_depth'])
 rf.fit(all_X_np, all_Y_np)
 
+# adding additional parameters to the model
+rf.parameters = parameters
+
 print "Saving the model"
-with open(paths.RenderedData.implicit_models_dir + 'model.pkl', 'wb') as f:
+with open(savefolder + 'model.pkl', 'wb') as f:
     pickle.dump(rf, f, protocol=pickle.HIGHEST_PROTOCOL)

@@ -1,0 +1,13 @@
+training_samples_per_image: 10000
+mu: 0.025
+
+max_training_pairs: 1000000
+
+modelname: 'sorted_together'
+
+postprocess: 'sort_together'
+# also: null, 'sort'
+
+forest:
+    ntrees: 100
+    max_depth: 20
