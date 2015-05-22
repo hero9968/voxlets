@@ -5,7 +5,6 @@ import yaml
 import sys, os
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/implicit/'))
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic/'))
 
 from common import scene, voxel_data
 import real_data_paths as paths

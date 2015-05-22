@@ -11,7 +11,6 @@ from time import time
 import yaml
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic/'))
 
 import system_setup
 import real_data_paths as paths

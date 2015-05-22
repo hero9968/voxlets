@@ -13,7 +13,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic'))
+
 from common import voxel_data
 from common import carving
 from common import images
