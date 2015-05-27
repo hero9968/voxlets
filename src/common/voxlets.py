@@ -225,6 +225,8 @@ class VoxletPredictor(object):
 
         elif how_to_choose == 'mean':
 
+            mask_predictions = self.masks_pca.inverse_transform(
+                    self.training_masks[index_predictions])
             final_prediction = np.mean(tree_predictions, axis=0).flatten()
             final_mask = np.mean(mask_predictions, axis=0).flatten()
 

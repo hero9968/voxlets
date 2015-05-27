@@ -274,7 +274,7 @@ class Scene(object):
         return temp_transformed
 
     def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True,
-            save_grids=False, voxel_normals=False, carve=True):
+            save_grids=False, voxel_normals=False, carve=True, segment_base=None):
         '''
         loads a sequence of images, the associated gt voxel grid,
         carves the visible tsdf from the images, does segmentation
@@ -334,8 +334,15 @@ class Scene(object):
 
         if segment and segment_with_gt:
 
+            if segment_base:
+                temp_tsdf = deepcopy(self.gt_tsdf)
+                height_in_vox = int(segment_base / self.gt_tsdf.vox_size)
+                temp_tsdf.V = temp_tsdf.V[:, :, height_in_vox:]
+            else:
+                temp_tsdf = self.gt_tsdf
+
             self.gt_labels = self._segment_tsdf_project_2d(
-                self.gt_tsdf, z_threshold=1, floor_height=4)
+                temp_tsdf, z_threshold=1, floor_height=4)
 
             self.gt_labels_separate = \
                 self._separate_binary_grids(self.gt_labels.V, True)
@@ -444,12 +451,12 @@ class Scene(object):
 
     def set_gt_tsdf(self, tsdf_in, floor_height):
         print "Warning - I think these should be re-commented for testing..."
-        floor_height_in_vox = float(floor_height) / float(tsdf_in.vox_size)
-        if floor_height_in_vox > 15:
-            raise Exception("This seems excessive")
+        # floor_height_in_vox = float(floor_height) / float(tsdf_in.vox_size)
+        # if floor_height_in_vox > 15:
+        #     raise Exception("This seems excessive")
         self.gt_tsdf = deepcopy(tsdf_in)
-        self.gt_tsdf.V = tsdf_in.V[:, :, floor_height_in_vox:]
-        self.gt_tsdf.origin[2] += floor_height
+        # self.gt_tsdf.V = tsdf_in.V[:, :, floor_height_in_vox:]
+        # self.gt_tsdf.origin[2] += floor_height
 
 
     def set_im_tsdf(self, tsdf_in):
