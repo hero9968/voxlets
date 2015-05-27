@@ -18,7 +18,8 @@ def load_results_for_model(model):
 
 
 tests = ['iou', 'precision', 'recall']
-models = ['v1', 'autorotate', 'sorted', 'sorted_together', 'zheng', 'zheng2']
+models = ['v1', 'autorotate', 'sorted', 'sorted_together',
+        'cobweb', 'rays', 'rays_cobweb', 'zheng', 'zheng2']
 
 # loading and printing results as a nice table
 print ' ' * 20,

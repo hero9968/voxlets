@@ -249,8 +249,14 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
 
 
 def feature_pairs_3d(
-    known_empty_voxels, known_full_voxels, gt_tsdf=None,
-    samples=-1, base_height=0, postprocess=None, all_voxels=False):
+    known_empty_voxels,
+    known_full_voxels,
+    gt_tsdf=None,
+    samples=-1,
+    base_height=0,
+    postprocess=None,
+    all_voxels=False,
+    in_frustrum=None):
     '''
     samples
         is an integer defining how many feature pairs to sample.
@@ -287,9 +293,14 @@ def feature_pairs_3d(
     if all_voxels:
         voxels_to_use = np.ones(known_empty_voxels.flatten().shape, dtype=bool)
     else:
-        voxels_to_use = np.logical_and(
+        # just use the voxels which are both in the camera frustrum and
+        # behind the depth image
+        assert(in_frustrum is not None)
+
+        voxels_to_use = np.logical_and.reduce((
             known_empty_voxels.V.flatten() == 0,
-            known_full_voxels.V.flatten() == 0)
+            known_full_voxels.V.flatten() == 0,
+            in_frustrum))
 
     Y = gt_tsdf.flatten()[voxels_to_use]
     X1 = all_distances_np[voxels_to_use]
@@ -302,5 +313,53 @@ def feature_pairs_3d(
         idx_to_use = np.random.choice(Y.shape[0], samples, replace=False)
         Y = Y[idx_to_use]
         X = X[idx_to_use]
+        voxels_to_use = np.where(voxels_to_use)[0][idx_to_use]
 
-    return X, Y
+    return X, Y, voxels_to_use
+
+
+def unique_rows(data):
+    ncols = data.shape[1]
+    dtype = data.dtype.descr * ncols
+    struct = data.view(dtype)
+
+    uniq, inv = np.unique(struct, return_inverse=True)
+    return uniq.view(data.dtype).reshape(-1, ncols), inv
+
+import sys, os
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+from common import features
+
+def cobweb_distance_features(sc, voxels_to_use, cobweb_offset):
+
+    # computing the depth of each of these voxels
+    xyz = sc.im_tsdf.world_meshgrid()[voxels_to_use]
+    projected_voxels = sc.im.cam.project_points(xyz)
+
+    uv = np.round(projected_voxels[:, :2]).astype(int)
+    inside_image = np.logical_and.reduce((uv[:, 0] >= 0,
+                                          uv[:, 1] >= 0,
+                                          uv[:, 1] < sc.im.depth.shape[0],
+                                          uv[:, 0] < sc.im.depth.shape[1]))
+
+    uv = uv[inside_image]
+    depths = projected_voxels[inside_image, 2]
+
+    # computing the depth behind the input image of each of these voxels
+    observed_depths = sc.im.depth[uv[:, 1], uv[:, 0]]
+    surface_to_voxel_dist_s = depths - observed_depths
+
+    # aim here is to only compute the cobweb feature for each point once,
+    # but allow each voxel to then use that feature...
+
+    # finding which are the pixels which the points project to
+    idxs, inv = unique_rows(uv)
+
+    # compute the cobweb features for every point on the depth image...
+    ce = features.CobwebEngine(cobweb_offset)
+    ce.set_image(sc.im)
+    # cobweb engine wants row then column
+    cobweb = np.array(ce.extract_patches(idxs[:, ::-1]))
+
+    # now re-expand out to the full dimensions
+    return np.hstack((cobweb[inv], surface_to_voxel_dist_s[:, None]))

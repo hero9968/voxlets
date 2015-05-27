@@ -9,12 +9,12 @@ import os
 import scipy.io
 from time import time
 import yaml
-
+import numpy as np
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 
 import system_setup
 import real_data_paths as paths
-from common import scene
+from common import scene, carving, features
 from features import line_casting
 
 
@@ -26,6 +26,7 @@ savefolder = paths.implicit_training_dir % modelname
 if not os.path.exists(savefolder):
     os.makedirs(savefolder)
 
+
 def process_sequence(sequence):
 
     save_location = savefolder + sequence['name'] + '.mat'
@@ -35,17 +36,30 @@ def process_sequence(sequence):
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=False,
         segment=False, save_grids=False, carve=True)
 
+    # I don't want whatever mask is currently being used...
+    sc.im.mask = ~np.isnan(sc.im.depth)
+
     # getting the known full and empty voxels based on the depth image
     known_full_voxels = sc.im_visible
     known_empty_voxels = sc.im_tsdf.blank_copy()
     known_empty_voxels.V = sc.im_tsdf.V > 0
 
-    X, Y = line_casting.feature_pairs_3d(
-        known_empty_voxels, known_full_voxels, sc.gt_tsdf.V,
+    # computing the axis aligned ray features
+    X, Y, voxels_to_use = line_casting.feature_pairs_3d(
+        known_empty_voxels,
+        known_full_voxels,
+        sc.gt_tsdf.V,
+        in_frustrum=sc.get_visible_frustrum(),
         samples=parameters['training_samples_per_image'],
-        base_height=0, postprocess=parameters['postprocess'])
+        base_height=0,
+        postprocess=parameters['postprocess'])
 
-    training_pairs = dict(X=X, Y=Y)
+    # computing the ray + cobweb features, just for the already chosen voxels
+    cobweb = line_casting.cobweb_distance_features(
+        sc, voxels_to_use, parameters['cobweb_offset'])
+    cobweb[np.isnan(cobweb)] = parameters['cobweb_out_of_range']
+
+    training_pairs = dict(rays=X, cobweb=cobweb, Y=Y)
     scipy.io.savemat(save_location, training_pairs)
 
 

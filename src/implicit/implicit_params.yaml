@@ -3,10 +3,16 @@ mu: 0.025
 
 max_training_pairs: 1000000
 
-modelname: 'sorted_together'
+modelname: 'rays_cobweb'
 
 postprocess: 'sort_together'
 # also: null, 'sort'
+
+cobweb_offset: 0.01
+cobweb_out_of_range: -5.0
+
+# can be: ['rays'], ['cobweb'], or ['rays', 'cobweb']
+features: ['rays', 'cobweb']
 
 forest:
     ntrees: 100

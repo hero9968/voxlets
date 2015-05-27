@@ -81,6 +81,7 @@ def process_sequence(sequence):
     print "Processing " + sequence['name']
     sc = scene.Scene(parameters['mu'], None)
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=False, segment=False, save_grids=False)
+    sc.im.mask = ~np.isnan(sc.im.depth)
 
     # getting the known full and empty voxels based on the depth image
     known_full_voxels = sc.im_visible
@@ -95,9 +96,26 @@ def process_sequence(sequence):
         do_compression=True)
 
     print "Computing the features"
-    X, Y = line_casting.feature_pairs_3d(
-        known_empty_voxels, known_full_voxels, sc.gt_tsdf.V,
+    rays, Y, voxels_to_use = line_casting.feature_pairs_3d(
+        known_empty_voxels,
+        known_full_voxels,
+        sc.gt_tsdf.V,
+        in_frustrum=sc.get_visible_frustrum(),
         samples=-1, base_height=0, postprocess=rf.parameters['postprocess'])
+
+    X = []
+    if 'rays' in rf.parameters['features']:
+        X.append(rays)
+
+    if 'cobweb' in rf.parameters['features']:
+        cobweb = line_casting.cobweb_distance_features(
+        sc, voxels_to_use, parameters['cobweb_offset'])
+        cobweb[np.isnan(cobweb)] = parameters['cobweb_out_of_range']
+        X.append(cobweb)
+
+    # combining the features
+    X = np.hstack(X)
+    print "Features shape is ", X.shape, Y.shape
 
     # saving these features to disk for my perusal
     scipy.io.savemat(results_foldername + 'features.mat', dict(X=X, Y=Y), do_compression=True)
@@ -106,9 +124,9 @@ def process_sequence(sequence):
     Y_pred = rf.predict(X.astype(np.float32))
 
     # now recreate the input image from the predictions
-    unknown_voxel_idxs = np.logical_and(
-        known_empty_voxels.V.flatten() == 0,
-        known_full_voxels.V.flatten() == 0)
+    # unknown_voxel_idxs = np.logical_and(
+    #     known_empty_voxels.V.flatten() == 0,
+    #     known_full_voxels.V.flatten() == 0)
     unknown_voxel_idxs_full = np.logical_and(
         known_empty_voxels.V == 0,
         known_full_voxels.V == 0)
@@ -123,7 +141,7 @@ def process_sequence(sequence):
 
     pred_grid = sc.im_tsdf.copy()
 
-    pred_grid.set_indicated_voxels(unknown_voxel_idxs == 1, Y_pred)
+    pred_grid.set_indicated_voxels(voxels_to_use, Y_pred)
 
     # saving
     print "Saving result to disk"

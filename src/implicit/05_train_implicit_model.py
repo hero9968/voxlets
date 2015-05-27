@@ -36,7 +36,11 @@ for sequence in paths.all_train_data:
     else:
         print "WARNING - could not find file ", file_to_load
 
-    all_X.append(training_pair['X'].astype(np.float32))
+    feats = np.hstack(
+        [training_pair[feat_name] for feat_name in parameters['features']])
+    print "Features shape is ", feats.shape, training_pair['Y'].shape
+
+    all_X.append(feats.astype(np.float32))
     all_Y.append(training_pair['Y'].astype(np.float16))
 
 all_X_np = np.concatenate(all_X, axis=0).astype(np.float32)

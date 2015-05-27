@@ -9,12 +9,15 @@ sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/implicit/'))
 from common import scene, voxel_data
 import real_data_paths as paths
 
+import matplotlib.pyplot as plt
+
 import find_axes
 # myimp = __import__('06_test_implicit_model')
 
 parameters = yaml.load(open('../implicit_params.yaml'))
 
-modelname = 'zheng2'
+plot_segmentation = True
+modelname = 'zheng'
 render = True
 
 def process_sequence(sequence):
@@ -30,11 +33,23 @@ def process_sequence(sequence):
 
     print "Processing " + sequence['name']
     sc = scene.Scene(parameters['mu'], None)
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, segment=True, save_grids=False)
+    sc.load_sequence(
+        sequence,
+        segment_base=0.03,
+        frame_nos=0,
+        segment_with_gt=True,
+        segment=True,
+        save_grids=False)
+
+    if plot_segmentation:
+        plt.subplot(121)
+        plt.imshow(sc.im.rgb)
+        plt.subplot(122)
+        plt.imshow(sc.gt_im_label)
+        plt.savefig(results_foldername + 'segmentation.png')
 
     print "Doing zheng"
-    pred_grid = find_axes.process_scene(sc, 2)
-
+    pred_grid = find_axes.process_scene(sc, 3)
 
     pred_grid.V = pred_grid.V.astype(np.float32)
 
