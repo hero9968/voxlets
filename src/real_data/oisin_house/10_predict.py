@@ -19,6 +19,7 @@ import system_setup
 parameters_path = './testing_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
+render_top_view = True
 
 if __name__ == '__main__':
 
@@ -28,7 +29,8 @@ if __name__ == '__main__':
         print "--> DOING TEST: ", params['name']
 
         print "--> Loading models..."
-        models = [pickle.load(open(paths.voxlet_model_path % name))
+        feature_type = params['reconstruction_params']['feature_type']
+        models = [pickle.load(open(paths.voxlet_model_path % (name, feature_type)))
                   for name in params['models_to_use']]
         print models[0].forest
 
@@ -71,24 +73,29 @@ if __name__ == '__main__':
                 print "-> Saving the sampled_idxs to a file"
                 np.savetxt(fpath + 'sampled_idxs.csv', sc.sampled_idxs, delimiter=",")
 
-                prediction_savepath = fpath + params['name'] + '.pkl'
-                print "-> Saving the prediction to ", prediction_savepath
+                if render_top_view:
+                    print "-> Rendering top view"
+                    gen_renderpath = paths.voxlet_prediction_img_path % \
+                        (parameters['batch_name'], sequence['name'], '%s')
+                    rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
 
-                with open(prediction_savepath, 'w') as f:
-                    pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)
+            prediction_savepath = fpath + params['name'] + '.pkl'
+            print "-> Saving the prediction to ", prediction_savepath
 
-        # need to import these *after* the pool helper has been defined
-        if system_setup.multicore:
-            import multiprocessing
-            mapper = multiprocessing.Pool(system_setup.testing_cores).map_async
-        else:
-            mapper = map
+            with open(prediction_savepath, 'w') as f:
+                pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         print "--> Doing test type ", params['name']
         tic = time()
-        print "Making partial"
-        # func = functools.partial(
-        #     process_sequence, params=test_params)
-        print "Mapping"
-        mapper(process_sequence, paths.test_data).get(9999999)
+
+        if system_setup.multicore:
+            # need to import this *after* the pool helper has been defined
+            import multiprocessing
+            pool = multiprocessing.Pool(system_setup.testing_cores)
+            pool.map_async(process_sequence, paths.test_data).get(9999999)
+            pool.close()
+            pool.join()
+        else:
+            map(process_sequence, paths.test_data)
+
         print "This test took %f s" % (time() - tic)

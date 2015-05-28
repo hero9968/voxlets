@@ -106,11 +106,6 @@ def process_sequence(sequence):
     print "-> Saving the input rgb, depth and mask"
     write_input_images(gt_scene, gen_renderpath)
 
-    # if render_top_view:
-    #     print "-> Rendering top view"
-    #     rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
-    #     print gen_renderpath % 'top_view'
-
     print "-> Main renders"
     for test_params in parameters['tests']:
 
