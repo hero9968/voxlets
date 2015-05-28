@@ -1,4 +1,4 @@
-training_samples_per_image: 10000
+training_samples_per_image: 5000
 mu: 0.025
 
 max_training_pairs: 1000000
@@ -17,3 +17,4 @@ features: ['rays', 'cobweb']
 forest:
     ntrees: 100
     max_depth: 20
+    max_features: 100

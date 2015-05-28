@@ -61,7 +61,8 @@ rf = sklearn.ensemble.RandomForestRegressor(
     n_estimators=parameters['forest']['ntrees'],
     oob_score=True,
     n_jobs=system_setup.cores,
-    max_depth=parameters['forest']['max_depth'])
+    max_depth=parameters['forest']['max_depth'],
+    max_features=parameters['forest']['max_features'])
 rf.fit(all_X_np, all_Y_np)
 
 # adding additional parameters to the model

@@ -9,17 +9,22 @@ import os
 import numpy as np
 
 # folder of objs
-ip_dir = '/home/omacaodh/prism/data5/projects/depth_completion/predictions/wednesday/oisin_house_full_training_data_mixed_voxlets_2/'
-op_dir = '/home/omacaodh/Projects/depth_prediction/rendering/turn_table_iccv_video_pdf_01/'
+ip_dir = '/media/ssd/data/oisin_house/implicit/models/'
+op_dir = '/media/ssd/data/oisin_house/implicit/renders/'
+
 if not os.path.isdir(op_dir):
     os.mkdir(op_dir)
 
 views = np.radians([270, 180, 90, 0])
 
-# load files
-scenes = os.listdir(ip_dir)
 #scenes = ['saved_00207_[536]', 'saved_00230_[45]', 'saved_00231_[55]', 'saved_00233_[134]']
 file_types = ['gt.png.obj', 'Medioid.png.obj', 'pred_remove_excess.png.obj', 'visible.png.obj']
+
+# each tuple: (rendername, modelname, filename)
+render_types = [('gt', 'rays_cobweb', 'gt_render.png.obj'),
+                ('visible', 'rays_cobweb', 'visible_render.png.obj'),
+                ('rays', 'rays', 'prediction_render.png.obj'),
+                ('zheng2', 'zheng2', 'prediction_render.png.obj')]
 
 # colors
 colors = np.asarray([[168, 211, 36], [80, 192, 233], [255, 198, 65], [255, 95, 95], [203, 151, 255]]) / 255.0
@@ -33,26 +38,26 @@ fast_render = True
 if fast_render:
     bpy.data.scenes["Scene"].cycles.samples = 100
 
-for scene_name in scenes:
-    for file_name in file_types:
+for render_type_idx, (rendername, modelname, filename) in enumerate(render_types):
+
+    prediction_dir = ip_dir + modelname + '/predictions/'
+    scenes = os.listdir(prediction_dir)
+    print (scenes)
+
+    for scene_name in scenes:
         # load obj file
-        full_path_to_file = ip_dir + scene_name + '/' + file_name
+        full_path_to_file = prediction_dir + scene_name + '/' + filename
+
         print(full_path_to_file)
         bpy.ops.import_scene.obj(filepath=full_path_to_file, axis_forward='X', axis_up='Z')
+
+        # set material color
+        print(colors[render_type_idx, :])
+        mat.diffuse_color = colors[render_type_idx, :]
 
         o = bpy.context.selected_objects[0]
         o.active_material = mat
         o.rotation_mode = 'XYZ'
-
-        # set material color
-        if full_path_to_file.find('gt.png.obj') > 0:
-            mat.diffuse_color = colors[0, :]
-        elif full_path_to_file.find('pred_remove_excess.png.obj') > 0:  # voxlets
-            mat.diffuse_color = colors[1, :]
-        elif full_path_to_file.find('visible.png.obj') > 0:  #visible
-            mat.diffuse_color = colors[2, :]
-        elif full_path_to_file.find('Medioid.png.obj') > 0:
-            mat.diffuse_color = colors[4, :]
 
         # remove holes from mesh
         # mess fix this
@@ -69,12 +74,9 @@ for scene_name in scenes:
             o.rotation_euler[2] = v
 
             # render it
-            bpy.context.scene.render.filepath = op_dir + scene_name + '_' + file_name[:-8] + '_view_' + str(ii).zfill(3) + '.png'
+            bpy.context.scene.render.filepath = \
+                op_dir + scene_name + '_' + rendername + '_view_' + str(ii).zfill(3) + '.png'
             bpy.ops.render.render(write_still=True)
 
         # delete file
         bpy.ops.object.delete()
-        # for ob in bpy.context.scene.objects:
-        #     ob.select = ob.type == 'MESH' and ob.name.startswith(file_name[:-4])
-        # bpy.ops.object.delete()
-
