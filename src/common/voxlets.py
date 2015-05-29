@@ -19,6 +19,7 @@ import sklearn.metrics
 import collections
 import random
 import scipy.misc
+import matplotlib.pyplot as plt
 
 sys.path.append(os.path.expanduser(
     '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
@@ -927,7 +928,11 @@ class Reconstructer(object):
             model_to_use = self.model
 
         v_size = model_to_use.voxlet_params['size'] * np.array(model_to_use.voxlet_params['shape'])
-        cen = model_to_use.voxlet_params['centre']
+
+        cen = \
+            np.array(model_to_use.voxlet_params['shape'])[:2] * \
+            model_to_use.voxlet_params['size'] * \
+            np.array(model_to_use.voxlet_params['relative_centre'])[:2]
 
         c1 = [-cen[0], cen[1]]
         c2 = [cen[0], cen[1]]
@@ -938,10 +943,10 @@ class Reconstructer(object):
         return corners[:, ::-1]
 
     def _plot_voxlet(self, point, normal):
-        plt.plot(point[1], point[0], 'or', ms=2)
+        plt.plot(point[1], point[0], 'or', ms=1)
         scaling = 10.0
         end_point = point + scaling * normal
-        plt.plot([point[1], end_point[1]], [point[0], end_point[0]], 'r', lw=1)
+        plt.plot([point[1], end_point[1]], [point[0], end_point[0]], 'r', lw=0.4)
 
         corners = self._get_voxlet_corners()
 
@@ -949,4 +954,4 @@ class Reconstructer(object):
         R = np.vstack((normal, norm2)).T
 
         t_corners = np.dot(R, corners.T).T + point
-        plt.plot(t_corners[:, 1], t_corners[:, 0], '-g', lw=1)
+        plt.plot(t_corners[:, 1], t_corners[:, 0], '-g', lw=0.2)
