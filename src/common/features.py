@@ -11,13 +11,17 @@ import scipy.stats
 import scipy.io
 from numbers import Number
 import scipy.stats as stats
+from scipy.spatial import KDTree
+from scipy.linalg import svd
+from skimage.restoration import denoise_bilateral
 # from sklearn.neighbors import KDTree
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib as mpl
-from copy import copy
+from copy import copy, deepcopy
 
+import carving
 
 # helper function related to features...
 def replace_nans_with_col_means(X):
@@ -195,7 +199,17 @@ class Normals(object):
         arr[:, 2] /= lens
         return arr
 
-    def compute_normals(self, im, stepsize=1):
+    def compute_bilateral_normals(self, im, stepsize=2):
+        '''
+        wrapper for compute_normals, but does filtering of the image first
+        '''
+        carver = carving.Fusion()
+        im2 = deepcopy(im)
+        im2._clear_cache()
+        im2.depth = carver._filter_depth(im.depth)
+        return self.compute_normals(im2, stepsize)
+
+    def compute_normals(self, im, stepsize=2):
         '''
         one method of computing normals
         '''
@@ -209,8 +223,15 @@ class Normals(object):
         dy0, dy1 = np.gradient(y, stepsize)
         dz0, dz1 = np.gradient(z, stepsize)
 
-        dxyz0 = np.vstack((dx0.flatten(), dy0.flatten(), dz0.flatten()))
-        dxyz1 = np.vstack((dx1.flatten(), dy1.flatten(), dz1.flatten()))
+        dx0 = dx0.flatten()
+        dx1 = dx1.flatten()
+        dy0 = dy0.flatten()
+        dy1 = dy1.flatten()
+        dz0 = dz0.flatten()
+        dz1 = dz1.flatten()
+
+        dxyz0 = self.normalize_v3(np.vstack((dx0, dy0, dz0)).T).T
+        dxyz1 = self.normalize_v3(np.vstack((dx1, dy1, dz1)).T).T
         cross = np.cross(dxyz0, dxyz1, axis=0)
 
         return self.normalize_v3(cross.T)
@@ -234,16 +255,6 @@ class Normals(object):
 
         return H, K, Zyy, Zxx
 
-    # def kdtree_normals(self, im):
-    #     '''
-    #     '''
-    #     xyz = im.reproject_3d().T
-    #     nans = np.any(np.isnan(xyz), axis=1)
-    #     print nans.shape, nans.sum()
-    #     print "xyz is shape", xyz.shape
-    #     tree = KDTree(xyz[~nans, :])
-    #     _, xyz_neighbours = tree.query(xyz[~nans, :], k=20)
-    #     print xyz_neighbours.shape
 
 
     def voxel_normals(self, im, vgrid):
@@ -290,6 +301,31 @@ class Normals(object):
         output_norms[inliers, :] = image_norms
         return output_norms
 
+    def nn_normals(self, im, n):
+        '''
+        computes normals from nearest neighbours
+        unfinished - seems slow
+        '''
+        xyz = im.reproject_3d().T
+        nans = np.any(np.isnan(xyz), axis=1)
+        print nans.shape, nans.sum()
+        print "xyz is shape", xyz.shape
+        dsd
+        sub_xyz = xyz[~nans, :]
+        tree = KDTree(sub_xyz)
+        _, neighbour_idxs = tree.query(sub_xyz, k=20, eps=0.2)
+
+        print neighbour_idxs.shape
+
+        # for each set of neighbours, now do the thing
+        for this_neighbour_idxs in neighbour_idxs:
+
+            n_xyz = sub_xyz[this_neighbour_idxs]
+            print 'N xyz ', n_xyz.shape
+
+            # todo - can set options to make this quicker
+            U, s, Vh = svd(n_xyz)
+            print U, s, Vh
 
         # return diffs.T
 
