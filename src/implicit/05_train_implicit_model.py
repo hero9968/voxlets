@@ -14,60 +14,77 @@ sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 
 import system_setup
 import real_data_paths as paths
+from features import line_casting
 
 parameters = yaml.load(open('./implicit_params.yaml'))
-modelname = parameters['modelname']
 
-print "Creating the save location"
-savefolder = paths.implicit_model_dir % modelname
-if not os.path.exists(savefolder):
-    os.makedirs(savefolder)
 
-all_X = []
-all_Y = []
+def train_model(model_params):
 
-for sequence in paths.all_train_data:
+    all_X = []
+    all_Y = []
 
-    # loading the data and adding to arrays
-    print "Loading from %s" % sequence['name']
-    file_to_load = paths.implicit_training_dir % modelname + sequence['name'] + '.mat'
-    if os.path.exists(file_to_load):
-        training_pair = scipy.io.loadmat(file_to_load)
-    else:
-        print "WARNING - could not find file ", file_to_load
+    for sequence in paths.all_train_data:
 
-    feats = np.hstack(
-        [training_pair[feat_name] for feat_name in parameters['features']])
-    print "Features shape is ", feats.shape, training_pair['Y'].shape
+        # loading the data and adding to arrays
+        print "Loading from %s" % sequence['name']
+        file_to_load = paths.implicit_training_dir % parameters['features_name'] + sequence['name'] + '.mat'
+        if os.path.exists(file_to_load):
+            training_pair = scipy.io.loadmat(file_to_load)
+        else:
+            print "WARNING - could not find file ", file_to_load
 
-    all_X.append(feats.astype(np.float32))
-    all_Y.append(training_pair['Y'].astype(np.float16))
+        training_pair['rays'] = line_casting.postprocess_features(
+            training_pair['rays'], model_params['postprocess'])
 
-all_X_np = np.concatenate(all_X, axis=0).astype(np.float32)
-all_Y_np = np.concatenate(all_Y, axis=1).flatten().astype(np.float16)
+        feats = np.hstack(
+            [training_pair[feat_name] for feat_name in model_params['features']])
 
-if all_X_np.shape[0] > parameters['max_training_pairs']:
-    print "Resampling %d pairs to %d pairs" % \
-        (all_X_np.shape[0], parameters['max_training_pairs'])
-    idxs = np.random.choice(all_X_np.shape[0], parameters['max_training_pairs'])
-    all_X_np = all_X_np[idxs, :]
-    all_Y_np = all_Y_np[idxs]
+        print "Features shape is ", feats.shape, training_pair['Y'].shape
 
-print all_X_np.shape, all_Y_np.shape
-print all_X_np.dtype, all_Y_np.dtype
+        all_X.append(feats.astype(np.float32))
+        all_Y.append(training_pair['Y'].astype(np.float16))
 
-print "Training the model"
-rf = sklearn.ensemble.RandomForestRegressor(
-    n_estimators=parameters['forest']['ntrees'],
-    oob_score=True,
-    n_jobs=system_setup.cores,
-    max_depth=parameters['forest']['max_depth'],
-    max_features=parameters['forest']['max_features'])
-rf.fit(all_X_np, all_Y_np)
+    all_X_np = np.concatenate(all_X, axis=0).astype(np.float32)
+    all_Y_np = np.concatenate(all_Y, axis=1).flatten().astype(np.float16)
 
-# adding additional parameters to the model
-rf.parameters = parameters
+    max_pairs = model_params['forest']['max_training_pairs']
+    if all_X_np.shape[0] > max_pairs:
+        print "Resampling %d pairs to %d pairs" % (all_X_np.shape[0], max_pairs)
+        idxs = np.random.choice(all_X_np.shape[0], max_pairs)
+        all_X_np = all_X_np[idxs, :]
+        all_Y_np = all_Y_np[idxs]
 
-print "Saving the model"
-with open(savefolder + 'model.pkl', 'wb') as f:
-    pickle.dump(rf, f, protocol=pickle.HIGHEST_PROTOCOL)
+    print all_X_np.shape, all_Y_np.shape
+    print all_X_np.dtype, all_Y_np.dtype
+
+    print "Training the model"
+    rf = sklearn.ensemble.RandomForestRegressor(
+        n_estimators=model_params['forest']['ntrees'],
+        oob_score=True,
+        n_jobs=system_setup.cores,
+        max_depth=model_params['forest']['max_depth'],
+        max_features=all_X_np.shape[1])
+    rf.fit(all_X_np, all_Y_np)
+
+    # adding additional parameters to the model
+    rf.parameters = model_params
+
+    return rf
+
+
+if __name__ == '__main__':
+    for model_params in parameters['models']:
+
+        print "Training model", model_params['name']
+        rf = train_model(model_params)
+
+        print "Creating the save location"
+        savefolder = paths.implicit_model_dir % model_params['name']
+        if not os.path.exists(savefolder):
+            os.makedirs(savefolder)
+
+        print "Saving the model"
+        savepath = savefolder + 'model.pkl'
+        with open(savepath, 'wb') as f:
+            pickle.dump(rf, f, protocol=pickle.HIGHEST_PROTOCOL)

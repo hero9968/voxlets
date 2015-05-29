@@ -17,12 +17,10 @@ import real_data_paths as paths
 from common import scene, carving, features
 from features import line_casting
 
-
 parameters = yaml.load(open('./implicit_params.yaml'))
-modelname = parameters['modelname']
 
 print "Creating output folder"
-savefolder = paths.implicit_training_dir % modelname
+savefolder = paths.implicit_training_dir % parameters['features_name']
 if not os.path.exists(savefolder):
     os.makedirs(savefolder)
 
@@ -51,8 +49,7 @@ def process_sequence(sequence):
         sc.gt_tsdf.V,
         in_frustrum=sc.get_visible_frustrum(),
         samples=parameters['training_samples_per_image'],
-        base_height=0,
-        postprocess=parameters['postprocess'])
+        base_height=0)
 
     # computing the ray + cobweb features, just for the already chosen voxels
     cobweb = line_casting.cobweb_distance_features(

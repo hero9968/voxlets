@@ -16,9 +16,10 @@ import find_axes
 
 parameters = yaml.load(open('../implicit_params.yaml'))
 
-plot_segmentation = True
-modelname = 'zheng'
-render = True
+plot_segmentation = False
+the_zheng_parameter = 2
+modelname = 'zheng_' + str(the_zheng_parameter)
+render = False
 
 def process_sequence(sequence):
 
@@ -49,7 +50,7 @@ def process_sequence(sequence):
         plt.savefig(results_foldername + 'segmentation.png')
 
     print "Doing zheng"
-    pred_grid = find_axes.process_scene(sc, 3)
+    pred_grid = find_axes.process_scene(sc, the_zheng_parameter)
 
     pred_grid.V = pred_grid.V.astype(np.float32)
 

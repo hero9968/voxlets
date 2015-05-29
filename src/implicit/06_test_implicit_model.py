@@ -24,14 +24,9 @@ import system_setup
 import real_data_paths as paths
 
 parameters = yaml.load(open('./implicit_params.yaml'))
-modelname = parameters['modelname']
 
-print "Loading the model"
-with open(paths.implicit_model_dir % modelname + 'model.pkl', 'rb') as f:
-    rf = pickle.load(f)
-
-
-render = True
+render = False
+save_training_pairs = False
 
 def plot_slice(V):
     "Todo - move to the voxel class?"
@@ -63,15 +58,18 @@ def save_plot_slice(V, GT_V, imagesavepath, imtitle=""):
     plt.savefig(imagesavepath, bbox_inches='tight')
 
 
-def process_sequence(sequence):
+def process_sequence(input_args):
+
+    # unpack the input arguments
+    rf, sequence, savename = input_args
 
     print "Loading sequence %s" % sequence['name']
 
     # this is where to save the results...
     results_foldername = \
-        paths.implicit_predictions_dir % (modelname, sequence['name'])
-    print "Creating %s" % results_foldername
+        paths.implicit_predictions_dir % (savename, sequence['name'])
     if not os.path.exists(results_foldername):
+        print "Creating %s" % results_foldername
         os.makedirs(results_foldername)
 
     # writing the yaml file to the test folder...
@@ -95,16 +93,18 @@ def process_sequence(sequence):
              known_empty=known_empty_voxels.V.astype(np.float64)),
         do_compression=True)
 
-    print "Computing the features"
+    # print "Computing the features"
     rays, Y, voxels_to_use = line_casting.feature_pairs_3d(
         known_empty_voxels,
         known_full_voxels,
         sc.gt_tsdf.V,
         in_frustrum=sc.get_visible_frustrum(),
-        samples=-1, base_height=0, postprocess=rf.parameters['postprocess'])
+        samples=-1, base_height=0)
 
     X = []
     if 'rays' in rf.parameters['features']:
+        rays = line_casting.postprocess_features(
+            rays, rf.parameters['postprocess'])
         X.append(rays)
 
     if 'cobweb' in rf.parameters['features']:
@@ -115,12 +115,8 @@ def process_sequence(sequence):
 
     # combining the features
     X = np.hstack(X)
-    print "Features shape is ", X.shape, Y.shape
 
-    # saving these features to disk for my perusal
-    scipy.io.savemat(results_foldername + 'features.mat', dict(X=X, Y=Y), do_compression=True)
-
-    print "Making prediction"
+    # print "Making prediction"
     Y_pred = rf.predict(X.astype(np.float32))
 
     # now recreate the input image from the predictions
@@ -130,21 +126,22 @@ def process_sequence(sequence):
     unknown_voxel_idxs_full = np.logical_and(
         known_empty_voxels.V == 0,
         known_full_voxels.V == 0)
-    training_pairs = dict(X=X, Y=Y,
-        known_full=known_full_voxels.V.astype(np.float32),
-        known_empty=known_empty_voxels.V.astype(np.float32),
-        gt_vox=sc.gt_tsdf.V.astype(np.float32))
-    scipy.io.savemat(
-        results_foldername+'training_pairs.mat',
-        training_pairs,
-        do_compression=True)
+    if save_training_pairs:
+        training_pairs = dict(X=X, Y=Y,
+            known_full=known_full_voxels.V.astype(np.float32),
+            known_empty=known_empty_voxels.V.astype(np.float32),
+            gt_vox=sc.gt_tsdf.V.astype(np.float32))
+        scipy.io.savemat(
+            results_foldername+'training_pairs.mat',
+            training_pairs,
+            do_compression=True)
 
     pred_grid = sc.im_tsdf.copy()
 
     pred_grid.set_indicated_voxels(voxels_to_use, Y_pred)
 
     # saving
-    print "Saving result to disk"
+    # print "Saving result to disk"
     pred_grid.save(results_foldername + 'prediction.pkl')
     scipy.io.savemat(
         results_foldername + 'prediction.mat',
@@ -152,7 +149,7 @@ def process_sequence(sequence):
             known_full=known_full_voxels.V, known_empty=known_empty_voxels.V, dim=sc.im.rgb, rgbim=sc.im.rgb),
         do_compression=True)
 
-    print "Saving the input image"
+    # print "Saving the input image"
     img_savepath = results_foldername + 'input_im.png'
     scipy.misc.imsave(img_savepath, sc.im.rgb)
 
@@ -165,27 +162,41 @@ def process_sequence(sequence):
         sc.gt_tsdf.render_view(results_foldername + 'gt_render.png',
             xy_centre=True, keep_obj=True)
 
-    print "Evaluating"
+    # print "Evaluating"
     results = sc.evaluate_prediction(pred_grid.V)
     yaml.dump(results, open(results_foldername + 'eval.yaml', 'w'))
 
     img_savepath = results_foldername + 'prediction.png'
     save_plot_slice(pred_grid.V, sc.gt_tsdf.V, img_savepath, imtitle="")
 
-    print "Done "
-
-
-# need to import these *after* the pool helper has been defined
-if system_setup.multicore:
-    import multiprocessing
-    mapper = multiprocessing.Pool(system_setup.cores).map
-else:
-    mapper = map
+    # print "Done "
 
 
 if __name__ == '__main__':
 
-    tic = time()
-    print "DANGER - doing on train sequence"
-    mapper(process_sequence, paths.test_data)
-    print "In total took %f s" % (time() - tic)
+
+    for model_params in parameters['models']:
+
+        tic = time()
+
+        print "Loading the model"
+        loadpath = paths.implicit_model_dir % model_params['name'] + 'model.pkl'
+        with open(loadpath, 'rb') as f:
+            rf = pickle.load(f)
+
+        savename = model_params['name']
+        per_run_args = [(rf, seq, savename) for seq in paths.test_data]
+        print len(rf.estimators_)
+        # print list(per_run_args)
+
+        if system_setup.multicore:
+            import multiprocessing
+            pool = multiprocessing.Pool(system_setup.cores)
+            pool.map_async(process_sequence, per_run_args).get(99999)
+            pool.close()
+            pool.join()
+
+        else:
+            map(process_sequence, per_run_args)
+
+        print "This model took %f s" % (time() - tic)

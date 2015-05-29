@@ -240,12 +240,34 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
         distances[distances==-1] = out_of_range_value
         # scipy.io.savemat('/tmp/distances%03d.mat' % count, dict(distances=distances))
 
-
         all_distances.append(distances)
         all_observed.append(observed)
 
     # returning the data as specified
     return all_distances, all_observed
+
+
+def postprocess_features(feature_set, postprocess_type):
+    '''
+    applies postprocessing to the feature set
+    '''
+    distances = feature_set[:, :26]
+    observed = feature_set[:, 26:]
+
+    if postprocess_type == 'autorotate':
+        distances, observed = autorotate_3d_features(distances, observed)
+
+    elif postprocess_type == 'sort':
+        distances, observed = sort_3d_features(distances, observed)
+
+    elif postprocess_type == 'sort_together':
+        distances, observed = sort_3d_features_together(distances, observed)
+
+    elif postprocess_type:
+        raise Exception('Unknown postprocess method %s' % postprocess_type)
+
+    final_features = np.hstack((distances, observed))
+    return final_features
 
 
 def feature_pairs_3d(
@@ -254,7 +276,6 @@ def feature_pairs_3d(
     gt_tsdf=None,
     samples=-1,
     base_height=0,
-    postprocess=None,
     all_voxels=False,
     in_frustrum=None):
     '''
@@ -273,21 +294,6 @@ def feature_pairs_3d(
     N = len(all_distances)
     all_distances_np = np.array(all_distances).astype(np.int16).reshape((N, -1)).T
     all_observed_np = np.array(all_observed).astype(np.int16).reshape((N, -1)).T
-
-    if postprocess == 'autorotate':
-        print "autorotating"
-        all_distances_np, all_observed_np = \
-            autorotate_3d_features(all_distances_np, all_observed_np)
-    elif postprocess == 'sort':
-        print "sorting"
-        all_distances_np, all_observed_np = \
-            sort_3d_features(all_distances_np, all_observed_np)
-    elif postprocess == 'sort_together':
-        print "sorting together"
-        all_distances_np, all_observed_np = \
-            sort_3d_features_together(all_distances_np, all_observed_np)
-    elif postprocess:
-        raise Exception('Unknown postprocess method %s' % postprocess)
 
     # get feature pairs from the cast lines
     if all_voxels:
