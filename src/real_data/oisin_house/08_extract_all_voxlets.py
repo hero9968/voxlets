@@ -15,7 +15,7 @@ from common import scene, features
 
 import real_data_paths as paths
 
-parameters_path = './training_params.yaml'
+parameters_path = './training_data_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 

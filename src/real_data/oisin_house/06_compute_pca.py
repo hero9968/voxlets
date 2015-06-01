@@ -17,7 +17,7 @@ from common import scene, rendering
 import real_data_paths as paths
 import system_setup
 
-parameters_path = './training_params.yaml'
+parameters_path = './training_data_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 # Only using a subset of training sequences

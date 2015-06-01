@@ -21,9 +21,14 @@ def process_sequence(sequence):
     fpath = paths.prediction_folderpath % (parameters['batch_name'], sequence['name'])
     gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
 
+    print np.nanmin(gt_scene.im.depth), np.nanmax(gt_scene.im.depth)
+
     results_dict = collections.OrderedDict()
 
     for test_params in parameters['tests']:
+
+        if test_params['name'] == 'ground_truth':
+            continue
 
         prediction_savepath = fpath + test_params['name'] + '.pkl'
         if os.path.exists(prediction_savepath):

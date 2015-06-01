@@ -9,9 +9,9 @@ if True:
     small_sample = True
     # print "WARN- should be 500" *10
     max_sequences = 500
-    max_test_sequences = 8
-    cores = 8
-    testing_cores = 8
+    max_test_sequences = 40
+    cores = 4
+    testing_cores = 4
     multicore = True
 else:
     small_sample = True

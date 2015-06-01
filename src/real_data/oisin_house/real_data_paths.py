@@ -67,12 +67,17 @@ for t in scenes:
     sequences.append(temp)
 
 # saving...
+#                                     vv this is the datatype
 models_folder = data_folder + 'models/%s/'
 
+training_data_folder = data_folder + 'training_voxlets/%s/'
+
 # voxlets_dict_data_path = models_folder + 'dictionary/dict_data/'
-voxlets_dictionary_path = models_folder + 'dictionary/'
-voxlets_data_path = models_folder + 'training_voxlets/'
-voxlet_model_path = models_folder + 'model_%s.pkl'
+voxlets_dictionary_path = training_data_folder + 'dictionary/'
+voxlets_data_path = training_data_folder + 'training_voxlets/'
+
+voxlet_model_path = models_folder + 'model.pkl'
+
 
 # this is where to save the voxlets used for testing the models
 evaluation_data_path = models_folder + 'model_evaluation_voxlets/'

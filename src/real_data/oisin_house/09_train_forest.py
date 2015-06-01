@@ -21,7 +21,7 @@ parameters_path = './training_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 
-def load_training_data(voxlet_params, feature_name):
+def load_training_data(voxlet_name, feature_name):
     '''
     Loading in all the data...
     '''
@@ -32,7 +32,7 @@ def load_training_data(voxlet_params, feature_name):
 
     for count, sequence in enumerate(paths.all_train_data):
 
-        loadfolder = paths.voxlets_data_path % voxlet_params['name']
+        loadfolder = paths.voxlets_data_path % voxlet_name
         loadpath = loadfolder + sequence['name'] + '.pkl'
         D = pickle.load(open(loadpath, 'r'))
 
@@ -56,11 +56,10 @@ def load_training_data(voxlet_params, feature_name):
 
     return np_features, np_voxlets, np_masks, np_scene_ids
 
-def train_model(voxlet_params, feature):
+def train_model(model_params):
 
     print "-> Ensuring output folder exists"
-    savepath = paths.voxlet_model_path % \
-        (voxlet_params['name'], feature)
+    savepath = paths.voxlet_model_path % (model_params['name'])
 
     modelfolder = os.path.dirname(savepath)
     if not os.path.exists(modelfolder):
@@ -68,23 +67,21 @@ def train_model(voxlet_params, feature):
 
     print "-> Loading training data"
     np_features, np_voxlets, np_masks, np_scene_ids = \
-        load_training_data(voxlet_params, feature)
+        load_training_data(model_params['voxlet_type'], model_params['feature'])
 
     print "-> Training forest"
+    voxlet_params = parameters['voxlet_sizes'][model_params['voxlet_type']]
+
     model = voxlets.VoxletPredictor()
-    if hasattr(model, 'forest'):
-        print "CAn"
-        print len(model.forest.trees)
-    else:
-        print "Cannot"
     model.set_voxlet_params(voxlet_params)
     model.train(
         np_features,
         np_voxlets,
         forest_params=parameters['forest'],
-        subsample_length=parameters['forest_subsample_length'],
+        subsample_length=parameters['forest']['subsample_length'],
         masks=np_masks,
         scene_ids=np_scene_ids)
+    model.feature = model_params['feature']
 
     print "-> Adding PCA models"
     pca_savefolder = paths.voxlets_dictionary_path % voxlet_params['name']
@@ -105,9 +102,8 @@ def train_model(voxlet_params, feature):
 if __name__ == '__main__':
 
     # Repeat for each type of voxlet in the parameters
-    for voxlet_params in parameters['voxlets']:
-        for feature in parameters['features']:
-            train_model(voxlet_params, feature)
-            gc.collect()
+    for model_params in parameters['models_to_train']:
+        train_model(model_params)
+        gc.collect()
             # del model, pca, mask_pca, np_features, np_voxlets, np_masks
 

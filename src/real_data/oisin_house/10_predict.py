@@ -29,8 +29,7 @@ if __name__ == '__main__':
         print "--> DOING TEST: ", params['name']
 
         print "--> Loading models..."
-        feature_type = params['reconstruction_params']['feature_type']
-        models = [pickle.load(open(paths.voxlet_model_path % (name, feature_type)))
+        models = [pickle.load(open(paths.voxlet_model_path % name))
                   for name in params['models_to_use']]
         print models[0].forest
 
