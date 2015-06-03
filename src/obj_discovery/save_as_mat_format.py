@@ -45,7 +45,7 @@ for idx, sequence in enumerate(paths.test_data):
 
     RR = {}
     RR['R'] = sc.im.cam.H[:3, :3]
-    RR['points3d'] = sc.im.reproject_3d()
+    RR['points3d'] = sc.im.reproject_3d().T
     RR['normals'] = norms
 
     D = dict(
