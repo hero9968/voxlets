@@ -47,7 +47,8 @@ class CorrClust(object):
         # here I shall be taking all pairs from the data
         idxs1, idxs2 = self._pair_idxs(X.shape[0])
 
-        if subsample_length is not None:
+        if (subsample_length is not None) and (subsample_length < idxs1.shape[0]):
+            print subsample_length, idxs1.shape[0]
             to_use = np.random.choice(idxs1.shape[0], subsample_length, replace=False)
             idxs1 = idxs1[to_use]
             idxs2 = idxs2[to_use]
@@ -74,15 +75,14 @@ class CorrClust(object):
             max_edges = min(max_edges, subsample_length/2)
 
         # subsample each class in turn
-        to_use = [np.random.choice(
-                np.where(classes==this_class)[0], max_edges, replace=False),
-                for this_class in [0, 1]]
+        to_use = np.hstack([np.random.choice(
+                np.where(classes==this_class)[0], max_edges, replace=False)
+                for this_class in [0, 1]])
 
         # print final_idxs1, final_idxs2
         x_pairs = np.abs(X[idxs1[to_use]] - X[idxs2[to_use]])
         y_pairs = classes[to_use]
         return x_pairs, y_pairs
-
 
     def _pair_idxs(self, num_data):
 
@@ -118,7 +118,6 @@ class CorrClust(object):
         # for each starting point, run the solver
         for start_point in start_points:
             Y, energy = self._clustering_solver(weights, start_point.astype(int))
-
             if energy > max_energy:
                 max_energy = energy
                 best_Y = Y
@@ -129,12 +128,16 @@ class CorrClust(object):
         '''
         the actual code that does the clustering, using the AL_ICM algorithm
         trying to MAXIMISE the energy
+
+        This could probably be done in a much more efficient way, without the
+        need for bincount on each inner loop
         '''
         iteration = 0
         labels = start_labels.copy()
         n_items = W.shape[0]
         old_energy = -np.inf
-        while True:
+
+        for iteration in range(self.max_iters):
 
             # assign each item in turn to the best cluster
             for j in range(n_items):
@@ -148,38 +151,27 @@ class CorrClust(object):
                     # assigning to the best exisiting label
                     labels[j]  = np.argmax(cluster_scores)
 
-            iteration += 1
-
-            # print "Created %d new labels" % new_label_count
-
             if iteration % 15 == 0:
                 # reasign labels for efficiency
                 _, labels = np.unique(labels, return_inverse=True)
 
             energy = self._clustering_energy(W, labels)
-            # print energy
 
             if energy < old_energy:
                 raise Exception("This should never happen!")
             elif energy == old_energy:
                 print "Energy the same, breaking after %d loops" % iteration
                 break
-            elif iteration >= self.max_iters:
-                print "Reached max iters (%d), breaking" % iteration
-                break
 
             old_energy = energy
+
+        else:
+            print "Reached max iters (%d), breaking" % iteration
+
 
         _, labels = np.unique(labels, return_inverse=True)
         return labels, energy
 
     def _clustering_energy(self, W, Y):
         Y = Y[None, :]
-        return (W * (Y==Y.T).astype(int)).sum()
-
-
-def ARI(y_gt, y_pred):
-    '''
-    computes the adjusted rand index for two sets of clusterings
-    '''
-    pass
+        return (W * (Y==Y.T).astype(float)).sum()
