@@ -30,7 +30,7 @@ class Scene(object):
     Stores voxel grid, labels and the video of depth images
     Also has methods to do segmentation etc
     '''
-    def __init__(self, mu, voxlet_params):
+    def __init__(self, mu=None, voxlet_params=None):
         self.gt_tsdf = None
         self.im_tsdf = None
         self.im = None

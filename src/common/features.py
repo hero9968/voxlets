@@ -14,7 +14,9 @@ import scipy.stats as stats
 from scipy.spatial import KDTree
 from scipy.linalg import svd
 from skimage.restoration import denoise_bilateral
-# from sklearn.neighbors import KDTree
+from skimage.color import rgb2gray
+from scipy.ndimage import uniform_filter
+from sklearn.neighbors import KDTree
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -255,8 +257,6 @@ class Normals(object):
 
         return H, K, Zyy, Zxx
 
-
-
     def voxel_normals(self, im, vgrid):
         '''
         compute the normals from a voxel grid
@@ -394,3 +394,136 @@ class SampledFeatures(object):
         print "in sample idxs ", norms.shape
         return np.vstack(
             [self._single_sample(xyz[idx], norms[idx]) for idx in point_idxs])
+
+
+class RegionFeatureEngine(object):
+    '''
+    I separate each feature into its own function for readability and
+    debugability
+    '''
+    def __init__(self, params=None):
+        self.params = params
+
+    def set_si_dict(self, si_dict):
+        self.si_dict = si_dict
+
+    def compute_features(self, image, mask):
+
+        # extract the 2d and 3d points corresponding to this segment
+        xyz = image.get_world_xyz()[mask.ravel()]
+        norms = image.get_world_normals()[mask.ravel()]
+        rgb = np.vstack((image.rgb[:, :, a].ravel()[mask.ravel()] for a in [0, 1, 2])).T
+
+        # now compute each of the features
+        features = {}
+        features['bounding_box'] = self._get_bounding_box(xyz)
+        features['hog'] = self._get_hog(image, mask)
+        features['rgb_hist'] = self._get_rgb_hist(rgb)
+        features['rgb_mean'] = self._get_rgb_mean(rgb)
+        features['shape_distribution'] = self._get_shape_dist(xyz)
+        # features['spin_image'] = self._get_si_hist(xyz)
+
+        return features
+
+    def _get_si_hist(self, xyz):
+        print "Not yet implemented si histogram"
+        return None
+        # inlier_radius =
+
+        # tree = KDTree(xyz, leaf_size=2)
+        # for p in xyz:
+        #     tree.
+
+    def _get_hog(self, img, mask):
+        '''
+        a lot of code taken from skimage
+        '''
+        n_bins = 8
+
+        grey = np.sqrt(rgb2gray(img.rgb))
+
+        '''First stage - gradients'''
+        gx = np.empty(grey.shape, dtype=np.double)
+        gx[:, 0] = 0
+        gx[:, -1] = 0
+        gx[:, 1:-1] = grey[:, 2:] - grey[:, :-2]
+        gy = np.empty(grey.shape, dtype=np.double)
+        gy[0, :] = 0
+        gy[-1, :] = 0
+        gy[1:-1, :] = grey[2:, :] - grey[:-2, :]
+
+        '''second stage - accumulate in cells'''
+        magnitude = np.sqrt(gx ** 2 + gy ** 2)
+        orientation = np.arctan2(gy, gx) * (180 / np.pi) % 180
+
+        '''my work - bin these just in the mask region'''
+        these_magnitudes = magnitude.ravel()[mask.ravel()]
+        these_orientations = orientation.ravel()[mask.ravel()]
+
+        binned_orientations = (n_bins * (these_orientations / 180.0)).astype(np.int)
+
+        new_hist = np.bincount(binned_orientations,
+            weights=these_magnitudes, minlength=n_bins).astype(float)
+
+        # note normalising by the number of points in mask.
+        # the histogram won't generally sum to one - it instead captures
+        # an overall degree of texture, so smoother regions have smaller
+        # histogram sums and v.v.
+        new_hist /= mask.sum()
+        return new_hist
+
+    def _get_rgb_hist(self, rgb):
+        n_bins = 4
+                # self.params['rgb_hist_bins']
+
+        rgb_norm = rgb.astype(float) / 255
+        bin_labels = np.floor(rgb_norm * (n_bins - 1)).astype(int)
+
+        idxs = bin_labels[:, 0] * n_bins**2 \
+             + bin_labels[:, 1] * n_bins \
+             + bin_labels[:, 2]
+
+        hist = np.bincount(idxs, minlength=n_bins**3).astype(float)
+        assert hist.size == n_bins**3
+        return hist / hist.sum()
+
+    def _get_rgb_mean(self, rgb):
+        mean = np.mean(rgb.astype(float)/255, 0)
+        assert mean.size==3
+        return mean
+
+    def _get_bounding_box(self, xyz):
+        # could change this to reject outliers
+        print "NOTE: At the moment I am not doing the PCA like I should be"
+        return np.max(xyz, 0) - np.min(xyz, 0)
+
+    def _get_shape_dist(self, xyz):
+
+        num_points = 5000
+        p0 = xyz[np.random.choice(xyz.shape[0], num_points)]
+        p1 = xyz[np.random.choice(xyz.shape[0], num_points)]
+        dists = np.linalg.norm(p0 - p1, axis=1)
+
+        # now form a histogram over these distances
+        # slight modification in these edges from the matlab work
+        edges = np.hstack([np.arange(0, 0.1, 0.01),
+                           np.arange(0.1, 1.5, 0.1)])
+
+        hist, _ = np.histogram(dists, edges)
+        return hist.astype(float) / float(num_points)
+
+def combine_features(feature_dict, features_to_use='all'):
+    '''
+    helper function to combine a dictioanry of features into a numpy array
+    '''
+
+    if features_to_use=='all':
+        # must be careful to always retrieve items from dict in same order
+        # so will sort the keys alphabetically
+        keys = sorted([key for key in feature_dict])
+    else:
+        # will use the sorting as specified
+        keys = features_to_use
+
+    feature_vector = [feature_dict[key] for key in keys]
+    return np.hstack(feature_vector)

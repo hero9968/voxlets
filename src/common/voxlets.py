@@ -62,7 +62,8 @@ class VoxletPredictor(object):
         print "X shape is ", X.shape
         print "Y shape is ", Y.shape
 
-    def train(self, X, Y, forest_params, subsample_length=-1, masks=None, scene_ids=None):
+    def train(self, X, Y, forest_params, subsample_length=-1,
+        masks=None, scene_ids=None):
         '''
         Runs the OMA forest code
         Y is expected to be a PCA version of the shoeboxes
@@ -89,6 +90,11 @@ class VoxletPredictor(object):
 
         print "After subsampling and removing nans...", subsample_length
         self._print_shapes(X, Y)
+
+        # if we aren't using my bagging method then passing None as the scene
+        # ids tells the forest to use normal bagging instead
+        if not forest_params['my_bagging']:
+            scene_ids = None
 
         print "Training forest"
         self.forest = srf.Forest(forest_params)
@@ -348,13 +354,10 @@ class Reconstructer(object):
 
     def fill_in_output_grid(
             self,
-            feature_type,
             render_type=[],
             render_savepath=None,
-            use_implicit=False,
             oracle=None,
             add_ground_plane=False,
-            combine_segments_separately=False,
             accum_only_predict_true=False,
             feature_collapse_type=None,
             feature_collapse_param=None,
@@ -372,11 +375,6 @@ class Reconstructer(object):
             an optional argument which uses an oracle to choose the voxlets
             Choices of oracle should perhaps be in ['pca', 'ground_truth', 'nn' etc...]
 
-        combine_segments_separately
-            if true, then each segment in the image
-            has a separate accumulation grid. These are then 'or'ed together
-            (or similar) at the very end...
-
         accum_only_predict_true
             if true, the accumulator(s) will combine
             each prediction by only averaging in the regions predicted to be
@@ -393,7 +391,7 @@ class Reconstructer(object):
             MUST use only with a forest trained on binary predictions...
         '''
 
-        if feature_type == 'cobweb':
+        if np.any(np.array(['cobweb' == m.feature for m in self.model])):
             cobwebengine = features.CobwebEngine(0.01, mask=self.sc.im.mask)
             cobwebengine.set_image(self.sc.im)
             self.cobwebengine=cobwebengine
@@ -446,7 +444,7 @@ class Reconstructer(object):
             if use_binary:
                 features_voxlet.V = (features_voxlet.V > 0).astype(np.float16)
 
-            if feature_type=='cobweb':
+            if model_to_use.feature=='cobweb':
                 feature_vector = cobwebengine.get_cobweb(idx)
                 feature_vector[np.isnan(feature_vector)] = -5.0
                 # print feature_vector
@@ -480,7 +478,6 @@ class Reconstructer(object):
 
             else:
                 # Doing a real prediction!
-
                 "classify according to the forest"
                 voxlet_prediction, mask = \
                     model_to_use.predict(np.atleast_2d(feature_vector), how_to_choose=how_to_choose,
@@ -496,7 +493,7 @@ class Reconstructer(object):
                 # flipping the mask direction here:
                 weights_to_use = 1-mask
                 weights_to_use = weights_to_use.flatten()
-                if weight_empty_lower:
+                if weight_empty_lower is not None:
                     weights_to_use[voxlet_prediction > 0] *= weight_empty_lower
 
             # adding the shoebox into the result
@@ -505,37 +502,18 @@ class Reconstructer(object):
                 model_to_use.voxlet_params['shape'])
 
             if oracle == 'greedy_add':
-                if combine_segments_separately:
-                    acc_copy = self.segement_accums[this_point_label]
-                else:
-                    acc_copy = self.accum.copy()
+                acc_copy = self.accum.copy()
                 acc_copy.add_voxlet(transformed_voxlet, accum_only_predict_true, weights=weights_to_use)
 
-                to_evaluate_on = np.logical_or(
-                    self.sc.im_tsdf.V < 0, np.isnan(self.sc.im_tsdf.V))
-
                 # now compare the two scores...
-                gt_binary = self.sc.gt_tsdf.V[to_evaluate_on] > 0
-                gt_binary[np.isnan(gt_binary)] = -self.sc.mu
+                new_iou = self.sc.evaluate_prediction(pred_new)
+                old_iou = self.sc.evaluate_prediction(self.accum.compute_average().V)
 
-                pred_new = acc_copy.compute_average().V[to_evaluate_on]
-                pred_new[np.isnan(pred_new)] = +self.sc.mu
-
-                new_auc = sklearn.metrics.roc_auc_score(gt_binary, pred_new)
-
-                pred_old = self.accum.compute_average().V[to_evaluate_on]
-                pred_old[np.isnan(pred_old)] = +self.sc.mu
-
-                old_auc = sklearn.metrics.roc_auc_score(gt_binary, pred_old)
-
-                if new_auc > old_auc:
-                    if combine_segments_separately:
-                        self.segement_accums[this_point_label] = acc_copy
-                    else:
-                        self.accum = acc_copy
-                    print "Accepting! Increase of %f" % (new_auc - old_auc)
+                if new_iou > old_iou:
+                    self.accum = acc_copy
+                    print "Accepting! Increase of %f" % (new_iou - old_iou)
                 else:
-                    print "Rejecting! Would have decresed by %f" % (old_auc - new_auc)
+                    print "Rejecting! Would have decresed by %f" % (old_iou - new_iou)
 
             elif oracle == 'true_greedy' or oracle == 'true_greedy_gt':
                 # store up all the predictions, wait until the end to add them in
@@ -561,15 +539,11 @@ class Reconstructer(object):
                 self.possible_predictions.append(Di)
             else:
                 # Standard method - adding voxlet in regardless
-                if combine_segments_separately:
-                    raise Exception('Why????')
-                    self.segement_accums[this_point_label].add_voxlet(transformed_voxlet, accum_only_predict_true, weights=weights_to_use)
-                else:
-                    try:
-                        self.accum.add_voxlet(transformed_voxlet,
-                            accum_only_predict_true, weights=weights_to_use)
-                    except:
-                        import pdb; pdb.set_trace()
+                try:
+                    self.accum.add_voxlet(transformed_voxlet,
+                        accum_only_predict_true, weights=weights_to_use)
+                except:
+                    import pdb; pdb.set_trace()
 
             if 'blender' in render_type and render_savepath:
                 self._blender_render(render_savepath, count,
@@ -619,7 +593,7 @@ class Reconstructer(object):
                 plt.clf()
                 fig = plt.figure(1, figsize=(18, 18))
 
-                '''create range of items'''
+                # create range of items
                 vols = ((features_voxlet.V, 'Observed'),
                            (transformed_voxlet.V, 'Predicted'),
                            (gt_voxlet.V, 'gt'))
@@ -649,7 +623,7 @@ class Reconstructer(object):
             results = collections.OrderedDict()
             self.possible_predictions.sort(key=lambda x: x['distance'])
 
-            # # create a floor plan of the union of all floor plans...
+            # create a floor plan of the union of all floor plans...
             # all_fplans = np.dstack([p['floorplan'] for p in self.possible_predictions])
             # self.union_fplan = np.any(all_fplans, axis=2)
 
@@ -678,20 +652,7 @@ class Reconstructer(object):
 
             return results
 
-        if combine_segments_separately:
-            raise Exception('Why am I here???')
-            with open('/tmp/separate.pkl', 'w') as f:
-                pickle.dump(self.segement_accums, f, protocol=pickle.HIGHEST_PROTOCOL)
-            average = self.sc.gt_tsdf.blank_copy()
-            average.V += self.sc.mu
-            for _, accum in self.segement_accums.iteritems():
-                temp_average = accum.compute_average()
-                print "This sum is ", temp_average.V.sum()
-                to_use = temp_average.V < 0
-                print "To use sum is ", to_use.sum()
-                average.V[to_use] = temp_average.V[to_use]
-        else:
-            average = self.accum.compute_average()
+        average = self.accum.compute_average()
 
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
