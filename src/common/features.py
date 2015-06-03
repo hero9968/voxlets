@@ -411,7 +411,7 @@ class RegionFeatureEngine(object):
 
         # extract the 2d and 3d points corresponding to this segment
         xyz = image.get_world_xyz()[mask.ravel()]
-        norms = image.get_world_normals()[mask.ravel()]
+        # norms = image.get_world_normals()[mask.ravel()]
         rgb = np.vstack((image.rgb[:, :, a].ravel()[mask.ravel()] for a in [0, 1, 2])).T
 
         # now compute each of the features
@@ -512,6 +512,7 @@ class RegionFeatureEngine(object):
         hist, _ = np.histogram(dists, edges)
         return hist.astype(float) / float(num_points)
 
+
 def combine_features(feature_dict, features_to_use='all'):
     '''
     helper function to combine a dictioanry of features into a numpy array
@@ -525,5 +526,4 @@ def combine_features(feature_dict, features_to_use='all'):
         # will use the sorting as specified
         keys = features_to_use
 
-    feature_vector = [feature_dict[key] for key in keys]
-    return np.hstack(feature_vector)
+    return np.hstack([feature_dict[key] for key in keys])
