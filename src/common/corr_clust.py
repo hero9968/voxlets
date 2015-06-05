@@ -35,6 +35,8 @@ class CorrClust(object):
     def test(self, X):
         '''
         running the model on test data
+        TODO - allow for just a subset of edges to be formed, thus creating
+        a sparse matrix of edge probabilities
         '''
         x_pairwise = self._form_pairs(X)
         edge_probabilities = self.rf.predict_proba(x_pairwise)[:, 1]
@@ -98,8 +100,8 @@ class CorrClust(object):
         '''
 
         # convert edge probabilities to weights
-        edge_probabilities[edge_probabilities==0] = 0.001
-        edge_probabilities[edge_probabilities==1] = 1.0 - 0.001
+        edge_probabilities[edge_probabilities==0] = 0.0001
+        edge_probabilities[edge_probabilities==1] = 1.0 - 0.0001
         weights = np.log(edge_probabilities / (1.0 - edge_probabilities))
         np.fill_diagonal(weights, 0)
 
@@ -160,7 +162,6 @@ class CorrClust(object):
             if energy < old_energy:
                 raise Exception("This should never happen!")
             elif energy == old_energy:
-                print "Energy the same, breaking after %d loops" % iteration
                 break
 
             old_energy = energy
@@ -168,10 +169,13 @@ class CorrClust(object):
         else:
             print "Reached max iters (%d), breaking" % iteration
 
-
         _, labels = np.unique(labels, return_inverse=True)
         return labels, energy
 
     def _clustering_energy(self, W, Y):
-        Y = Y[None, :]
+        '''
+        sums up all the edges between items which have been given the same
+        class label
+        '''
+        Y = Y.copy()[None, :]
         return (W * (Y==Y.T).astype(float)).sum()
