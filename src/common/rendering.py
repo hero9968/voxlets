@@ -88,10 +88,16 @@ def render_single_voxlet(
              close_fds=True)
 
         print "Moving render to " + savepath
-        shutil.move('/tmp/temp_voxlet.png', savepath)
+        if not os.path.exists('/tmp/temp_voxlet.png'):
+            print "ERROR - can't find file /tmp/temp_voxlet.png"
+        else:
+            shutil.move('/tmp/temp_voxlet.png', savepath)
 
     if keep_obj:
-        shutil.move('/tmp/temp_voxlet.obj', savepath + '.obj')
+        if not os.path.exists('/tmp/temp_voxlet.obj'):
+            print "ERROR - can't find file /tmp/temp_voxlet.obj"
+        else:
+            shutil.move('/tmp/temp_voxlet.obj', savepath + '.obj')
 
 
 def plot_mesh(verts, faces, ax):
