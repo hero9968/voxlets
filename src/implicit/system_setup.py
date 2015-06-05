@@ -8,5 +8,5 @@ small_sample = True
 max_sequences = 500
 max_test_sequences = 40
 cores = 8
-testing_cores = 8
+testing_cores = 3
 multicore = True

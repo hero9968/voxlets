@@ -13,11 +13,17 @@ import numpy as np
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 
 import system_setup
-import real_data_paths as paths
 from common import scene, carving, features
 from features import line_casting
 
 parameters = yaml.load(open('./implicit_params.yaml'))
+
+if parameters['training_data'] == 'oisin_house':
+    import real_data_paths as paths
+elif parameters['training_data'] == 'synthetic':
+    import synthetic_paths as paths
+else:
+    raise Exception('Unknown training data')
 
 print "Creating output folder"
 savefolder = paths.implicit_training_dir % parameters['features_name']

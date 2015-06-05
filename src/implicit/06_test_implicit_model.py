@@ -21,9 +21,16 @@ from common import scene
 from features import line_casting
 
 import system_setup
-import real_data_paths as paths
 
 parameters = yaml.load(open('./implicit_params.yaml'))
+
+if parameters['testing_data'] == 'oisin_house':
+    import real_data_paths as paths
+elif parameters['testing_data'] == 'synthetic':
+    import synthetic_paths as paths
+else:
+    raise Exception('Unknown training data')
+
 
 render = False
 save_training_pairs = False
@@ -185,14 +192,14 @@ if __name__ == '__main__':
             rf = pickle.load(f)
 
         savename = model_params['name']
-        per_run_args = [(rf, seq, savename) for seq in paths.test_data]
+        per_run_args = ((rf, seq, savename) for seq in paths.test_data)
         print len(rf.estimators_)
         # print list(per_run_args)
 
         if system_setup.multicore:
             import multiprocessing
-            pool = multiprocessing.Pool(system_setup.cores)
-            pool.map_async(process_sequence, per_run_args).get(99999)
+            pool = multiprocessing.Pool(system_setup.testing_cores)
+            pool.map(process_sequence, per_run_args)
             pool.close()
             pool.join()
 

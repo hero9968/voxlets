@@ -3,8 +3,16 @@ combining evaluations
 '''
 
 import yaml
-import real_data_paths as paths
 import numpy as np
+
+parameters = yaml.load(open('./implicit_params.yaml'))
+
+if parameters['testing_data'] == 'oisin_house':
+    import real_data_paths as paths
+elif parameters['testing_data'] == 'synthetic':
+    import synthetic_paths as paths
+else:
+    raise Exception('Unknown training data')
 
 modelname = 'v1'
 
@@ -18,17 +26,18 @@ def load_results_for_model(model):
 
 
 tests = ['iou', 'precision', 'recall']
-models = [ 'cobweb', 'rays', 'rays_cobweb', 'zheng_2', 'zheng_3',
-        'rays_cobweb_10',
-        'rays_cobweb_100',
-        'rays_cobweb_1000',
-        'rays_cobweb_5000',
-        'rays_cobweb_10000',
-        'rays_cobweb_20000',
-        'rays_cobweb_50000',
-        'rays_cobweb_100000',
-        'rays_cobweb_500000',
-        'rays_cobweb_1000000']
+# , 'zheng_2', 'zheng_3',
+models = [ 'cobweb', 'rays', 'rays_cobweb', 'rays_autorotate']
+#         'rays_cobweb_10',
+#         'rays_cobweb_100',
+#         'rays_cobweb_1000',
+#         'rays_cobweb_5000',
+#         'rays_cobweb_10000',
+#         'rays_cobweb_20000',
+#         'rays_cobweb_50000',
+#         'rays_cobweb_100000',
+#         'rays_cobweb_500000',
+#         'rays_cobweb_1000000']
 # 'autorotate', 'sorted_together',
 
 
@@ -60,6 +69,6 @@ for model in models:
     for test in tests:
         avg_result = np.array([result[test] for result in all_results]).mean()
         thisstr += ('%0.4f & ' % avg_result)
-    print thisstr[:-4] + ' \\\\'
+    print thisstr[:-3] + ' \\\\'
 
 print '\\end{table}'
