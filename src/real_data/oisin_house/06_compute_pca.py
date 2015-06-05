@@ -17,7 +17,7 @@ from common import scene, rendering
 import real_data_paths as paths
 import system_setup
 
-parameters_path = './training_data_params.yaml'
+parameters_path = './training_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 # Only using a subset of training sequences
@@ -69,20 +69,21 @@ def process_sequence(sequence, voxlet_params):
     return np.array(gt_shoeboxes)
 
 
-# need to import these *after* the pool helper has been defined
-if system_setup.multicore:
-    import multiprocessing
-    mapper = multiprocessing.Pool(system_setup.cores).map
-else:
-    mapper = map
-
 
 def extract_all_voxlets(voxlet_params_in):
 
     # this allows for passing multiple arguments to the mapper
     func = functools.partial(process_sequence, voxlet_params=voxlet_params_in)
 
-    voxlet_list = mapper(func, train_data_to_use)
+    # need to import these *after* the pool helper has been defined
+    if system_setup.multicore:
+        import multiprocessing
+        pool = multiprocessing.Pool(system_setup.cores)
+        voxlet_list = pool.map(func, train_data_to_use)
+        pool.close()
+        pool.join()
+    else:
+        map(func, train_data_to_use)
 
     print "length is ", len(voxlet_list)
     np_voxlets = np.vstack(voxlet_list).astype(np.float16)
@@ -105,9 +106,10 @@ def render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath):
         arrs = (np_voxlets[idx].reshape(voxlet_params['shape']),
                 np_masks[idx].reshape(voxlet_params['shape']))
 
+        height = voxlet_params['name'].partition("_")[0]
         savepath = folderpath + '/%03d_voxlet.png' % count
         rendering.render_single_voxlet(
-            arrs[0], savepath, height=voxlet_params['name'], speed='quick')
+            arrs[0], savepath, height=height, speed='quick')
 
         # saving the slice
         savepath = folderpath + '/%03d_slice.png' % count
@@ -117,16 +119,16 @@ def render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath):
 if __name__ == '__main__':
 
     # Repeat for each type of voxlet in the parameters
-    for voxlet_params in parameters['voxlets']:
+    for voxlet_name, voxlet_params in parameters['voxlet_sizes'].iteritems():
 
         tic = time()
 
-        pca_savefolder = paths.voxlets_dictionary_path % voxlet_params['name']
+        pca_savefolder = paths.voxlets_dictionary_path % voxlet_name
 
         if not os.path.exists(pca_savefolder):
             os.makedirs(pca_savefolder)
 
-        print "-> Extracting the voxlets, type %s" % voxlet_params['name']
+        print "-> Extracting the voxlets, type %s" % voxlet_name
         np_voxlets = extract_all_voxlets(voxlet_params)
 
         print "-> Extracting masks"
@@ -134,7 +136,7 @@ if __name__ == '__main__':
         np_voxlets[np_masks == 1] = parameters['mu']
 
         print "-> Rendering"
-        folderpath = paths.voxlets_dictionary_path + '/renders/' + voxlet_params['name'] + '/'
+        folderpath = paths.voxlets_dictionary_path + '/renders/' + voxlet_name + '/'
         render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath)
 
         print "-> Doing the PCA"

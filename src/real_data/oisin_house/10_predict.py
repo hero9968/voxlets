@@ -58,7 +58,7 @@ if __name__ == '__main__':
                 rec = voxlets.Reconstructer()
                 rec.set_scene(sc)
                 rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-                rec.set_probability_model_one(0.5)
+                rec.set_model_probabilities(params['model_probabilities'])
                 rec.set_model(models)
 
                 for model in rec.model:

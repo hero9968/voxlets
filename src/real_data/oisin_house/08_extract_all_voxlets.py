@@ -15,7 +15,7 @@ from common import scene, features
 
 import real_data_paths as paths
 
-parameters_path = './training_data_params.yaml'
+parameters_path = './training_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 
@@ -82,31 +82,32 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
         pickle.dump(D, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-if system_setup.multicore:
-    # need to import these *after* pool_helper has been defined
-    import multiprocessing
-    mapper = multiprocessing.Pool(system_setup.cores).map
-else:
-    mapper = map
-
-
 if __name__ == '__main__':
 
     # Repeat for each type of voxlet in the parameters
-    for voxlet_params in parameters['voxlets']:
+    for voxlet_name, voxlet_params in parameters['voxlet_sizes'].iteritems():
 
-        print "Processing voxlet type :", voxlet_params['name']
+        print "Processing voxlet type :", voxlet_name
         tic = time()
 
         print "-> Loading PCA models"
-        pca_savefolder = paths.voxlets_dictionary_path % voxlet_params['name']
+        pca_savefolder = paths.voxlets_dictionary_path % voxlet_name
         pca = pickle.load(open(pca_savefolder + 'voxlets_pca.pkl'))
         mask_pca = pickle.load(open(pca_savefolder + 'masks_pca.pkl'))
 
-        print "-> Extracting the voxlets, type %s" % voxlet_params['name']
+        print "-> Extracting the voxlets, type %s" % voxlet_name
         func = functools.partial(process_sequence,
             pca=pca, mask_pca=mask_pca, voxlet_params=voxlet_params)
-        mapper(func, paths.all_train_data)
+
+        if system_setup.multicore:
+            # need to import these *after* pool_helper has been defined
+            import multiprocessing
+            pool = multiprocessing.Pool(system_setup.cores)
+            pool.map(func, paths.all_train_data)
+            pool.close()
+            pool.
+        else:
+            map(func, paths.all_train_data)
 
         print "In total took %f s" % (time() - tic)
 

@@ -56,6 +56,7 @@ def load_training_data(voxlet_name, feature_name):
 
     return np_features, np_voxlets, np_masks, np_scene_ids
 
+
 def train_model(model_params):
 
     print "-> Ensuring output folder exists"

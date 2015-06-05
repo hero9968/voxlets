@@ -75,19 +75,15 @@ if __name__ == '__main__':
     scores = ['iou', 'precision', 'recall']
 
     # loop over tall v short voxlets
-    for vox_type in ['short', 'tall']:
+    for model_name in ['short_cobweb', 'tall_cobweb']:
 
         # loop over feature type
         for feature_type in ['mahalanobis', 'gt_oracle_full', 'gt_oracle', 'samples', 'cobweb']:
 
-            print "--> Voxel type %s, feature type %s" % (vox_type, feature_type)
+            print "--> Model name %s, feature type %s" % (model_name, feature_type)
 
             print "--> Loading models..."
-            if 'gt_oracle' in feature_type or 'mahalanobis' in feature_type:
-                model_name = 'cobweb'
-            else:
-                model_name = feature_type
-            loadpath = paths.voxlet_model_path % (vox_type, model_name)
+            loadpath = paths.voxlet_model_path % model_name
             model = pickle.load(open(loadpath.replace('.pkl', '_full.pkl')))
 
             if 'gt_oracle' in feature_type or 'mahalanobis' in feature_type:
