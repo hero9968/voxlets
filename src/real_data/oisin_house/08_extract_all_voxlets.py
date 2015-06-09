@@ -105,7 +105,7 @@ if __name__ == '__main__':
             pool = multiprocessing.Pool(system_setup.cores)
             pool.map(func, paths.all_train_data)
             pool.close()
-            pool.
+            pool.join()
         else:
             map(func, paths.all_train_data)
 

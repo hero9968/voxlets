@@ -109,6 +109,9 @@ def process_sequence(sequence):
     print "-> Main renders"
     for test_params in parameters['tests']:
 
+            if test_params['name'] == 'ground_truth':
+                continue
+
             print "Rendering ", test_params['name']
 
             prediction_savepath = fpath + test_params['name'] + '.pkl'
@@ -130,7 +133,8 @@ def process_sequence(sequence):
                     item.render_view(savepath, xy_centre=True, ground_height=ground_height)
             else:
                 prediction.render_view(gen_renderpath % test_params['name'],
-                    xy_centre=True, ground_height=ground_height)
+                    xy_centre=True, ground_height=ground_height, keep_obj=True)
+                print "Saving to ", gen_renderpath % test_params['name']
 
 
                 # savepath = (gen_renderpath % test_params['name']).replace('.png', '_slice.png')
@@ -157,7 +161,9 @@ else:
 
 if __name__ == '__main__':
 
-    results = mapper(process_sequence, paths.test_data)
+    print "WARNING - SMALL TEST DATA"
+    test_data = yaml.load(open('/media/ssd/data/oisin_house/train_test/test.yaml'))
+    results = mapper(process_sequence, test_data[20:21])
 
 
 

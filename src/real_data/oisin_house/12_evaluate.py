@@ -21,8 +21,6 @@ def process_sequence(sequence):
     fpath = paths.prediction_folderpath % (parameters['batch_name'], sequence['name'])
     gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
 
-    print np.nanmin(gt_scene.im.depth), np.nanmax(gt_scene.im.depth)
-
     results_dict = collections.OrderedDict()
 
     for test_params in parameters['tests']:
@@ -76,7 +74,7 @@ def process_sequence(sequence):
 # need to import these *after* the pool helper has been defined
 if system_setup.multicore:
     import multiprocessing
-    mapper = multiprocessing.Pool(system_setup.testing_cores).map
+    mapper = multiprocessing.Pool(8).map
 else:
     mapper = map
 
@@ -94,7 +92,10 @@ def get_mean_score(test, all_scores, score_type):
 
 if __name__ == '__main__':
 
+    print "WARNING - SMALL TEST DATA"
+    # test_data = yaml.load(open('/media/ssd/data/oisin_house/train_test/test.yaml'))
     results = mapper(process_sequence, paths.test_data)
+    yaml.dump(results, open('./different_train_test/all_results.yaml', 'w'))
 
     # printing the accumulated table
     scores = ['iou', 'precision', 'recall']

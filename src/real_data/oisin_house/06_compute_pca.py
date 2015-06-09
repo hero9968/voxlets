@@ -14,11 +14,16 @@ from sklearn.decomposition import RandomizedPCA
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import scene, rendering
 
-import real_data_paths as paths
 import system_setup
 
-parameters_path = './training_params.yaml'
-parameters = yaml.load(open(parameters_path))
+parameters = yaml.load(open('./training_params.yaml'))
+
+if parameters['training_data'] == 'oisin_house':
+    import real_data_paths as paths
+elif parameters['training_data'] == 'synthetic':
+    import synthetic_paths as paths
+else:
+    raise Exception('Unknown training data')
 
 # Only using a subset of training sequences
 # Ensuring to randomly sample from them, in case there is some sort of inherent
