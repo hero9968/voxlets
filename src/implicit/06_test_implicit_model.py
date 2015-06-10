@@ -32,7 +32,7 @@ else:
     raise Exception('Unknown training data')
 
 
-render = False
+render = True
 save_training_pairs = False
 
 def plot_slice(V):

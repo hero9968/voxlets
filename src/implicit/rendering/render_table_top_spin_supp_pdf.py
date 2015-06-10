@@ -1,6 +1,6 @@
 #
 # Run from command line
-# blender -b spin_tt.blend -P render_video_table_top_spin.py
+# blender -b spin_tt.blend -P render_table_top_spin_supp_pdf.py
 #
 
 import bpy
@@ -9,22 +9,19 @@ import os
 import numpy as np
 
 # folder of objs
-ip_dir = '/media/ssd/data/oisin_house/implicit/models/'
-op_dir = '/media/ssd/data/oisin_house/implicit/renders/'
+ip_dir = '/media/ssd/data/rendered_arrangements/implicit/models/'
+op_dir = '/media/ssd/data/rendered_arrangements/implicit/renders/'
 
 if not os.path.isdir(op_dir):
     os.mkdir(op_dir)
 
 views = np.radians([270, 180, 90, 0])
 
-#scenes = ['saved_00207_[536]', 'saved_00230_[45]', 'saved_00231_[55]', 'saved_00233_[134]']
-file_types = ['gt.png.obj', 'Medioid.png.obj', 'pred_remove_excess.png.obj', 'visible.png.obj']
-
 # each tuple: (rendername, modelname, filename)
 render_types = [('gt', 'rays_cobweb', 'gt_render.png.obj'),
                 ('visible', 'rays_cobweb', 'visible_render.png.obj'),
-                ('rays', 'rays', 'prediction_render.png.obj'),
-                ('zheng2', 'zheng2', 'prediction_render.png.obj')]
+                ('rays_cobweb', 'rays_cobweb', 'prediction_render.png.obj')]
+                # ('zheng2', 'zheng2', 'prediction_render.png.obj')]
 
 # colors
 colors = np.asarray([[168, 211, 36], [80, 192, 233], [255, 198, 65], [255, 95, 95], [203, 151, 255]]) / 255.0
@@ -58,6 +55,7 @@ for render_type_idx, (rendername, modelname, filename) in enumerate(render_types
         o = bpy.context.selected_objects[0]
         o.active_material = mat
         o.rotation_mode = 'XYZ'
+        o.scale = ((0.4, 0.4, 0.4))
 
         # remove holes from mesh
         # mess fix this
