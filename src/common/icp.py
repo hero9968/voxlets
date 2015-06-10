@@ -2,7 +2,9 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 
-def icp(fixed, floating, R=np.eye(2), t=np.array([0, 0]), no_iterations = 13):
+def icp(fixed, floating, R=np.eye(2), t=np.array([0, 0]),
+    no_iterations=20,
+    outlier_dist=None):
     '''
     The Iterative Closest Point estimator.
     Takes two cloudpoints a[x,y], b[x,y], an initial estimation of
@@ -16,6 +18,11 @@ def icp(fixed, floating, R=np.eye(2), t=np.array([0, 0]), no_iterations = 13):
         (2) A large number of iterations does not necessarily
         ensure convergence. Contrarily, most of the time it
         produces worse results.
+
+    MF:
+    I called the point clouds fixed and floating because I can never remember
+    which is model and which is template.
+    The fixed one stays fixed, the floating one is moved close to the fixed one.
     '''
 
     # fit nearest neighbour model to the fixed cloud
@@ -37,9 +44,24 @@ def icp(fixed, floating, R=np.eye(2), t=np.array([0, 0]), no_iterations = 13):
             print "Error - Everyone is attracted to one point"
             return None, None
 
-        #Compute the transformation between the current source
-        #and destination cloudpoint
-        R, t, error = procrustes(fixed[indices.ravel()].copy(), floating.copy())
+        if outlier_dist:
+            to_use = distances.flatten() < outlier_dist
+
+            if to_use.sum() < 3:
+                raise Exception("Error - not enough points to match")
+
+            #Compute the transformation between the current source
+            #and destination cloudpoint
+            print to_use.shape, indices.shape
+            print indices.ravel()[to_use]
+            R, t, error = procrustes(
+                fixed[indices.ravel()[to_use]].copy(),
+                floating[to_use].copy())
+
+        else:
+            #Compute the transformation between the current source
+            #and destination cloudpoint
+            R, t, error = procrustes(fixed[indices.ravel()].copy(), floating.copy())
 
         if error == prev_error:
             print "Breaking after %d iterations" % i
