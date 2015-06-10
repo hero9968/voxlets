@@ -30,11 +30,17 @@ tests:
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
 
-  - name: 'short_cobweb_0.0075'
-    models_to_use: ['short_cobweb_0.0075']
-    <<: *DEFAULT_GENERAL
-    reconstruction_params:
-        <<: *DEFAULT_RECONSTRUCTION
+  # - name: 'standard_cobweb'
+  #   models_to_use: ['short_cobweb', 'tall_cobweb']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'short_cobweb_0.0075'
+  #   models_to_use: ['short_cobweb_0.0075']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
 
   - name: 'short_cobweb_0.005'
     models_to_use: ['short_cobweb_0.005']
@@ -42,29 +48,56 @@ tests:
     reconstruction_params:
         <<: *DEFAULT_RECONSTRUCTION
 
-  - name: 'short_cobweb_0.0025'
-    models_to_use: ['short_cobweb_0.0025']
+  - name: 'short_cobweb_0.002'
+    models_to_use: ['short_cobweb_0.002']
     <<: *DEFAULT_GENERAL
     reconstruction_params:
         <<: *DEFAULT_RECONSTRUCTION
 
-  - name: 'short_cobweb_0.01'
-    models_to_use: ['short_cobweb_0.01']
+  - name: 'short_cobweb_0.004'
+    models_to_use: ['short_cobweb_0.004']
     <<: *DEFAULT_GENERAL
     reconstruction_params:
         <<: *DEFAULT_RECONSTRUCTION
 
-  - name: 'short_cobweb_0.0125'
-    models_to_use: ['short_cobweb_0.0125']
-    <<: *DEFAULT_GENERAL
-    reconstruction_params:
-        <<: *DEFAULT_RECONSTRUCTION
+  # - name: 'short_cobweb_0.0025'
+  #   models_to_use: ['short_cobweb_0.0025']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
 
-  - name: 'tall_cobweb'
-    models_to_use: ['tall_cobweb']
-    <<: *DEFAULT_GENERAL
-    reconstruction_params:
-        <<: *DEFAULT_RECONSTRUCTION
+  # - name: 'short_cobweb_0.00125'
+  #   models_to_use: ['short_cobweb_0.00125']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'short_cobweb_0.01'
+  #   models_to_use: ['short_cobweb_0.01']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'short_cobweb_0.0125'
+  #   models_to_use: ['short_cobweb_0.0125']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'tall_cobweb'
+  #   models_to_use: ['tall_cobweb']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+
+
+
+
+
+
+
+
 
   # - name: 'standard_cobweb_we0.2'
   #   <<: *DEFAULT_GENERAL

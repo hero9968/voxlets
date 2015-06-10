@@ -1,5 +1,6 @@
 mu: 0.025
 voxel_size: 0.005
+training_data: 'oisin_house'
 
 pca:
     number_points_from_each_image: 200
@@ -101,6 +102,17 @@ voxlet_sizes:
         # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25, 0.5]
 
+    short_0.00125:
+        name: 'short_0.00125'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+          # edge size of a single voxel
+        size: 0.00125
+        # centre is relative to the ijk origin at the bottom corner of the voxlet
+        # z height of centre takes into account the origin offset
+        relative_centre: [0.5, 0.25, 0.5]
+
     short_0.0025:
         name: 'short_0.0025'
         tall_voxlets: False
@@ -108,6 +120,28 @@ voxlet_sizes:
         shape: [20, 40, 20]
           # edge size of a single voxel
         size: 0.0025
+        # centre is relative to the ijk origin at the bottom corner of the voxlet
+        # z height of centre takes into account the origin offset
+        relative_centre: [0.5, 0.25, 0.5]
+
+    short_0.002:
+        name: 'short_0.002'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+          # edge size of a single voxel
+        size: 0.002
+        # centre is relative to the ijk origin at the bottom corner of the voxlet
+        # z height of centre takes into account the origin offset
+        relative_centre: [0.5, 0.25, 0.5]
+
+    short_0.004:
+        name: 'short_0.004'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+          # edge size of a single voxel
+        size: 0.004
         # centre is relative to the ijk origin at the bottom corner of the voxlet
         # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25, 0.5]
@@ -125,40 +159,64 @@ voxlet_sizes:
         tall_voxlet_height: 0.375
 
 models_to_train:
--   name: 'short_cobweb_0.0075'
-    voxlet_type: 'short'
+# -   name: 'short_cobweb_0.0075'
+#     voxlet_type: 'short'
+#     feature: 'cobweb'
+#     forest:
+#         num_trees:
+#         <<: *DEFAULT_FOREST
+
+# -   name: 'short_cobweb_0.005'
+#     voxlet_type: 'short_0.005'
+#     feature: 'cobweb'
+#     forest:
+#         num_trees:
+#         <<: *DEFAULT_FOREST
+
+# -   name: 'short_cobweb_0.0125'
+#     voxlet_type: 'short_0.0125'
+#     feature: 'cobweb'
+#     forest:
+#         num_trees:
+#         <<: *DEFAULT_FOREST
+
+# -   name: 'short_cobweb_0.00125'
+#     voxlet_type: 'short_0.00125'
+#     feature: 'cobweb'
+#     forest:
+#         num_trees:
+#         <<: *DEFAULT_FOREST
+
+-   name: 'short_cobweb_0.002'
+    voxlet_type: 'short_0.002'
     feature: 'cobweb'
     forest:
         num_trees:
         <<: *DEFAULT_FOREST
 
--   name: 'short_cobweb_0.005'
-    voxlet_type: 'short_0.005'
+-   name: 'short_cobweb_0.004'
+    voxlet_type: 'short_0.004'
     feature: 'cobweb'
     forest:
         num_trees:
         <<: *DEFAULT_FOREST
 
--   name: 'short_cobweb_0.0125'
-    voxlet_type: 'short_0.0125'
-    feature: 'cobweb'
-    forest:
-        num_trees:
-        <<: *DEFAULT_FOREST
+# -   name: 'short_cobweb_0.0025'
+#     voxlet_type: 'short_0.0025'
+#     feature: 'cobweb'
+#     forest:
+#         num_trees:
+#         <<: *DEFAULT_FOREST
 
--   name: 'short_cobweb_0.0025'
-    voxlet_type: 'short_0.0025'
-    feature: 'cobweb'
-    forest:
-        num_trees:
-        <<: *DEFAULT_FOREST
+# -   name: 'short_cobweb_0.01'
+#     voxlet_type: 'short_0.01'
+#     feature: 'cobweb'
+#     forest:
+#         num_trees:
+#         <<: *DEFAULT_FOREST
 
--   name: 'short_cobweb_0.01'
-    voxlet_type: 'short_0.01'
-    feature: 'cobweb'
-    forest:
-        num_trees:
-        <<: *DEFAULT_FOREST
+
+
 
 # -   name: 'tall_cobweb_100_trees'
 #     voxlet_type: 'tall'
