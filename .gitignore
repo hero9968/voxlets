@@ -25,7 +25,7 @@ temp.*
 /media/report/build/writeup.pdf
 /media/report/diff.tex
 /src/preprocess/voxelisation/voxelcvml
-/src/intrinsic/features/line_casting_cython.c
+/src/implicit/features/line_casting_cython.c
 *.ipynb
 /media/report_extra/
 *.docx
