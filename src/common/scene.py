@@ -12,6 +12,7 @@ import features
 import carving
 import cPickle as pickle
 import yaml
+from yaml import CLoader
 from copy import deepcopy
 import matplotlib
 matplotlib.use('Agg')
@@ -41,9 +42,10 @@ class Scene(object):
         '''
         Returns a list of frames from a scene
         If frames then returns only the specified frame numbers
+        Opening the yaml file is actually quite surprisingly slow
         '''
         with open(scene_dir + '/poses.yaml', 'r') as f:
-            frames = yaml.load(f)
+            frames = yaml.load(f, Loader=CLoader)
 
         if frame_idxs is not None:
             if isinstance(frame_idxs, list):
@@ -205,6 +207,7 @@ class Scene(object):
             sample_rate[self.im.mask==0] = 0
             sample_rate[self.im.normals[:, 2].reshape(shape) > -0.1] = 0
             sample_rate[self.im.get_world_normals()[:, 2].reshape(shape) > 0.98] = 0
+            sample_rate[np.isnan(self.gt_im_label)] = 0
 
             sample_rate /= sample_rate.sum()
 
@@ -292,8 +295,7 @@ class Scene(object):
             self.set_gt_tsdf(voxel_data.load_voxels(vox_location), 0.035)
 
         self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -self.mu
-        self.gt_tsdf.set_origin(self.gt_tsdf.origin,
-                self.gt_tsdf.R)
+        self.gt_tsdf.set_origin(self.gt_tsdf.origin, self.gt_tsdf.R)
 
         # loading in the image
         sequence_frames = sequence['frames'][frame_nos]
@@ -342,7 +344,7 @@ class Scene(object):
                 temp_tsdf = self.gt_tsdf
 
             self.gt_labels = self._segment_tsdf_project_2d(
-                temp_tsdf, z_threshold=1, floor_height=4)
+                temp_tsdf, z_threshold=1, floor_height=15)
 
             self.gt_labels_separate = \
                 self._separate_binary_grids(self.gt_labels.V, True)
@@ -425,8 +427,13 @@ class Scene(object):
         # getting a copy of the voxelgrid, in which only the specified label exists
         if extract_from == 'gt_tsdf':
             this_point_label = self.gt_im_label[index[0], index[1]]
-            temp_vgrid = self.gt_tsdf_separate[this_point_label]
-            shoebox.fill_from_grid(temp_vgrid)
+            if np.isnan(this_point_label):
+                # this shouldn't happen too much, only due to rounding errors
+                print "Nan in sampled point"
+                shoebox.fill_from_grid(sc.gt_tsdf)
+            else:
+                temp_vgrid = self.gt_tsdf_separate[this_point_label]
+                shoebox.fill_from_grid(temp_vgrid)
 
         elif extract_from == 'visible_tsdf':
             this_point_label = self.visible_im_label[index[0], index[1]]
@@ -551,7 +558,7 @@ class Scene(object):
         labels = skimage.measure.label(xy_proj).astype(np.int16)
 
         # dilate each of the labels
-        el = disk(3)
+        el = disk(5)
         for idx in range(1, labels.max()+1):
             labels[binary_dilation(labels == idx, el)] = idx
 

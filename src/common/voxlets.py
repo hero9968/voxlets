@@ -349,8 +349,9 @@ class Reconstructer(object):
         # during testing it makes sense to save the GT grid, for visualisation
         self.gt_grid = gt_grid
 
-    def set_probability_model_one(self, ini):
-        self.prob_model_one = ini
+    def set_model_probabilities(self, ini):
+        # was set_probability_model_one
+        self.model_probabilities = ini
 
     def fill_in_output_grid(
             self,
@@ -416,14 +417,11 @@ class Reconstructer(object):
             sys.stdout.write('>> [%d]' % count)
             sys.stdout.flush()
 
-            if hasattr(self.model, '__iter__'):
-                # randomly choose model to use...
-                if np.random.rand() > self.prob_model_one:
-                    model_to_use = self.model[1]
-                else:
-                    model_to_use = self.model[0]
+            # randomly choose model to use...
+            if len(self.model) == 1:
+                model_to_use = self.model[0]
             else:
-                model_to_use = self.model
+                model_to_use = np.random.choice(self.model, 1, p=self.model_probabilities)[0]
 
             tic = time.time()
             # find the segment index of this voxlet
