@@ -2,8 +2,8 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 
-def icp(fixed, floating, R=np.eye(2), t=np.array([0, 0]),
-    no_iterations=20,
+def icp(fixed, floating, R=None, t=None,
+    no_iterations=100,
     outlier_dist=None):
     '''
     The Iterative Closest Point estimator.
@@ -24,11 +24,19 @@ def icp(fixed, floating, R=np.eye(2), t=np.array([0, 0]),
     which is model and which is template.
     The fixed one stays fixed, the floating one is moved close to the fixed one.
     '''
+    assert floating.shape[1] == fixed.shape[1], \
+        'Error - both clouds must be of the same dimensionality'
+    N, d = fixed.shape
+
+    if t is None:
+        t = np.zeros(d,)
+
+    if R is None:
+        R = np.eye(d)
 
     # fit nearest neighbour model to the fixed cloud
     nn = NearestNeighbors(n_neighbors=1, algorithm='auto').fit(fixed)
 
-    trans = [floating.copy()]
     prev_error = np.inf
 
     for i in range(no_iterations):
@@ -52,11 +60,10 @@ def icp(fixed, floating, R=np.eye(2), t=np.array([0, 0]),
 
             #Compute the transformation between the current source
             #and destination cloudpoint
-            print to_use.shape, indices.shape
-            print indices.ravel()[to_use]
             R, t, error = procrustes(
                 fixed[indices.ravel()[to_use]].copy(),
                 floating[to_use].copy())
+            print error
 
         else:
             #Compute the transformation between the current source
@@ -105,10 +112,12 @@ def procrustes(data1, data2):
     mtx2 = _normalize(mtx2)
 
     # transform mtx2 to minimize disparity (sum( (mtx1[i,j] - mtx2[i,j])^2) )
+    # this is the svd bit!
     mtx2, R = _match_points(mtx1, mtx2)
 
     disparity = _get_disparity(mtx1, mtx2)
 
+    # compile t1, t2, and R into a single R and t
     inv_R = np.linalg.inv(R)
     t = - inv_R.dot(t2) + t1
 
