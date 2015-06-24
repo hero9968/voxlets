@@ -470,3 +470,17 @@ class RGBDVideo():
         return vid
 
 
+
+class Rgbd_region(object):
+    '''
+    class to store a region from an rgbd image
+    '''
+    def __init__(self, im, mask):
+        self.im = im
+        self.mask = mask
+
+    def get_world_xyz(self):
+        return self.im.get_world_xyz()[self.mask.ravel()]
+
+    def get_world_normals(self):
+        return self.im.get_world_normals()[self.mask.ravel()]

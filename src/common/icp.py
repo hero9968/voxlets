@@ -2,9 +2,8 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 
-def icp(fixed, floating, R=None, t=None,
-    no_iterations=100,
-    outlier_dist=None):
+def icp(fixed, floating, R=None, t=None, no_iterations=100, outlier_dist=None,
+        constraint=None, transform_type='point_to_plane', normals=None):
     '''
     The Iterative Closest Point estimator.
     Takes two cloudpoints a[x,y], b[x,y], an initial estimation of
@@ -34,6 +33,17 @@ def icp(fixed, floating, R=None, t=None,
     if R is None:
         R = np.eye(d)
 
+    # choosing which algorithm to use
+    if transform_type=='point_to_plane':
+        if normals is None:
+            raise ValueError('Must give normals')
+        else:
+            def transform_f(fixed, norms, floating):
+                return point_to_plane_align(fixed, norms, floating)
+    elif transform_type=='point_to_point':
+        def transform_f(fixed, norms, floating):
+            return procrustes(fixed, floating)
+
     # fit nearest neighbour model to the fixed cloud
     nn = NearestNeighbors(n_neighbors=1, algorithm='auto').fit(fixed)
 
@@ -60,15 +70,30 @@ def icp(fixed, floating, R=None, t=None,
 
             #Compute the transformation between the current source
             #and destination cloudpoint
-            R, t, error = procrustes(
-                fixed[indices.ravel()[to_use]].copy(),
-                floating[to_use].copy())
-            print error
+            temp_fixed = fixed[indices.ravel()[to_use]].copy()
+            temp_floating = floating[to_use].copy()
+            if normals is not None:
+                temp_fixed_norms = normals[indices.ravel()[to_use]]
+            else:
+                temp_fixed_norms = floating
+
+            if constraint is None:
+                # no constraints, full 6DOF transformation
+                R, t, error = transform_f(temp_fixed, temp_fixed_norms, temp_floating)
+
+            elif constraint == 'z':
+
+                tR, tt, error = transform_f(
+                    temp_fixed[:, :2], temp_fixed_norms[:, :2], temp_floating[:, :2])
+                R = np.array([[tR[0, 0], tR[0, 1], 0], [tR[1, 0], tR[1, 1], 0], [0, 0, 1]])
+                t = np.array([tt[0], tt[1], 0])
+            else:
+                raise ValueError('Unknown constraint', constraint)
 
         else:
             #Compute the transformation between the current source
             #and destination cloudpoint
-            R, t, error = procrustes(fixed[indices.ravel()].copy(), floating.copy())
+            R, t, error = transform_f(fixed[indices.ravel()].copy(), None, floating.copy())
 
         if error == prev_error:
             print "Breaking after %d iterations" % i
@@ -79,12 +104,80 @@ def icp(fixed, floating, R=None, t=None,
 
         prev_error = error
 
-    return R, t
+    inlier_count = to_use.sum()
 
-def _transform(X, R, t):
+    return R, t, error, inlier_count
+
+
+def point_to_plane_align(fixed, fixed_normals, floating):
+    '''
+    following: http://www.cs.princeton.edu/~smr/papers/icpstability.pdf
+    p is floating
+    q is fixed
+    '''
+    d = fixed.shape[1]
+
+    # computing c
+    c = np.cross(floating, fixed_normals, 1)
+    print "c is shape", c.shape
+
+    stack = np.hstack((c, fixed_normals))
+    print stack.shape
+
+    # compute M
+    M = np.zeros(d)
+    for s in stack:
+        M += np.outer(s, s)
+
+    print "M is "
+    print M
+
+    # compute b (hopefully the broadcasting will work here)
+    p_minus_q = floating - fixed
+    b = c * np.dot(p_minus_q, normals)
+
+    # now solve Ma=b
+    # (should really use the cholesky decomposition...)
+    a = scipy.linalg.solve(M, b)
+
+    # now reform the rotation matrix etc
+    angles, t = np.split(a, 2)
+    print "Angles is ", angles
+
+    if d == 2:
+        alpha, _ = angles
+        R = np.eye(2)
+        R[0, 1] = -alpha
+        R[1, 0] = alpha
+
+    elif d == 3:
+        alpha, beta, gamma = angles
+        R = np.eye(3)
+        R[0, 1] = -gamma
+        R[1, 0] = gamma
+        R[0, 2] = -beta
+        R[2, 0] = beta
+        R[1, 2] = -alpha
+        R[2, 1] = alpha
+
+    else:
+        raise ValueError('Only can deal with 2 or 3 dims at the moment')
+
+
+    # orthonormalise the rotation matrix (from libicp)
+    u, v, d = np.linalg.svd(R)
+    R = np.dot(u, d.T)
+
+    # compute the error
+    p_trans = _transform(p, R, t)
+    disparity = _get_disparity(q, p_trans)
+
+    return R, t, disparity
+
+
+def _transform(X, R=np.eye(3), t=np.zeros(3,)):
     # print "Xt is ", X.shape, T.shape
     return np.dot(R, X.T).T + t
-
 
 
 def procrustes(data1, data2):
@@ -120,7 +213,6 @@ def procrustes(data1, data2):
     # compile t1, t2, and R into a single R and t
     inv_R = np.linalg.inv(R)
     t = - inv_R.dot(t2) + t1
-
     # return np.linalg.inv(R), t, disparity
     return inv_R, t, disparity
 
@@ -139,7 +231,7 @@ def _normalize(mtx):
     Parameters
     ----------
     mtx : array_like
-        Matrix to scale the data for.
+        outMatrix to scale the data for.
 
     Notes
     -----
@@ -161,10 +253,16 @@ def _match_points(mtx1, mtx2):
 
     """
     u, s, vh = np.linalg.svd(np.dot(np.transpose(mtx1), mtx2))
-    q = np.dot(np.transpose(vh), np.transpose(u))
-    new_mtx2 = np.dot(mtx2, q)
+    q = np.dot(vh.T, u.T)
     # new_mtx2 *= np.sum(s)
 
+    # don't want any reflections for ICP
+    if np.linalg.det(q) < 0:
+        vh[:,-1] *= -1
+        # s[-1] *= -1  should uncomment this if allowing for scale
+        q = np.dot(vh.T, u.T)
+
+    new_mtx2 = np.dot(mtx2, q)
     return new_mtx2, q
 
 
