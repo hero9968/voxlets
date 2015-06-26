@@ -135,7 +135,7 @@ def pairwise_match(fixed, floating, outlier_dist, start_rotations=12):
     does icp for multiple starting rotaions about the z axis
     returns each possible match
     '''
-    nn = NearestNeighbors(n_neighbors=1, algorithm='auto').fit(fixed)
+    # nn = NearestNeighbors(n_neighbors=1, algorithm='auto').fit(fixed)
 
     possible_transforms = []
 
@@ -153,12 +153,12 @@ def pairwise_match(fixed, floating, outlier_dist, start_rotations=12):
         R, t = pmicp_wrapper(fixed, floating, R=R_init, t=t_init)
 
         # form some estimation of the error
-        temp_float = icp._transform(floating, R, t)
-        distances, indices = nn.kneighbors(temp_float)
-        to_use = distances.flatten() < outlier_dist
+        # temp_float = icp._transform(floating, R, t)
+        # distances, indices = nn.kneighbors(temp_float)
+        # to_use = distances.flatten() < outlier_dist
 
-        unmatched_floating = np.sum(~to_use)
-        unmatched_fixed = fixed.shape[0] - np.unique(indices.ravel()[to_use]).shape[0]
+        # unmatched_floating = np.sum(~to_use)
+        # unmatched_fixed = fixed.shape[0] - np.unique(indices.ravel()[to_use]).shape[0]
 
         # error = icp._get_disparity(
         #     fixed[indices.ravel()[to_use]], temp_float[to_use]) + \
@@ -230,7 +230,7 @@ class Network(object):
         self.edge_attributes = {}
         self.n_vertices = 0
 
-    def populate(self, regions, outlier_dist=0.1, resample=200):
+    def populate(self, regions, outlier_dist=0.01, resample=None):
         """
         note: transform always should go from lowest to highest
         """
@@ -247,26 +247,26 @@ class Network(object):
                 best_transformji = best_transform(
                     regions[j], regions[i], outlier_dist, resample)
 
-                if best_transformij['error'] < best_transformji['error']:
-                    best_t = best_transformji
-                else:
-                    best_t = best_transformij
-                    best_t['R'] = np.linalg.inv(best_t['R'])
-                    best_t['t'] = - best_t['R'].dot(best_t['t'])
 
-                self.M[i, j] = best_t['error']
-                self.edge_attributes[(i, j)] = best_t
+                if best_transformij['error'] < best_transformji['error']:
+                    best_transformji['R'] = np.linalg.inv(best_transformij['R'])
+                    best_transformji['t'] = -best_transformji['R'].dot(best_transformij['t'])
+                elif best_transformji['error'] < best_transformij['error']:
+                    best_transformij['R'] = np.linalg.inv(best_transformji['R'])
+                    best_transformij['t'] = -best_transformij['R'].dot(best_transformji['t'])
+                #     best_t = best_transformji
+                # else:
+                #     best_t = best_transformij
+                #     best_t['R'] = np.linalg.inv(best_t['R'])
+                #     best_t['t'] = - best_t['R'].dot(best_t['t'])
+                self.M[i, j] = best_transformij['error']
+                self.M[j, i] = best_transformji['error']
+
+                self.edge_attributes[(i, j)] = best_transformij
+                self.edge_attributes[(j, i)] = best_transformji
 
         # ok this is really horrible. sorry future me
         self.M = self.M + self.M.T
-
-    # def get_closest_neighbours(self, v_idx):
-    #     """
-    #     returns the index of the closest non-zero neighbour to v_idx
-    #     """
-    #     neighbours = self.M[v_idx, :].copy()
-    #     neighbours[neighbours==0] = np.inf
-    #     return np.argmin(neighbours)
 
     def sort(self, i, j):
         if i > j:
@@ -274,22 +274,13 @@ class Network(object):
         else:
             return (i, j)
 
-    def find_spanning_graph(self):
-        # Ms = csr_matrix(self.M)
-        # Tcsr = minimum_spanning_tree(Ms)
-        # # print Tcsr
-        # self.subgraph = (Tcsr>0).toarray().astype(int)
-        # # some horrible graph symettrising thing
-        # self.subgraph += self.subgraph.T
-
-        # this is another way - using dijkstra
-        self.dijk = scipy.sparse.csgraph.dijkstra(self.M, return_predecessors=True)[1]
-
     def find_spanning_route(self, i, j):
         """
         finds the chain of edges that links i to j, using the precomputed
         dijkstra adjaciency matrix
         """
+        self.dijk = scipy.sparse.csgraph.dijkstra(self.M, return_predecessors=True)[1]
+
         edge_chain = []
         prev_node = i
         it = j
@@ -308,13 +299,23 @@ class Network(object):
         edges = self.find_spanning_route(i, j)
         T = np.eye(4)
         for ei, ej in edges:
-            T.dot(self.get_transform(ei, ej))
+            tempT = self.full_transform(
+                self.get_transform(ei, ej)['R'],
+                self.get_transform(ei, ej)['t'])
+            # T = T.dot(np.linalg.inv(tempT))
+            T = T.dot(tempT)
         return T
+
+    def full_transform(self, R, t):
+        full = np.eye(4)
+        full[:3, :3] = R
+        full[:3, -1] = t
+        return full
 
     def get_transform(self, i, j):
         """returns the transform between two (adjacient?) nodes
         should be able to chain edges together...
         """
-        return self.edge_attributes[self.sort(i, j)]
+        return self.edge_attributes[i, j]
 
 
