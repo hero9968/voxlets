@@ -13,6 +13,7 @@ import time
 import sys
 import mesh
 import features
+import scene
 
 from skimage.restoration import denoise_bilateral
 import scipy.interpolate
@@ -475,12 +476,27 @@ class Rgbd_region(object):
     '''
     class to store a region from an rgbd image
     '''
-    def __init__(self, im, mask):
+    def __init__(self, im=None, mask=None, sc=None):
         self.im = im
         self.mask = mask
+        self.sc = sc
 
     def get_world_xyz(self):
         return self.im.get_world_xyz()[self.mask.ravel()]
 
     def get_world_normals(self):
         return self.im.get_world_normals()[self.mask.ravel()]
+
+    def _crop_image_to_mask(self, img, mask):
+        '''returns a cropped version of the image tightly cropped on the mask'''
+        left = np.argmax(mask.sum(0) > 0)
+        top = np.argmax(mask.sum(1) > 0)
+        right = mask.shape[1] - np.argmax(mask.sum(0)[::-1] > 0)
+        bottom = mask.shape[0] - np.argmax(mask.sum(1)[::-1] > 0)
+        if len(img.shape) == 3:
+            return img[top:bottom, left:right, :]
+        else:
+            return img[top:bottom, left:right]
+
+    def get_cropped(self):
+        return self._crop_image_to_mask(self.im.depth, self.mask)
