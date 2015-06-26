@@ -17,7 +17,7 @@ from copy import deepcopy
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+import os
 import scipy.misc
 import mesh
 import h5py
@@ -44,14 +44,28 @@ class Scene(object):
         If frames then returns only the specified frame numbers
         Opening the yaml file is actually quite surprisingly slow
         '''
-        with open(scene_dir + '/poses.yaml', 'r') as f:
-            frames = yaml.load(f, Loader=CLoader)
+        if os.path.exists(scene_dir + '/poses/') and frame_idxs is not None:
+            # doing it the quick way! one frame at a time
 
-        if frame_idxs is not None:
+            def load_frame(idx):
+                fname = scene_dir + '/poses/%06d.yaml' % idx
+                return yaml.load(open(fname), Loader=CLoader)
+
             if isinstance(frame_idxs, list):
-                frames = [frames[idx] for idx in frame_idxs]
+                frames = [load_frame(idx) for idx in frame_idxs]
             else:
-                frames = frames[frame_idxs]
+                frames = load_frame(frame_idxs)
+
+        else:
+            # this is much slower when poses file is large
+            with open(scene_dir + '/poses.yaml', 'r') as f:
+                frames = yaml.load(f, Loader=CLoader)
+
+            if frame_idxs is not None:
+                if isinstance(frame_idxs, list):
+                    frames = [frames[idx] for idx in frame_idxs]
+                else:
+                    frames = frames[frame_idxs]
 
         return frames
 
@@ -232,7 +246,7 @@ class Scene(object):
     #     carver = carving.Fusion()
     #     carver.set_video(video)
     #     carver.set_voxel_grid(self.gt_tsdf.blank_copy())
-    #     self.im_tsdf, self.im_visible = carver.fuse(self.mu)
+        # self.im_tsdf, self.im_visible = carver.fuse(self.mu)
     #     # video = images.RGBDVideo()
     #     # video.frames = [self.im]
     #     # carver = carving.Fusion()
@@ -288,11 +302,23 @@ class Scene(object):
         # load in the ground truth grid for this scene, and converting nans
         vox_location = sequence['folder'] + sequence['scene'] + \
             '/ground_truth_tsdf.pkl'
-        if sequence['folder'][-3:-1] == 'ta':
-            # we are in the training data - this has less floor
-            self.set_gt_tsdf(voxel_data.load_voxels(vox_location), 0.015)
-        else:
-            self.set_gt_tsdf(voxel_data.load_voxels(vox_location), 0.035)
+
+        self.set_gt_tsdf(voxel_data.load_voxels(vox_location))
+
+        # this i s a nasty hack, which I have to do because I was foolish and carved
+        # each set of data with a different offset.
+        # I never got round to recarving, and it takes a while...
+        # The floor height is the number of voxels which contain floor, starting at
+        # the bottom of the voxel grid.
+        if sequence['folder'].endswith('ta/'):
+            # one bit of traingin data
+            floor_height = 5
+        elif sequence['folder'].endswith('ta1/'):
+            floor_height = 7
+        elif sequence['folder'].endswith('ta2/'):
+            # other bit of training data
+            floor_height = 7
+        self.floor_height = floor_height
 
         self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -self.mu
         self.gt_tsdf.set_origin(self.gt_tsdf.origin, self.gt_tsdf.R)
@@ -344,7 +370,7 @@ class Scene(object):
                 temp_tsdf = self.gt_tsdf
 
             self.gt_labels = self._segment_tsdf_project_2d(
-                temp_tsdf, z_threshold=1, floor_height=15)
+                temp_tsdf, floor_height=floor_height, z_threshold=1)
 
             self.gt_labels_separate = \
                 self._separate_binary_grids(self.gt_labels.V, True)
@@ -406,13 +432,11 @@ class Scene(object):
                 self.voxlet_params['size'] * \
                 np.array(self.voxlet_params['relative_centre'][:2])
             vox_centre = np.append(vox_centre, start_z)
-            # print "cen is ", vox_centre
         else:
             vox_centre = \
                 np.array(self.voxlet_params['shape']) * \
                 self.voxlet_params['size'] * \
                 np.array(self.voxlet_params['relative_centre'])
-            # print "cen is ", vox_centre
             start_z = world_xyz[point_idx, 2]
 
         shoebox.set_p_from_grid_origin(vox_centre)  # m
@@ -456,8 +480,8 @@ class Scene(object):
         else:
             return shoebox
 
-    def set_gt_tsdf(self, tsdf_in, floor_height):
-        print "Warning - I think these should be re-commented for testing..."
+    def set_gt_tsdf(self, tsdf_in, floor_height=None):
+        # print "Warning - I think these should be re-commented for testing..."
         # floor_height_in_vox = float(floor_height) / float(tsdf_in.vox_size)
         # if floor_height_in_vox > 15:
         #     raise Exception("This seems excessive")
@@ -538,7 +562,7 @@ class Scene(object):
 
         plt.savefig(save_folder + '/' + self.sequence['name'] + '.png')
 
-    def _segment_tsdf_project_2d(self, tsdf, z_threshold, floor_height):
+    def _segment_tsdf_project_2d(self, tsdf, z_threshold, floor_height=0):
         '''
         segments a voxel grid by projecting full voxels onto the xy
         plane and segmenting in 2D. Naive but good for testing
@@ -563,11 +587,11 @@ class Scene(object):
             labels[binary_dilation(labels == idx, el)] = idx
 
         self.temp_2d_labels = labels
+        self.sum_grid = np.sum(tsdf.V[:, :, floor_height:] < 0, axis=2)
 
         # propagate these labels back the to the voxels...
         labels3d = np.expand_dims(labels, axis=2)
         labels3d = np.tile(labels3d, (1, 1, tsdf.V.shape[2]))
-        labels3d[tsdf.V > self.mu] = 0
 
         labels_3d_grid = tsdf.copy()
         labels_3d_grid.V = labels3d
@@ -583,7 +607,8 @@ class Scene(object):
         tsdf_grids = {}
         for idx, reg in binary_grids.iteritems():
             temp = tsdf.copy()
-            to_set_to_nan = np.logical_and(self.gt_labels.V != idx, self.gt_labels.V != 0)
+            # to_set_to_nan = np.logical_and(self.gt_labels.V != idx, self.gt_labels.V != 0)
+            to_set_to_nan = self.gt_labels.V != idx
             temp.V[to_set_to_nan] = np.nan
             tsdf_grids[idx] = temp
 
