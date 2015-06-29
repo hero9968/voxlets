@@ -18,7 +18,7 @@ import voxel_utils as vu
 # Setting some paths
 if sys.platform == 'darwin':
     blender_path = "/Applications/blender.app/Contents/MacOS/blender"
-    font_path = "/Library/Fonts/Verdana.ttf"
+    font_path = "/Librarry/Fonts/Verdana.ttf"
 elif sys.platform == 'linux2':
     blender_path = "blender"
     font_path = "/usr/share/fonts/truetype/msttcorefonts/verdana.ttf"
@@ -73,6 +73,8 @@ def render_single_voxlet(
     vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
 
     blender_filepath = voxlet_render_blend % (speed, height)
+    if not os.path.exists(blender_filepath):
+        raise Exception("Can't find the blender filepath " + blender_filepath)
 
     #now copy file from /tmp/.png to the savepath...
     folderpath = os.path.split(savepath)[0]
@@ -120,7 +122,7 @@ def render_leaf_medioids(model, folder_path, max_to_render=1000, tree_id=0, heig
     '''
     leaf_nodes = model.forest.trees[tree_id].compact_leaf_nodes()
 
-    print len(leaf_nodes)
+    print "There are %d leaf nodes " % len(leaf_nodes)
 
     print model.training_Y.shape
 
@@ -193,32 +195,30 @@ def render_leaf_nodes(model, folder_path, max_per_leaf=10, tree_id=0):
         #     plt.close()
 
 
-def plot_slices(arrs, savepath, titles=None, ismask=None):
+def plot_slices(voxlet, mask, savepath):
 
-    if len(arrs) == 1:
-        u, v = 1, 1
-    elif len(arrs) == 2:
-        u, v = 1, 2
-    elif len(arrs) == 3:
-        u, v = 2, 2
-    else:
-        raise Exception('I did not see this coming')
+    for axis in [0, 1, 2]:
 
-    slice_id = arrs[0].shape[2] / 2
+        slice_id = voxlet.shape[axis] / 2
 
-    for idx, arr in enumerate(arrs):
-        plt.subplot(u, v, idx+1)
-        plt.imshow(arr[:, :, 10], interpolation='nearest', cmap=plt.cm.bwr)
+        # Plotting voxlet
+        plt.subplot(3, 2, axis*2 + 1)
+        plt.imshow(
+            voxlet.take(slice_id, axis=axis),
+            interpolation='nearest', cmap=plt.cm.bwr)
 
-        if titles:
-            plt.title(titles[idx])
-
-        # if idx == 0:
-        maxi = np.max(np.abs(arr))
+        maxi = np.max(np.abs(voxlet))
         plt.clim(-maxi, maxi)
-        if ismask and ismask[idx]:
-            plt.clim(0, 1)
+        plt.title('Voxlet axis %d' % axis)
 
+        # Plotting mask
+        plt.subplot(3, 2, axis*2 + 2)
+        plt.imshow(
+            mask.take(slice_id, axis=axis),
+            interpolation='nearest', cmap=plt.cm.bwr)
+
+        plt.clim(0, 1)
+        plt.title('Mask axis %d' % axis)
 
     plt.savefig(savepath)
     plt.close()

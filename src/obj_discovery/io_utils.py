@@ -41,18 +41,6 @@ for scene_t in paths.all_train_data:
         scene_to_sequence[scene_t['scene']] = [scene_t]
 
 
-def crop_image_to_mask(img, mask):
-    '''returns a cropped version of the image tightly cropped on the mask'''
-    left = np.argmax(mask.sum(0) > 0)
-    top = np.argmax(mask.sum(1) > 0)
-    right = mask.shape[1] - np.argmax(mask.sum(0)[::-1] > 0)
-    bottom = mask.shape[0] - np.argmax(mask.sum(1)[::-1] > 0)
-    if len(img.shape) == 3:
-        return img[top:bottom, left:right, :]
-    else:
-        return img[top:bottom, left:right]
-
-
 def floor_plane_to_3d(labels_floor_plane, sc):
     '''expands a grid to 3D. Code modified from scenes.py'''
     labels3d = np.expand_dims(labels_floor_plane, axis=2)
@@ -64,13 +52,27 @@ def floor_plane_to_3d(labels_floor_plane, sc):
 
     return labels_3d_grid
 
+def load_region(sequence, idx):
 
-def load_images_of_object(obj_name, maximum=None):
+    sc = scene.Scene(mu=0.025)
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=False,
+        segment=False, save_grids=False, carve=True)
+
+    # load the mask
+    labels_floor_plane = \
+        scipy.io.loadmat(labels_dir + 'labels/' + sequence['scene'] + '.mat')['seg']
+
+    labels_3d = floor_plane_to_3d(labels_floor_plane, sc)
+    labels_im = sc.im.label_from_grid(labels_3d)
+
+    mask = labels_im==idx
+
+    return images.Rgbd_region(sc.im, mask, sc)
+
+
+def load_images_of_object(obj_name, maximum=None, seed=42, separate_scenes=True):
     '''returns a list of rgb images of the named object'''
-    imgs = []
-    xyzs = []
-    ims = []
-    masks = []
+
     regions = []
 
     scene_idxs = labels_to_scene[obj_name]
@@ -83,39 +85,29 @@ def load_images_of_object(obj_name, maximum=None):
         sequences = scene_to_sequence[scene_name]
 
         for sequence in sequences:
-            # load the sequence
-            sc = scene.Scene(mu=0.025)
-            sc.load_sequence(sequence, frame_nos=0, segment_with_gt=False,
-                segment=False, save_grids=False, carve=False)
-
-            # load the mask
-            labels_floor_plane = \
-                scipy.io.loadmat(labels_dir + 'labels/' + sequence['scene'] + '.mat')['seg']
-
-            labels_3d = floor_plane_to_3d(labels_floor_plane, sc)
-            labels_im = sc.im.label_from_grid(labels_3d)
-            mask = labels_im==idx
-
-            temp = crop_image_to_mask(sc.im.depth, mask)
-            xyz = sc.im.get_world_xyz()[mask.ravel(), :]
-
-            imgs.append(temp)
-            xyzs.append(xyz)
-            ims.append(sc.im)
-            masks.append(mask)
-            regions.append(images.Rgbd_region(sc.im, mask))
-
+            regions.append((sequence, idx))
 
     if maximum is not None:
-        np.random.seed(42)
-        idxs = np.random.choice(len(imgs), maximum, replace=False).astype(int)
-        print idxs
-        return [imgs[i] for i in idxs], [xyzs[i] for i in idxs], \
-               [ims[i] for i in idxs], [masks[i] for i in idxs], \
-               [regions[i] for i in idxs]
-    else:
-        return imgs, xyzs, ims, masks, regions
+        # try to choose from different scenes!
+        if separate_scenes:
+            np.random.seed(seed)
+            all_scenes = [s[0] for s in scene_idxs]
+            idxs = np.random.choice(len(all_scenes), maximum, replace=False).astype(int)
+            scenes_to_use = [all_scenes[i] for i in idxs]
+            return_regions = []
+            for s in scenes_to_use:
+                for r in regions:
+                    if r[0]['scene'] == s:
+                        return_regions.append(r)
+                        break
+            print return_regions
+        else:
+            np.random.seed(seed)
+            idxs = np.random.choice(len(regions), maximum, replace=False).astype(int)
+            return_regions = [regions[i] for i in idxs]
 
+
+    return [load_region(r[0], r[1]) for r in return_regions]
 
 
 def imshow_subplot(imgs):
@@ -125,10 +117,10 @@ def imshow_subplot(imgs):
 
     # compute optimal dimensions
     H = np.ceil(np.sqrt(float(len(imgs)))).astype(int)
-    W = np.ceil(len(imgs) / H).astype(int)
+    W = np.ceil(float(len(imgs)) / float(H)).astype(int)
 
     for count, img in enumerate(imgs):
-        plt.subplot(H, W, count+1)
+        plt.subplot(W, H, count+1)
         plt.imshow(img)
         plt.title(str(count))
         plt.axis('off')

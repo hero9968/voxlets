@@ -18,14 +18,15 @@ def numpy_to_str(numpy_array):
 
 def pmicp_wrapper(fixed, floating, R=None, t=None):
     """
-    A wrapper for the pmicp library
+    A crappy wrapper for libpointmatcher
     https://github.com/ethz-asl/libpointmatcher/
     """
 
-    # todo - reduce precision for speed
+    # could reduce precision of these csv files for speed
     np.savetxt('/tmp/csv_1.csv', fixed)
     np.savetxt('/tmp/csv_2.csv', floating)
 
+    # hack, for some reason the library paths are broken on this machine
     my_env = os.environ.copy()
     my_env["LD_LIBRARY_PATH"] = "/usr/local/lib:" + \
         my_env["LD_LIBRARY_PATH"]

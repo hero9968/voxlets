@@ -12,6 +12,7 @@ from skimage.restoration import denoise_bilateral
 # temp = denoise_bilateral(vid.frames[0].depth)
 import scipy.ndimage
 import scipy.interpolate
+import scipy.io
 
 
 class VoxelAccumulator(object):
@@ -106,25 +107,36 @@ class KinfuAccumulator(voxel_data.WorldVoxels):
         self.tsdf = np.zeros(gridsize, dtype=dtype)
         self.valid_voxels = np.zeros(gridsize, dtype=bool)
 
-    def update(self, valid_voxels, weight_values, tsdf_values):
+    def initialise_from_partial_grid(self, grid_V):
+        """
+        initialises the accumulators from a partially filled TSDF grid
+        """
+        self.tsdf = deepcopy(grid_V)
+        self.weights = (~np.isnan(grid_V)).astype(float)
+        self.valid_voxels = self.weights > 0
+
+    def update(self, valid_voxels, new_weight_values, new_tsdf_values):
         '''
         updates both the weights and the tsdf with a new set of values
         '''
-        assert(np.sum(valid_voxels) == weight_values.shape[0])
-        assert(np.sum(valid_voxels) == tsdf_values.shape[0])
+        assert(np.sum(valid_voxels) == new_weight_values.shape[0])
+        assert(np.sum(valid_voxels) == new_tsdf_values.shape[0])
         assert(np.prod(valid_voxels.shape) == np.prod(self.gridsize))
 
         # update the weights (no temporal smoothing...)
+        if np.sum(np.isnan(self.weights)) > 0:
+            raise Exception("Found nans in the weights")
         valid_voxels = valid_voxels.reshape(self.gridsize)
-        new_weights = self.weights[valid_voxels] + weight_values
+        new_weights = self.weights[valid_voxels] + new_weight_values
 
         # tsdf update is more complex. We can only update the values of the
         # 'valid voxels' as determined by inputs
         valid_weights = self.weights[valid_voxels]
         valid_tsdf = self.tsdf[valid_voxels]
+        valid_tsdf[np.isnan(valid_tsdf)] = 0
 
         numerator1 = (valid_weights * valid_tsdf)
-        numerator2 = (weight_values * tsdf_values)
+        numerator2 = (new_weight_values * new_tsdf_values)
         self.tsdf[valid_voxels] = (numerator1 + numerator2) / (new_weights)
 
         # assign the updated weights
@@ -132,6 +144,8 @@ class KinfuAccumulator(voxel_data.WorldVoxels):
 
         # update the valid voxels matrix
         self.valid_voxels[valid_voxels] = True
+
+        self.temptemptemp = valid_voxels
 
     def get_current_tsdf(self):
         '''
@@ -193,6 +207,87 @@ class Fusion(VoxelAccumulator):
         temp_denoised[np.isnan(depth)] = np.nan
         return temp_denoised
 
+    def integrate_image(self, im, mu, mask=None, filtering=False, measure_in_frustrum=False):
+        '''
+        integrates single image into the current grid
+        mask is optional argument, which should be boolean array same size as im
+        we will only integrate the pixels where mask is true
+        '''
+
+        # print "Fusing frame number %d with name %s" % (count, im.frame_id)
+
+        if filtering:
+            depth = self._filter_depth(im.depth)
+        else:
+            depth = im.depth
+
+        if mask is not None:
+            depth = depth.copy()
+            depth[~mask] = np.nan
+
+        # work out which voxels are in front of or behind the depth image
+        # and location in camera image of each voxel
+        inside_image_f, uv_s, depth_to_voxels_s = self.project_voxels(im)
+        observed_depths_s = depth[uv_s[:, 1], uv_s[:, 0]]
+
+        # Distance between depth image and each voxel perpendicular to the
+        # camera origin ray (this is *not* how kinfu does it: see ismar2011
+        # eqn 6&7 for the real method, which operates along camera rays!)
+        surface_to_voxel_dist_s = depth_to_voxels_s - observed_depths_s
+
+        # ignoring due to nans in the comparisons
+        np.seterr(invalid='ignore')
+
+        # finding indices of voxels which can be legitimately updated,
+        # according to eqn 9 and the text after eqn 12
+        valid_voxels_s = surface_to_voxel_dist_s <= mu
+
+        # truncating the distance
+        truncated_distance_s = -self.truncate(surface_to_voxel_dist_s, mu)
+
+        # expanding the valid voxels to be a full grid
+        valid_voxels_f = deepcopy(inside_image_f)
+        valid_voxels_f[inside_image_f] = valid_voxels_s
+
+        truncated_distance_ss = truncated_distance_s[valid_voxels_s]
+        valid_voxels_ss = valid_voxels_s[valid_voxels_s]
+
+        self.accum.update(
+            valid_voxels_f, valid_voxels_ss, truncated_distance_ss)
+
+        # now update the visible voxels - the array which says which voxels
+        # are on the surface. I would like this to be automatically
+        # extracted from the tsdf grid at the end but I failed to get this
+        # to work properly (using the VisibleVoxels class below...) so
+        # instead I will make it work here.
+        voxels_visible_in_image_s = \
+            np.abs(surface_to_voxel_dist_s) < np.sqrt(2) * self.voxel_grid.vox_size
+
+        visible_voxels_f = inside_image_f
+        visible_voxels_f[inside_image_f] = voxels_visible_in_image_s
+
+        self.visible_voxels.set_indicated_voxels(visible_voxels_f, 1)
+
+        if measure_in_frustrum:
+            temp = inside_image_f.reshape(self.in_frustrum.V.shape)
+            self.in_frustrum.V[temp] += 1
+
+    def _set_up(self):
+        """
+        Set up all the variables for the fusion
+        """
+        # the kinfu accumulator, which keeps the rolling average
+        self.accum = KinfuAccumulator(self.voxel_grid.V.shape)
+        self.accum.vox_size = self.voxel_grid.vox_size
+        self.accum.R = self.voxel_grid.R
+        self.accum.inv_R = self.voxel_grid.inv_R
+        self.accum.origin = self.voxel_grid.origin
+
+        # another grid to store which voxels are visible, i.e on the surface
+        self.visible_voxels = self.voxel_grid.blank_copy()
+        self.visible_voxels.V = self.visible_voxels.V.astype(bool)
+
+
     def fuse(self, mu, filtering=False, measure_in_frustrum=False):
         '''
         mu is the truncation parameter. Default 0.03 as this is what PCL kinfu
@@ -205,16 +300,7 @@ class Fusion(VoxelAccumulator):
         Todo - should probably incorporate the numpy.ma module
         if filter==True, then each image is bilateral filtered before adding in
         '''
-        # the kinfu accumulator, which keeps the rolling average
-        accum = KinfuAccumulator(self.voxel_grid.V.shape)
-        accum.vox_size = self.voxel_grid.vox_size
-        accum.R = self.voxel_grid.R
-        accum.inv_R = self.voxel_grid.inv_R
-        accum.origin = self.voxel_grid.origin
-
-        # another grid to store which voxels are visible, i.e on the surface
-        visible_voxels = self.voxel_grid.blank_copy()
-        visible_voxels.V = visible_voxels.V.astype(bool)
+        self._set_up()
 
         # finally a third grid, which stores how many frustrums each voxel has
         # fallen into
@@ -223,65 +309,9 @@ class Fusion(VoxelAccumulator):
             self.in_frustrum.V = self.in_frustrum.V.astype(np.int16)
 
         for count, im in enumerate(self.video.frames):
+            self.integrate_image(im, mu, filtering, measure_in_frustrum)
 
-            # print "Fusing frame number %d with name %s" % (count, im.frame_id)
-
-            if filtering:
-                depth = self._filter_depth(im.depth)
-            else:
-                depth = im.depth
-
-            # work out which voxels are in front of or behind the depth image
-            # and location in camera image of each voxel
-            inside_image_f, uv_s, depth_to_voxels_s = self.project_voxels(im)
-            observed_depths_s = depth[uv_s[:, 1], uv_s[:, 0]]
-
-            # Distance between depth image and each voxel perpendicular to the
-            # camera origin ray (this is *not* how kinfu does it: see ismar2011
-            # eqn 6&7 for the real method, which operates along camera rays!)
-            surface_to_voxel_dist_s = depth_to_voxels_s - observed_depths_s
-
-            # ignoring due to nans in the comparisons
-            np.seterr(invalid='ignore')
-
-            # finding indices of voxels which can be legitimately updated,
-            # according to eqn 9 and the text after eqn 12
-            valid_voxels_s = surface_to_voxel_dist_s <= mu
-
-            # truncating the distance
-            truncated_distance_s = -self.truncate(surface_to_voxel_dist_s, mu)
-
-            # expanding the valid voxels to be a full grid
-            valid_voxels_f = deepcopy(inside_image_f)
-            valid_voxels_f[inside_image_f] = valid_voxels_s
-
-            truncated_distance_ss = truncated_distance_s[valid_voxels_s]
-            valid_voxels_ss = valid_voxels_s[valid_voxels_s]
-
-            accum.update(
-                valid_voxels_f, valid_voxels_ss, truncated_distance_ss)
-
-            # now update the visible voxels - the array which says which voxels
-            # are on the surface. I would like this to be automatically
-            # extracted from the tsdf grid at the end but I failed to get this
-            # to work properly (using the VisibleVoxels class below...) so
-            # instead I will make it work here.
-            voxels_visible_in_image_s = \
-                np.abs(surface_to_voxel_dist_s) < np.sqrt(2) * self.voxel_grid.vox_size
-
-            visible_voxels_f = inside_image_f
-            visible_voxels_f[inside_image_f] = voxels_visible_in_image_s
-
-            visible_voxels.set_indicated_voxels(visible_voxels_f, 1)
-
-            if measure_in_frustrum:
-                temp = inside_image_f.reshape(self.in_frustrum.V.shape)
-                self.in_frustrum.V[temp] += 1
-
-        return accum.get_current_tsdf(), visible_voxels
-
-
-import scipy.io
+        return self.accum.get_current_tsdf(), self.visible_voxels
 
 
 class VisibleVoxels(object):
