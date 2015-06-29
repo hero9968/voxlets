@@ -207,7 +207,8 @@ class Fusion(VoxelAccumulator):
         temp_denoised[np.isnan(depth)] = np.nan
         return temp_denoised
 
-    def integrate_image(self, im, mu, mask=None, filtering=False, measure_in_frustrum=False):
+    def integrate_image(self, im, mu, mask=None, filtering=False,
+            measure_in_frustrum=False, just_narrow_band=False):
         '''
         integrates single image into the current grid
         mask is optional argument, which should be boolean array same size as im
@@ -238,9 +239,15 @@ class Fusion(VoxelAccumulator):
         # ignoring due to nans in the comparisons
         np.seterr(invalid='ignore')
 
-        # finding indices of voxels which can be legitimately updated,
-        # according to eqn 9 and the text after eqn 12
-        valid_voxels_s = surface_to_voxel_dist_s <= mu
+        # finding indices of voxels which can be legitimately updated...
+        if just_narrow_band:
+            # ...according to my new made up method, good for object level fusion
+            valid_voxels_s = np.abs(surface_to_voxel_dist_s) <= mu
+        else:
+            # ...according to eqn 9 and the text after eqn 12 (of Kinfu)
+            valid_voxels_s = surface_to_voxel_dist_s <= mu
+
+        print "There are %d valid voxels" % valid_voxels_s.sum()
 
         # truncating the distance
         truncated_distance_s = -self.truncate(surface_to_voxel_dist_s, mu)
