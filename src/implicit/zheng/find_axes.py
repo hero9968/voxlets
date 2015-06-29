@@ -95,16 +95,20 @@ def find_axes(norms_in):
     return R
 
 
-def process_scene(sc, threshold=3):
+def process_scene(sc, threshold=3, skip_segment=0):
 
-    segments = np.unique(sc.gt_im_label)[1:]
+    segments = np.unique(sc.gt_im_label)
     accumulator = sc.gt_tsdf.blank_copy()
     print accumulator.V.dtype
 
     for seg in segments:
+        if seg == skip_segment:
+            print "Skipping segment", seg
+            continue
+
         print "Doing segment ", seg
 
-        inlying_voxels = sc.gt_labels == seg
+        # inlying_voxels = sc.gt_labels == seg
         inlying_pixels = sc.gt_im_label.flatten() == seg
 
         # find the principal directinos of the segment
@@ -129,9 +133,24 @@ def process_scene(sc, threshold=3):
         known_full.set_origin(new_origin, np.linalg.inv(R))
         known_full.V = np.zeros(grid_size)
 
-        # but I want to find the edges which correspond to this segment
+        # but I want to find the voxels which correspond to the edge of this segment
         region_edges = sc.im_visible.copy()
-        region_edges.V[sc.gt_labels.V!=seg] = 0
+        try:
+            region_edges.V[sc.gt_labels.V!=seg] = 0
+        except:
+            # here we don't have the gt labels as a 3D grid
+            uvd = sc.im.cam.project_points(world_voxels)
+            uv = np.round(uvd[:, :2]).astype(int)
+            inside_image = np.logical_and.reduce((uv[:, 0] >= 0,
+                                              uv[:, 1] >= 0,
+                                              uv[:, 1] < sc.im.depth.shape[0],
+                                              uv[:, 0] < sc.im.depth.shape[1]))
+            labs = sc.gt_im_label[uv[inside_image, 1], uv[inside_image, 0]]
+
+            # transfer these labels back to the voxel grid
+            where_inside_image = np.where(inside_image)[0]
+            region_edges.V.ravel()[where_inside_image[labs!=seg]] = 0
+
         known_full.fill_from_grid(region_edges)
 
         # also need to rotate a copy of the empty grid

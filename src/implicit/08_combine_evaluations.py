@@ -27,7 +27,7 @@ def load_results_for_model(model):
 
 tests = ['iou', 'precision', 'recall']
 # , 'zheng_2', 'zheng_3',
-models = [ 'cobweb', 'rays', 'rays_cobweb', 'rays_autorotate']
+models = [ 'cobweb', 'rays', 'rays_cobweb', 'rays_autorotate', 'zheng_2', 'zheng_3']
 #         'rays_cobweb_10',
 #         'rays_cobweb_100',
 #         'rays_cobweb_1000',
@@ -60,7 +60,7 @@ for model in models:
 # do the same in latex
 print '\\begin{table}'
 
-print '                     & ' + ' & '.join(tests) + ' \\\\'
+print '                     & \\textbf{' + '} & \\textbf{'.join(tests) + '} \\\\'
 
 
 for model in models:
@@ -68,7 +68,7 @@ for model in models:
     thisstr = model.ljust(20) + ' & '
     for test in tests:
         avg_result = np.array([result[test] for result in all_results]).mean()
-        thisstr += ('%0.4f & ' % avg_result)
+        thisstr += ('%0.3f & ' % avg_result)
     print thisstr[:-3] + ' \\\\'
 
 print '\\end{table}'

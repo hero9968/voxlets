@@ -318,6 +318,9 @@ class Scene(object):
         elif sequence['folder'].endswith('ta2/'):
             # other bit of training data
             floor_height = 7
+        else:
+            floor_height = None
+
         self.floor_height = floor_height
 
         self.gt_tsdf.V[np.isnan(self.gt_tsdf.V)] = -self.mu
@@ -326,11 +329,11 @@ class Scene(object):
         # loading in the image
         sequence_frames = sequence['frames'][frame_nos]
 
-        frame_data = self._load_scene_data(
+        self.frame_data = self._load_scene_data(
             sequence['folder'] + sequence['scene'], sequence_frames)
 
         self.im = images.RGBDImage.load_from_dict(
-            sequence['folder'] + sequence['scene'], frame_data)
+            sequence['folder'] + sequence['scene'], self.frame_data)
 
         # while I'm here - might as well save the image as a voxel grid
         if carve:
