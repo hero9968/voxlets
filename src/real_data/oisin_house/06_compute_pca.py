@@ -48,7 +48,9 @@ def fit_and_save_pca(np_array, savepath):
         np_array = np_array[idxs]
 
     # fit the pca model
-    pca = RandomizedPCA(n_components=parameters['pca']['number_dims'])
+    # NOTE that by setting copy=False, we overwrite the input data in fitting.
+    # This helps on memory but could cause issues if this function is reused elsewhere.
+    pca = RandomizedPCA(n_components=parameters['pca']['number_dims'], copy=False)
     pca.fit(np_array)
 
     with open(savepath, 'wb') as f:
@@ -57,6 +59,7 @@ def fit_and_save_pca(np_array, savepath):
 
 def process_sequence(sequence, voxlet_params):
 
+    print sequence
     if not os.path.exists(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.pkl'):
         print "Failed"
         return
@@ -72,7 +75,6 @@ def process_sequence(sequence, voxlet_params):
         idx, extract_from='gt_tsdf', post_transform=flatten_sbox) for idx in idxs]
 
     return np.array(gt_shoeboxes)
-
 
 
 def extract_all_voxlets(voxlet_params_in):
@@ -118,7 +120,7 @@ def render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath):
 
         # saving the slice
         savepath = folderpath + '/%03d_slice.png' % count
-        rendering.plot_slices(arrs, savepath, titles=['TSDF', 'Mask'])
+        rendering.plot_slices(arrs[0], arrs[1], savepath)
 
 
 if __name__ == '__main__':
@@ -140,12 +142,20 @@ if __name__ == '__main__':
         np_masks = np.isnan(np_voxlets).astype(np.float16)
         np_voxlets[np_masks == 1] = parameters['mu']
 
-        print "-> Rendering"
-        folderpath = paths.voxlets_dictionary_path + '/renders/' + voxlet_name + '/'
-        render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath)
+        # print "-> Rendering"
+        # folderpath = pca_savefolder + '/renders/' + voxlet_name + '/'
+        # render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath)
+
+        tmp_savepath = '/tmp/masks.npy'
+        np.save(tmp_savepath, np_masks)
+
+        del np_masks
 
         print "-> Doing the PCA"
         fit_and_save_pca(np_voxlets, pca_savefolder + 'voxlets_pca.pkl')
+
+        np_masks = np.load(tmp_savepath)
+
         fit_and_save_pca(np_masks, pca_savefolder + 'masks_pca.pkl')
 
         del np_voxlets, np_masks
