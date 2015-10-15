@@ -626,7 +626,7 @@ class WorldVoxels(Voxels):
             cen = temp.origin + (np.array(temp.V.shape) * temp.vox_size) / 2.0
             ms.vertices[:, :2] -= cen[:2]
             ms.vertices[:, 2] -= 0.05
-            ms.vertices *= 1.5
+            # ms.vertices *= 1.5
 
         ms.write_to_obj(savepath + '.obj')
 

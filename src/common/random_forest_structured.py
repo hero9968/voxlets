@@ -36,7 +36,7 @@ def example_forest_params():
         'num_trees': 4,
         'bag_size': 0.5,
         'train_parallel': True,
-        'njobs': 8,
+        'njobs': 3,
         'num_dims_for_pca': 100,
         'sub_sample_exs_pca': True,
         'num_exs_for_pca': 2500,
@@ -181,6 +181,7 @@ class Tree:
             exs_at_node = []
             for this_id in ids_for_this_tree:
                 exs_at_node.append(np.where(extracted_from == this_id)[0])
+
             exs_at_node = np.hstack(exs_at_node)
 
             exs_at_node = np.unique(np.array(exs_at_node))
@@ -504,7 +505,7 @@ class Forest:
             for t_id in range(self.params['num_trees']):
                 print 'tree', t_id
                 tree = Tree(t_id, self.params)
-                tree.train(X, Y, extracted_from)
+                tree.train(X_local, Y_local, extracted_from_local)
                 self.trees.append(tree)
         #print 'num trees ', len(self.trees)
 

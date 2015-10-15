@@ -19,7 +19,7 @@ class ForestParams:
         self.num_trees = 40
         self.bag_size = 0.5
         self.train_parallel = True
-        self.njobs = 8
+        self.njobs = 3
 
         # structured learning params
         #self.pca_dims = 5

@@ -171,7 +171,7 @@ class Scene(object):
         # np.any(np.abs(self.im.normals)==1, axis
 
 
-    def sample_points(self, num_to_sample, sample_grid_size=None, additional_mask=None):
+    def sample_points(self, num_to_sample, sample_grid_size=None, additional_mask=None, nyu=False):
         '''
         Sampling locations at which to extract/place voxlets
         '''
@@ -383,6 +383,10 @@ class Scene(object):
 
             self.gt_im_label = self.im.label_from_grid(self.gt_labels)
 
+        else:
+
+            self.gt_im_label = self.im.mask
+
         '''
         HERE SEGMENTING USING JUST WHAT IS VISIBLE FROM THE INPUT IMAGE
         Want:
@@ -457,7 +461,7 @@ class Scene(object):
             if np.isnan(this_point_label):
                 # this shouldn't happen too much, only due to rounding errors
                 print "Nan in sampled point"
-                shoebox.fill_from_grid(sc.gt_tsdf)
+                shoebox.fill_from_grid(self.gt_tsdf)
             else:
                 temp_vgrid = self.gt_tsdf_separate[this_point_label]
                 shoebox.fill_from_grid(temp_vgrid)
@@ -610,8 +614,8 @@ class Scene(object):
         tsdf_grids = {}
         for idx, reg in binary_grids.iteritems():
             temp = tsdf.copy()
-            # to_set_to_nan = np.logical_and(self.gt_labels.V != idx, self.gt_labels.V != 0)
-            to_set_to_nan = self.gt_labels.V != idx
+            to_set_to_nan = np.logical_and(self.gt_labels.V != idx, self.gt_labels.V != 0)
+            # to_set_to_nan = self.gt_labels.V != idx
             temp.V[to_set_to_nan] = np.nan
             tsdf_grids[idx] = temp
 
@@ -682,8 +686,16 @@ class Scene(object):
         results = {}
         results['iou'] = float(intersection.sum()) / float(union.sum())
         results['auc'] = float(sklearn.metrics.roc_auc_score(gt, V_to_eval))
-        results['precision'] = tp / (tp + fp)
-        results['recall'] = tp / (tp + fn)
+
+        if (tp + fp) > 0:
+            results['precision'] = tp / (tp + fp)
+        else:
+            results['precision'] = 0
+
+        if (tp + fn) > 0:
+            results['recall'] = tp / (tp + fn)
+        else:
+            results['recall'] = 0
 
         # fpr, tpr, _ = sklearn.metrics.roc_curve(gt, V_to_eval)
         # results['fpr'] = fpr

@@ -155,7 +155,7 @@ class RGBDImage(object):
         sets the intrinsics to some kinect default
         '''
         K = np.array([[570.0, 0, 320.0], [0, 570.0, 240.0], [0, 0, 1]])
-        self.set_intrinsics(K)
+        self.cam.set_intrinsics(K)
 
     def assert_depth_rgb_equal(self):
         if self.depth.size > 0 and self.rgb.size > 0:
