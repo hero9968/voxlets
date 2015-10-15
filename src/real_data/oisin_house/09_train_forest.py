@@ -6,10 +6,21 @@ import cPickle as pickle
 import sys
 import os
 import system_setup
-import real_data_paths as paths
 import time
 import yaml
 import gc
+
+parameters_path = './training_params_nyu.yaml'
+parameters = yaml.load(open(parameters_path))
+
+if parameters['training_data'] == 'oisin_house':
+    import real_data_paths as paths
+elif parameters['training_data'] == 'synthetic':
+    import synthetic_paths as paths
+elif parameters['training_data'] == 'nyu_cad':
+    import nyu_cad_paths as paths
+else:
+    raise Exception('Unknown training data')
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import voxlets
@@ -17,11 +28,8 @@ from common import voxlets
 if system_setup.small_sample:
     print "WARNING: Just computing on a small sample"
 
-parameters_path = './training_params.yaml'
-parameters = yaml.load(open(parameters_path))
 
-
-def load_training_data(voxlet_name, feature_name):
+def load_training_data(voxlet_name, feature_name, num_scenes=None):
     '''
     Loading in all the data...
     '''
@@ -30,7 +38,12 @@ def load_training_data(voxlet_name, feature_name):
     masks = []
     scene_ids = []
 
-    for count, sequence in enumerate(paths.all_train_data):
+    if num_scenes is not None:
+        scenes_to_use = paths.all_train_data[:num_scenes]
+    else:
+        scenes_to_use = paths.all_train_data
+
+    for count, sequence in enumerate(scenes_to_use):
 
         loadfolder = paths.voxlets_data_path % voxlet_name
         loadpath = loadfolder + sequence['name'] + '.pkl'
@@ -48,7 +61,9 @@ def load_training_data(voxlet_name, feature_name):
 
     print "\tVoxlets is\t", np_voxlets.shape
     print "\tMasks is\t", np_masks.shape
+    print "\tFeature type is\t", feature_name
     print "\tFeatures is\t", np_features.shape
+    print "\tThere are %d nan features" % np.isnan(np_features).sum()
     print "\tScene ids is\t", np_scene_ids.shape
 
     np_features[np.isnan(np_features)] = \
@@ -67,8 +82,15 @@ def train_model(model_params):
         os.makedirs(modelfolder)
 
     print "-> Loading training data"
-    np_features, np_voxlets, np_masks, np_scene_ids = \
-        load_training_data(model_params['voxlet_type'], model_params['feature'])
+    if 'num_scenes' in model_params:
+        print ">>> Subsampling to %d scenes!" % model_params['num_scenes']
+        np_features, np_voxlets, np_masks, np_scene_ids = \
+            load_training_data(model_params['voxlet_type'],
+                model_params['feature'], model_params['num_scenes'])
+    else:
+        np_features, np_voxlets, np_masks, np_scene_ids = \
+            load_training_data(model_params['voxlet_type'],
+                model_params['feature'])
 
     print "-> Training forest"
     voxlet_params = parameters['voxlet_sizes'][model_params['voxlet_type']]
@@ -83,6 +105,7 @@ def train_model(model_params):
         masks=np_masks,
         scene_ids=np_scene_ids)
     model.feature = model_params['feature']
+    print model.feature
 
     print "-> Adding PCA models"
     pca_savefolder = paths.voxlets_dictionary_path % voxlet_params['name']
@@ -107,4 +130,3 @@ if __name__ == '__main__':
         train_model(model_params)
         gc.collect()
             # del model, pca, mask_pca, np_features, np_voxlets, np_masks
-

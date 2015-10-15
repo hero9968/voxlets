@@ -11,13 +11,22 @@ sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from time import time
 import yaml
 import functools
+import scipy.io
 
-import real_data_paths as paths
 from common import voxlets, scene
 import system_setup
 
-parameters_path = './testing_params.yaml'
+parameters_path = './testing_params_nyu.yaml'
 parameters = yaml.load(open(parameters_path))
+
+if parameters['testing_data'] == 'oisin_house':
+    import real_data_paths as paths
+elif parameters['testing_data'] == 'synthetic':
+    import synthetic_paths as paths
+elif parameters['testing_data'] == 'nyu_cad':
+    import nyu_cad_paths as paths
+else:
+    raise Exception('Unknown training data')
 
 render_top_view = True
 
@@ -29,9 +38,15 @@ if __name__ == '__main__':
         print "--> DOING TEST: ", params['name']
 
         print "--> Loading models..."
-        models = [pickle.load(open(paths.voxlet_model_path % name))
+        # print "WARNING"
+        # vox_model_path = '/media/ssd/data/rendered_arrangements/models/%s/model.pkl'
+        vox_model_path = paths.voxlet_model_path
+        print [vox_model_path % name for name in params['models_to_use']]
+        models = [pickle.load(open(vox_model_path % name))
                   for name in params['models_to_use']]
-        print models[0].forest
+        # for m in models:
+        #     m.voxlet_params['size'] = 0.003
+
 
         def process_sequence(sequence):
 
@@ -39,7 +54,10 @@ if __name__ == '__main__':
             sc = scene.Scene(params['mu'], [])
             sc.load_sequence(
                 sequence, frame_nos=0, segment_with_gt=True, voxel_normals='gt_tsdf')
-            sc.sample_points(params['number_samples'])
+            sc.sample_points(params['number_samples'], nyu=parameters['testing_data'] == 'nyu_cad')
+            print "WARNING\n\n\n\n\n"
+            sc.sampled_idxs = scipy.io.loadmat(paths.data_folder + 'tmp_idxs.mat')['idxs'][:2000, :]
+            print "WARNING\n\n\n\n\n"
 
             print "-> Creating folder"
             fpath = paths.prediction_folderpath % \
@@ -64,10 +82,20 @@ if __name__ == '__main__':
                 for model in rec.model:
                     model.reset_voxlet_counts()
                     model.set_max_depth(params['max_depth'])
-
                 print "-> Doing prediction, type ", params['name']
                 # parameters from the yaml file are passed as separate arguments to voxlets
                 pred_voxlets = rec.fill_in_output_grid(**params['reconstruction_params'])
+
+                # print "Saving the average - can remove this, just for testing"
+                # avg = rec.average
+                # with open(fpath + params['name'] + '_full.pkl', 'w') as f:
+                #     pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+                # with open(fpath + params['name'] + '_countV.pkl', 'w') as f:
+                #     pickle.dump(rec.accum.countV, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+                # with open(fpath + params['name'] + '_sumV.pkl', 'w') as f:
+                #     pickle.dump(rec.accum.sumV, f, protocol=pickle.HIGHEST_PROTOCOL)
 
                 print "-> Saving the sampled_idxs to a file"
                 np.savetxt(fpath + 'sampled_idxs.csv', sc.sampled_idxs, delimiter=",")
@@ -85,6 +113,7 @@ if __name__ == '__main__':
                 pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         print "--> Doing test type ", params['name']
+
         tic = time()
 
         if system_setup.multicore:

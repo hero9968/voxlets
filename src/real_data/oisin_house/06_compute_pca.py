@@ -16,12 +16,14 @@ from common import scene, rendering
 
 import system_setup
 
-parameters = yaml.load(open('./training_params.yaml'))
+parameters = yaml.load(open('./training_params_nyu.yaml'))
 
 if parameters['training_data'] == 'oisin_house':
     import real_data_paths as paths
 elif parameters['training_data'] == 'synthetic':
     import synthetic_paths as paths
+elif parameters['training_data'] == 'nyu_cad':
+    import nyu_cad_paths as paths
 else:
     raise Exception('Unknown training data')
 
@@ -66,13 +68,18 @@ def process_sequence(sequence, voxlet_params):
 
     print "--> Processing " + sequence['scene']
     sc = scene.Scene(parameters['mu'], voxlet_params)
-    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, voxel_normals='gt_tsdf')
+    sc.load_sequence(sequence, frame_nos=0, segment_with_gt=parameters['segment_with_gt'], voxel_normals='gt_tsdf')
 
     # sampling points and extracting voxlets at these locations
-    idxs = sc.sample_points(parameters['pca']['number_points_from_each_image'],
-                      additional_mask=sc.gt_im_label != 0)
+    idxs = sc.sample_points(
+        parameters['pca']['number_points_from_each_image'],
+        additional_mask=sc.gt_im_label != 0,
+        nyu=parameters['training_data'] == 'nyu_cad')
     gt_shoeboxes = [sc.extract_single_voxlet(
-        idx, extract_from='gt_tsdf', post_transform=flatten_sbox) for idx in idxs]
+        idx,
+        extract_from=parameters['extract_from'],
+        post_transform=flatten_sbox)
+        for idx in idxs]
 
     return np.array(gt_shoeboxes)
 
@@ -90,7 +97,7 @@ def extract_all_voxlets(voxlet_params_in):
         pool.close()
         pool.join()
     else:
-        map(func, train_data_to_use)
+        voxlet_list = map(func, train_data_to_use)
 
     print "length is ", len(voxlet_list)
     np_voxlets = np.vstack(voxlet_list).astype(np.float16)

@@ -4,15 +4,23 @@ import cPickle as pickle
 import sys
 import os
 import yaml
-import real_data_paths as paths
 import system_setup
 import scipy.misc
 import matplotlib.pyplot as plt
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from common import voxlets, scene
 
-parameters_path = './testing_params.yaml'
+parameters_path = './testing_params_nyu.yaml'
 parameters = yaml.load(open(parameters_path))
+
+if parameters['testing_data'] == 'oisin_house':
+    import real_data_paths as paths
+elif parameters['testing_data'] == 'synthetic':
+    import synthetic_paths as paths
+elif parameters['testing_data'] == 'nyu_cad':
+    import nyu_cad_paths as paths
+else:
+    raise Exception('Unknown training data')
 
 
 # options for rendering
@@ -161,9 +169,10 @@ else:
 
 if __name__ == '__main__':
 
-    print "WARNING - SMALL TEST DATA"
-    test_data = yaml.load(open('/media/ssd/data/oisin_house/train_test/test.yaml'))
-    results = mapper(process_sequence, test_data[20:21])
+    # print "WARNING - SMALL TEST DATA"
+    # test_data = yaml.load(open('/media/ssd/data/oisin_house/train_test/test.yaml'))
+    test_data = paths.test_data
+    results = mapper(process_sequence, test_data)
 
 
 
