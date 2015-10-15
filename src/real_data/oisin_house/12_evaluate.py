@@ -5,7 +5,6 @@ import sys
 import os
 from time import time
 import yaml
-import real_data_paths as paths
 import system_setup
 import collections
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
@@ -14,6 +13,13 @@ from common import voxlets, scene
 parameters_path = './testing_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
+
+if parameters['testing_data'] == 'oisin_house':
+    import real_data_paths as paths
+elif parameters['testing_data'] == 'synthetic':
+    import synthetic_paths as paths
+else:
+    raise Exception('Unknown training data')
 
 def process_sequence(sequence):
 
@@ -106,12 +112,25 @@ if __name__ == '__main__':
         print score.ljust(10),
     print '\n' + '-' * 55
 
+    sizes = []
+
     for experiment_name in results[0]:
         print experiment_name.ljust(25),
         for score_type in scores:
             score = get_mean_score(experiment_name, results, score_type)
-            print ('%0.4f' % score).ljust(10),
+            print ('%0.3f' % score).ljust(10),
+
+
         print ""
+
+        if experiment_name.startswith('short'):
+            iou = get_mean_score(experiment_name, results, 'iou')
+            prec = get_mean_score(experiment_name, results, 'precision')
+            rec = get_mean_score(experiment_name, results, 'recall')
+            sizes.append((float(experiment_name.split('_')[2]), iou, prec, rec))
+
+
+    print sizes
 
             # results_dict[desc] = {
             #             'description': desc,
@@ -119,3 +138,30 @@ if __name__ == '__main__':
             #             'iou':         float(dic['iou']),
             #             'precision':   float(dic['precision']),
             #             'recall':      float(dic['recall'])}
+
+# FOR PLOTTING SIZE GRAPH:
+# %matplotlib inline
+# import numpy as np
+# import matplotlib.pyplot as plt
+
+# # sizes = [('0.005', 0.58920613885043516), ('0.002', 0.54050961991053581), ('0.004', 0.58708141996357788), ('0.0025', 0.57453766200014789), ('0.00125', 0.34895851355658664), ('0.01', 0.41102637929019542), ('0.0125', 0.2880756394244543)]
+# sizes= [(0.005, 0.58920613885043516, 0.70984726997443048, 0.79551942011236931), (0.002, 0.54050961991053581, 0.8632621227991214, 0.59782704742789716), (0.004, 0.58708141996357788, 0.71263895650791054, 0.79324306790934684), (0.0025, 0.57453766200014789, 0.79758093552027287, 0.68863955851399294), (0.00125, 0.34895851355658664, 0.91452213982477382, 0.36130407836550488), (0.01, 0.41102637929019542, 0.78158512160913218, 0.47008189501931663), (0.0125, 0.2880756394244543, 0.80438995878420205, 0.31074675183359302)]
+
+# # T  = [[s[0], s[1]] for s in sizes]
+# TT = np.array(sizes)
+# idxs = TT[:, 0].argsort()
+# print idxs
+
+# print TT
+
+# plt.figure(figsize=(9, 6))
+# plt.plot(30 * TT[idxs, 0] * 100, TT[idxs, 1], '-r', label='IoU')
+# plt.plot(30 * TT[idxs, 0] * 100, TT[idxs, 2], '--g', label='Precision')
+# plt.plot(30 * TT[idxs, 0] * 100, TT[idxs, 3], ':b', label='Recall')
+# t = 15
+# plt.plot([t, t], [0, 1], ':k', label='Voxlet size for other experiments')
+# plt.xlabel('$x$ (cm). Voxlet is of size $x$ by $2x$ by $x$')
+# plt.ylabel('IoU')
+# plt.ylim(0, 1)
+# plt.legend(loc='best')
+# plt.savefig('/home/michael/Desktop/vox_sizes.eps')
