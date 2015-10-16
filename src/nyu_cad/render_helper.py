@@ -8,6 +8,16 @@ import os
 import shutil
 
 
+def norm(X):
+    return X / np.sqrt(np.sum(X**2))
+
+
+def normalise_matrix(M):
+    for i in range(3):
+        M[i, :] = norm(M[i, :])
+    return M
+
+
 def quaternion_from_matrix(matrix, isprecise=False):
     """Return quaternion from rotation matrix.
     from http://www.lfd.uci.edu/~gohlke/code/transformations.py.html
@@ -58,59 +68,78 @@ def quaternion_from_matrix(matrix, isprecise=False):
 
 
 # setting paths
-if True:
-    objdir = "/home/michael/projects/shape_sharing/data/cleaned_3D/binvox_no_walls/"
-    savedir = "/home/michael/projects/shape_sharing/data/cleaned_3D/renders_no_walls/"
-else:
-    objdir = "/home/michael/projects/shape_sharing/data/cleaned_3D/binvox_with_walls/"
-    savedir = "/home/michael/projects/shape_sharing/data/cleaned_3D/renders_with_walls/"
+folders = [
+    {"objdir": "/home/michael/projects/shape_sharing/data/cleaned_3D/binvox_no_walls/",
+    "savedir": "/home/michael/projects/shape_sharing/data/cleaned_3D/renders_no_walls/"},
+    {"objdir": "/home/michael/projects/shape_sharing/data/cleaned_3D/binvox_with_walls/",
+    "savedir": "/home/michael/projects/shape_sharing/data/cleaned_3D/renders_with_walls/"}
+    ]
 
-matpath = "/home/michael/projects/shape_sharing/data/cleaned_3D/camera_matrices/"
+for folder in folders:
 
+    objdir = folder['objdir']
+    savedir = folder['savedir']
 
-fnames = os.listdir(objdir)
+    matpath = "/home/michael/projects/shape_sharing/data/cleaned_3D/camera_matrices/"
 
-# loop over each file...
-for fname in fnames:
+    fnames = os.listdir(objdir)
 
-    if not fname.endswith('.obj'):
-        continue
+    # loop over each file...
+    for fname in fnames:
 
-    # load the camera matrices
-    mats = {}
-    for matname in ['K', 'R']:
+        print(fname)
+        if not fname.endswith('.obj'):
+            continue
 
-        csv_fname = matpath + fname.replace('.obj', '_%s.csv' % matname)
-        print(csv_fname)
-        mats[matname] = np.loadtxt(csv_fname, delimiter=',')
+        # load the camera matrices
+        mats = {}
+        for matname in ['K', 'R']:
 
-    # delete all existing meshes
-    bpy.ops.object.select_by_type(type = 'MESH')
-    bpy.ops.object.delete(use_global=False)
+            csv_fname = matpath + fname.replace('.obj', '_%s.csv' % matname)
+            print(csv_fname)
+            mats[matname] = np.loadtxt(csv_fname, delimiter=',')
 
-    obj_loadpath = objdir + fname
-    obj = bpy.ops.import_scene.obj(
-        filepath=obj_loadpath, axis_forward='Y', axis_up='Z')
+        # delete all existing meshes
+        bpy.ops.object.select_by_type(type = 'MESH')
+        bpy.ops.object.delete(use_global=False)
 
-    # move camera to correct location
-    bpy.data.objects['Camera'].location = (0, 0, 0)
-    bpy.data.objects['Camera'].rotation_mode = 'QUATERNION'
-    bpy.data.objects['Camera'].rotation_quaternion = quaternion_from_matrix(mats['R'].T)
+        obj_loadpath = objdir + fname
+        obj = bpy.ops.import_scene.obj(
+            filepath=obj_loadpath, axis_forward='Y', axis_up='Z')
 
-    # render to /tmp/
-    bpy.ops.render.render(write_still=True, animation=False )
+        # move camera to correct location
+        bpy.data.objects['Camera'].location = (0, 0, 0)
+        bpy.data.objects['Camera'].rotation_mode = 'QUATERNION'
+        bpy.data.objects['Camera'].rotation_quaternion = quaternion_from_matrix(mats['R'].T)
 
-    # make a directry to save files to
-    this_savedir = savedir + fname.replace('.obj', '/')
-    if not os.path.exists(this_savedir):
-        os.makedirs(this_savedir)
+        # render to /tmp/
+        bpy.ops.render.render(write_still=True, animation=False )
 
-    # now move the files to the correct location
-    rgb_savepath = this_savedir + 'rgb.png'
-    shutil.move('/tmp/ColourImage0016.png', rgb_savepath)
+        # make a directry to save files to
+        this_savedir = savedir + fname.replace('.obj', '/')
+        if not os.path.exists(this_savedir):
+            os.makedirs(this_savedir)
 
-    depth_savepath = this_savedir + 'depth.png'
-    shutil.move('/tmp/Image0016.png', depth_savepath)
+        # now move the files to the correct location
+        rgb_savepath = this_savedir + 'rgb.png'
+        shutil.move('/tmp/ColourImage0016.png', rgb_savepath)
 
-    # also copy the mesh there...
-    shutil.copy(obj_loadpath, this_savedir + fname)
+        depth_savepath = this_savedir + 'depth.png'
+        shutil.move('/tmp/Image0016.png', depth_savepath)
+
+        # also copy the mesh there...
+        shutil.copy(obj_loadpath, this_savedir + fname)
+
+        # take the pose from the camera...
+        scene = bpy.data.scenes['Scene']
+        pose_mat = np.array(scene.camera.matrix_world)
+
+        pose_mat[0:3, 0:3] = normalise_matrix(pose_mat[0:3, 0:3])
+        pose_mat[0:3, 1] *= -1
+        pose_mat[0:3, 2] *= -1
+
+        # save the pose to a file somewhere...
+        with open(this_savedir + 'cam_pose.csv', 'w') as f:
+            f.write(','.join(map(str, pose_mat.ravel().tolist())))
+
+            # write_pose(pose_file_handle, count + 1, frame, pose_mat)

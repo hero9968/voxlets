@@ -6,9 +6,8 @@ base_dir = '/home/michael/projects/shape_sharing/data/cleaned_3D/'
 new_dir = base_dir + 'renders_yaml_format/renders/'
 splits_dir = base_dir + 'renders_yaml_format/splits/'
 
-print os.listdir(new_dir)
 
-max_sequences = 10
+max_sequences = 2
 
 # create the dictionary
 train_seq = []
@@ -21,6 +20,7 @@ for fname in os.listdir(new_dir):
         'folder': new_dir
     })
 
+train_seq = train_seq[:max_sequences]
 test_seq = train_seq
 
 # save train and test sequence to file

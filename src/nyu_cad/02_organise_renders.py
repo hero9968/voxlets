@@ -15,9 +15,10 @@ base_dir = '../../data/cleaned_3D/'
 
 this_nowalls_dir = base_dir + 'renders_no_walls/'
 this_walls_dir = base_dir + 'renders_with_walls/'
+this_nowalls_binvox_dir = base_dir + 'binvox_no_walls/'
 new_dir = base_dir + 'renders_yaml_format/renders/'
 
-for foldername in os.listdir(this_walls_dir):
+for foldername in os.listdir(this_nowalls_dir)[:10]:
 
     print "Doing ", foldername
 
@@ -28,9 +29,9 @@ for foldername in os.listdir(this_walls_dir):
     new_path = new_dir + foldername + '/images'
     if not os.path.exists(new_path):
         os.makedirs(new_path)
-    else:
-        print "\tSeems we've already done this one... SKIPPING"
-        continue
+    # else:
+    #     print "\tSeems we've already done this one... SKIPPING"
+    #     continue
 
     print new_path
 
@@ -48,9 +49,13 @@ for foldername in os.listdir(this_walls_dir):
     skimage.io.imsave(new_path + '/mask.png', mask)
 
     # now load the binvox and save as a pickle file in the correct place
-    bvox_path = this_nowalls_dir + foldername + '.binvox'
+    bvox_path = this_nowalls_binvox_dir + foldername + '.binvox'
+    print "Path is ", bvox_path
     if not os.path.exists(bvox_path):
         print "\tNot done binvox yet! SKIPPING"
+        continue
+    elif os.path.exists(new_dir + foldername + '/ground_truth_tsdf.pkl'):
+        print "\tAlready got a binvox in the output folder - SKIPPING"
         continue
 
     with open(bvox_path, 'r') as f:
