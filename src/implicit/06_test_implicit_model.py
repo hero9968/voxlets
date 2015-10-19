@@ -7,6 +7,7 @@ import sklearn.ensemble
 import cPickle as pickle
 import scipy.misc  # for saving images
 from time import time
+from sklearn.neighbors import NearestNeighbors
 
 import matplotlib
 matplotlib.use('Agg')
@@ -28,6 +29,8 @@ if parameters['testing_data'] == 'oisin_house':
     import real_data_paths as paths
 elif parameters['testing_data'] == 'synthetic':
     import synthetic_paths as paths
+elif parameters['training_data'] == 'nyu_cad':
+    import nyu_cad_paths as paths
 else:
     raise Exception('Unknown training data')
 
@@ -68,7 +71,7 @@ def save_plot_slice(V, GT_V, imagesavepath, imtitle=""):
 def process_sequence(input_args):
 
     # unpack the input arguments
-    rf, sequence, savename = input_args
+    rf, sequence, savename, oracle = input_args
 
     print "Loading sequence %s" % sequence['name']
 
@@ -124,7 +127,25 @@ def process_sequence(input_args):
     X = np.hstack(X)
 
     # print "Making prediction"
-    Y_pred = rf.predict(X.astype(np.float32))
+    if oracle != 'none':
+        max_pairs = 200000
+        idxs = np.random.choice(X.shape[0], max_pairs)
+        X_subset = X[idxs, :]
+        Y_subset = Y[idxs]
+
+        if oracle == 'retrain_model':
+            rf.fit(X_subset.astype(np.float32), Y_subset)
+            Y_pred = rf.predict(X.astype(np.float32))
+
+        elif oracle == 'nn':
+            print "Retraining model, X is shape ", X_subset.shape
+            nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(X_subset)
+
+            print "Now fitting..."
+            distances, indices = nbrs.kneighbors(X)
+            Y_pred = Y_subset[indices[:, 0]]
+    else:
+        Y_pred = rf.predict(X.astype(np.float32))
 
     # now recreate the input image from the predictions
     # unknown_voxel_idxs = np.logical_and(
@@ -187,12 +208,13 @@ if __name__ == '__main__':
         tic = time()
 
         print "Loading the model"
-        loadpath = paths.implicit_model_dir % model_params['name'] + 'model.pkl'
+        loadpath = paths.implicit_model_dir % model_params['modelname'] + 'model.pkl'
         with open(loadpath, 'rb') as f:
             rf = pickle.load(f)
 
         savename = model_params['name']
-        per_run_args = ((rf, seq, savename) for seq in paths.test_data)
+        oracle = model_params['oracle']
+        per_run_args = ((rf, seq, savename, oracle) for seq in paths.test_data)
         print len(rf.estimators_)
         # print list(per_run_args)
 
@@ -202,7 +224,6 @@ if __name__ == '__main__':
             pool.map(process_sequence, per_run_args)
             pool.close()
             pool.join()
-
         else:
             map(process_sequence, per_run_args)
 

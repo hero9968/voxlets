@@ -18,14 +18,23 @@ if not os.path.isdir(op_dir):
 views = np.radians([270, 180, 90, 0])
 
 # each tuple: (rendername, modelname, filename)
-render_types = [('gt', 'rays_cobweb', 'gt_render.png.obj'),
-                ('visible', 'rays_cobweb', 'visible_render.png.obj'),
-                ('rays_cobweb', 'rays_cobweb', 'prediction_render.png.obj')]
-                # ('zheng2', 'zheng2', 'prediction_render.png.obj')]
+render_types = [
+# ('gt', 'rays_cobweb', 'gt_render.png.obj'),
+                # ('visible', 'rays_cobweb', 'visible_render.png.obj'),
+                # ('rays_cobweb', 'rays_cobweb', 'prediction_render.png.obj'),
+                ('zheng_2', 'zheng_2', 'prediction_render.png.obj'),
+                ('zheng_3', 'zheng_3', 'prediction_render.png.obj')]
 
 # colors
-colors = np.asarray([[168, 211, 36], [80, 192, 233], [255, 198, 65], [255, 95, 95], [203, 151, 255]]) / 255.0
+# colors = np.asarray([[168, 211, 36], [80, 192, 233], [255, 198, 65], [255, 95, 95], [203, 151, 255]]) / 255.0
+g = 190.0
+colors = np.asarray([[g, g, g], [g, g, g], [g, g, g], [g, g, g], [g, g, g]]) / 255.0
+
                     # green, #blue, orange, red, purple
+
+def isvalidscene(name):
+    valid_starts = ['jpop', '0c9l', 'nco2h', 'k4', 'vxl', '7sm', '7b', 'z5']
+    return any([name.startswith(v) for v in valid_starts])
 
 # create material
 mat = bpy.data.materials.new("PKHG")
@@ -42,6 +51,10 @@ for render_type_idx, (rendername, modelname, filename) in enumerate(render_types
     print (scenes)
 
     for scene_name in scenes:
+
+        if not isvalidscene(scene_name):
+            continue
+
         # load obj file
         full_path_to_file = prediction_dir + scene_name + '/' + filename
 

@@ -6,7 +6,7 @@ from sklearn.neighbors import NearestNeighbors
 import sys, os
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/intrinsic/'))
+sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/implicit/'))
 
 from common import scene, voxel_data
 from features import line_casting
@@ -50,7 +50,10 @@ def find_axes(norms_in):
     assert norms_in.shape[1] == 3
 
     to_use = ~np.any(np.isnan(norms_in), axis=1)
-    norms = norms_in[to_use, :]
+    to_use2 = norms_in.sum(1) > 0
+
+    norms = norms_in[np.logical_and(to_use, to_use2), :]
+    print "Norms shape is ", norms.shape, norms.sum(0)
 
     # forming a histogram over the normals
     # (using twice as many bins as them, but normals will only point towards camera
@@ -106,14 +109,27 @@ def process_scene(sc, threshold=3, skip_segment=0):
             print "Skipping segment", seg
             continue
 
-        print "Doing segment ", seg
 
         # inlying_voxels = sc.gt_labels == seg
         inlying_pixels = sc.gt_im_label.flatten() == seg
 
+        if inlying_pixels.sum() < 200:
+            print "Skiiping segment as too smalll"
+            continue
+
         # find the principal directinos of the segment
         norms = sc.im.get_world_normals()[inlying_pixels]
+        print norms.mean()
+
+        if np.abs(norms).mean() <= 0.00:
+            print "normals too small, skipping", np.abs(norms).mean()
+            continue
+
+        print "Doing segment ", seg
+
+        # print "Norm sum is ", sc.im.depth.sum()
         R = find_axes(norms)
+        print R, inlying_pixels.sum()
 
         # first rotate all the voxels
         world_voxels = sc.gt_tsdf.world_meshgrid()
@@ -141,6 +157,7 @@ def process_scene(sc, threshold=3, skip_segment=0):
             # here we don't have the gt labels as a 3D grid
             uvd = sc.im.cam.project_points(world_voxels)
             uv = np.round(uvd[:, :2]).astype(int)
+            print uvd.shape, sc.gt_im_label.shape
             inside_image = np.logical_and.reduce((uv[:, 0] >= 0,
                                               uv[:, 1] >= 0,
                                               uv[:, 1] < sc.im.depth.shape[0],

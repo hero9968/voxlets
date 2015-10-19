@@ -22,6 +22,8 @@ if parameters['training_data'] == 'oisin_house':
     import real_data_paths as paths
 elif parameters['training_data'] == 'synthetic':
     import synthetic_paths as paths
+elif parameters['training_data'] == 'nyu_cad':
+    import nyu_cad_paths as paths
 else:
     raise Exception('Unknown training data')
 
