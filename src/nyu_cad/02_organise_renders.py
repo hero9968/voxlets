@@ -18,7 +18,7 @@ this_walls_dir = base_dir + 'renders_with_walls/'
 this_nowalls_binvox_dir = base_dir + 'binvox_no_walls/'
 new_dir = base_dir + 'renders_yaml_format/renders/'
 
-for foldername in os.listdir(this_nowalls_dir)[:10]:
+for foldername in os.listdir(this_nowalls_dir):
 
     print "Doing ", foldername
 
@@ -48,15 +48,54 @@ for foldername in os.listdir(this_nowalls_dir)[:10]:
 
     skimage.io.imsave(new_path + '/mask.png', mask)
 
+    # loading the camera rotation matrix
+    mat = scipy.io.loadmat(base_dir + '/mat/%s.mat' % foldername)
+    K = mat['model'][0]['camera'][0]['K'][0, 0]
+    # R = mat['model'][0]['camera'][0]['R'][0, 0]
+    # R[1, :] *= -1
+    # R[2, :] *= -1
+    #
+    # temp = R[1, :].copy()
+    # R[1, :] = R[2, :]
+    # R[2, :] = temp
+    #
+    # R2 = np.eye(4)
+    # R2[:3, :3] = R
+    R = np.genfromtxt(this_walls_dir + foldername + '/cam_pose.csv',
+        delimiter=',').reshape((4, 4)).astype(np.float32)
+    M = np.array([[1,0,0,0], [0,0,1,0], [0,1,0,0], [0,0,0,1]])
+    R = M.dot(R)
+
+    K = np.array([[ 570.,    0.,  320.],
+                  [   0.,  570.,  240.],
+                  [   0.,    0.,    1.]])
+
+    # finally make the yaml file
+    poses = [{
+        'camera': 1,
+        'depth_scaling': 4.0,
+        'frame': 0,
+        'id': '01_0000',
+        'image': 'images/depth.png',
+        'rgb': 'images/rgb.png',
+        'mask': 'images/mask.png',
+        'intrinsics': K.ravel().tolist(),
+        'pose': R.ravel().tolist(),
+        'timestamp': 0.0
+    }]
+    yaml_path = new_dir + foldername + '/poses.yaml'
+    print yaml_path
+    yaml.dump(poses, open(yaml_path, 'w'))
+
     # now load the binvox and save as a pickle file in the correct place
     bvox_path = this_nowalls_binvox_dir + foldername + '.binvox'
     print "Path is ", bvox_path
-    if not os.path.exists(bvox_path):
-        print "\tNot done binvox yet! SKIPPING"
-        continue
-    elif os.path.exists(new_dir + foldername + '/ground_truth_tsdf.pkl'):
-        print "\tAlready got a binvox in the output folder - SKIPPING"
-        continue
+    # if not os.path.exists(bvox_path):
+    #     print "\tNot done binvox yet! SKIPPING"
+    #     continue
+    # elif os.path.exists(new_dir + foldername + '/ground_truth_tsdf.pkl'):
+    #     print "\tAlready got a binvox in the output folder - SKIPPING"
+    #     continue
 
     with open(bvox_path, 'r') as f:
         bvox = binvox_rw.read_as_3d_array(f)
@@ -73,44 +112,8 @@ for foldername in os.listdir(this_nowalls_dir)[:10]:
     vgrid.V = vgrid.compute_tsdf(0.1)
 
     tempV = vgrid.V.copy().transpose((0, 2, 1))[:, :, :]
-    vgrid.V = tempV
+    vgrid.V = tempV.astype(np.float16)
     vgrid.origin = vgrid.origin[[0, 2, 1]]
 
     with open(new_dir + foldername + '/ground_truth_tsdf.pkl', 'w') as f:
         pickle.dump(vgrid, f, -1)
-
-    # loading the camera rotation matrix
-    mat = scipy.io.loadmat(base_dir + '/mat/%s.mat' % foldername)
-    K = mat['model'][0]['camera'][0]['K'][0, 0]
-    R = mat['model'][0]['camera'][0]['R'][0, 0]
-    R[1, :] *= -1
-    R[2, :] *= -1
-
-    temp = R[1, :].copy()
-    R[1, :] = R[2, :]
-    R[2, :] = temp
-
-    R2 = np.eye(4)
-    R2[:3, :3] = R
-
-
-    K = np.array([[ 570.,    0.,  320.],
-                  [   0.,  570.,  240.],
-                  [   0.,    0.,    1.]])
-
-    # finally make the yaml file
-    poses = [{
-        'camera': 1,
-        'depth_scaling': 4.0,
-        'frame': 0,
-        'id': '01_0000',
-        'image': 'images/depth.png',
-        'rgb': 'images/rgb.png',
-        'mask': 'images/mask.png',
-        'intrinsics': K.ravel().tolist(),
-        'pose': R2.ravel().tolist(),
-        'timestamp': 0.0
-    }]
-    yaml_path = new_dir + foldername + '/poses.yaml'
-    print yaml_path
-    yaml.dump(poses, open(yaml_path, 'w'))

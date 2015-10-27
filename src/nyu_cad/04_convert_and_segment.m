@@ -1,7 +1,8 @@
 
 % convert meshes
 base_folder = '../../data/cleaned_3D/mat/'
-save_folder = '../../data/nyu_renders/'
+save_folder = '../../data/nyu_renders_split/'
+
 
 function [verts, faces] = combine_mesh(verts, new_verts, faces, new_faces)
 
@@ -42,27 +43,21 @@ function write_obj(fname, verts, faces)
 end
 
 
-function process_mat_file(base_folder, matname, remove_room_structure, binvox_save_folder)
+function process_mat_file(base_folder, matname, remove_room_structure, obj_save_folder_base)
 
     binvox_convert = true;
 
     matname
-    binvox_save_name = [binvox_save_folder, matname(1:end-3), 'binvox'];
-    obj_save_name = [binvox_save_folder, matname(1:end-3), 'obj']
+    % binvox_save_name = [binvox_save_folder, matname(1:end-3), 'binvox'];
+    obj_save_dir = [obj_save_folder_base, matname(1:end-4)]
 
-    if exist(binvox_save_name, 'file') && exist(obj_save_name, 'file')
-        ['Skipping ', binvox_save_name]
-        return
+    if ~exist(obj_save_dir, 'dir')
+        mkdir(obj_save_dir)
     end
 
     mat = load([base_folder, matname]);
 
     model = mat.model;
-
-    % write the camera details to a nice file for python to read or something
-    % model.camera
-    % model.camera.K'(:)
-    % sdsds
 
     scene_verts = [];
     scene_faces = [];
@@ -78,24 +73,14 @@ function process_mat_file(base_folder, matname, remove_room_structure, binvox_sa
             comp = model.objects{1, obj_idx}.mesh.comp;
             [verts, faces] = combine_components(comp);
 
-            % combine with everything else...
-            [scene_verts, scene_faces] = combine_mesh(scene_verts, verts, scene_faces, faces);
+            % save this mesh separately
+            savepath = sprintf([obj_save_dir, '/mesh_%04d.obj'], obj_idx)
+            write_obj(savepath, verts, faces);
+
+            %% combine with everything else...
+            % [scene_verts, scene_faces] = combine_mesh(scene_verts, verts, scene_faces, faces);
         end
     end
-
-    write_obj('/tmp/temp.obj', scene_verts, scene_faces);
-
-    if binvox_convert
-        % convert the tempory file
-        [status, cmdout] = system(['binvox /tmp/temp.obj']);
-
-        % move the new file
-        movefile('/tmp/temp.binvox', binvox_save_name);
-    end
-
-    % move the obj file
-    obj_save_name
-    movefile('/tmp/temp.obj', obj_save_name);
 
 end
 
@@ -109,7 +94,7 @@ for type = [1] %, 2]
   for file_idx = 1:length(listing)
       temp = listing(file_idx).name(1:2);
 
-      process_mat_file(base_folder, listing(file_idx).name, remove_room_structures(type), binvox_save_folders{type});
+      process_mat_file(base_folder, listing(file_idx).name, remove_room_structures(type), save_folder);
       % if strcmp(temp, '1_')
         % break
       % end
