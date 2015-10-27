@@ -48,6 +48,7 @@ def render_single_voxlet(
     temp = np.pad(temp, pad_width=1, mode='constant', constant_values=crap)
 
     verts, faces = measure.marching_cubes(temp, level)
+    # verts = verts[~np.any(np.isnan(verts), axis=1), :]
     # now take off the pad width..
     # verts -= 0.005
 

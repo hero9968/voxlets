@@ -10,14 +10,17 @@ import collections
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from common import voxlets, scene
 
-parameters_path = './testing_params.yaml'
+parameters_path = './testing_params_nyu.yaml'
 parameters = yaml.load(open(parameters_path))
 
+plot_gt_oracle = False
 
 if parameters['testing_data'] == 'oisin_house':
     import real_data_paths as paths
 elif parameters['testing_data'] == 'synthetic':
     import synthetic_paths as paths
+elif parameters['testing_data'] == 'nyu_cad':
+    import nyu_cad_paths as paths
 else:
     raise Exception('Unknown training data')
 
@@ -25,12 +28,15 @@ def process_sequence(sequence):
 
     print "-> Loading ground truth", sequence['name']
     fpath = paths.prediction_folderpath % (parameters['batch_name'], sequence['name'])
+    print fpath
+    sys.stdout.flush()
     gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
 
     results_dict = collections.OrderedDict()
 
     for test_params in parameters['tests']:
 
+        print test_params['name'],
         if test_params['name'] == 'ground_truth':
             continue
 
@@ -41,14 +47,17 @@ def process_sequence(sequence):
 
             # sometimes multiple predictions are stored in predicton
             if hasattr(prediction, '__iter__'):
+                print "Iterating"
                 for key, item in prediction.iteritems():
                     results_dict[test_params['name'] + str(key)] = \
                         gt_scene.evaluate_prediction(item.V)
             else:
+                print "Not iteration",
                 results_dict[test_params['name']] = \
                     gt_scene.evaluate_prediction(prediction.V)
 
-            if test_params['name'] == 'ground_truth_oracle':
+            if test_params['name'] == 'ground_truth_oracle' and plot_gt_oracle:
+                print "Rendering..."
                 diff = prediction.V - gt_scene.gt_tsdf.V
                 plt.subplot(221)
                 plt.imshow(gt_scene.voxels_to_evaluate.reshape(gt_scene.gt_tsdf.V.shape)[:, :, 20])
@@ -80,7 +89,7 @@ def process_sequence(sequence):
 # need to import these *after* the pool helper has been defined
 if system_setup.multicore:
     import multiprocessing
-    mapper = multiprocessing.Pool(8).map
+    mapper = multiprocessing.Pool(3).map
 else:
     mapper = map
 
@@ -98,10 +107,10 @@ def get_mean_score(test, all_scores, score_type):
 
 if __name__ == '__main__':
 
-    print "WARNING - SMALL TEST DATA"
+    # print "WARNING - SMALL TEST DATA"
     # test_data = yaml.load(open('/media/ssd/data/oisin_house/train_test/test.yaml'))
     results = mapper(process_sequence, paths.test_data)
-    yaml.dump(results, open('./different_train_test/all_results.yaml', 'w'))
+    yaml.dump(results, open('./nyu_cad/all_results.yaml', 'w'))
 
     # printing the accumulated table
     scores = ['iou', 'precision', 'recall']

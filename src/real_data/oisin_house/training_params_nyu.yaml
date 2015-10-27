@@ -3,7 +3,7 @@ voxel_size: 0.1
 training_data: 'nyu_cad'
 
 pca:
-    number_points_from_each_image: 10000
+    number_points_from_each_image: 100
     number_dims: 400
 
     # max number of examples to use for pca
@@ -12,9 +12,9 @@ pca:
     # use fewer sequences for pca then for the main training, for memory reasons
     # however, should ensure these are taken evenly through the training set
     # in case there is inherent ordering to the training data
-    max_sequences: 250
+    max_sequences: 150
 
-number_points_from_each_image: 10000
+number_points_from_each_image: 500
 
 # which features to use, can be 'samples' or 'cobweb'
 # features: ['cobweb', 'samples']
@@ -25,14 +25,16 @@ cobweb_use_mask: False
 
 # voxel sampling features
 vox_num_rings: 10
-vox_radius: 0.005
-samples_out_of_range_feature: 0.025
+vox_radius: 0.035
+samples_out_of_range_feature: -0.025
 idxs_out_of_range_feature: 0.0
 
 
 segment_with_gt: False
 
 # sampling_grid_size: 0.1
+ml_type: 'forest'
+
 
 # if a feature is out of the inlier mask, give it this value
 cobweb_out_of_range_feature: -5.0
@@ -45,8 +47,8 @@ forest: &DEFAULT_FOREST
     max_depth: 30
     num_trees: 40
     bag_size: 0.5
-    train_parallel: False
-    njobs: 1
+    train_parallel: True
+    njobs: 3
 
     # structured learning params
     #pca_dims: 5
@@ -94,18 +96,39 @@ models_to_train:
 #     feature: 'cobweb'
 #     forest:
 #         <<: *DEFAULT_FOREST
+#
+# -   name: 'tall_cobweb'
+#     voxlet_type: 'tall'
+#     feature: 'cobweb'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'short_cobweb'
+#     voxlet_type: 'short'
+#     feature: 'cobweb'
+#     forest:
+#         <<: *DEFAULT_FOREST
 
--   name: 'tall_cobweb_syn'
-    voxlet_type: 'tall'
-    feature: 'cobweb'
-    forest:
-        <<: *DEFAULT_FOREST
+# -   name: 'tall_samples'
+#     voxlet_type: 'tall'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
 
--   name: 'short_cobweb_syn'
+
+#
+# -   name: 'short_samples'
+#     voxlet_type: 'short'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+
+-   name: 'short_samples_bedrooms'
     voxlet_type: 'short'
-    feature: 'cobweb'
+    feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
+
 
 
 # -   name: 'short_cobweb_005_scenes'

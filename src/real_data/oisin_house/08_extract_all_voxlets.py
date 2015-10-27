@@ -81,6 +81,10 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
     print "Nans: ", np.isnan(np_masks).sum()
     print "Nans: ", np.isnan(sc.gt_tsdf.V).sum()
 
+    if np.isnan(np_sboxes).sum() > 0 or np.isnan(np_masks).sum() > 0:
+        print "Found nans..."
+        return
+
     # must do the pca now after doing the mask trick
     np_sboxes = pca.transform(np_sboxes)
     np_masks = mask_pca.transform(np_masks)

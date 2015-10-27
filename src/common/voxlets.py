@@ -62,7 +62,7 @@ class VoxletPredictor(object):
         print "X shape is ", X.shape
         print "Y shape is ", Y.shape
 
-    def train(self, X, Y, forest_params, subsample_length=-1,
+    def train(self, X, Y, forest_params, ml_type='forest', subsample_length=-1,
         masks=None, scene_ids=None):
         '''
         Runs the OMA forest code
@@ -96,12 +96,21 @@ class VoxletPredictor(object):
         if not forest_params['my_bagging']:
             scene_ids = None
 
-        print "Training forest"
-        self.forest = srf.Forest(forest_params)
-        tic = time.time()
-        self.forest.train(X, Y, scene_ids)
-        toc = time.time()
-        print "Time to train forest is", toc-tic
+        self.ml_type = ml_type
+
+        if ml_type == 'forest':
+            print "Training forest", X.shape, Y.shape
+            self.forest = srf.Forest(forest_params)
+            tic = time.time()
+            self.forest.train(X, Y, scene_ids)
+            toc = time.time()
+            print "Time to train forest is", toc-tic
+        elif ml_type == 'nn':
+            from sklearn.neighbors import NearestNeighbors
+            self.nn = NearestNeighbors(
+                n_neighbors=1, algorithm='kd_tree').fit(X)
+        else:
+            raise Exception('Unknown ml type %s' % ml_type)
 
         # must save the training data in this class, as the forest only saves
         # an index into the training set...
@@ -135,11 +144,17 @@ class VoxletPredictor(object):
         '''
         # each tree predicts which index in the test set to use...
         # rows = test data (X), cols = tree
-        index_predictions = self.forest.test(X, max_depth=self.max_depth).astype(int)[0]
+        # print "Feature vector is shape ", X.shape
+        if hasattr(self, 'ml_type') and self.ml_type == 'nn':
+            _, index_predictions = self.nn.kneighbors(X)
+            index_predictions = np.array(index_predictions[0])
+        else:
+            index_predictions = self.forest.test(X, max_depth=self.max_depth).astype(int)[0]
+            # checking - should be one prediction per tree
+            assert len(index_predictions) == len(self.forest.trees)
+
         self._cached_predictions = index_predictions
 
-        # checking - should be one prediction per tree
-        assert len(index_predictions) == len(self.forest.trees)
 
         # now reform the original test data for each tree prediction
         tree_predictions = \
@@ -365,7 +380,7 @@ class Reconstructer(object):
             weight_empty_lower=None,
             use_binary=None,
             how_to_choose='closest',
-            distance_measure='narrow_band'):
+            distance_measure='just_empty'):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -393,9 +408,17 @@ class Reconstructer(object):
         '''
 
         if np.any(np.array(['cobweb' == m.feature for m in self.model])):
+            # nasty magic numbers here...
             cobwebengine = features.CobwebEngine(0.01, mask=self.sc.im.mask)
             cobwebengine.set_image(self.sc.im)
             self.cobwebengine=cobwebengine
+
+        if np.any(np.array(['samples' == m.feature for m in self.model])):
+            # nasty magic numbers here...
+            sampleengine = features.SampledFeatures(
+                num_rings=10, radius=0.035)
+            sampleengine.set_scene(self.sc)
+            self.sampleengine=sampleengine
 
         if oracle == 'nn':
             # set up the nn classifier just once.
@@ -446,6 +469,12 @@ class Reconstructer(object):
                 feature_vector = cobwebengine.get_cobweb(idx)
                 feature_vector[np.isnan(feature_vector)] = -5.0
                 # print feature_vector
+            elif model_to_use.feature == 'idxs':
+                # use the xy location in the image as a feature, for debugging
+                feature_vector = np.array(idx)
+            elif model_to_use.feature=='samples':
+                feature_vector = sampleengine.sample_idx(idx)
+                feature_vector[np.isnan(feature_vector)] = -self.mu
             else:
                 feature_vector = self._feature_collapse(features_voxlet.V.flatten(),
                     feature_collapse_type, feature_collapse_param)
@@ -492,20 +521,29 @@ class Reconstructer(object):
                 weights_to_use = 1-mask
                 weights_to_use = weights_to_use.flatten()
                 if weight_empty_lower is not None:
-                    weights_to_use[voxlet_prediction > 0] *= weight_empty_lower
+                    weights_to_use[voxlet_prediction > 0] *= (1.0 - weight_empty_lower)
 
             # adding the shoebox into the result
             transformed_voxlet = self._initialise_voxlet(idx, model_to_use.voxlet_params)
             transformed_voxlet.V = voxlet_prediction.reshape(
                 model_to_use.voxlet_params['shape'])
 
+            # print "WARNING - this bit will slow down, just doing for debug"
+            # spath = '/tmp/voxlets/%05d.pkl' % count
+            # with open(spath, 'wb') as f:
+            #     pickle.dump(transformed_voxlet.V, f)
+
+            # spath = '/tmp/voxlets/%05d_mask.pkl' % count
+            # with open(spath, 'wb') as f:
+            #     pickle.dump(weights_to_use, f)
+
             if oracle == 'greedy_add':
                 acc_copy = self.accum.copy()
                 acc_copy.add_voxlet(transformed_voxlet, accum_only_predict_true, weights=weights_to_use)
 
                 # now compare the two scores...
-                new_iou = self.sc.evaluate_prediction(pred_new)
-                old_iou = self.sc.evaluate_prediction(self.accum.compute_average().V)
+                new_iou = self.sc.evaluate_prediction(acc_copy.compute_average().V)['iou']
+                old_iou = self.sc.evaluate_prediction(self.accum.compute_average().V)['iou']
 
                 if new_iou > old_iou:
                     self.accum = acc_copy
@@ -518,15 +556,26 @@ class Reconstructer(object):
                 Di = {}
                 # The distance used depends on if we are comparing to the ground truth or the observed data...
                 if oracle == 'true_greedy':
+                    # compare to the observed data
                     Di['distance'] = model_to_use.min_dist
                 elif oracle == 'true_greedy_gt':
+                    # compare to the ground truth
                     Di['distance'] = np.linalg.norm(
                         transformed_voxlet.V.flatten()[model_to_use.dims_to_use_for_distance_cache.flatten()] -
                         gt_voxlet.V.flatten()[model_to_use.dims_to_use_for_distance_cache.flatten()])
 
-                Di['voxlet'] = transformed_voxlet
-                Di['mask'] = mask
-                Di['weights'] = weights_to_use
+                # ok this is quite nasty - we are recompressing the voxlets in
+                # order to save memory
+                Di['voxlet_pca'] = model_to_use.pca.transform(transformed_voxlet.V.flatten())
+                Di['mask_pca'] = model_to_use.masks_pca.transform(mask.flatten())
+                blank_voxlet = copy.deepcopy(transformed_voxlet)
+                blank_voxlet.V = []
+                Di['empty_voxlet'] = blank_voxlet
+
+                # shouldn't cause a memory issue, as should just store a
+                # reference to the model
+                Di['model'] = model_to_use
+                # Di['weights'] = weights_to_use
 
                 # saving this voxlet's position on a floorplan
                 world_ij_grid = self.sc.gt_tsdf.world_xy_meshgrid()
@@ -611,12 +660,24 @@ class Reconstructer(object):
                 plt.savefig(savepath)
                 plt.close()
 
+            # now save the grid at this critical point in time
+            # print "Warning - saving grid"
+            # with open('/tmp/partial_grids/%04d.pkl' % count, 'w') as f:
+            #     pickle.dump(self.accum.compute_average(), f, protocol=-1)
+
+        # attempting to debug the prediction thing
+        if oracle == 'gt':
+            plt.figure()
+            plt.imshow(self.sc.im.depth)
+            plt.plot(self.sc.sampled_idxs[:, 1], self.sc.sampled_idxs[:, 0], 'or')
+            plt.savefig('./tests/sample_dots.png')
+
         if oracle == 'true_greedy' or oracle == 'true_greedy_gt':
             # in true greedy, then we wait until here to add everything together...
             # sort so the smallest possible predictions are at the front...
 
             # this is when to save the grid for visualisation purposes...
-            stop_points = [10, 50, 100, 200]
+            stop_points = [10, 50, 100, 200, 500]
 
             results = collections.OrderedDict()
             self.possible_predictions.sort(key=lambda x: x['distance'])
@@ -634,9 +695,20 @@ class Reconstructer(object):
                 #     self.union_fplan, filled_fplan, all_fplans)
 
                 # add this one in...
-                self.accum.add_voxlet(prediction['voxlet'],
-                    accum_only_predict_true, weights=prediction['weights'])
+                vox_shape = model_to_use.voxlet_params['shape']
+
+                this_voxlet_V = prediction['model'].pca.inverse_transform(
+                    prediction['voxlet_pca']).reshape(vox_shape)
+                this_mask = prediction['model'].masks_pca.inverse_transform(
+                    prediction['mask_pca']).reshape(vox_shape)
+                this_weights = 1 - this_mask
+                prediction['empty_voxlet'].V = this_voxlet_V
+
+                self.accum.add_voxlet(prediction['empty_voxlet'],
+                    accum_only_predict_true, weights=this_weights)
                 # filled_fplan = np.logical_or(filled_fplan, prediction['floorplan'])
+
+                prediction['empty_voxlet'].V = []
 
                 if count in stop_points:
                     results[count] = copy.deepcopy(self.accum.compute_average())
@@ -644,13 +716,17 @@ class Reconstructer(object):
                     results[count].sumV = []
                     results[count].countV = []
 
+                elif count > np.array(stop_points).max():
+                    break
                 # print "energies are ", self._eval_union_cost(
                 #     self.union_fplan, filled_fplan, all_fplans)
 
 
             return results
 
+        print self.accum.sumV.shape
         average = self.accum.compute_average()
+        print self.accum.sumV.shape
 
         # creating a final output which preserves the existing geometry
         keeping_existing = self.sc.im_tsdf.copy()
@@ -673,13 +749,17 @@ class Reconstructer(object):
             self.keeping_existing.V += 0.5
 
         # good for memory...
-        average.sumV = []
-        average.countV = []
+        if False:
+            average.sumV = []
+            average.countV = []
+
+        # caching so I can get this later...
+        self.average = average
 
         # removing the excess from the grid...
         self.remove_excess = average.copy()
         self.remove_excess.V[self.sc.im_tsdf.V > 0] = self.sc.mu
-
+        self.remove_excess.V[np.isnan(self.remove_excess.V)] = self.sc.mu
         return self.remove_excess
 
     def _render_slice(self, features_voxlet, transformed_voxlet):
@@ -831,7 +911,7 @@ class Reconstructer(object):
     def plot_sampled_points(self, savepath=None):
         plt.imshow(self.sc.im.depth)
         plt.hold(True)
-        plt.plot(self.sc.sampled_idxs[:, 1], self.sc.sampled_idxs[:, 0], 'ro')
+        plt.plot(self.sc.sampled_idxs[:, 0], self.sc.sampled_idxs[:, 1], 'ro', ms=0.5)
         plt.hold(False)
 
     def plot_voxlet_top_view(self, savepath=None):
@@ -844,9 +924,13 @@ class Reconstructer(object):
 
         plt.subplot(131)
         plt.imshow(self.sc.im.rgb)
+        plt.hold('on')
+        print self.sc.sampled_idxs.shape
+        plt.plot(self.sc.sampled_idxs[:, 1], self.sc.sampled_idxs[:, 0], 'or', ms=1.5)
+        plt.hold('off')
         plt.axis('off')
-        plt.subplot(132)
 
+        plt.subplot(132)
         top_view = np.nanmean(self.sc.gt_tsdf.V, axis=2)
         # np.nanmean(self.sc.im_tsdf.V, axis=2)
         plt.imshow(top_view, cmap=plt.get_cmap('Greys'))

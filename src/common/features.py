@@ -63,7 +63,7 @@ class CobwebEngine(object):
         self.depth = copy(self.im.depth)
         if self.mask is not None:
             self.depth[self.mask==0] = np.nan
-            self.depth[im.get_world_xyz()[:, 2].reshape(im.depth.shape) < 0.035] = np.nan
+            # self.depth[im.get_world_xyz()[:, 2].reshape(im.depth.shape) < 0.035] = np.nan
 
     def get_cobweb(self, index):
         '''extracts cobweb for a single index point'''
@@ -103,6 +103,7 @@ class CobwebEngine(object):
         vals = self.depth[rows_to_take, cols_to_take] - self.depth[row, col]
         cobweb[to_use] = vals
         self.rows, self.cols = rows_to_take, cols_to_take
+
         return np.copy(cobweb.flatten())
 
     def extract_patches(self, indices):
@@ -209,6 +210,7 @@ class Normals(object):
         im2 = deepcopy(im)
         im2._clear_cache()
         im2.depth = carver._filter_depth(im.depth)
+        print "Here:=", stepsize
         return self.compute_normals(im2, stepsize)
 
     def compute_normals(self, im, stepsize=2):
@@ -384,6 +386,15 @@ class SampledFeatures(object):
         sampled_values = self.sc.im_tsdf.get_idxs(idxs, check_bounds=True)
 
         return sampled_values
+
+    def sample_idx(self, idx):
+        # samples at each of the N locations, and returns some shape thing
+        point_idx = idx[0] * self.sc.im.mask.shape[1] + idx[1]
+
+        xyz = self.sc.im.get_world_xyz()
+        norms = self.sc.im.get_world_normals()
+        # print "in sample idx ", norms.shape
+        return self._single_sample(xyz[point_idx], norms[point_idx])
 
     def sample_idxs(self, idxs):
         # samples at each of the N locations, and returns some shape thing

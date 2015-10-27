@@ -326,6 +326,7 @@ class RGBDImage(object):
 
         # setting the camera intrinsics and extrinsics
         extrinsics = np.array(dictionary['pose']).reshape((4, 4))
+        print extrinsics
         intrinsics = np.array(dictionary['intrinsics']).reshape((3, 3))
 
         cam = mesh.Camera()
@@ -334,7 +335,9 @@ class RGBDImage(object):
         im.set_camera(cam)
 
         if 'mask' in dictionary:
+            print "Found mask"
             mask_image_path = os.path.join(scene_folder, dictionary['mask'])
+            print mask_image_path
         else:
             mask_image_path = \
                 scene_folder + '/frames/mask_%s.png' % dictionary['id']
@@ -391,6 +394,7 @@ class RGBDImage(object):
             im_idx[:, 2] > 0, im_idx[:, 2] < vgrid.V.shape[2]))
         temp_labels = \
             vgrid.V[im_idx[to_use, 0], im_idx[to_use, 1], im_idx[to_use, 2]]
+        print to_use.shape, self.mask.shape
 
         labels = deepcopy(self.mask).astype(int) * np.nan
         labels[to_use.reshape(self.mask.shape)] = temp_labels

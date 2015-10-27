@@ -117,10 +117,10 @@ def process_sequence(sequence):
     print "-> Main renders"
     for test_params in parameters['tests']:
 
-            if test_params['name'] == 'ground_truth':
-                continue
+            # if test_params['name'] == 'ground_truth':
+            #     continue
 
-            print "Rendering ", test_params['name']
+            print "Loading ", test_params['name']
 
             prediction_savepath = fpath + test_params['name'] + '.pkl'
 
@@ -129,12 +129,16 @@ def process_sequence(sequence):
 
             prediction = pickle.load(open(prediction_savepath))
 
+            if test_params['name'] == 'ground_truth':
+                prediction = prediction.gt_tsdf
+
             if test_params['name']=='visible':
                 ground_height = None
             else:
                 ground_height = 0.03
 
             # sometimes multiple predictions are stored in predicton
+            print "Rendering ", test_params['name']
             if hasattr(prediction, '__iter__'):
                 for key, item in prediction.iteritems():
                     savepath = (gen_renderpath % test_params['name']).replace('.png', str(key) + '.png')

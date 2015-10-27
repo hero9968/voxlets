@@ -532,6 +532,9 @@ class WorldVoxels(Voxels):
 
             # keeps track of what the current slice in the shoebox is
             current_shoebox_slice = np.nan
+            # 
+            # if weights:
+            #     import pdb; pdb.set_trace()
 
             # try saving up all the valid idxs
             #valid_ijs = np.empty((valid_k_idxs.shape[0]*valid_ij.shape[0], 3))
@@ -616,6 +619,8 @@ class WorldVoxels(Voxels):
         # temp.V[:, :, 5] = 10
 
         #pickle.dump(self, open('/tmp/temp_voxel_grid.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
+        print "Generating mesh...",
+        sys.stdout.flush()
         ms = mesh.Mesh()
         ms.from_volume(temp, 0)
         #pickle.dump(ms, open('/tmp/temp_mesh.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
@@ -628,8 +633,13 @@ class WorldVoxels(Voxels):
             ms.vertices[:, 2] -= 0.05
             # ms.vertices *= 1.5
 
+        print "Writing to obj...",
+        sys.stdout.flush()
+
         ms.write_to_obj(savepath + '.obj')
 
+        print "Rendering...",
+        sys.stdout.flush()
         blend_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/spin.blend')
         blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/blender_spinaround_frame.py')
         subenv = os.environ.copy()
@@ -641,6 +651,9 @@ class WorldVoxels(Voxels):
                  env=subenv,
                  stdout=open(os.devnull, 'w'),
                  close_fds=True)
+
+        print "Done rendering...",
+        sys.stdout.flush()
 
         if not keep_obj:
             os.remove(savepath + '.obj')

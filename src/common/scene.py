@@ -215,14 +215,29 @@ class Scene(object):
             self.sampled_idxs = np.array(sampled_points)
         else:
             sample_rate = copy(self.im.depth)
+            print sample_rate.sum()
 
             shape = self.im.depth.shape
-            sample_rate[self.im.get_world_xyz()[:, 2].reshape(shape) < 0.035] = 0
+            if not nyu:
+                print "Not NYU for some reason"
+                sample_rate[self.im.get_world_xyz()[:, 2].reshape(shape) < 0.035] = 0
+                sample_rate[np.isnan(self.gt_im_label)] = 0
+                sample_rate[self.im.normals[:, 2].reshape(shape) > -0.1] = 0
+            # import pdb; pdb.set_trace()
+            print "Mask", (self.im.mask!=0).sum()
+            print sample_rate.shape, self.im.mask.shape
             sample_rate[self.im.mask==0] = 0
-            sample_rate[self.im.normals[:, 2].reshape(shape) > -0.1] = 0
-            sample_rate[self.im.get_world_normals()[:, 2].reshape(shape) > 0.98] = 0
-            sample_rate[np.isnan(self.gt_im_label)] = 0
+            print sample_rate.sum()
 
+            # normals approximately pointing upwards
+            sample_rate[self.im.get_world_normals()[:, 2].reshape(shape) > 0.98] = 0
+            print sample_rate.sum()
+
+            if sample_rate.sum() == 0:
+                raise Exception("Sample rate is zero sum, cannot sample any points")
+
+            import scipy.io
+            scipy.io.savemat('/tmp/samples.mat', {'sr':sample_rate})
             sample_rate /= sample_rate.sum()
 
             samples = np.random.choice(shape[0]*shape[1], num_to_sample, p=sample_rate.flatten())
@@ -345,13 +360,22 @@ class Scene(object):
             self.im_tsdf, self.im_visible = carver.fuse(self.mu)
 
             # computing normals...
-            norm_engine = features.Normals()
-            if voxel_normals and voxel_normals == 'im_tsdf':
-                self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
-            elif voxel_normals:
-                self.im.normals = norm_engine.voxel_normals(self.im, self.gt_tsdf)
-            else:
-                self.im.normals = norm_engine.compute_normals(self.im)
+        norm_engine = features.Normals()
+        self.im.normals = norm_engine.compute_bilateral_normals(self.im, stepsize=2)
+
+        # update the mask to take into account the normals...
+        norm_nans = np.any(np.isnan(self.im.get_world_normals()), axis=1)
+        self.im.mask = np.logical_and(
+            ~norm_nans.reshape(self.im.mask.shape),
+            self.im.mask)
+
+        # self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
+
+            # if voxel_normals and voxel_normals == 'im_tsdf':
+            #     self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
+            # elif voxel_normals:
+            # else:
+            #     self.im.normals = norm_engine.compute_normals(self.im)
 
         '''
         HERE SEGMENTING USING THE GROUND TRUTH
@@ -477,7 +501,12 @@ class Scene(object):
 
         elif extract_from == 'actual_tsdf':
             shoebox.fill_from_grid(self.gt_tsdf)
-
+            # print np.isnan(shoebox.V).sum()
+            # print point_idx, index, self.im.mask.shape
+            # print np.array([start_x, start_y, start_z])
+            # print world_norms[point_idx]
+            # print self.gt_tsdf.world_to_idx(np.array([[start_x, start_y, start_z]]))
+            # print ""
         else:
             raise Exception("Don't know how to extract from %s" % extract_from)
 

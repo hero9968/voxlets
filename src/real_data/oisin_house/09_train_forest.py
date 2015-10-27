@@ -47,6 +47,11 @@ def load_training_data(voxlet_name, feature_name, num_scenes=None):
 
         loadfolder = paths.voxlets_data_path % voxlet_name
         loadpath = loadfolder + sequence['name'] + '.pkl'
+        if not os.path.exists(loadpath):
+            print "Cannot find ", sequence['name']
+            print "SKIPPING"
+            continue
+
         D = pickle.load(open(loadpath, 'r'))
 
         features.append(D[feature_name])
@@ -72,7 +77,7 @@ def load_training_data(voxlet_name, feature_name, num_scenes=None):
     return np_features, np_voxlets, np_masks, np_scene_ids
 
 
-def train_model(model_params):
+def train_model(model_params, all_params):
 
     print "-> Ensuring output folder exists"
     savepath = paths.voxlet_model_path % (model_params['name'])
@@ -100,6 +105,7 @@ def train_model(model_params):
     model.train(
         np_features,
         np_voxlets,
+        ml_type=parameters['ml_type'],
         forest_params=parameters['forest'],
         subsample_length=parameters['forest']['subsample_length'],
         masks=np_masks,
@@ -115,9 +121,13 @@ def train_model(model_params):
     model.set_pca(pca)
     model.set_masks_pca(mask_pca)
 
+    # saving all the parameters for things like feature parameters etc
+    model.all_params = all_params
+
     print "-> Saving to ", savepath
     model.save(savepath.replace('.pkl', '_full.pkl'))
-    model.forest.make_lightweight()
+    if hasattr(model, 'forest'):
+        model.forest.make_lightweight()
     model.save(savepath)
 
     gc.collect()
@@ -127,6 +137,6 @@ if __name__ == '__main__':
 
     # Repeat for each type of voxlet in the parameters
     for model_params in parameters['models_to_train']:
-        train_model(model_params)
+        train_model(model_params, parameters)
         gc.collect()
             # del model, pca, mask_pca, np_features, np_voxlets, np_masks

@@ -12,6 +12,7 @@ from time import time
 import yaml
 import functools
 import scipy.io
+from copy import deepcopy
 
 from common import voxlets, scene
 import system_setup
@@ -29,6 +30,10 @@ else:
     raise Exception('Unknown training data')
 
 render_top_view = True
+#
+# print "WAITING"
+# from time import sleep
+# sleep(1000*3600)
 
 if __name__ == '__main__':
 
@@ -55,9 +60,6 @@ if __name__ == '__main__':
             sc.load_sequence(
                 sequence, frame_nos=0, segment_with_gt=True, voxel_normals='gt_tsdf')
             sc.sample_points(params['number_samples'], nyu=parameters['testing_data'] == 'nyu_cad')
-            print "WARNING\n\n\n\n\n"
-            sc.sampled_idxs = scipy.io.loadmat(paths.data_folder + 'tmp_idxs.mat')['idxs'][:2000, :]
-            print "WARNING\n\n\n\n\n"
 
             print "-> Creating folder"
             fpath = paths.prediction_folderpath % \
@@ -66,7 +68,12 @@ if __name__ == '__main__':
                 os.makedirs(fpath)
 
             if 'ground_truth' in params and params['ground_truth']:
-                pred_voxlets = sc
+                # import pdb; pdb.set_trace()
+                sc2 = deepcopy(sc)
+                sc2.gt_labels = []
+                sc2.gt_tsdf_separate = []
+                sc2.gt_labels_separate = []
+                pred_voxlets = sc2
 
             elif 'visible' in params and params['visible']:
                 pred_voxlets = sc.im_tsdf
@@ -78,6 +85,7 @@ if __name__ == '__main__':
                 rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
                 rec.set_model_probabilities(params['model_probabilities'])
                 rec.set_model(models)
+                rec.mu = params['mu']
 
                 for model in rec.model:
                     model.reset_voxlet_counts()
@@ -106,12 +114,16 @@ if __name__ == '__main__':
                         (parameters['batch_name'], sequence['name'], '%s')
                     rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
 
+                # save the keeping existing prediction
+                with open(prediction_savepath.replace('.pkl', '_keeping_existing.pkl'), 'w') as f:
+                    pickle.dump(rec.keeping_existing, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+
             prediction_savepath = fpath + params['name'] + '.pkl'
             print "-> Saving the prediction to ", prediction_savepath
 
             with open(prediction_savepath, 'w') as f:
                 pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)
-
         print "--> Doing test type ", params['name']
 
         tic = time()
