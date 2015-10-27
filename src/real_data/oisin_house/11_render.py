@@ -142,12 +142,27 @@ def process_sequence(sequence):
             if hasattr(prediction, '__iter__'):
                 for key, item in prediction.iteritems():
                     savepath = (gen_renderpath % test_params['name']).replace('.png', str(key) + '.png')
-                    item.render_view(savepath, xy_centre=True, ground_height=ground_height)
+                    item.render_view(savepath, xy_centre=True, ground_height=ground_height, keep_obj=True)
+                    print "Saving to ", savepath
             else:
                 prediction.render_view(gen_renderpath % test_params['name'],
                     xy_centre=True, ground_height=ground_height, keep_obj=True)
                 print "Saving to ", gen_renderpath % test_params['name']
 
+            # maybe I also want to render other types of prediction
+            if parameters['render_without_excess_removed']:
+
+                print "Rendering without excess removed"
+                prediction_savepath = fpath + test_params['name'] + '_average.pkl'
+
+                if not os.path.exists(prediction_savepath):
+                    continue
+
+                prediction = pickle.load(open(prediction_savepath))
+
+                print "Saving to ", gen_renderpath % test_params['name']
+                prediction.render_view(gen_renderpath % test_params['name'],
+                    xy_centre=True, ground_height=ground_height, keep_obj=True)
 
                 # savepath = (gen_renderpath % test_params['name']).replace('.png', '_slice.png')
                 # slice_render(prediction, gt_scene.gt_tsdf, savepath)

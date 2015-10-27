@@ -115,8 +115,16 @@ if __name__ == '__main__':
                     rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
 
                 # save the keeping existing prediction
-                with open(prediction_savepath.replace('.pkl', '_keeping_existing.pkl'), 'w') as f:
-                    pickle.dump(rec.keeping_existing, f, protocol=pickle.HIGHEST_PROTOCOL)
+                if hasattr(rec, 'keeping_existing'):
+                    prediction_savepath = fpath + params['name'] + '.pkl'
+                    with open(prediction_savepath.replace('.pkl', '_keeping_existing.pkl'), 'w') as f:
+                        pickle.dump(rec.keeping_existing, f, -1)
+
+                # save the keeping existing prediction
+                if hasattr(rec, 'average'):
+                    prediction_savepath = fpath + params['name'] + '.pkl'
+                    with open(prediction_savepath.replace('.pkl', '_average.pkl'), 'w') as f:
+                        pickle.dump(rec.average, f, -1)
 
 
             prediction_savepath = fpath + params['name'] + '.pkl'
