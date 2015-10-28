@@ -8,15 +8,22 @@ import scipy.misc
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/implicit/'))
 
+synth = False
+
 from common import scene, voxel_data
-import synthetic_paths as paths
+
+if synth:
+    import synthetic_paths as paths
+    parameters = yaml.load(open('../implicit_params.yaml'))
+else:
+    import nyu_cad_paths as paths
+    parameters = yaml.load(open('../../real_data/oisin_house/training_params_nyu.yaml'))
 
 import matplotlib.pyplot as plt
 
 import find_axes
 # myimp = __import__('06_test_implicit_model')
 
-parameters = yaml.load(open('../implicit_params.yaml'))
 
 plot_segmentation = False
 the_zheng_parameter = 3
@@ -94,9 +101,9 @@ def process_sequence(sequence):
 
 
 # need to import these *after* the pool helper has been defined
-if True:
+if False:
     import multiprocessing
-    mapper = multiprocessing.Pool(6).map
+    mapper = multiprocessing.Pool(2).map
 else:
     mapper = map
 
@@ -104,6 +111,6 @@ else:
 if __name__ == '__main__':
 
     tic = time()
-    print "DANGER - doing on train sequence"
+    # print "DANGER - doing on train sequence"
     mapper(process_sequence, paths.test_data)
     print "In total took %f s" % (time() - tic)

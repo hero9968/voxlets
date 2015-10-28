@@ -104,27 +104,32 @@ def process_sequence(input_args):
         do_compression=True)
 
     # print "Computing the features"
-    rays, Y, voxels_to_use = line_casting.feature_pairs_3d(
-        known_empty_voxels,
-        known_full_voxels,
-        sc.gt_tsdf.V,
-        in_frustrum=sc.get_visible_frustrum(),
-        samples=-1, base_height=0)
+    try:
+        rays, Y, voxels_to_use = line_casting.feature_pairs_3d(
+            known_empty_voxels,
+            known_full_voxels,
+            sc.gt_tsdf.V,
+            in_frustrum=sc.get_visible_frustrum(),
+            samples=-1, base_height=0)
 
-    X = []
-    if 'rays' in rf.parameters['features']:
-        rays = line_casting.postprocess_features(
-            rays, rf.parameters['postprocess'])
-        X.append(rays)
+        X = []
+        if 'rays' in rf.parameters['features']:
+            rays = line_casting.postprocess_features(
+                rays, rf.parameters['postprocess'])
+            X.append(rays)
 
-    if 'cobweb' in rf.parameters['features']:
-        cobweb = line_casting.cobweb_distance_features(
-        sc, voxels_to_use, parameters['cobweb_offset'])
-        cobweb[np.isnan(cobweb)] = parameters['cobweb_out_of_range']
-        X.append(cobweb)
+        if 'cobweb' in rf.parameters['features']:
+            cobweb = line_casting.cobweb_distance_features(
+            sc, voxels_to_use, parameters['cobweb_offset'])
+            cobweb[np.isnan(cobweb)] = parameters['cobweb_out_of_range']
+            X.append(cobweb)
 
-    # combining the features
-    X = np.hstack(X)
+        # combining the features
+        X = np.hstack(X)
+
+    except:
+        print "FAILURE! Skipping"
+        return
 
     # print "Making prediction"
     if oracle != 'none':

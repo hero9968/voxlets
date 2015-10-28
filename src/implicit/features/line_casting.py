@@ -315,7 +315,7 @@ def feature_pairs_3d(
     X = np.concatenate((X1, X2), axis=1)
 
     # subsample if requested
-    if samples > -1:
+    if samples > -1 and samples < Y.shape[0]:
         idx_to_use = np.random.choice(Y.shape[0], samples, replace=False)
         Y = Y[idx_to_use]
         X = X[idx_to_use]

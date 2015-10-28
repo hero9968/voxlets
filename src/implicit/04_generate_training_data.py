@@ -51,18 +51,23 @@ def process_sequence(sequence):
     known_empty_voxels.V = sc.im_tsdf.V > 0
 
     # computing the axis aligned ray features
-    X, Y, voxels_to_use = line_casting.feature_pairs_3d(
-        known_empty_voxels,
-        known_full_voxels,
-        sc.gt_tsdf.V,
-        in_frustrum=sc.get_visible_frustrum(),
-        samples=parameters['training_samples_per_image'],
-        base_height=0)
+    try:
+        X, Y, voxels_to_use = line_casting.feature_pairs_3d(
+            known_empty_voxels,
+            known_full_voxels,
+            sc.gt_tsdf.V,
+            in_frustrum=sc.get_visible_frustrum(),
+            samples=parameters['training_samples_per_image'],
+            base_height=0)
 
-    # computing the ray + cobweb features, just for the already chosen voxels
-    cobweb = line_casting.cobweb_distance_features(
-        sc, voxels_to_use, parameters['cobweb_offset'])
-    cobweb[np.isnan(cobweb)] = parameters['cobweb_out_of_range']
+        # computing the ray + cobweb features, just for the already chosen voxels
+        cobweb = line_casting.cobweb_distance_features(
+            sc, voxels_to_use, parameters['cobweb_offset'])
+        cobweb[np.isnan(cobweb)] = parameters['cobweb_out_of_range']
+
+    except:
+        print "FAILURE to computer features"
+        return
 
     training_pairs = dict(rays=X, cobweb=cobweb, Y=Y)
     scipy.io.savemat(save_location, training_pairs)

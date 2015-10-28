@@ -39,23 +39,6 @@ test_data = test_data[:system_setup.max_test_sequences]
 if system_setup.small_sample:
     all_train_data = all_train_data[:system_setup.max_sequences]
 
-sequences = []
-for t in scenes:
-    t['folder'] = raw_data
-    fpath = t['folder'] + t['scene'] + '/test_frame.txt'
-
-    with open(fpath, 'r') as f:
-        frames = [int(l) for l in f]
-
-    temp = []
-    for fr in frames:
-        this_t = deepcopy(t)
-        this_t['frames'] = [fr]
-        this_t['name'] = this_t['scene'] + '_' + str(this_t['frames'])
-        temp.append(this_t)
-
-    sequences.append(temp)
-
 # saving...
 implicit_folder = data_folder + 'implicit/'
 implicit_model_dir = implicit_folder + 'models/%s/'
