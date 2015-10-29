@@ -10,7 +10,10 @@ import matplotlib.pyplot as plt
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from common import voxlets, scene
 
-parameters_path = './testing_params_nyu.yaml'
+if len(sys.argv) > 1:
+    parameters_path = sys.argv[1]
+else:
+    parameters_path = './testing_params_nyu.yaml'
 parameters = yaml.load(open(parameters_path))
 
 if parameters['testing_data'] == 'oisin_house':
@@ -139,15 +142,16 @@ def process_sequence(sequence):
 
             # sometimes multiple predictions are stored in predicton
             print "Rendering ", test_params['name']
-            if hasattr(prediction, '__iter__'):
-                for key, item in prediction.iteritems():
-                    savepath = (gen_renderpath % test_params['name']).replace('.png', str(key) + '.png')
-                    item.render_view(savepath, xy_centre=True, ground_height=ground_height, keep_obj=True)
-                    print "Saving to ", savepath
-            else:
-                prediction.render_view(gen_renderpath % test_params['name'],
-                    xy_centre=True, ground_height=ground_height, keep_obj=True)
-                print "Saving to ", gen_renderpath % test_params['name']
+            if parameters['render_normal']:
+                if hasattr(prediction, '__iter__'):
+                    for key, item in prediction.iteritems():
+                        savepath = (gen_renderpath % test_params['name']).replace('.png', str(key) + '.png')
+                        item.render_view(savepath, xy_centre=True, ground_height=ground_height, keep_obj=True)
+                        print "Saving to ", savepath
+                else:
+                    prediction.render_view(gen_renderpath % test_params['name'],
+                        xy_centre=True, ground_height=ground_height, keep_obj=True)
+                    print "Saving to ", gen_renderpath % test_params['name']
 
             # maybe I also want to render other types of prediction
             if parameters['render_without_excess_removed']:
@@ -156,12 +160,14 @@ def process_sequence(sequence):
                 prediction_savepath = fpath + test_params['name'] + '_average.pkl'
 
                 if not os.path.exists(prediction_savepath):
+                    print "Cannot find!"
                     continue
 
                 prediction = pickle.load(open(prediction_savepath))
 
-                print "Saving to ", gen_renderpath % test_params['name']
-                prediction.render_view(gen_renderpath % test_params['name'],
+                savepath = (gen_renderpath % test_params['name']) + '_no_removal'
+                print "Saving to ", savepath
+                prediction.render_view(savepath,
                     xy_centre=True, ground_height=ground_height, keep_obj=True)
 
                 # savepath = (gen_renderpath % test_params['name']).replace('.png', '_slice.png')

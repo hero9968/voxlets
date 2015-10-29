@@ -17,7 +17,10 @@ from copy import deepcopy
 from common import voxlets, scene
 import system_setup
 
-parameters_path = './testing_params_nyu.yaml'
+if len(sys.argv) > 1:
+    parameters_path = sys.argv[1]
+else:
+    parameters_path = './testing_params_nyu.yaml'
 parameters = yaml.load(open(parameters_path))
 
 if parameters['testing_data'] == 'oisin_house':
@@ -58,8 +61,9 @@ if __name__ == '__main__':
             print "-> Loading ", sequence['name']
             sc = scene.Scene(params['mu'], [])
             sc.load_sequence(
-                sequence, frame_nos=0, segment_with_gt=True, voxel_normals='gt_tsdf')
-            sc.sample_points(params['number_samples'], nyu=parameters['testing_data'] == 'nyu_cad')
+                sequence, frame_nos=0, segment_with_gt=False, segment=False)
+            sc.sample_points(params['number_samples'],
+                nyu=parameters['testing_data'] == 'nyu_cad')
 
             print "-> Creating folder"
             fpath = paths.prediction_folderpath % \
@@ -136,7 +140,7 @@ if __name__ == '__main__':
 
         tic = time()
 
-        if system_setup.multicore:
+        if False:#system_setup.multicore:
             # need to import this *after* the pool helper has been defined
             import multiprocessing
             pool = multiprocessing.Pool(system_setup.testing_cores)

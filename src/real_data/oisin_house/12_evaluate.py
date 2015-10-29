@@ -10,7 +10,11 @@ import collections
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
 from common import voxlets, scene
 
-parameters_path = './testing_params_nyu.yaml'
+
+if len(sys.argv) > 1:
+    parameters_path = sys.argv[1]
+else:
+    parameters_path = './testing_params_nyu.yaml'
 parameters = yaml.load(open(parameters_path))
 
 plot_gt_oracle = False
@@ -136,7 +140,7 @@ if __name__ == '__main__':
             iou = get_mean_score(experiment_name, results, 'iou')
             prec = get_mean_score(experiment_name, results, 'precision')
             rec = get_mean_score(experiment_name, results, 'recall')
-            sizes.append((float(experiment_name.split('_')[2]), iou, prec, rec))
+            # sizes.append((float(experiment_name.split('_')[2]), iou, prec, rec))
 
 
     print sizes

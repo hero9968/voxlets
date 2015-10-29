@@ -10,7 +10,10 @@ import time
 import yaml
 import gc
 
-parameters_path = './training_params_nyu.yaml'
+if len(sys.argv) > 1:
+    parameters_path = sys.argv[1]
+else:
+    parameters_path = './testing_params_nyu.yaml'
 parameters = yaml.load(open(parameters_path))
 
 if parameters['training_data'] == 'oisin_house':

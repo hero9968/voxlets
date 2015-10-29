@@ -1,4 +1,4 @@
-batch_name: 'thesis_work_and_improvements'
+batch_name: 'cvpr2016'
 
 testing_data: 'oisin_house'
 
@@ -8,7 +8,7 @@ general_params: &DEFAULT_GENERAL
 
     # which models to load...
     # models_to_use: ['short_cobweb', 'tall_cobweb']
-    models_to_use: ['short_cobweb']
+    models_to_use: ['short_samples', 'tall_samples']
     model_probabilities: [0.5, 0.5]
 
     # how deep to go in the forest
@@ -20,12 +20,34 @@ general_params: &DEFAULT_GENERAL
 default_reconstruction_params: &DEFAULT_RECONSTRUCTION
     weight_empty_lower: 0.0
 
+    # bad to havc ethis repeated...
+    cobweb_offset: 0.01
+    # cobweb_use_mask: True
+    vox_num_rings: 10
+    vox_radius: 0.0075
+    samples_out_of_range_feature: 0.025
+
+# rendering parameters...
+render_without_excess_removed: True
+render_normal: True
+
 tests:
 
+  - name: 'ground_truth'
+    <<: *DEFAULT_GENERAL
+    ground_truth: True
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+
+  - name: 'visible'
+    <<: *DEFAULT_GENERAL
+    visible: True
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
 
 
-  - name: 'full_split'
-    models_to_use: ['short_cobweb', 'tall_cobweb']
+  - name: 'short_and_tall_samples'
+    models_to_use: ['short_samples', 'tall_samples']
     <<: *DEFAULT_GENERAL
     reconstruction_params:
         <<: *DEFAULT_RECONSTRUCTION
@@ -166,17 +188,6 @@ tests:
   #       <<: *DEFAULT_RECONSTRUCTION
   #       oracle: 'greedy_add'
 
-  # - name: 'ground_truth'
-  #   <<: *DEFAULT_GENERAL
-  #   ground_truth: True
-  #   reconstruction_params:
-  #       <<: *DEFAULT_RECONSTRUCTION
-
-  # - name: 'visible'
-  #   <<: *DEFAULT_GENERAL
-  #   visible: True
-  #   reconstruction_params:
-  #       <<: *DEFAULT_RECONSTRUCTION
 
 
 

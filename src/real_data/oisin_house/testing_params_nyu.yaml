@@ -4,7 +4,7 @@ testing_data: 'nyu_cad'
 
 general_params: &DEFAULT_GENERAL
     # number of points to sample from image at test time
-    number_samples: 2000
+    number_samples: 20
 
     # which models to load...
     # models_to_use: ['short_cobweb', 'tall_cobweb']
@@ -15,10 +15,26 @@ general_params: &DEFAULT_GENERAL
     max_depth: 30
 
     # I know, this should be taken from the models...
-    mu: 0.025
+    mu: 0.1
 
 default_reconstruction_params: &DEFAULT_RECONSTRUCTION
     weight_empty_lower: 0.0
+
+    # when accumulating, how many predictions should have been made at a point
+    # before we make any sort of prediction at a point
+    min_countV: 3
+
+    # bad to have this repeated
+    cobweb_offset: 0.01
+    # cobweb_use_mask: False
+    vox_num_rings: 10
+    vox_radius: 0.035
+    samples_out_of_range_feature: -0.1
+
+# rendering parameters...
+render_without_excess_removed: True
+render_normal: True
+
 
 tests:
 
@@ -42,6 +58,19 @@ tests:
   #
 
 
+   # - name: 'short_tall_samples'
+   #   models_to_use: ['short_samples', 'tall_samples']
+   #   <<: *DEFAULT_GENERAL
+   #   reconstruction_params:
+   #       <<: *DEFAULT_RECONSTRUCTION
+
+   - name: 'short_tall_samples_true_greedy'
+     models_to_use: ['short_samples', 'tall_samples']
+     <<: *DEFAULT_GENERAL
+     reconstruction_params:
+         <<: *DEFAULT_RECONSTRUCTION
+         oracle: 'true_greedy'
+
 
   #
   # - name: 'visible'
@@ -57,13 +86,14 @@ tests:
   #       <<: *DEFAULT_RECONSTRUCTION
   #
   # - name: 'nn_oracle_bedrooms'
+  #   models_to_use: ['short_samples_bedrooms']
   #   <<: *DEFAULT_GENERAL
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
   #       oracle: 'nn'
-  #
-  # - name: 'short_samples_bedrooms'
-  #   models_to_use: ['short_samples_bedrooms']
+  # #
+  # - name: 'short_samples'
+  #   models_to_use: ['short_samples']
   #   <<: *DEFAULT_GENERAL
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
@@ -74,14 +104,14 @@ tests:
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
   #
-  # #
-  # # - name: 'short_cobweb_true_greedy'
-  # #   models_to_use: ['short_cobweb']
-  # #   <<: *DEFAULT_GENERAL
-  # #   reconstruction_params:
-  # #       <<: *DEFAULT_RECONSTRUCTION
-  # #       oracle: 'true_greedy'
-  #
+
+  # - name: 'short_samples_bedrooms_true_greedy'
+  #   models_to_use: ['short_samples_bedrooms']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #       oracle: 'true_greedy'
+
   # - name: 'short_cobweb'
   #   models_to_use: ['short_cobweb']
   #   <<: *DEFAULT_GENERAL

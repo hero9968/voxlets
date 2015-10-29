@@ -1,6 +1,6 @@
 # can be 'synthetic' or 'oisin_house'
-training_data: 'synthetic'
-testing_data: 'synthetic'
+training_data: 'nyu_cad'
+testing_data: 'nyu_cad'
 
 training_samples_per_image: 5000
 mu: 0.025

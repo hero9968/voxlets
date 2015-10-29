@@ -130,6 +130,7 @@ def process_scene(sc, threshold=3, skip_segment=0):
         # print "Norm sum is ", sc.im.depth.sum()
         R = find_axes(norms)
         print R, inlying_pixels.sum()
+        del inlying_pixels
 
         # first rotate all the voxels
         world_voxels = sc.gt_tsdf.world_meshgrid()
@@ -169,17 +170,21 @@ def process_scene(sc, threshold=3, skip_segment=0):
             region_edges.V.ravel()[where_inside_image[labs!=seg]] = 0
 
         known_full.fill_from_grid(region_edges)
+        del(region_edges)
 
         # also need to rotate a copy of the empty grid
         empty_voxels = sc.im_tsdf.copy()
         empty_voxels.V = empty_voxels.V > 0
         known_empty = known_full.blank_copy()
         known_empty.fill_from_grid(empty_voxels)
+        del(empty_voxels)
 
         # (if desired I could crop this grid down...)
 
         # now I want to use my routine to fill in the grid
-        distances, observed = line_casting.line_features_3d(known_empty, known_full, base_height=0)
+        distances, observed = line_casting.line_features_3d(known_empty, known_full, base_height=0, save_distances=False)
+        del(known_empty)
+        del(distances)
 
         # now running the zheng thresholding
         # only using certain directions from all the directions I have computed!
@@ -190,10 +195,15 @@ def process_scene(sc, threshold=3, skip_segment=0):
         # now rotate these labels to the new space
         this_pred_grid = known_full.blank_copy()
         this_pred_grid.V = predicted_full.reshape(observed[0].shape)
+        del(observed)
+        del(known_full)
 
         rotated_back = sc.gt_tsdf.blank_copy()
         rotated_back.fill_from_grid(this_pred_grid)
+        del(this_pred_grid)
 
         accumulator.V = np.logical_or(rotated_back.V > 0, accumulator.V > 0)
+        del(rotated_back)
+
 
     return accumulator

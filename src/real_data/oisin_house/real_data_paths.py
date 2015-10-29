@@ -8,10 +8,10 @@ host_name = socket.gethostname()
 print host_name
 
 if host_name == 'troll' or host_name == 'biryani':
-    data_folder = '/media/ssd/data/oisin_house/'
+    data_folder = '/media/michael/Seagate/phd_projects/volume_completion_data/data/oisin_house/'
     converter_path = ''
 else:
-    data_folder = '/Users/Michael/projects/shape_sharing/data/oisin_house/'
+    data_folder = '/media/michael/Seagate/phd_projects/volume_completion_data/data/oisin_house/'
     converter_path = '/Users/Michael/projects/InfiniTAM_Alt/convertor/voxels_to_ply.py'
 
 raw_data = data_folder + 'data2/'
@@ -46,6 +46,14 @@ test_data = test_data[:system_setup.max_test_sequences]
 
 if system_setup.small_sample:
     all_train_data = all_train_data[:system_setup.max_sequences]
+
+
+# fix the paths...
+for item in all_train_data:
+    item['folder'] = data_folder + item['folder'].split('/')[-2] + '/'
+
+for item in test_data:
+    item['folder'] = data_folder + item['folder'].split('/')[-2] + '/'
 
 
 
@@ -93,6 +101,9 @@ scores_path = data_folder + '/predictions/%s/%s/scores.yaml'
 
 # final %s is the actual test being done
 prediction_path = data_folder + '/predictions/%s/%s/%s.pkl'
+
+# final %s is the actual test being done
+kinfu_prediction_img_path = data_folder + '/kinfu_predictions/%s/%s/%s.pkl'
 
 
 def new_dropbox_dir():

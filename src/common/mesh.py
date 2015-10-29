@@ -68,7 +68,7 @@ class Mesh(object):
             for face in self.faces:
                 f.write("f %d %d %d\n" % (face[0]+1, face[1]+1, face[2]+1))
 
-    def write_to_ply(self, filename, labels=None):
+    def write_to_ply(self, filename, labels=None, colours=None):
 
         with open(filename, 'w') as f:
 
@@ -79,7 +79,7 @@ class Mesh(object):
             f.write('property float x\n')
             f.write('property float y\n')
             f.write('property float z\n')
-            if labels != None:
+            if labels is not None or colours is not None:
                 f.write('property uchar red\n')
                 f.write('property uchar green\n')
                 f.write('property uchar blue\n')
@@ -87,13 +87,19 @@ class Mesh(object):
             f.write('property list uchar int vertex_indices\n')
             f.write('end_header\n')
 
-            if labels != None:
+            if labels is not None:
                 print "Labels: ", labels.shape, labels.sum()
                 for label, v in zip(labels, self.vertices):
                     if label == 0:
                         f.write("%f %f %f 128 128 128\n" % (v[0], v[1], v[2]))
                     elif label == 1:
                         f.write("%f %f %f 200 0 0\n" % (v[0], v[1], v[2]))
+            elif colours is not None:
+                assert colours.shape == self.vertices.shape
+                print "Colours: ", colours.shape, colours.sum()
+                for col, v in zip(colours, self.vertices):
+                    f.write("%f %f %f %d %d %d\n" % (
+                        v[0], v[1], v[2], col[0], col[1], col[2]))
             else:
                 for v in self.vertices:
                     f.write("%f %f %f\n" % (v[0], v[1], v[2]))

@@ -35,6 +35,7 @@ class VoxelAccumulator(object):
         returns tuple of:
             a) A binary array of which voxels project into the image
             b) For each voxel that does, its uv position in the image
+            c) The depth to each voxel that projects inside the image
         '''
 
         # Projecting voxels into image
@@ -208,7 +209,8 @@ class Fusion(VoxelAccumulator):
         return temp_denoised
 
     def integrate_image(self, im, mu, mask=None, filtering=False,
-            measure_in_frustrum=False, just_narrow_band=False):
+            measure_in_frustrum=False, just_narrow_band=False,
+            vox_size_threshold=np.sqrt(2)):
         '''
         integrates single image into the current grid
         mask is optional argument, which should be boolean array same size as im
@@ -267,8 +269,9 @@ class Fusion(VoxelAccumulator):
         # extracted from the tsdf grid at the end but I failed to get this
         # to work properly (using the VisibleVoxels class below...) so
         # instead I will make it work here.
+        inlier_threshold = vox_size_threshold * self.voxel_grid.vox_size
         voxels_visible_in_image_s = \
-            np.abs(surface_to_voxel_dist_s) < np.sqrt(2) * self.voxel_grid.vox_size
+            np.abs(surface_to_voxel_dist_s) < inlier_threshold
 
         visible_voxels_f = inside_image_f
         visible_voxels_f[inside_image_f] = voxels_visible_in_image_s
@@ -295,7 +298,8 @@ class Fusion(VoxelAccumulator):
         self.visible_voxels.V = self.visible_voxels.V.astype(bool)
 
 
-    def fuse(self, mu, filtering=False, measure_in_frustrum=False):
+    def fuse(self, mu, filtering=False, measure_in_frustrum=False,
+            inlier_threshold=np.sqrt(2)):
         '''
         mu is the truncation parameter. Default 0.03 as this is what PCL kinfu
         uses (measured in m).
@@ -316,7 +320,9 @@ class Fusion(VoxelAccumulator):
             self.in_frustrum.V = self.in_frustrum.V.astype(np.int16)
 
         for count, im in enumerate(self.video.frames):
-            self.integrate_image(im, mu, filtering, measure_in_frustrum)
+            self.integrate_image(im, mu, filtering=filtering,
+                measure_in_frustrum=measure_in_frustrum,
+                vox_size_threshold=inlier_threshold)
 
         return self.accum.get_current_tsdf(), self.visible_voxels
 

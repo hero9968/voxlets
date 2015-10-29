@@ -28,8 +28,9 @@ def load_results_for_model(model):
 
 
 tests = ['iou', 'precision', 'recall']
-# , 'zheng_2', 'zheng_3',
-models = [ 'cobweb', 'rays', 'rays_cobweb', 'rays_autorotate', 'zheng_2', 'zheng_3']
+# ,'zheng_2', 'zheng_3',
+# 'cobweb', 'rays', 'rays_cobweb', 'rays_autorotate',
+models = [ 'zheng_2', 'zheng_3']
 #         'rays_cobweb_10',
 #         'rays_cobweb_100',
 #         'rays_cobweb_1000',

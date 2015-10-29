@@ -36,8 +36,8 @@ with open(yaml_test_location, 'r') as f:
 test_data = test_data[:system_setup.max_test_sequences]
 # all_train_data = [test_data[2]]
 # test_data = [test_data[2]]
-test_data = [tt for tt in test_data if 'bedroom' in tt['scene']]
-all_train_data = [tt for tt in all_train_data if 'bedroom' in tt['scene']]
+# test_data = [tt for tt in test_data if 'bedroom' in tt['scene']]
+# all_train_data = [tt for tt in all_train_data if 'bedroom' in tt['scene']]
 
 if system_setup.small_sample:
     all_train_data = all_train_data[:system_setup.max_sequences]

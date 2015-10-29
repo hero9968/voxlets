@@ -6,7 +6,7 @@ import bpy
 import sys, os
 import numpy as np
 
-quick_render = True
+quick_render = False
 
 #meshpath = os.getenv('meshpath')
 meshpath= os.getenv('BLENDERSAVEFILE') + '.obj'

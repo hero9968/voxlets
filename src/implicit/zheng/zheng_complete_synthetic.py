@@ -26,7 +26,7 @@ import find_axes
 
 
 plot_segmentation = False
-the_zheng_parameter = 3
+the_zheng_parameter = 2
 modelname = 'zheng_' + str(the_zheng_parameter)
 render = True
 

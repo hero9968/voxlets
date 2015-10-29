@@ -223,9 +223,10 @@ class VoxletPredictor(object):
                 # voxels known to be empty...
                 dims_to_use_for_distance = \
                     visible_voxlet.flatten() > np.nanmin(visible_voxlet) * 0.9
-                distances = np.linalg.norm(
-                    visible_voxlet.flatten()[dims_to_use_for_distance] -
-                    tree_predictions[:, dims_to_use_for_distance], axis=1)
+                A = visible_voxlet.flatten()[dims_to_use_for_distance] > 0
+                B = tree_predictions[:, dims_to_use_for_distance] > 0
+
+                distances = np.linalg.norm(A.astype(float) - B.astype(float), axis=1)
 
                 self.dims_to_use_for_distance_cache = dims_to_use_for_distance
 
@@ -380,7 +381,14 @@ class Reconstructer(object):
             weight_empty_lower=None,
             use_binary=None,
             how_to_choose='closest',
-            distance_measure='just_empty'):
+            distance_measure='just_empty',
+            min_countV=None,
+            cobweb_offset=None,
+            vox_num_rings=None,
+            vox_radius=None,
+            samples_out_of_range_feature=None,
+            scene_grid_for_comparison='im_tsdf'
+            ):
         '''
         Doing the final reconstruction
         In future, for this method could not use the image at all, but instead
@@ -409,14 +417,14 @@ class Reconstructer(object):
 
         if np.any(np.array(['cobweb' == m.feature for m in self.model])):
             # nasty magic numbers here...
-            cobwebengine = features.CobwebEngine(0.01, mask=self.sc.im.mask)
+            cobwebengine = features.CobwebEngine(cobweb_offset, mask=self.sc.im.mask)
             cobwebengine.set_image(self.sc.im)
             self.cobwebengine=cobwebengine
 
         if np.any(np.array(['samples' == m.feature for m in self.model])):
             # nasty magic numbers here...
             sampleengine = features.SampledFeatures(
-                num_rings=10, radius=0.035)
+                num_rings=vox_num_rings, radius=vox_radius)
             sampleengine.set_scene(self.sc)
             self.sampleengine=sampleengine
 
@@ -437,8 +445,9 @@ class Reconstructer(object):
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sc.sampled_idxs):
 
-            sys.stdout.write('>> [%d]' % count)
-            sys.stdout.flush()
+            if (count % 10) == 0:
+                sys.stdout.write('>> [%d]' % count)
+                sys.stdout.flush()
 
             # randomly choose model to use...
             if len(self.model) == 1:
@@ -452,7 +461,7 @@ class Reconstructer(object):
             # get the voxel grid of tsdf associated with this label
             # BUT at test time how to get this segmented grid? We need a similar type thing to before...
             # this_idx_grid = self.sc.visible_tsdf_separate[this_point_label]
-            this_idx_grid = self.sc.im_tsdf
+            this_idx_grid = getattr(self.sc, scene_grid_for_comparison)
             # print "WARNING - just using a single grid for the features..."
             # this_idx_grid = self.sc.im_tsdf
 
@@ -474,7 +483,8 @@ class Reconstructer(object):
                 feature_vector = np.array(idx)
             elif model_to_use.feature=='samples':
                 feature_vector = sampleengine.sample_idx(idx)
-                feature_vector[np.isnan(feature_vector)] = -self.mu
+                feature_vector[np.isnan(feature_vector)] = \
+                    samples_out_of_range_feature
             else:
                 feature_vector = self._feature_collapse(features_voxlet.V.flatten(),
                     feature_collapse_type, feature_collapse_param)
@@ -681,6 +691,7 @@ class Reconstructer(object):
 
             results = collections.OrderedDict()
             self.possible_predictions.sort(key=lambda x: x['distance'])
+            import pdb; pdb.set_trace()
 
             # create a floor plan of the union of all floor plans...
             # all_fplans = np.dstack([p['floorplan'] for p in self.possible_predictions])
@@ -753,11 +764,20 @@ class Reconstructer(object):
             average.sumV = []
             average.countV = []
 
+        if min_countV is not None:
+            # replace all the 'unknown' areas with empty space.
+            # this should help to remove the 'floating' and spurious predictions
+            print "Of the %d elements in sumV, %d are too small" % \
+                (average.countV.size, (average.countV < min_countV).sum())
+            average.V[average.countV < min_countV] = self.sc.mu
+
         # caching so I can get this later...
         self.average = average
 
         # removing the excess from the grid...
         self.remove_excess = average.copy()
+        self.remove_excess.sumV = []
+        self.remove_excess.countV = []
         self.remove_excess.V[self.sc.im_tsdf.V > 0] = self.sc.mu
         self.remove_excess.V[np.isnan(self.remove_excess.V)] = self.sc.mu
         return self.remove_excess

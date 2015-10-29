@@ -198,7 +198,8 @@ def sort_3d_features_together(distances, observed):
 
 import scipy.io
 
-def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
+def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0,
+        save_distances=True):
     #Not done yet!
     '''
     given an input image, computes the line features for each direction
@@ -220,6 +221,7 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
     dilated_known_full_voxels_V = \
         scipy.ndimage.binary_dilation(known_full_voxels.V).astype(known_full_voxels.V.dtype)
     input_im.V[dilated_known_full_voxels_V==1] = 1
+    del(dilated_known_full_voxels_V)
 
     #scipy.io.savemat('/tmp/input_im.mat', dict(input_im=input_im.V))
 
@@ -234,13 +236,15 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0):
         distances, observed = line_casting_cython.outer_loop_3d(input_im.V.astype(np.int8), direction)
 
         # scaling distances so they are equal in real-world terms (note np.linalg.norm returns a float)
-        distances = (distances.astype(np.float) *  np.linalg.norm(direction)).astype(np.int32)
+        if save_distances:
+            distances = (distances.astype(np.float) *  np.linalg.norm(direction)).astype(np.int16)
 
-        # dealing with out of range distances
-        distances[distances==-1] = out_of_range_value
+            # dealing with out of range distances
+            distances[distances==-1] = out_of_range_value
+
+            all_distances.append(distances)
         # scipy.io.savemat('/tmp/distances%03d.mat' % count, dict(distances=distances))
 
-        all_distances.append(distances)
         all_observed.append(observed)
 
     # returning the data as specified

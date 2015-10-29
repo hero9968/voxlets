@@ -1,6 +1,6 @@
 mu: 0.025
 voxel_size: 0.005
-training_data: 'synthetic'
+training_data: 'oisin_house'
 
 pca:
     number_points_from_each_image: 200
@@ -25,19 +25,20 @@ cobweb_use_mask: True
 
 # voxel sampling features
 vox_num_rings: 10
-vox_radius: 0.005
+vox_radius: 0.0075
 samples_out_of_range_feature: 0.025
 
-extract_from: 'gt_tsdf'
+extract_from: 'actual_tsdf'
 # sampling_grid_size: 0.1
 
 # if a feature is out of the inlier mask, give it this value
 cobweb_out_of_range_feature: -5.0
 
 # # do we presegment?
-# segment_scene: False
-# segment_with_gt: False
+segment_scene: False
+segment_with_gt: False
 
+ml_type: 'forest'
 
 forest: &DEFAULT_FOREST
     num_tests: 4000
@@ -166,15 +167,15 @@ voxlet_sizes:
 
 models_to_train:
 
--   name: 'short_cobweb_syn'
+-   name: 'short_samples'
     voxlet_type: 'short'
-    feature: 'idxs'
+    feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
 
--   name: 'tall_cobweb_syn'
+-   name: 'tall_samples'
     voxlet_type: 'tall'
-    feature: 'idxs'
+    feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
 

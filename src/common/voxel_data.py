@@ -532,7 +532,7 @@ class WorldVoxels(Voxels):
 
             # keeps track of what the current slice in the shoebox is
             current_shoebox_slice = np.nan
-            # 
+            #
             # if weights:
             #     import pdb; pdb.set_trace()
 
@@ -635,7 +635,6 @@ class WorldVoxels(Voxels):
 
         print "Writing to obj...",
         sys.stdout.flush()
-
         ms.write_to_obj(savepath + '.obj')
 
         print "Rendering...",

@@ -24,14 +24,16 @@ from common import scene
 
 import sklearn.metrics
 
+from scipy.io import loadmat
+
 print "Loading model..."
 
 
-with open('/media/ssd/data/oisin_house/models_full_split_not_tall/models/oma_cobweb.pkl', 'rb') as f:
+with open('/media/ssd/data/oisin_house/models/short_cobweb/model.pkl', 'rb') as f:
     model_short = pickle.load(f)
 
 print model_short.pca.components_.shape
-with open('/media/ssd/data/oisin_house/models_full_split_tall/models/oma_cobweb.pkl', 'rb') as f:
+with open('/media/ssd/data/oisin_house/models/tall_cobweb/model.pkl', 'rb') as f:
     model_tall = pickle.load(f)
 
 print model_tall.pca.components_.shape
@@ -56,17 +58,22 @@ def process_sequence(sequence):
 
     sc = scene.Scene(parameters.mu, [])
     sc.load_sequence(sequence, frame_nos=0, segment_with_gt=False,
-        save_grids=False, load_implicit=False, voxel_normals='im_tsdf')
+        save_grids=False, voxel_normals='im_tsdf')
+
+    loadpath = '/media/ssd/data/nyu/data/nyu_labels/' + sequence['scene'] + '.mat'
+    sc.gt_im_label = loadmat(loadpath)['labels']
+
+    sc.sample_points(1000)
+
     # sc.santity_render(save_folder='/tmp/')
 
     test_type = 'oma'
 
     print "-> Reconstructing with oma forest"
-    rec = voxlets.Reconstructer(
-        reconstruction_type='kmeans_on_pca', combine_type='modal_vote')
+    rec = voxlets.Reconstructer()
     rec.set_scene(sc)
-    rec.sample_points(parameters.VoxletPrediction.number_samples,
-                      parameters.VoxletPrediction.sampling_grid_size)
+    # rec.sample_points(parameters.VoxletPrediction.number_samples,
+    #                   parameters.VoxletPrediction.sampling_grid_size)
 
     # Path where any renders will be saved to
     gen_renderpath = paths.voxlet_prediction_img_path % \
@@ -86,13 +93,13 @@ def process_sequence(sequence):
 
     plt.imshow(sc.im.mask)
     plt.axis('off')
-    plt.plot(rec.sampled_idxs[:, 1], rec.sampled_idxs[:, 0], 'ro')
+    plt.plot(sc.sampled_idxs[:, 1], sc.sampled_idxs[:, 0], 'ro')
     plt.savefig(gen_renderpath % 'input_mask')
     plt.close()
     # scipy.misc.imsave(gen_renderpath % 'input', sc.im.depth)
 
     rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
-    rec.set_probability_model_one(0.95)
+    rec.set_model_probabilities([0.5, 0.5])
     rec.set_model([model_short, model_tall])
 
     if render_top_view:
@@ -100,9 +107,8 @@ def process_sequence(sequence):
         rec.plot_voxlet_top_view(savepath=gen_renderpath % 'top_view')
         print gen_renderpath % 'top_view'
 
-    pred_voxlets = rec.fill_in_output_grid_oma(
-        render_type=[], add_ground_plane=True,
-        combine_segments_separately=False, feature_collapse_type='pca', cobweb=cobweb)
+    pred_voxlets = rec.fill_in_output_grid(
+        render_type=[], add_ground_plane=True)
     pred_voxlets_remove_excess = rec.remove_excess
 
     if only_prediction:
@@ -148,5 +154,3 @@ if __name__ == '__main__':
     tic = time()
     mapper(process_sequence, temp)
     print "In total took %f s" % (time() - tic)
-
-

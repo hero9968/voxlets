@@ -14,7 +14,10 @@ import scipy.io
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 from common import scene, features
 
-parameters_path = './training_params_nyu.yaml'
+if len(sys.argv) > 1:
+    parameters_path = sys.argv[1]
+else:
+    parameters_path = './training_params_nyu.yaml'
 parameters = yaml.load(open(parameters_path))
 
 if parameters['training_data'] == 'oisin_house':
@@ -44,9 +47,12 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
 
     print "-> Processing " + sequence['name']
 
+    sc = scene.Scene(parameters['mu'], voxlet_params)
+    sc.load_sequence(sequence, frame_nos=0,
+        segment_with_gt=parameters['segment_with_gt'],
+        segment=parameters['segment_scene'])
     try:
-        sc = scene.Scene(parameters['mu'], voxlet_params)
-        sc.load_sequence(sequence, frame_nos=0, segment_with_gt=True, voxel_normals='gt_tsdf')
+        pass
     except:
         print "FAILED"
         logf.write(sequence['name'] + '\n')

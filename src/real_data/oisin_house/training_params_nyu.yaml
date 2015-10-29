@@ -1,4 +1,4 @@
-mu: 0.025
+mu: 0.1
 voxel_size: 0.1
 training_data: 'nyu_cad'
 
@@ -26,14 +26,15 @@ cobweb_use_mask: False
 # voxel sampling features
 vox_num_rings: 10
 vox_radius: 0.035
-samples_out_of_range_feature: -0.025
+samples_out_of_range_feature: -0.1
 idxs_out_of_range_feature: 0.0
-
-
-segment_with_gt: False
 
 # sampling_grid_size: 0.1
 ml_type: 'forest'
+
+# do we presegment?
+segment_scene: False
+segment_with_gt: False
 
 
 # if a feature is out of the inlier mask, give it this value
@@ -123,8 +124,14 @@ models_to_train:
 #     forest:
 #         <<: *DEFAULT_FOREST
 
--   name: 'short_samples_bedrooms'
+-   name: 'short_samples'
     voxlet_type: 'short'
+    feature: 'samples'
+    forest:
+        <<: *DEFAULT_FOREST
+
+-   name: 'tall_samples'
+    voxlet_type: 'tall'
     feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
