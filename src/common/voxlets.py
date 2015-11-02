@@ -138,7 +138,7 @@ class VoxletPredictor(object):
         '''
         self.voxlet_counter = np.zeros(self.training_Y.shape[0])
 
-    def predict(self, X, how_to_choose='medioid', distance_measure='just_empty', visible_voxlet=None):
+    def predict(self, X, how_to_choose='medioid', distance_measure='just_empty', visible_voxlet=None, sc=None, this_shoebox=None, weight_predictions=False):
         '''
         Returns a voxlet prediction for a single X
         '''
@@ -155,6 +155,8 @@ class VoxletPredictor(object):
 
         self._cached_predictions = index_predictions
 
+        # a weighting to be applied to the final mask - defaults to one!
+        weighting = 1
 
         # now reform the original test data for each tree prediction
         tree_predictions = \
@@ -230,6 +232,32 @@ class VoxletPredictor(object):
 
                 self.dims_to_use_for_distance_cache = dims_to_use_for_distance
 
+            elif distance_measure == 'pointwise':
+                # here we shold be projecing the raw kinect points into the
+                # space of the voxlet proposals, and extracting the tsdf
+                # values at these points. The mean, or robust mean,  of these
+                # (or similar) will give the distance
+                tic = time.time()
+                xyz = sc.im.get_world_xyz()
+                idxs_in_shoebox, valid = this_shoebox.world_to_idx(
+                    xyz, detect_out_of_range=True)
+                valid_idxs_in_shoebox = idxs_in_shoebox[valid]
+
+                distances = []
+                for tree_prediction in tree_predictions:
+                    this_shoebox.V = tree_prediction.reshape(
+                        this_shoebox.V.shape)
+                    vals = this_shoebox.get_idxs(valid_idxs_in_shoebox)
+                    distances.append(np.mean(vals**2))
+                distances = np.array(distances)
+                # print "\n", distances, "\n"
+                # print "Distances pointwise measure took %f seconds" % \
+                #     (time.time() - tic)
+
+                if weight_predictions:
+                    weighting = np.exp(-distances.min())
+                # probably I also want to do something more clever...
+
             to_use = distances.argmin()
             self.min_dist = distances[to_use]
             self._distances_cache = distances
@@ -237,6 +265,7 @@ class VoxletPredictor(object):
             final_prediction = tree_predictions[to_use]
             final_mask = self.masks_pca.inverse_transform(
                 self.training_masks[index_predictions[to_use]])
+            final_weights = 1.0 - final_mask
 
 
         elif how_to_choose == 'medioid':
@@ -245,6 +274,7 @@ class VoxletPredictor(object):
             final_prediction = tree_predictions[to_use].flatten()
             final_mask = self.masks_pca.inverse_transform(
                 self.training_masks[index_predictions[to_use]])
+            final_weights = 1.0 - final_mask
 
         elif how_to_choose == 'mean':
 
@@ -252,6 +282,7 @@ class VoxletPredictor(object):
                     self.training_masks[index_predictions])
             final_prediction = np.mean(tree_predictions, axis=0).flatten()
             final_mask = np.mean(mask_predictions, axis=0).flatten()
+            final_weights = 1.0 - final_mask
 
         else:
             raise Exception('Unknown how_to_choose: ', how_to_choose)
@@ -262,7 +293,9 @@ class VoxletPredictor(object):
             if hasattr(self, 'voxlet_counter'):
                 self.voxlet_counter[index_predictions[to_use]] += 1
 
-        return (final_prediction, final_mask)
+        if weight_predictions:
+            final_weights *= weighting
+        return (final_prediction, final_weights)
 
     def save(self, savepath):
         '''
@@ -355,15 +388,15 @@ class Reconstructer(object):
 
         return shoebox
 
-    def initialise_output_grid(self, gt_grid=None):
+    def initialise_output_grid(self, gt_grid=None, keep_explicit_count=False):
         '''defaulting to initialising from the ground truth grid...'''
-        self.accum = voxel_data.UprightAccumulator(gt_grid.V.shape)
-        self.accum.set_origin(gt_grid.origin, gt_grid.R
-             )
+        self.accum = voxel_data.UprightAccumulator(
+            gt_grid.V.shape, keep_explicit_count)
+        self.accum.set_origin(gt_grid.origin, gt_grid.R)
         self.accum.set_voxel_size(gt_grid.vox_size)
 
         # during testing it makes sense to save the GT grid, for visualisation
-        self.gt_grid = gt_grid
+        # self.gt_grid = gt_grid
 
     def set_model_probabilities(self, ini):
         # was set_probability_model_one
@@ -379,7 +412,7 @@ class Reconstructer(object):
             feature_collapse_type=None,
             feature_collapse_param=None,
             weight_empty_lower=None,
-            use_binary=None,
+            use_binary=False,
             how_to_choose='closest',
             distance_measure='just_empty',
             min_countV=None,
@@ -387,7 +420,9 @@ class Reconstructer(object):
             vox_num_rings=None,
             vox_radius=None,
             samples_out_of_range_feature=None,
-            scene_grid_for_comparison='im_tsdf'
+            scene_grid_for_comparison='im_tsdf',
+            weight_predictions=False,
+            aggregation_stop_points=[10, 50, 100, 200, 500]
             ):
         '''
         Doing the final reconstruction
@@ -444,6 +479,8 @@ class Reconstructer(object):
 
         "extract features from each shoebox..."
         for count, idx in enumerate(self.sc.sampled_idxs):
+
+            tic = time.time()
 
             if (count % 10) == 0:
                 sys.stdout.write('>> [%d]' % count)
@@ -516,9 +553,14 @@ class Reconstructer(object):
             else:
                 # Doing a real prediction!
                 "classify according to the forest"
-                voxlet_prediction, mask = \
-                    model_to_use.predict(np.atleast_2d(feature_vector), how_to_choose=how_to_choose,
-                        distance_measure=distance_measure, visible_voxlet=features_voxlet.V)
+                voxlet_prediction, weights_to_use = \
+                    model_to_use.predict(np.atleast_2d(feature_vector),
+                        how_to_choose=how_to_choose,
+                        distance_measure=distance_measure,
+                        visible_voxlet=features_voxlet.V,
+                        sc=self.sc,
+                        this_shoebox=features_voxlet,
+                        weight_predictions=weight_predictions)
                 self.cached_voxlet_prediction = voxlet_prediction
                 # self.all_pred_cache.append(voxlet_prediction)
 
@@ -528,7 +570,7 @@ class Reconstructer(object):
                     np.linalg.norm(voxlet_prediction - gt_voxlet.V.flatten()))
 
                 # flipping the mask direction here:
-                weights_to_use = 1-mask
+                # weights_to_use = 1-mask
                 weights_to_use = weights_to_use.flatten()
                 if weight_empty_lower is not None:
                     weights_to_use[voxlet_prediction > 0] *= (1.0 - weight_empty_lower)
@@ -670,6 +712,7 @@ class Reconstructer(object):
                 plt.savefig(savepath)
                 plt.close()
 
+            # print "Adding one voxlet took %f s" % (time.time() - tic)
             # now save the grid at this critical point in time
             # print "Warning - saving grid"
             # with open('/tmp/partial_grids/%04d.pkl' % count, 'w') as f:
@@ -687,7 +730,7 @@ class Reconstructer(object):
             # sort so the smallest possible predictions are at the front...
 
             # this is when to save the grid for visualisation purposes...
-            stop_points = [10, 50, 100, 200, 500]
+            stop_points = aggregation_stop_points
 
             results = collections.OrderedDict()
             self.possible_predictions.sort(key=lambda x: x['distance'])
@@ -727,6 +770,9 @@ class Reconstructer(object):
                     results[count].sumV = []
                     results[count].countV = []
 
+                    if hasattr(results[count], 'explicit_countV'):
+                        results[count].explicit_countV = []
+
                 elif count > np.array(stop_points).max():
                     break
                 # print "energies are ", self._eval_union_cost(
@@ -764,12 +810,20 @@ class Reconstructer(object):
             average.sumV = []
             average.countV = []
 
+            if hasattr(average, 'explicit_countV'):
+                average.explicit_countV = []
+
         if min_countV is not None:
             # replace all the 'unknown' areas with empty space.
             # this should help to remove the 'floating' and spurious predictions
+            if hasattr(average, 'explicit_countV'):
+                counter = average.explicit_countV
+            else:
+                counter = average.countV
+
             print "Of the %d elements in sumV, %d are too small" % \
-                (average.countV.size, (average.countV < min_countV).sum())
-            average.V[average.countV < min_countV] = self.sc.mu
+                (counter.size, (counter < min_countV).sum())
+            average.V[counter < min_countV] = self.sc.mu
 
         # caching so I can get this later...
         self.average = average

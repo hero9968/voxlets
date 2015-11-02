@@ -446,7 +446,8 @@ class WorldVoxels(Voxels):
 
         return self._cached_world_xy_meshgrid
 
-    def fill_from_grid(self, input_grid, method='naive', combine='replace', weights=None):
+    def fill_from_grid(self, input_grid, method='naive', combine='replace',
+            weights=None, keep_explicit_count=False):
         '''
         warps input_grid into the world space of self.
         For all voxels in self.V which input_grid overlaps with,
@@ -571,6 +572,9 @@ class WorldVoxels(Voxels):
                         self.sumV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += data_to_insert
                         self.countV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += 1
 
+                    if keep_explicit_count:
+                        self.explicit_countV[valid_ij[:, 0], valid_ij[:, 1], valid_ij[:, 2]] += 1
+
                 elif combine == 'sum':
                     addition = self.get_idxs(valid_ij)
                     self.set_idxs(valid_ij, data_to_insert+addition)
@@ -693,11 +697,22 @@ class UprightAccumulator(WorldVoxels):
     Is an upright accumulator as assumed all the z directions are pointing the same way
     '''
 
-    def __init__(self, gridsize):
+    def __init__(self, gridsize, keep_explicit_count=False):
+        '''
+        keep_explicit_count is an option, if true we keep an integer count
+        of how many predictions have been made at each voxel
+        useful if countV ends up just being a sum of weights, in which case
+        it is pretty hard to find out how many predictions are made everywhere
+        '''
         Voxels.__init__(self, gridsize, np.float32)
         self.grid_centre_from_grid_origin = []
         self.sumV = (copy.deepcopy(self.V)*0)
         self.countV = (copy.deepcopy(self.V)*0)
+
+        if keep_explicit_count:
+            self.explicit_countV = (copy.deepcopy(self.V)*0)
+
+        self.keep_explicit_count = keep_explicit_count
 
     def add_voxlet(self, voxlet, accum_only_predict_true, weights=None):
         '''
@@ -763,7 +778,9 @@ class UprightAccumulator(WorldVoxels):
             # self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights_to_use
             weights_grid = voxlet.blank_copy()
             weights_grid.V = weights.reshape(weights_grid.V.shape)
-            self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator', weights=weights_grid)
+            self.fill_from_grid(voxlet, method='axis_aligned',
+                combine='accumulator', weights=weights_grid,
+                keep_explicit_count=self.keep_explicit_count)
 
         else:
             self.fill_from_grid(voxlet, method='axis_aligned', combine='accumulator')

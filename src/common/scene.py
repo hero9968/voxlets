@@ -493,7 +493,7 @@ class Scene(object):
         elif extract_from == 'visible_tsdf':
             this_point_label = self.visible_im_label[index[0], index[1]]
             temp_vgrid = self.visible_tsdf_separate[this_point_label]
-            #print "WARNING - in scene - not using separate grids at the moment..."
+            # print "WARNING - in scene - not using separate grids at the moment..."
             shoebox.fill_from_grid(temp_vgrid)
 
         elif extract_from == 'im_tsdf':
@@ -672,7 +672,7 @@ class Scene(object):
 
         return each_label_region
 
-    def evaluate_prediction(self, V):
+    def evaluate_prediction(self, V, extra_mask=None):
         '''
         evalutes a prediction grid, assuming to be the same size and position
         as the ground truth grid...
@@ -689,6 +689,9 @@ class Scene(object):
         floor_t = self.gt_tsdf.blank_copy()
         floor_t.V[:, :, :6] = 1
         voxels_to_evaluate = np.logical_and(floor_t.V == 0, voxels_to_evaluate)
+
+        if extra_mask is not None:
+            voxels_to_evaluate = np.logical_and(extra_mask, voxels_to_evaluate)
 
         self.voxels_to_evaluate = voxels_to_evaluate
 
@@ -731,3 +734,59 @@ class Scene(object):
         # results['tpr'] = tpr
 
         return results
+
+
+    def render_visible(self, savepath, xy_centre=True, keep_obj=False):
+
+        H, W = self.im.depth.shape
+
+        # idxs exclude the bottom row
+        idxs = np.arange(self.im.depth.size - W)
+
+        # and remove the right column
+        right_col = np.mod(idxs+1, W) == 0
+
+        # remove triangles with too big a jump
+        gradx, grady = np.gradient(self.im.depth[:-1, :])
+        grad = np.sqrt(gradx**2 + grady**2)
+        jumps = grad > 0.1
+        jumps = binary_dilation(jumps)
+
+        idxs = idxs[~np.logical_or(to_remove, jumps.ravel())]
+
+        # combine all the triangles
+        tris = np.vstack([idxs, idxs + W, idxs + W + 1]).T
+        tris2 = np.vstack([idxs + W + 1, idxs + 1, idxs]).T
+        all_tris = np.vstack((tris, tris2))
+
+        ms = mesh.Mesh()
+        ms.faces = all_tris
+        ms.vertices = self.im.get_world_xyz()
+
+        # Now do blender render and copy the obj file if needed...
+        if xy_centre:
+            # T = ms.vertices[:, :2]
+            cen = temp.origin + (np.array(temp.V.shape) * temp.vox_size) / 2.0
+            ms.vertices[:, :2] -= cen[:2]
+            ms.vertices[:, 2] -= 0.05
+            ms.vertices *= 1.5
+
+        ms.write_to_obj(savepath + '.obj')
+
+        blend_path = os.path.expanduser('~/projects/shape_sharing/src/'
+            'rendered_scenes/spinaround/spin.blend')
+        blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/'
+            'rendered_scenes/spinaround/blender_spinaround_frame.py')
+
+        subenv = os.environ.copy()
+        subenv['BLENDERSAVEFILE'] = savepath
+        sp.call([rendering.blender_path,
+                 blend_path,
+                 "-b", "-P",
+                 blend_py_path],
+                 env=subenv,
+                 stdout=open(os.devnull, 'w'),
+                 close_fds=True)
+
+        if not keep_obj:
+            os.remove(savepath + '.obj')

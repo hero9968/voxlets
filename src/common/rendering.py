@@ -39,7 +39,7 @@ def render_single_voxlet(
 
     # renders a voxlet using the .blend file...
     temp = V.copy()
-    if V.min() > 0 or V.max() < 0:
+    if np.nanmin(V) > level or np.nanmax(V) < level:
         print "Level set not present"
         return
 
@@ -61,16 +61,16 @@ def render_single_voxlet(
     if np.any(np.isnan(verts)):
         import pdb; pdb.set_trace()
 
-    D = dict(verts=verts, faces=faces)
-    with open('/tmp/vertsfaces.pkl', 'wb') as f:
-        pickle.dump(D, f)
+    # D = dict(verts=verts, faces=faces)
+    # with open('/tmp/vertsfaces.pkl', 'wb') as f:
+    #     pickle.dump(D, f)
 
     verts *= 0.0175 # parameters.Voxlet.size << bit of a magic number here...
     verts *= 10.0  # so its a reasonable scale for blender
     # print verts.min(axis=0), verts.max(axis=0)
-    D = dict(verts=verts, faces=faces)
-    with open('/tmp/vertsfaces.pkl', 'wb') as f:
-        pickle.dump(D, f)
+    # D = dict(verts=verts, faces=faces)
+    # with open('/tmp/vertsfaces.pkl', 'wb') as f:
+    #     pickle.dump(D, f)
     vu.write_obj(verts, faces, '/tmp/temp_voxlet.obj')
 
     blender_filepath = voxlet_render_blend % (speed, height)
