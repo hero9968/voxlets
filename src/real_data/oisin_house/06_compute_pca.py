@@ -16,7 +16,11 @@ from common import scene, rendering
 
 import system_setup
 
-parameters = yaml.load(open('./training_params_nyu.yaml'))
+if len(sys.argv) > 1:
+    parameters_path = sys.argv[1]
+else:
+    parameters_path = './training_params_nyu.yaml'
+parameters = yaml.load(open(parameters_path))
 
 if parameters['training_data'] == 'oisin_house':
     import real_data_paths as paths

@@ -4,7 +4,7 @@ testing_data: 'nyu_cad'
 
 general_params: &DEFAULT_GENERAL
     # number of points to sample from image at test time
-    number_samples: 20
+    number_samples: 2000
 
     # which models to load...
     # models_to_use: ['short_cobweb', 'tall_cobweb']
@@ -19,6 +19,7 @@ general_params: &DEFAULT_GENERAL
 
 default_reconstruction_params: &DEFAULT_RECONSTRUCTION
     weight_empty_lower: 0.0
+    weight_predictions: False
 
     # when accumulating, how many predictions should have been made at a point
     # before we make any sort of prediction at a point
@@ -37,13 +38,13 @@ render_normal: True
 
 
 tests:
-
+  #
   # - name: 'ground_truth'
   #   <<: *DEFAULT_GENERAL
   #   ground_truth: True
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
-  #
+
   # - name: 'ground_truth_oracle'
   #   <<: *DEFAULT_GENERAL
   #   reconstruction_params:
@@ -56,6 +57,73 @@ tests:
   #       <<: *DEFAULT_RECONSTRUCTION
   #       oracle: 'pca'
   #
+  #
+  # - name: 'short_samples_pointwise_measure'
+  #   models_to_use: ['short_samples']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       distance_measure: 'pointwise'
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'short_samples_0.01'
+  #   models_to_use: ['short_samples_0.01']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'short_samples_0.02'
+  #   models_to_use: ['short_samples_0.02']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'short_samples_0.02_pointwise'
+  #   models_to_use: ['short_samples_0.02']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       distance_measure: 'pointwise'
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+  - name: 'short_samples_0.02_pointwise_weighted'
+    models_to_use: ['short_samples_0.02']
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        distance_measure: 'pointwise'
+        weight_predictions: True
+        min_countV: 3
+        <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'short_samples_0.02_pointwise_top_N'
+  #   models_to_use: ['short_samples_0.02']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       distance_measure: 'pointwise'
+  #       oracle: 'true_greedy'
+  #       stop_points: [200, 500]
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+
+
+
+  # - name: 'short_samples_0.025'
+  #   models_to_use: ['short_samples_0.025']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'short_samples_0.03'
+  #   models_to_use: ['short_samples_0.03']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'short_samples_0.04'
+  #   models_to_use: ['short_samples_0.04']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+
 
 
    # - name: 'short_tall_samples'
@@ -64,12 +132,12 @@ tests:
    #   reconstruction_params:
    #       <<: *DEFAULT_RECONSTRUCTION
 
-   - name: 'short_tall_samples_true_greedy'
-     models_to_use: ['short_samples', 'tall_samples']
-     <<: *DEFAULT_GENERAL
-     reconstruction_params:
-         <<: *DEFAULT_RECONSTRUCTION
-         oracle: 'true_greedy'
+   # - name: 'short_tall_samples_true_greedy'
+   #   models_to_use: ['short_samples', 'tall_samples']
+   #   <<: *DEFAULT_GENERAL
+   #   reconstruction_params:
+   #       <<: *DEFAULT_RECONSTRUCTION
+   #       oracle: 'true_greedy'
 
 
   #

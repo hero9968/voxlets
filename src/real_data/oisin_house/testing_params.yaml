@@ -5,6 +5,7 @@ testing_data: 'oisin_house'
 general_params: &DEFAULT_GENERAL
     # number of points to sample from image at test time
     number_samples: 300
+    weight_predictions: False
 
     # which models to load...
     # models_to_use: ['short_cobweb', 'tall_cobweb']
@@ -33,18 +34,43 @@ render_normal: True
 
 tests:
 
-  - name: 'ground_truth'
+  # - name: 'pca_oracle'
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #       oracle: 'pca'
+
+  - name: 'ground_truth_oracle'
     <<: *DEFAULT_GENERAL
-    ground_truth: True
     reconstruction_params:
         <<: *DEFAULT_RECONSTRUCTION
+        oracle: 'gt'
 
-  - name: 'visible'
+  - name: 'nn_oracle'
     <<: *DEFAULT_GENERAL
-    visible: True
     reconstruction_params:
         <<: *DEFAULT_RECONSTRUCTION
+        oracle: 'nn'
 
+  # - name: 'greedy_oracle'
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #       oracle: 'greedy_add'
+
+  #
+  # - name: 'ground_truth'
+  #   <<: *DEFAULT_GENERAL
+  #   ground_truth: True
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'visible'
+  #   <<: *DEFAULT_GENERAL
+  #   visible: True
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
 
   - name: 'short_and_tall_samples'
     models_to_use: ['short_samples', 'tall_samples']
@@ -164,29 +190,6 @@ tests:
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
 
-  # - name: 'pca_oracle'
-  #   <<: *DEFAULT_GENERAL
-  #   reconstruction_params:
-  #       <<: *DEFAULT_RECONSTRUCTION
-  #       oracle: 'pca'
-
-  # - name: 'ground_truth_oracle'
-  #   <<: *DEFAULT_GENERAL
-  #   reconstruction_params:
-  #       <<: *DEFAULT_RECONSTRUCTION
-  #       oracle: 'gt'
-
-  # - name: 'nn_oracle'
-  #   <<: *DEFAULT_GENERAL
-  #   reconstruction_params:
-  #       <<: *DEFAULT_RECONSTRUCTION
-  #       oracle: 'nn'
-
-  # - name: 'greedy_oracle'
-  #   <<: *DEFAULT_GENERAL
-  #   reconstruction_params:
-  #       <<: *DEFAULT_RECONSTRUCTION
-  #       oracle: 'greedy_add'
 
 
 

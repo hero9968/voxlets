@@ -136,7 +136,9 @@ def process_sequence(sequence):
                 prediction = prediction.gt_tsdf
 
             if test_params['name']=='visible':
-                ground_height = None
+                savepath = gen_renderpath % test_params['name']
+                gt_scene.render_visible(savepath, xy_centre=True, keep_obj=True)
+                # ground_height = None
             else:
                 ground_height = 0.03
 

@@ -55,7 +55,6 @@ if __name__ == '__main__':
         # for m in models:
         #     m.voxlet_params['size'] = 0.003
 
-
         def process_sequence(sequence):
 
             print "-> Loading ", sequence['name']
@@ -64,6 +63,7 @@ if __name__ == '__main__':
                 sequence, frame_nos=0, segment_with_gt=False, segment=False)
             sc.sample_points(params['number_samples'],
                 nyu=parameters['testing_data'] == 'nyu_cad')
+            sc.im._clear_cache()
 
             print "-> Creating folder"
             fpath = paths.prediction_folderpath % \
@@ -75,6 +75,8 @@ if __name__ == '__main__':
                 # import pdb; pdb.set_trace()
                 sc2 = deepcopy(sc)
                 sc2.gt_labels = []
+                # sc2.im_tsdf = []
+                sc2.im_visible = []
                 sc2.gt_tsdf_separate = []
                 sc2.gt_labels_separate = []
                 pred_voxlets = sc2
@@ -86,7 +88,8 @@ if __name__ == '__main__':
                 print "-> Setting up the reconstruction object"
                 rec = voxlets.Reconstructer()
                 rec.set_scene(sc)
-                rec.initialise_output_grid(gt_grid=sc.gt_tsdf)
+                rec.initialise_output_grid(gt_grid=sc.gt_tsdf,
+                    keep_explicit_count=params['reconstruction_params']['weight_predictions'])
                 rec.set_model_probabilities(params['model_probabilities'])
                 rec.set_model(models)
                 rec.mu = params['mu']
@@ -125,11 +128,12 @@ if __name__ == '__main__':
                         pickle.dump(rec.keeping_existing, f, -1)
 
                 # save the keeping existing prediction
-                if hasattr(rec, 'average'):
-                    prediction_savepath = fpath + params['name'] + '.pkl'
-                    with open(prediction_savepath.replace('.pkl', '_average.pkl'), 'w') as f:
-                        pickle.dump(rec.average, f, -1)
-
+                # if hasattr(rec, 'average'):
+                #     rec.average.sumV = []
+                #     rec.average.countV = []
+                #     prediction_savepath = fpath + params['name'] + '.pkl'
+                #     with open(prediction_savepath.replace('.pkl', '_average.pkl'), 'w') as f:
+                #         pickle.dump(rec.average, f, -1)
 
             prediction_savepath = fpath + params['name'] + '.pkl'
             print "-> Saving the prediction to ", prediction_savepath
@@ -140,7 +144,7 @@ if __name__ == '__main__':
 
         tic = time()
 
-        if False:#system_setup.multicore:
+        if system_setup.multicore:
             # need to import this *after* the pool helper has been defined
             import multiprocessing
             pool = multiprocessing.Pool(system_setup.testing_cores)

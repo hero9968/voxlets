@@ -8,7 +8,7 @@ import yaml
 import system_setup
 import collections
 sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
-from common import voxlets, scene
+from common import voxlets, scene, mesh
 
 
 if len(sys.argv) > 1:
@@ -28,6 +28,47 @@ elif parameters['testing_data'] == 'nyu_cad':
 else:
     raise Exception('Unknown training data')
 
+
+def get_nyu_within_walls(sequence_name, sc):
+    '''
+    returns a 3D mask which is one where the voxel is within the 3D bounds of
+    the NYU Scene
+    '''
+
+    # load the mesh obj file
+    scene_obj = paths.data_folder + '../binvox_with_walls/%s.obj'
+    ms = mesh.Mesh()
+    ms.load_from_obj(scene_obj % sequence_name)
+
+    # finding the extents in real world space and idx space
+    wall_xyz_in_world_space = ms.vertices[:, [0, 2, 1]]
+    start = sc.gt_tsdf.world_to_idx(
+        np.min(wall_xyz_in_world_space, axis=0)[None, :])[0]
+    finish = sc.gt_tsdf.world_to_idx(
+        np.max(wall_xyz_in_world_space, axis=0)[None, :])[0]
+
+    # truncating to within the bounds
+    start[start < 0] = 0
+    max_shape = np.array(sc.gt_tsdf.V.shape)
+    too_big = finish > max_shape
+    finish[too_big] = max_shape[too_big]
+
+    # creating the masks
+    extra_mask_x = sc.gt_tsdf.V.copy().astype(np.int32) * 0
+    extra_mask_y = sc.gt_tsdf.V.copy().astype(np.int32) * 0
+    extra_mask_z = sc.gt_tsdf.V.copy().astype(np.int32) * 0
+
+    extra_mask_x[start[0]:finish[0]] = 1
+    extra_mask_y[start[1]:finish[1]] = 1
+    extra_mask_z[start[2]:finish[2]] = 1
+
+    extra_mask = np.logical_and.reduce(
+        (extra_mask_x, extra_mask_y, extra_mask_z)).astype(np.int32)
+
+    return extra_mask
+
+
+
 def process_sequence(sequence):
 
     print "-> Loading ground truth", sequence['name']
@@ -37,6 +78,11 @@ def process_sequence(sequence):
     gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
 
     results_dict = collections.OrderedDict()
+
+    if parameters['testing_data'] == 'nyu_cad':
+        extra_mask = get_nyu_within_walls(sequence['name'], gt_scene)
+    else:
+        extra_mask = None
 
     for test_params in parameters['tests']:
 
@@ -54,17 +100,18 @@ def process_sequence(sequence):
                 print "Iterating"
                 for key, item in prediction.iteritems():
                     results_dict[test_params['name'] + str(key)] = \
-                        gt_scene.evaluate_prediction(item.V)
+                        gt_scene.evaluate_prediction(item.V, extra_mask)
             else:
                 print "Not iteration",
                 results_dict[test_params['name']] = \
-                    gt_scene.evaluate_prediction(prediction.V)
+                    gt_scene.evaluate_prediction(prediction.V, extra_mask)
 
             if test_params['name'] == 'ground_truth_oracle' and plot_gt_oracle:
                 print "Rendering..."
                 diff = prediction.V - gt_scene.gt_tsdf.V
                 plt.subplot(221)
-                plt.imshow(gt_scene.voxels_to_evaluate.reshape(gt_scene.gt_tsdf.V.shape)[:, :, 20])
+                plt.imshow(gt_scene.voxels_to_evaluate.reshape(
+                    gt_scene.gt_tsdf.V.shape)[:, :, 20])
                 plt.subplot(222)
                 plt.imshow(gt_scene.gt_tsdf.V[:, :, 20], cmap=plt.get_cmap('bwr'))
                 plt.subplot(223)
@@ -93,7 +140,7 @@ def process_sequence(sequence):
 # need to import these *after* the pool helper has been defined
 if system_setup.multicore:
     import multiprocessing
-    mapper = multiprocessing.Pool(3).map
+    mapper = multiprocessing.Pool(4).map
 else:
     mapper = map
 
@@ -141,6 +188,18 @@ if __name__ == '__main__':
             prec = get_mean_score(experiment_name, results, 'precision')
             rec = get_mean_score(experiment_name, results, 'recall')
             # sizes.append((float(experiment_name.split('_')[2]), iou, prec, rec))
+
+
+    for experiment_name in results[0]:
+        print experiment_name.ljust(25) + " & "
+        for score_type in scores:
+            score = get_mean_score(experiment_name, results, score_type)
+            print ('%0.3f' % score).ljust(10),
+            if score_type == 'recall':
+                print "\\\\"
+            else:
+                print " & "
+
 
 
     print sizes

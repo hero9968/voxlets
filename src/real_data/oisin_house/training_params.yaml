@@ -28,15 +28,16 @@ vox_num_rings: 10
 vox_radius: 0.0075
 samples_out_of_range_feature: 0.025
 
-extract_from: 'actual_tsdf'
 # sampling_grid_size: 0.1
 
 # if a feature is out of the inlier mask, give it this value
 cobweb_out_of_range_feature: -5.0
 
 # # do we presegment?
-segment_scene: False
-segment_with_gt: False
+segment_scene: True
+segment_with_gt: True
+extract_from: 'gt_tsdf'
+# nb gt_tsdf is actually the segmented tsdf... actual_tsdf is the actual gt_tsdf
 
 ml_type: 'forest'
 
@@ -71,7 +72,8 @@ voxlet_sizes:
         one_side_bins: 20
         shape: [20, 40, 20]
           # edge size of a single voxel
-        size: 0.0175
+        # size: 0.0175
+        size: 0.0075
         # centre is relative to the ijk origin at the bottom corner of the voxlet
         # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25, 0.5]

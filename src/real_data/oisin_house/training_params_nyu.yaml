@@ -90,6 +90,48 @@ voxlet_sizes:
         relative_centre: [0.5, 0.25]
         tall_voxlet_height: 0.375
 
+
+    short_0.01:
+        name: 'short_0.01'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+        size: 0.01
+        relative_centre: [0.5, 0.25, 0.5]
+
+    short_0.02:
+        name: 'short_0.02'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+        size: 0.02
+        relative_centre: [0.5, 0.25, 0.5]
+
+    short_0.025:
+        name: 'short_0.025'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+        size: 0.025
+        relative_centre: [0.5, 0.25, 0.5]
+
+    short_0.03:
+        name: 'short_0.03'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+        size: 0.03
+        relative_centre: [0.5, 0.25, 0.5]
+
+    short_0.04:
+        name: 'short_0.04'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+        size: 0.04
+        relative_centre: [0.5, 0.25, 0.5]
+
+
 models_to_train:
 
 # -   name: 'short_cobweb_syn'
@@ -124,17 +166,48 @@ models_to_train:
 #     forest:
 #         <<: *DEFAULT_FOREST
 
--   name: 'short_samples'
-    voxlet_type: 'short'
+# -   name: 'short_samples'
+#     voxlet_type: 'short'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'tall_samples'
+#     voxlet_type: 'tall'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+
+-   name: 'short_samples_0.01'
+    voxlet_type: 'short_0.01'
     feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
 
--   name: 'tall_samples'
-    voxlet_type: 'tall'
+-   name: 'short_samples_0.02'
+    voxlet_type: 'short_0.02'
     feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
+
+-   name: 'short_samples_0.025'
+    voxlet_type: 'short_0.025'
+    feature: 'samples'
+    forest:
+        <<: *DEFAULT_FOREST
+
+-   name: 'short_samples_0.03'
+    voxlet_type: 'short_0.03'
+    feature: 'samples'
+    forest:
+        <<: *DEFAULT_FOREST
+
+-   name: 'short_samples_0.04'
+    voxlet_type: 'short_0.04'
+    feature: 'samples'
+    forest:
+        <<: *DEFAULT_FOREST
+
 
 
 
