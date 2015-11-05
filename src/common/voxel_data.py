@@ -461,8 +461,8 @@ class WorldVoxels(Voxels):
             and transform *all* the voxels in self
             '''
             # 1) Compute world meshgrid for self
-            self_world_xyz = self.world_meshgrid()
             self_idx = self.idx_meshgrid()
+            self_world_xyz = self.world_meshgrid()
 
             # convert the indices to world xyz space
             #self_grid_in_sbox_idx, valid = input_grid.world_to_idx(self_world_xyz, True)
@@ -603,7 +603,8 @@ class WorldVoxels(Voxels):
 
         return world_k_col, world_z_col
 
-    def render_view(self, savepath, xy_centre=None, ground_height=None, keep_obj=False):
+    def render_view(self, savepath, xy_centre=None, ground_height=None,
+            keep_obj=False, actually_render=True, flip=False):
         '''
         render a single view of a voxel grid, using blender...
         ground height is in meters
@@ -637,23 +638,27 @@ class WorldVoxels(Voxels):
             ms.vertices[:, 2] -= 0.05
             # ms.vertices *= 1.5
 
+        if flip:
+            ms.vertices[:, 0] *= -1
+
         print "Writing to obj...",
         sys.stdout.flush()
         ms.write_to_obj(savepath + '.obj')
 
         print "Rendering...",
-        sys.stdout.flush()
-        blend_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/spin.blend')
-        blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/blender_spinaround_frame.py')
-        subenv = os.environ.copy()
-        subenv['BLENDERSAVEFILE'] = savepath
-        sp.call([rendering.blender_path,
-                 blend_path,
-                 "-b", "-P",
-                 blend_py_path],
-                 env=subenv,
-                 stdout=open(os.devnull, 'w'),
-                 close_fds=True)
+        if actually_render:
+            sys.stdout.flush()
+            blend_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/spin.blend')
+            blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/blender_spinaround_frame.py')
+            subenv = os.environ.copy()
+            subenv['BLENDERSAVEFILE'] = savepath
+            sp.call([rendering.blender_path,
+                     blend_path,
+                     "-b", "-P",
+                     blend_py_path],
+                     env=subenv,
+                     stdout=open(os.devnull, 'w'),
+                     close_fds=True)
 
         print "Done rendering...",
         sys.stdout.flush()
@@ -849,6 +854,7 @@ class ShoeBox(WorldVoxels):
 
         if np.abs(np.linalg.det(R) - 1) > 0.00001:
             print "R is " + str(R)
+            print updir, normal, point
             raise Exception("R has det" % np.linalg.det(R))
 
         # computing the grid origin

@@ -21,7 +21,10 @@ import os
 import scipy.misc
 import mesh
 import h5py
-
+import scipy.io
+import time
+import subprocess as sp
+import rendering
 from copy import copy
 from scipy.ndimage.interpolation import zoom
 
@@ -215,28 +218,22 @@ class Scene(object):
             self.sampled_idxs = np.array(sampled_points)
         else:
             sample_rate = copy(self.im.depth)
-            print sample_rate.sum()
 
             shape = self.im.depth.shape
             if not nyu:
-                print "Not NYU for some reason"
                 sample_rate[self.im.get_world_xyz()[:, 2].reshape(shape) < 0.035] = 0
                 sample_rate[np.isnan(self.gt_im_label)] = 0
                 sample_rate[self.im.normals[:, 2].reshape(shape) > -0.1] = 0
+
             # import pdb; pdb.set_trace()
-            print "Mask", (self.im.mask!=0).sum()
-            print sample_rate.shape, self.im.mask.shape
             sample_rate[self.im.mask==0] = 0
-            print sample_rate.sum()
 
             # normals approximately pointing upwards
             sample_rate[self.im.get_world_normals()[:, 2].reshape(shape) > 0.98] = 0
-            print sample_rate.sum()
 
             if sample_rate.sum() == 0:
                 raise Exception("Sample rate is zero sum, cannot sample any points")
 
-            import scipy.io
             scipy.io.savemat('/tmp/samples.mat', {'sr':sample_rate})
             sample_rate /= sample_rate.sum()
 
@@ -306,7 +303,8 @@ class Scene(object):
         return temp_transformed
 
     def load_sequence(self, sequence, frame_nos, segment_with_gt, segment=True,
-            save_grids=False, voxel_normals=False, carve=True, segment_base=None):
+            save_grids=False, voxel_normals=False, carve=True, segment_base=None,
+            original_nyu=False):
         '''
         loads a sequence of images, the associated gt voxel grid,
         carves the visible tsdf from the images, does segmentation
@@ -348,7 +346,8 @@ class Scene(object):
             sequence['folder'] + sequence['scene'], sequence_frames)
 
         self.im = images.RGBDImage.load_from_dict(
-            sequence['folder'] + sequence['scene'], self.frame_data)
+            sequence['folder'] + sequence['scene'], self.frame_data,
+            original_nyu=original_nyu)
 
         # while I'm here - might as well save the image as a voxel grid
         if carve:
@@ -672,16 +671,10 @@ class Scene(object):
 
         return each_label_region
 
-    def evaluate_prediction(self, V, extra_mask=None):
+    def form_evaluation_region(self, extra_mask=None):
         '''
-        evalutes a prediction grid, assuming to be the same size and position
-        as the ground truth grid...
+        forms a region of the grid which we should evaluate over
         '''
-        assert(V.shape[0] == self.gt_tsdf.V.shape[0])
-        assert(V.shape[1] == self.gt_tsdf.V.shape[1])
-        assert(V.shape[2] == self.gt_tsdf.V.shape[2])
-
-        # deciding which voxels to evaluate over...
         temp = np.logical_or(self.im_tsdf.V < 0, np.isnan(self.im_tsdf.V))
         voxels_to_evaluate = np.logical_and(
             temp, self.get_visible_frustrum().reshape(temp.shape))
@@ -693,7 +686,21 @@ class Scene(object):
         if extra_mask is not None:
             voxels_to_evaluate = np.logical_and(extra_mask, voxels_to_evaluate)
 
-        self.voxels_to_evaluate = voxels_to_evaluate
+        return voxels_to_evaluate
+
+    def evaluate_prediction(self, V, voxels_to_evaluate=None, extra_mask=None):
+        '''
+        evalutes a prediction grid, assuming to be the same size and position
+        as the ground truth grid...
+        '''
+        assert(V.shape[0] == self.gt_tsdf.V.shape[0])
+        assert(V.shape[1] == self.gt_tsdf.V.shape[1])
+        assert(V.shape[2] == self.gt_tsdf.V.shape[2])
+
+        # deciding which voxels to evaluate over...
+        if voxels_to_evaluate is None:
+            voxels_to_evaluate = self.form_evaluation_region(extra_mask)
+            self.voxels_to_evaluate = voxels_to_evaluate
 
         # getting the ground truth TSDF voxels
         gt = self.gt_tsdf.V[voxels_to_evaluate] < 0
@@ -717,7 +724,9 @@ class Scene(object):
         # Now doing the final evaluation
         results = {}
         results['iou'] = float(intersection.sum()) / float(union.sum())
-        results['auc'] = float(sklearn.metrics.roc_auc_score(gt, V_to_eval))
+        # tic = time.time()
+        # results['auc'] = float(sklearn.metrics.roc_auc_score(gt, V_to_eval))
+        # print "AUC", time.time() - tic
 
         if (tp + fp) > 0:
             results['precision'] = tp / (tp + fp)
@@ -749,10 +758,10 @@ class Scene(object):
         # remove triangles with too big a jump
         gradx, grady = np.gradient(self.im.depth[:-1, :])
         grad = np.sqrt(gradx**2 + grady**2)
-        jumps = grad > 0.1
+        jumps = grad > 0.01
         jumps = binary_dilation(jumps)
 
-        idxs = idxs[~np.logical_or(to_remove, jumps.ravel())]
+        idxs = idxs[~np.logical_or(right_col, jumps.ravel())]
 
         # combine all the triangles
         tris = np.vstack([idxs, idxs + W, idxs + W + 1]).T
@@ -766,11 +775,13 @@ class Scene(object):
         # Now do blender render and copy the obj file if needed...
         if xy_centre:
             # T = ms.vertices[:, :2]
+            temp = self.gt_tsdf
             cen = temp.origin + (np.array(temp.V.shape) * temp.vox_size) / 2.0
             ms.vertices[:, :2] -= cen[:2]
             ms.vertices[:, 2] -= 0.05
             ms.vertices *= 1.5
 
+        print "Saving to ", savepath + '.obj'
         ms.write_to_obj(savepath + '.obj')
 
         blend_path = os.path.expanduser('~/projects/shape_sharing/src/'
@@ -780,7 +791,7 @@ class Scene(object):
 
         subenv = os.environ.copy()
         subenv['BLENDERSAVEFILE'] = savepath
-        sp.call([rendering.blender_path,
+        sp.call(['blender',
                  blend_path,
                  "-b", "-P",
                  blend_py_path],

@@ -22,6 +22,8 @@ elif parameters['testing_data'] == 'synthetic':
     import synthetic_paths as paths
 elif parameters['testing_data'] == 'nyu_cad':
     import nyu_cad_paths as paths
+elif parameters['testing_data'] == 'nyu_cad_silberman':
+    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
@@ -127,20 +129,22 @@ def process_sequence(sequence):
 
             prediction_savepath = fpath + test_params['name'] + '.pkl'
 
-            if not os.path.exists(prediction_savepath):
+            if not os.path.exists(prediction_savepath) and test_params['name'] != 'visible':
                 continue
+
+            if test_params['name']=='visible':
+                savepath = gen_renderpath % test_params['name']
+                print "Save path is ", savepath
+                gt_scene.render_visible(savepath, xy_centre=True, keep_obj=True)
+                continue
+                # ground_height = None
+            else:
+                ground_height = 0.0
 
             prediction = pickle.load(open(prediction_savepath))
 
             if test_params['name'] == 'ground_truth':
                 prediction = prediction.gt_tsdf
-
-            if test_params['name']=='visible':
-                savepath = gen_renderpath % test_params['name']
-                gt_scene.render_visible(savepath, xy_centre=True, keep_obj=True)
-                # ground_height = None
-            else:
-                ground_height = 0.03
 
             # sometimes multiple predictions are stored in predicton
             print "Rendering ", test_params['name']
@@ -152,7 +156,9 @@ def process_sequence(sequence):
                         print "Saving to ", savepath
                 else:
                     prediction.render_view(gen_renderpath % test_params['name'],
-                        xy_centre=True, ground_height=ground_height, keep_obj=True)
+                        xy_centre=False, ground_height=ground_height,
+                        keep_obj=True, actually_render=False,
+                        flip=True)
                     print "Saving to ", gen_renderpath % test_params['name']
 
             # maybe I also want to render other types of prediction
@@ -175,6 +181,22 @@ def process_sequence(sequence):
                 # savepath = (gen_renderpath % test_params['name']).replace('.png', '_slice.png')
                 # slice_render(prediction, gt_scene.gt_tsdf, savepath)
                 #
+            # a bit naughty -lets evaluate here and save to a yaml file...
+            if test_params['name'] == 'ground_truth':
+                continue
+
+            evaluation_region_loadpath = paths.evaluation_region_path % (
+                parameters['batch_name'], sequence['name'])
+                # pickle.dump(evaluation_region, open(savepath, 'w'), -1)
+            evaluation_region = scipy.io.loadmat(
+                evaluation_region_loadpath)['evaluation_region'] > 0
+
+            result = gt_scene.evaluate_prediction(prediction.V,
+                voxels_to_evaluate=evaluation_region)
+
+            result_savepath = fpath + "../eval_%s.yaml" % test_params['name']
+            yaml.dump(open(results_savepath, 'w'), result)
+
 
 
 

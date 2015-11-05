@@ -47,11 +47,12 @@ def process_sequence(sequence):
     evaluation_region = scipy.io.loadmat(
         evaluation_region_loadpath)['evaluation_region'] > 0
 
-    for alpha in [0.0, 5, 10, 50, 100, 500, 1000, 10000]:
+    # for alpha in [0.0, 5, 10, 50, 100, 500, 1000, 10000]:
+    for alpha in np.arange(0, 1.0, 0.1):
 
         print "Alpha is ", alpha
 
-        prediction_savepath = fpath + params['name'] + ('_%f_alpha.pkl' % alpha)
+        prediction_savepath = fpath + params['name'] + ('_%0.3f_weight_empty_lower.pkl' % alpha)
 
         if os.path.exists(prediction_savepath):
 

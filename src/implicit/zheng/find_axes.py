@@ -2,6 +2,7 @@ import yaml
 import math, random
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+from time import time
 
 import sys, os
 
@@ -12,7 +13,7 @@ from common import scene, voxel_data
 from features import line_casting
 
 
-def fibonacci_sphere(samples=1,randomize=True):
+def fibonacci_sphere(samples=1,randomize=False):
     '''
     From the internet
     '''
@@ -50,10 +51,10 @@ def find_axes(norms_in):
     assert norms_in.shape[1] == 3
 
     to_use = ~np.any(np.isnan(norms_in), axis=1)
-    to_use2 = norms_in.sum(1) > 0
+    to_use2 = np.abs(norms_in).sum(1) > 0
 
     norms = norms_in[np.logical_and(to_use, to_use2), :]
-    print "Norms shape is ", norms.shape, norms.sum(0)
+    print "Norms shapse is ", norms.shape, norms.sum(0)
 
     # forming a histogram over the normals
     # (using twice as many bins as them, but normals will only point towards camera
@@ -61,7 +62,7 @@ def find_axes(norms_in):
     n_bins = 2000
     bins = np.array(fibonacci_sphere(n_bins))
 
-    nbrs = NearestNeighbors(n_neighbors=1).fit(bins)
+    nbrs = NearestNeighbors(n_neighbors=1, algorithm='brute').fit(bins)
     _, idxs = nbrs.kneighbors(norms)
 
     idxs = idxs.flatten()
@@ -126,15 +127,19 @@ def process_scene(sc, threshold=3, skip_segment=0):
             continue
 
         print "Doing segment ", seg
+        tic = time()
+
 
         # print "Norm sum is ", sc.im.depth.sum()
         R = find_axes(norms)
         print R, inlying_pixels.sum()
         del inlying_pixels
+        print "Finding axes took", time() - tic; tic = time()
 
         # first rotate all the voxels
         world_voxels = sc.gt_tsdf.world_meshgrid()
         rotated_voxels = np.dot(R, world_voxels.T).T
+        print "Rotating voxels took", time() - tic; tic = time()
 
         # now find the extents of this rotated grid...
         min_grid = rotated_voxels.min(axis=0)
@@ -149,6 +154,7 @@ def process_scene(sc, threshold=3, skip_segment=0):
         new_origin = np.dot(np.linalg.inv(R), offset)
         known_full.set_origin(new_origin, np.linalg.inv(R))
         known_full.V = np.zeros(grid_size)
+        print "Next bit took", time() - tic; tic = time()
 
         # but I want to find the voxels which correspond to the edge of this segment
         region_edges = sc.im_visible.copy()
@@ -169,27 +175,33 @@ def process_scene(sc, threshold=3, skip_segment=0):
             where_inside_image = np.where(inside_image)[0]
             region_edges.V.ravel()[where_inside_image[labs!=seg]] = 0
 
+        print "Projections took", time() - tic; tic = time()
+
         known_full.fill_from_grid(region_edges)
         del(region_edges)
-
+        print "Rotating 1 took", time() - tic; tic = time()
         # also need to rotate a copy of the empty grid
         empty_voxels = sc.im_tsdf.copy()
         empty_voxels.V = empty_voxels.V > 0
         known_empty = known_full.blank_copy()
         known_empty.fill_from_grid(empty_voxels)
         del(empty_voxels)
+        print "Rotating 2 took", time() - tic; tic = time()
 
         # (if desired I could crop this grid down...)
 
         # now I want to use my routine to fill in the grid
-        distances, observed = line_casting.line_features_3d(known_empty, known_full, base_height=0, save_distances=False)
+        distances, observed = line_casting.line_features_3d(
+            known_empty, known_full, base_height=0, save_distances=False,
+            just_manhatten=True)
         del(known_empty)
         del(distances)
+        print "Line casting took", time() - tic; tic = time()
 
         # now running the zheng thresholding
         # only using certain directions from all the directions I have computed!
-        to_use = [0, 9, 11, 13, 15, 25]
-        all_observed = np.vstack([observed[ii].flatten() for ii in to_use]).T
+        # to_use = [0, 9, 11, 13, 15, 25]
+        all_observed = np.vstack([xx.flatten() for xx in observed]).T
         predicted_full = all_observed.sum(1) >= threshold
 
         # now rotate these labels to the new space
@@ -204,6 +216,7 @@ def process_scene(sc, threshold=3, skip_segment=0):
 
         accumulator.V = np.logical_or(rotated_back.V > 0, accumulator.V > 0)
         del(rotated_back)
+        print "Accumulating took", time() - tic; tic = time()
 
 
     return accumulator

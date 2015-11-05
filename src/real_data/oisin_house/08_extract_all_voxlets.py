@@ -26,6 +26,8 @@ elif parameters['training_data'] == 'synthetic':
     import synthetic_paths as paths
 elif parameters['training_data'] == 'nyu_cad':
     import nyu_cad_paths as paths
+elif parameters['training_data'] == 'nyu_cad_silberman':
+    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
@@ -62,7 +64,7 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
     # import pdb; pdb.set_trace()
     idxs = sc.sample_points(parameters['number_points_from_each_image'],
                       additional_mask=sc.gt_im_label != 0,
-                      nyu=parameters['training_data'] == 'nyu_cad')
+                      nyu='nyu_cad' in parameters['training_data'])
 
     # save these to a temp file
     scipy.io.savemat(paths.data_folder + 'tmp_idxs.mat', {'idxs':idxs})
@@ -82,10 +84,6 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
     # Doing the mask trick...
     np_masks = np.isnan(np_sboxes).astype(np.float16)
     np_sboxes[np_masks == 1] = np.nanmax(np_sboxes)
-
-    print "Nans: ", np.isnan(np_sboxes).sum()
-    print "Nans: ", np.isnan(np_masks).sum()
-    print "Nans: ", np.isnan(sc.gt_tsdf.V).sum()
 
     if np.isnan(np_sboxes).sum() > 0 or np.isnan(np_masks).sum() > 0:
         print "Found nans..."

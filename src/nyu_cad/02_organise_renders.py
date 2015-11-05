@@ -36,13 +36,13 @@ for foldername in os.listdir(this_nowalls_dir):
     print new_path
 
     # move images
-    for imname in ['/depth.png', '/rgb.png']:
+    for imname in ['/depth.png', '/rgb.png', '/depth8.png']:
         im_path = this_walls_dir + foldername + imname
         print im_path
         shutil.copy(im_path, new_path + imname)
 
     # maybe now try to create a mask...
-    no_walls_loadpath = this_nowalls_dir + foldername + '/depth.png'
+    no_walls_loadpath = this_nowalls_dir + foldername + '/depth8.png'
     no_walls_depth = skimage.io.imread(no_walls_loadpath)
     mask = (no_walls_depth != 2**16 -1).astype(np.uint8) * 255
 
@@ -73,10 +73,10 @@ for foldername in os.listdir(this_nowalls_dir):
     # finally make the yaml file
     poses = [{
         'camera': 1,
-        'depth_scaling': 4.0,
+        'depth_scaling': 8.0,
         'frame': 0,
         'id': '01_0000',
-        'image': 'images/depth.png',
+        'image': 'images/depth8.png',
         'rgb': 'images/rgb.png',
         'mask': 'images/mask.png',
         'intrinsics': K.ravel().tolist(),
@@ -87,6 +87,7 @@ for foldername in os.listdir(this_nowalls_dir):
     print yaml_path
     yaml.dump(poses, open(yaml_path, 'w'))
 
+    continue
     # now load the binvox and save as a pickle file in the correct place
     bvox_path = this_nowalls_binvox_dir + foldername + '.binvox'
     print "Path is ", bvox_path

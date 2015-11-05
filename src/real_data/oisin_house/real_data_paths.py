@@ -94,6 +94,8 @@ evaluation_data_path = models_folder + 'model_evaluation_voxlets/'
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
 voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
 
+evaluation_region_path = data_folder + '/predictions/%s/%s/evaluation_region.mat'
+
 # first %s is the test batch category name, second is the sequence name
 prediction_folderpath = data_folder + '/predictions/%s/%s/pickles/'
 
@@ -103,7 +105,7 @@ scores_path = data_folder + '/predictions/%s/%s/scores.yaml'
 prediction_path = data_folder + '/predictions/%s/%s/%s.pkl'
 
 # final %s is the actual test being done
-kinfu_prediction_img_path = data_folder + '/kinfu_predictions/%s/%s/%s.pkl'
+kinfu_prediction_img_path = data_folder + '/kinfu_predictions/%s/%s/%s.png'
 
 
 def new_dropbox_dir():

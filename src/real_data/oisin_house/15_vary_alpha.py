@@ -54,12 +54,13 @@ if __name__ == '__main__':
     models = [pickle.load(open(vox_model_path % name))
               for name in params['models_to_use']]
 
-    for alpha in [10000]:#0.0, 5, 10, 50, 100, 500, 1000]:
-    # for weight_empty_lower in np.range(0, 1, 0.1):
+    # for alpha in [10000]:#0.0, 5, 10, 50, 100, 500, 1000]:
+    for weight_empty_lower in np.arange(0, 1, 0.1):
 
-        print "-->> Alpha is ", alpha
-        # print
-        params['reconstruction_params']['weight_parameter'] = alpha
+        # print "-->> Alpha is ", alpha
+        print "Weight empty lower is ", weight_empty_lower
+        # params['reconstruction_params']['weight_parameter'] = alpha
+        params['reconstruction_params']['weight_empty_lower'] = weight_empty_lower
 
         def process_sequence(sequence):
 
@@ -93,7 +94,7 @@ if __name__ == '__main__':
             # parameters from the yaml file are passed as separate arguments to voxlets
             pred_voxlets = rec.fill_in_output_grid(**params['reconstruction_params'])
 
-            prediction_savepath = fpath + params['name'] + ('_%f_alpha.pkl' % alpha)
+            prediction_savepath = fpath + params['name'] + ('_%0.3f_weight_empty_lower.pkl' % weight_empty_lower)
             print "-> Saving the prediction to ", prediction_savepath
 
             with open(prediction_savepath, 'w') as f:
@@ -101,7 +102,7 @@ if __name__ == '__main__':
 
         tic = time()
 
-        if False:#system_setup.multicore:
+        if system_setup.multicore:
             # need to import this *after* the pool helper has been defined
             import multiprocessing
             pool = multiprocessing.Pool(system_setup.testing_cores)

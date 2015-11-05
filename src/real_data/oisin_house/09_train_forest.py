@@ -22,6 +22,8 @@ elif parameters['training_data'] == 'synthetic':
     import synthetic_paths as paths
 elif parameters['training_data'] == 'nyu_cad':
     import nyu_cad_paths as paths
+elif parameters['training_data'] == 'nyu_cad_silberman':
+    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
@@ -51,7 +53,7 @@ def load_training_data(voxlet_name, feature_name, num_scenes=None):
         loadfolder = paths.voxlets_data_path % voxlet_name
         loadpath = loadfolder + sequence['name'] + '.pkl'
         if not os.path.exists(loadpath):
-            print "Cannot find ", sequence['name']
+            print "Cannot find ", sequence['name'], loadpath
             print "SKIPPING"
             continue
 

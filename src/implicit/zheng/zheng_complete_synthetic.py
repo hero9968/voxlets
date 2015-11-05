@@ -4,6 +4,7 @@ from time import time
 import yaml
 import sys, os
 import scipy.misc
+import scipy.io
 
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
 sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/implicit/'))
@@ -16,8 +17,8 @@ if synth:
     import synthetic_paths as paths
     parameters = yaml.load(open('../implicit_params.yaml'))
 else:
-    import nyu_cad_paths as paths
-    parameters = yaml.load(open('../../real_data/oisin_house/training_params_nyu.yaml'))
+    import nyu_cad_paths_silberman as paths
+    parameters = yaml.load(open('../../real_data/oisin_house/training_params_nyu_silberman.yaml'))
 
 import matplotlib.pyplot as plt
 
@@ -31,23 +32,40 @@ modelname = 'zheng_' + str(the_zheng_parameter)
 render = True
 
 def process_sequence(sequence):
+    if sequence['name'] != '285_classroom_0001_2':
+        return
 
     print "Loading sequence %s" % sequence['name']
 
+    evaluation_region_loadpath = paths.evaluation_region_path % (
+        parameters['batch_name'], sequence['name'])
+
+    if not os.path.exists(evaluation_region_loadpath):
+        print "Counld not find evaluation region - skipping"
+        return
     # this is where to save the results...
     results_foldername = \
         paths.implicit_predictions_dir % (modelname, sequence['name'])
+
+    if os.path.exists(results_foldername + 'prediction.mat'):
+        print "Already done - skipping"
+        # return
+
     print "Creating %s" % results_foldername
     if not os.path.exists(results_foldername):
         os.makedirs(results_foldername)
+
+    if os.path.exists(results_foldername + 'eval.yaml'):
+        print "Skipping ", sequence['name']
+        return
 
     print "Processing " + sequence['name']
     sc = scene.Scene(parameters['mu'], None)
     sc.load_sequence(
         sequence,
-        segment_base=0.03,
+        segment_base=0.00,
         frame_nos=0,
-        segment_with_gt=True,
+        segment_with_gt=False,
         segment=False,
         save_grids=False)
     print sequence
@@ -96,7 +114,11 @@ def process_sequence(sequence):
             xy_centre=True, keep_obj=True)
 
     print "Evaluating"
-    results = sc.evaluate_prediction(pred_grid.V)
+    evaluation_region = scipy.io.loadmat(
+        evaluation_region_loadpath)['evaluation_region'] > 0
+
+    results = sc.evaluate_prediction(
+        pred_grid.V, voxels_to_evaluate=evaluation_region)
     yaml.dump(results, open(results_foldername + 'eval.yaml', 'w'))
 
 

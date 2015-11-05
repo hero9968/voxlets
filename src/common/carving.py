@@ -13,7 +13,7 @@ from skimage.restoration import denoise_bilateral
 import scipy.ndimage
 import scipy.interpolate
 import scipy.io
-
+from time import time
 
 class VoxelAccumulator(object):
     '''
@@ -203,9 +203,14 @@ class Fusion(VoxelAccumulator):
 
     def _filter_depth(self, depth):
         temp = self._fill_in_nans(depth)
+        print "Max min", temp.max(), temp.min()
+        if temp.max() > 1.0:
+            factor = temp.max()
+            temp /= factor
         temp_denoised = \
             denoise_bilateral(temp, sigma_range=30, sigma_spatial=4.5)
         temp_denoised[np.isnan(depth)] = np.nan
+        temp_denoised *= factor
         return temp_denoised
 
     def integrate_image(self, im, mu, mask=None, filtering=False,

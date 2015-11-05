@@ -138,7 +138,10 @@ class VoxletPredictor(object):
         '''
         self.voxlet_counter = np.zeros(self.training_Y.shape[0])
 
-    def predict(self, X, how_to_choose='medioid', distance_measure='just_empty', visible_voxlet=None, sc=None, this_shoebox=None, weight_predictions=False):
+    def predict(self, X, how_to_choose='medioid',
+            distance_measure='just_empty', visible_voxlet=None, sc=None,
+            this_shoebox=None, weight_predictions=False,
+            weight_parameter=None):
         '''
         Returns a voxlet prediction for a single X
         '''
@@ -248,15 +251,16 @@ class VoxletPredictor(object):
                     this_shoebox.V = tree_prediction.reshape(
                         this_shoebox.V.shape)
                     vals = this_shoebox.get_idxs(valid_idxs_in_shoebox)
-                    distances.append(np.mean(vals**2))
+                    distances.append(np.mean(np.abs(vals)))
                 distances = np.array(distances)
                 # print "\n", distances, "\n"
                 # print "Distances pointwise measure took %f seconds" % \
                 #     (time.time() - tic)
 
                 if weight_predictions:
-                    weighting = np.exp(-distances.min())
-                # probably I also want to do something more clever...
+                    if weight_parameter is None:
+                        raise Exception("Weight parameter must be set!")
+                    weighting = np.exp(-weight_parameter * distances.min())
 
             to_use = distances.argmin()
             self.min_dist = distances[to_use]
@@ -422,6 +426,7 @@ class Reconstructer(object):
             samples_out_of_range_feature=None,
             scene_grid_for_comparison='im_tsdf',
             weight_predictions=False,
+            weight_parameter=None,
             aggregation_stop_points=[10, 50, 100, 200, 500]
             ):
         '''
@@ -560,7 +565,8 @@ class Reconstructer(object):
                         visible_voxlet=features_voxlet.V,
                         sc=self.sc,
                         this_shoebox=features_voxlet,
-                        weight_predictions=weight_predictions)
+                        weight_predictions=weight_predictions,
+                        weight_parameter=weight_parameter)
                 self.cached_voxlet_prediction = voxlet_prediction
                 # self.all_pred_cache.append(voxlet_prediction)
 

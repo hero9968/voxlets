@@ -61,10 +61,12 @@ forest: &DEFAULT_FOREST
 
     my_bagging: True
 
-    subsample_length: 200000
+    subsample_length: 100000
 
 # setting some voxlet params here
 # NOTE BE VERY CAREFUL IF EDITING THESE
+# NOTE SERIOUSLY
+# NOTE SERIOUSLY PLEASE YOU SCREW THIS UP EVERY TIME
 voxlet_sizes:
     short:
         name: 'short'
@@ -77,7 +79,19 @@ voxlet_sizes:
         # centre is relative to the ijk origin at the bottom corner of the voxlet
         # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25, 0.5]
-
+    #
+    # short_no_segment:
+    #     name: 'short_no_segment'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #       # edge size of a single voxel
+    #     # size: 0.0175
+    #     size: 0.0075
+    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
+    #     # z height of centre takes into account the origin offset
+    #     relative_centre: [0.5, 0.25, 0.5]
+    #
     # short_0.01:
     #     name: 'short_0.01'
     #     tall_voxlets: False
@@ -166,8 +180,32 @@ voxlet_sizes:
         # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25]
         tall_voxlet_height: 0.375
+    #
+    # tall_no_segment:
+    #     name: 'tall_no_segment'
+    #     tall_voxlets: True
+    #     one_side_bins: 20
+    #     shape: [20, 40, 50]
+    #       # edge size of a single voxel
+    #     size: 0.0075
+    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
+    #     # z height of centre takes into account the origin offset
+    #     relative_centre: [0.5, 0.25]
+    #     tall_voxlet_height: 0.375
 
 models_to_train:
+
+# -   name: 'short_samples_no_segment'
+#     voxlet_type: 'short_no_segment'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'tall_samples_no_segment'
+#     voxlet_type: 'tall_no_segment'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
 
 -   name: 'short_samples'
     voxlet_type: 'short'

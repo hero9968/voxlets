@@ -44,3 +44,6 @@ implicit_folder = data_folder + 'implicit/'
 implicit_model_dir = implicit_folder + 'models/%s/'
 implicit_training_dir = implicit_folder + 'models/%s/training_data/'
 implicit_predictions_dir = implicit_folder + 'models/%s/predictions/%s/'
+
+# pre-save the regions to test over...
+evaluation_region_path = data_folder + '/predictions/%s/%s/evaluation_region.mat'

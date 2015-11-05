@@ -4,6 +4,7 @@ import scipy.io
 import os, sys
 import numpy
 import yaml
+import random
 
 base_dir = '/home/michael/projects/shape_sharing/data/cleaned_3D/'
 new_dir = base_dir + 'renders_yaml_format/renders/'
@@ -27,9 +28,12 @@ test_seq = [all_seq[xx] for xx in D['testNdxs'].ravel()]
 print "Train seq is len ", len(train_seq)
 print "Test seq is len ", len(test_seq)
 
-# # save train and test sequence to file
-# with open(splits_dir + 'test_silberman.yaml', 'w') as f:
-#     yaml.dump(test_seq, f, default_flow_style=False)
-#
-# with open(splits_dir + 'train_silberman.yaml', 'w') as f:
-#     yaml.dump(train_seq, f, default_flow_style=False)
+random.seed(10)
+random.shuffle(test_seq, )
+
+# save train and test sequence to file
+with open(splits_dir + 'test_silberman.yaml', 'w') as f:
+    yaml.dump(test_seq, f, default_flow_style=False)
+
+with open(splits_dir + 'train_silberman.yaml', 'w') as f:
+    yaml.dump(train_seq, f, default_flow_style=False)

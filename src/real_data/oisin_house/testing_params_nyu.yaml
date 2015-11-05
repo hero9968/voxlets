@@ -19,7 +19,8 @@ general_params: &DEFAULT_GENERAL
 
 default_reconstruction_params: &DEFAULT_RECONSTRUCTION
     weight_empty_lower: 0.0
-    weight_predictions: False
+    weight_predictions: True
+    weight_parameter: 100.0
 
     # when accumulating, how many predictions should have been made at a point
     # before we make any sort of prediction at a point
@@ -36,6 +37,9 @@ default_reconstruction_params: &DEFAULT_RECONSTRUCTION
 render_without_excess_removed: True
 render_normal: True
 
+evaluate_inside_room_only: True
+
+original_nyu: False
 
 tests:
   #
@@ -71,27 +75,27 @@ tests:
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
   #
-  # - name: 'short_samples_0.02'
-  #   models_to_use: ['short_samples_0.02']
-  #   <<: *DEFAULT_GENERAL
-  #   reconstruction_params:
-  #       <<: *DEFAULT_RECONSTRUCTION
-  #
-  # - name: 'short_samples_0.02_pointwise'
-  #   models_to_use: ['short_samples_0.02']
-  #   <<: *DEFAULT_GENERAL
-  #   reconstruction_params:
-  #       distance_measure: 'pointwise'
-  #       <<: *DEFAULT_RECONSTRUCTION
+  - name: 'short_samples_0.02'
+    models_to_use: ['short_samples_0.02']
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
 
-  - name: 'short_samples_0.02_pointwise_weighted'
+  - name: 'short_samples_0.02_pointwise'
     models_to_use: ['short_samples_0.02']
     <<: *DEFAULT_GENERAL
     reconstruction_params:
         distance_measure: 'pointwise'
-        weight_predictions: True
-        min_countV: 3
         <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'short_samples_0.02_pointwise_weighted'
+  #   models_to_use: ['short_samples_0.02']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       distance_measure: 'pointwise'
+  #       weight_predictions: True
+  #       min_countV: 3
+  #       <<: *DEFAULT_RECONSTRUCTION
 
   # - name: 'short_samples_0.02_pointwise_top_N'
   #   models_to_use: ['short_samples_0.02']

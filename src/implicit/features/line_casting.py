@@ -36,6 +36,12 @@ def get_directions_3d():
     return [[0, 0, -1]] + dir1 + dir2 + dir3 + [[0, 0, 1]]
 
 
+def get_zheng_directions_3d():
+    return [[0, 0, -1], [0, 0, 1],
+        [0, -1, 0], [0, 1, 0],
+        [-1, 0, 0], [1, 0, 0]]
+
+
 def line_features_2d(observed_tsdf, known_filled):
     '''
     given an input image, computes the line features for each direction
@@ -199,7 +205,7 @@ def sort_3d_features_together(distances, observed):
 import scipy.io
 
 def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0,
-        save_distances=True):
+        save_distances=True, just_manhatten=False):
     #Not done yet!
     '''
     given an input image, computes the line features for each direction
@@ -227,7 +233,10 @@ def line_features_3d(known_empty_voxels, known_full_voxels, base_height=0,
 
     # generating numpy array of directions
     # note that in my coordinate system, up is k
-    directions = np.array(get_directions_3d()).astype(np.int32)
+    if just_manhatten:
+        directions = np.array(get_zheng_directions_3d()).astype(np.int32)
+    else:
+        directions = np.array(get_directions_3d()).astype(np.int32)
 
     # computing the actual features using the cython code
     all_distances = []

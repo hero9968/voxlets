@@ -1,6 +1,7 @@
 mu: 0.1
 voxel_size: 0.1
 training_data: 'nyu_cad'
+batch_name: 'nyu_cad'
 
 pca:
     number_points_from_each_image: 100
@@ -62,74 +63,76 @@ forest: &DEFAULT_FOREST
 
     my_bagging: False
 
-    subsample_length: 200000
+    subsample_length: 100000
 
 # setting some voxlet params here
 # NOTE BE VERY CAREFUL IF EDITING THESE
+# NOTE SERIOUSLY
+# NOTE SERIOUSLY PLEASE YOU SCREW THIS UP EVERY TIME
 voxlet_sizes:
-    short:
-        name: 'short'
-        tall_voxlets: False
-        one_side_bins: 20
-        shape: [20, 40, 20]
-          # edge size of a single voxel
-        size: 0.025
-        # centre is relative to the ijk origin at the bottom corner of the voxlet
-        # z height of centre takes into account the origin offset
-        relative_centre: [0.5, 0.25, 0.5]
-
-    tall:
-        name: 'tall'
-        tall_voxlets: True
-        one_side_bins: 20
-        shape: [20, 40, 50]
-          # edge size of a single voxel
-        size: 0.025
-        # centre is relative to the ijk origin at the bottom corner of the voxlet
-        # z height of centre takes into account the origin offset
-        relative_centre: [0.5, 0.25]
-        tall_voxlet_height: 0.375
-
-
-    short_0.01:
-        name: 'short_0.01'
-        tall_voxlets: False
-        one_side_bins: 20
-        shape: [20, 40, 20]
-        size: 0.01
-        relative_centre: [0.5, 0.25, 0.5]
-
     short_0.02:
         name: 'short_0.02'
         tall_voxlets: False
         one_side_bins: 20
         shape: [20, 40, 20]
+          # edge size of a single voxel
         size: 0.02
+        # centre is relative to the ijk origin at the bottom corner of the voxlet
+        # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25, 0.5]
 
-    short_0.025:
-        name: 'short_0.025'
-        tall_voxlets: False
+    tall_0.02:
+        name: 'tall_0.02'
+        tall_voxlets: True
         one_side_bins: 20
-        shape: [20, 40, 20]
-        size: 0.025
-        relative_centre: [0.5, 0.25, 0.5]
+        shape: [20, 40, 50]
+          # edge size of a single voxel
+        size: 0.02
+        # centre is relative to the ijk origin at the bottom corner of the voxlet
+        # z height of centre takes into account the origin offset
+        relative_centre: [0.5, 0.25]
+        tall_voxlet_height: 0.5
 
-    short_0.03:
-        name: 'short_0.03'
-        tall_voxlets: False
-        one_side_bins: 20
-        shape: [20, 40, 20]
-        size: 0.03
-        relative_centre: [0.5, 0.25, 0.5]
-
-    short_0.04:
-        name: 'short_0.04'
-        tall_voxlets: False
-        one_side_bins: 20
-        shape: [20, 40, 20]
-        size: 0.04
-        relative_centre: [0.5, 0.25, 0.5]
+    #
+    # short_0.01:
+    #     name: 'short_0.01'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #     size: 0.01
+    #     relative_centre: [0.5, 0.25, 0.5]
+    #
+    # short_0.02:
+    #     name: 'short_0.02'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #     size: 0.02
+    #     relative_centre: [0.5, 0.25, 0.5]
+    # #
+    # short_0.025:
+    #     name: 'short_0.025'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #     size: 0.025
+    #     relative_centre: [0.5, 0.25, 0.5]
+    #
+    # short_0.03:
+    #     name: 'short_0.03'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #     size: 0.03
+    #     relative_centre: [0.5, 0.25, 0.5]
+    #
+    # short_0.04:
+    #     name: 'short_0.04'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #     size: 0.04
+    #     relative_centre: [0.5, 0.25, 0.5]
 
 
 models_to_train:
@@ -177,37 +180,43 @@ models_to_train:
 #     feature: 'samples'
 #     forest:
 #         <<: *DEFAULT_FOREST
-
--   name: 'short_samples_0.01'
-    voxlet_type: 'short_0.01'
-    feature: 'samples'
-    forest:
-        <<: *DEFAULT_FOREST
+#
+# -   name: 'short_samples_0.01'
+#     voxlet_type: 'short_0.01'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
 
 -   name: 'short_samples_0.02'
     voxlet_type: 'short_0.02'
     feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
-
--   name: 'short_samples_0.025'
-    voxlet_type: 'short_0.025'
+#
+-   name: 'tall_samples_0.02'
+    voxlet_type: 'tall_0.02'
     feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
-
--   name: 'short_samples_0.03'
-    voxlet_type: 'short_0.03'
-    feature: 'samples'
-    forest:
-        <<: *DEFAULT_FOREST
-
--   name: 'short_samples_0.04'
-    voxlet_type: 'short_0.04'
-    feature: 'samples'
-    forest:
-        <<: *DEFAULT_FOREST
-
+#
+# -   name: 'short_samples_0.025'
+#     voxlet_type: 'short_0.025'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'short_samples_0.03'
+#     voxlet_type: 'short_0.03'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'short_samples_0.04'
+#     voxlet_type: 'short_0.04'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
 
 
 

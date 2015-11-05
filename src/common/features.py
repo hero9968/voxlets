@@ -210,7 +210,6 @@ class Normals(object):
         im2 = deepcopy(im)
         im2._clear_cache()
         im2.depth = carver._filter_depth(im.depth)
-        print "Here:=", stepsize
         return self.compute_normals(im2, stepsize)
 
     def compute_normals(self, im, stepsize=2):
@@ -380,7 +379,6 @@ class SampledFeatures(object):
 
     def _single_sample(self, point, normal):
         # sampled feature for a single point
-
         world_sample_location = self._get_sample_locations(point, normal)
         idxs = self.sc.im_tsdf.world_to_idx(world_sample_location)
         sampled_values = self.sc.im_tsdf.get_idxs(idxs, check_bounds=True)
@@ -402,7 +400,6 @@ class SampledFeatures(object):
 
         xyz = self.sc.im.get_world_xyz()
         norms = self.sc.im.get_world_normals()
-        print "in sample idxs ", norms.shape
         return np.vstack(
             [self._single_sample(xyz[idx], norms[idx]) for idx in point_idxs])
 

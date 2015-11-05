@@ -295,7 +295,7 @@ class RGBDImage(object):
             plt.show()
 
     @classmethod
-    def load_from_dict(cls, scene_folder, dictionary):
+    def load_from_dict(cls, scene_folder, dictionary, original_nyu):
         '''
         loads an image as defined in 'dictionary', containing entries
         describing where the data is stored, camera parameters etc.
@@ -311,22 +311,29 @@ class RGBDImage(object):
         elif depth_image_path.endswith('mat'):
             im.load_depth_from_mat(depth_image_path)
         else:
-            im.load_depth_from_img(depth_image_path)
+            if original_nyu:
+                im.depth = scipy.io.loadmat(depth_image_path.replace('8.png', '_real.mat'))['depth'].astype(np.float16)
+            else:
+                im.load_depth_from_img(depth_image_path)
 
         # scaling im depth - unsure where I should put this!!
-        im.depth = im.depth.astype(float)
-        im.depth *= dictionary['depth_scaling']
-        im.depth /= 2**16
+        if not original_nyu:
+            im.depth = im.depth.astype(float)
+            im.depth *= dictionary['depth_scaling']
+            im.depth /= 2**16
 
         if 'rgb' in dictionary:
             rgb_image_path = os.path.join(scene_folder, dictionary['rgb'])
         else:
             rgb_image_path = os.path.join(scene_folder, dictionary['image'].replace('/', '/colour_'))
+
+        if original_nyu:
+            rgb_image_path = rgb_image_path.replace('.png', '_real.png')
+
         im.load_rgb_from_img(rgb_image_path)
 
         # setting the camera intrinsics and extrinsics
         extrinsics = np.array(dictionary['pose']).reshape((4, 4))
-        print extrinsics
         intrinsics = np.array(dictionary['intrinsics']).reshape((3, 3))
 
         cam = mesh.Camera()
@@ -335,9 +342,7 @@ class RGBDImage(object):
         im.set_camera(cam)
 
         if 'mask' in dictionary:
-            print "Found mask"
             mask_image_path = os.path.join(scene_folder, dictionary['mask'])
-            print mask_image_path
         else:
             mask_image_path = \
                 scene_folder + '/frames/mask_%s.png' % dictionary['id']

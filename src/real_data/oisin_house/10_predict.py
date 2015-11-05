@@ -29,6 +29,8 @@ elif parameters['testing_data'] == 'synthetic':
     import synthetic_paths as paths
 elif parameters['testing_data'] == 'nyu_cad':
     import nyu_cad_paths as paths
+elif parameters['testing_data'] == 'nyu_cad_silberman':
+    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
@@ -60,10 +62,14 @@ if __name__ == '__main__':
             print "-> Loading ", sequence['name']
             sc = scene.Scene(params['mu'], [])
             sc.load_sequence(
-                sequence, frame_nos=0, segment_with_gt=False, segment=False)
+                sequence, frame_nos=0, segment_with_gt=False,
+                segment=False, original_nyu=parameters['original_nyu'])
             sc.sample_points(params['number_samples'],
-                nyu=parameters['testing_data'] == 'nyu_cad')
+                nyu='nyu_cad' in parameters['testing_data'])
             sc.im._clear_cache()
+            print sc.im.depth.max()
+            print sc.im.depth.min()
+            print sc.im.depth.mean()
 
             print "-> Creating folder"
             fpath = paths.prediction_folderpath % \

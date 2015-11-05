@@ -104,9 +104,13 @@ class Mesh(object):
                 for v in self.vertices:
                     f.write("%f %f %f\n" % (v[0], v[1], v[2]))
 
-            for face in self.faces:
-                # we only have triangular faces
-                f.write("3 %d %d %d\n" % (face[0], face[1], face[2]))
+            if self.faces.shape[1] == 3:
+                for face in self.faces:
+                    f.write("3 %d %d %d\n" % (face[0], face[1], face[2]))
+            else:
+                for face in self.faces:
+                    f.write("4 %d %d %d %d\n" % (
+                        face[0], face[1], face[2], face[3]))
 
             f.write('element vertex %d\n' % self.vertices.shape[0])
 

@@ -122,11 +122,12 @@ for folder in folders:
             os.makedirs(this_savedir)
 
         # now move the files to the correct location
-        rgb_savepath = this_savedir + 'rgb.png'
-        shutil.move('/tmp/ColourImage0016.png', rgb_savepath)
+        # rgb_savepath = this_savedir + 'rgb.png'
+        # shutil.move('/tmp/ColourImage0016.png', rgb_savepath)
 
-        depth_savepath = this_savedir + 'depth.png'
+        depth_savepath = this_savedir + 'depth8.png'
         shutil.move('/tmp/Image0016.png', depth_savepath)
+        continue
 
         # also copy the mesh there...
         shutil.copy(obj_loadpath, this_savedir + fname)

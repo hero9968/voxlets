@@ -24,6 +24,7 @@ scenes = [{'folder':raw_data,
            'scene':scene}
            for scene in scene_names]
 
+# maybe here do ginput or something... with a timeout? what?
 yaml_train_location = data_folder + 'splits/train.yaml'
 yaml_test_location = data_folder + 'splits/test.yaml'
 
@@ -72,6 +73,8 @@ evaluation_data_path = models_folder + 'model_evaluation_voxlets/'
 # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
 voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
 
+evaluation_region_path = data_folder + '/predictions/%s/%s/evaluation_region.mat'
+
 # first %s is the test batch category name, second is the sequence name
 prediction_folderpath = data_folder + '/predictions/%s/%s/pickles/'
 
@@ -93,3 +96,8 @@ def new_dropbox_dir():
     os.mkdir(base_path % count)
     assert os.path.exists(base_path % count)
     return base_path % count
+
+
+# defining these here so I can load in zheng results to compare
+implicit_folder = data_folder + 'implicit/'
+implicit_predictions_dir = implicit_folder + 'models/%s/predictions/%s/'
