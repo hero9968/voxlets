@@ -16,6 +16,8 @@ temp.*
 *.blend2
 *.blend3
 *.lprof
+*.vtk
+*.zip
 /media/ppt/
 /media/results/
 /media/notes/
