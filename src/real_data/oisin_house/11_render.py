@@ -30,7 +30,10 @@ else:
 
 # options for rendering
 render_top_view = False
-combining_renders = True
+# combining_renders = True
+render_keeping_existing = True
+do_write_input_images = False
+render_the_normal_thing = False
 
 def write_input_images(sc, gen_renderpath):
     scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
@@ -109,21 +112,30 @@ def process_sequence(sequence):
 
 
     print "-> Loading ground truth", sequence['name']
+
     fpath = paths.prediction_folderpath % (parameters['batch_name'], sequence['name'])
-    gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
+    if not os.path.exists(fpath + 'ground_truth.pkl'):
+        print "Cannot find"
+        return
+    # gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
 
     # Path where any renders will be saved to
     gen_renderpath = paths.voxlet_prediction_img_path % \
         (parameters['batch_name'], sequence['name'], '%s')
 
     print "-> Saving the input rgb, depth and mask"
-    write_input_images(gt_scene, gen_renderpath)
+    if do_write_input_images:
+        write_input_images(gt_scene, gen_renderpath)
 
     print "-> Main renders"
     for test_params in parameters['tests']:
 
             # if test_params['name'] == 'ground_truth':
             #     continue
+            if os.path.exists(gen_renderpath % test_params['name']) and \
+                len(sys.argv) > 2:
+                print "Already done so skipping"
+                continue
 
             print "Loading ", test_params['name']
 
@@ -135,31 +147,55 @@ def process_sequence(sequence):
             if test_params['name']=='visible':
                 savepath = gen_renderpath % test_params['name']
                 print "Save path is ", savepath
-                gt_scene.render_visible(savepath, xy_centre=True, keep_obj=True)
+                gt_scene.render_visible(savepath, xy_centre=False, keep_obj=True)
                 continue
                 # ground_height = None
             else:
                 ground_height = 0.0
 
-            prediction = pickle.load(open(prediction_savepath))
+            if render_the_normal_thing:
+                prediction = pickle.load(open(prediction_savepath))
 
-            if test_params['name'] == 'ground_truth':
-                prediction = prediction.gt_tsdf
+                if test_params['name'] == 'ground_truth':
+                    prediction = prediction.gt_tsdf
 
-            # sometimes multiple predictions are stored in predicton
-            print "Rendering ", test_params['name']
-            if parameters['render_normal']:
-                if hasattr(prediction, '__iter__'):
-                    for key, item in prediction.iteritems():
-                        savepath = (gen_renderpath % test_params['name']).replace('.png', str(key) + '.png')
-                        item.render_view(savepath, xy_centre=True, ground_height=ground_height, keep_obj=True)
-                        print "Saving to ", savepath
-                else:
-                    prediction.render_view(gen_renderpath % test_params['name'],
-                        xy_centre=False, ground_height=ground_height,
-                        keep_obj=True, actually_render=False,
-                        flip=True)
-                    print "Saving to ", gen_renderpath % test_params['name']
+                # sometimes multiple predictions are stored in predicton
+                print "Rendering ", test_params['name']
+                if parameters['render_normal']:
+                    if hasattr(prediction, '__iter__'):
+                        for key, item in prediction.iteritems():
+                            savepath = (gen_renderpath % test_params['name']).replace('.png', str(key) + '.png')
+                            item.render_view(savepath, xy_centre=True, ground_height=ground_height, keep_obj=True)
+                            print "Saving to ", savepath
+                    else:
+                        prediction.render_view(gen_renderpath % test_params['name'],
+                            xy_centre=False, ground_height=ground_height,
+                            keep_obj=True, actually_render=False,
+                            flip=True)
+                        print "Saving to ", gen_renderpath % test_params['name']
+
+            # maybe I also want to render other types of prediction
+            if render_keeping_existing:
+
+                print "Rendering keeping existing"
+                prediction_savepath = fpath + test_params['name'] + '_keeping_existing.pkl'
+
+                if not os.path.exists(prediction_savepath):
+                    print "Cannot find!"
+                    continue
+
+                prediction = pickle.load(open(prediction_savepath))
+
+                savepath = (gen_renderpath % test_params['name']) + '_keeping_existing.png'
+                print "Saving to ", savepath
+                prediction.render_view(
+                    savepath,
+                    xy_centre=False, ground_height=ground_height, flip=True,
+                    keep_obj=True, actually_render=False)
+
+                # savepath = (gen_renderpath % test_params['name']).replace('.png', '_slice.png')
+                # slice_render(prediction, gt_scene.gt_tsdf, savepath)
+                #
 
             # maybe I also want to render other types of prediction
             if parameters['render_without_excess_removed']:
@@ -185,17 +221,17 @@ def process_sequence(sequence):
             if test_params['name'] == 'ground_truth':
                 continue
 
-            evaluation_region_loadpath = paths.evaluation_region_path % (
-                parameters['batch_name'], sequence['name'])
-                # pickle.dump(evaluation_region, open(savepath, 'w'), -1)
-            evaluation_region = scipy.io.loadmat(
-                evaluation_region_loadpath)['evaluation_region'] > 0
-
-            result = gt_scene.evaluate_prediction(prediction.V,
-                voxels_to_evaluate=evaluation_region)
-
-            result_savepath = fpath + "../eval_%s.yaml" % test_params['name']
-            yaml.dump(open(results_savepath, 'w'), result)
+            # evaluation_region_loadpath = paths.evaluation_region_path % (
+            #     parameters['batch_name'], sequence['name'])
+            #     # pickle.dump(evaluation_region, open(savepath, 'w'), -1)
+            # evaluation_region = scipy.io.loadmat(
+            #     evaluation_region_loadpath)['evaluation_region'] > 0
+            #
+            # result = gt_scene.evaluate_prediction(prediction.V,
+            #     voxels_to_evaluate=evaluation_region)
+            #
+            # result_savepath = fpath + "../eval_%s.yaml" % test_params['name']
+            # yaml.dump(open(results_savepath, 'w'), result)
 
 
 

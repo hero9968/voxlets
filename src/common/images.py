@@ -20,7 +20,7 @@ import scipy.interpolate
 
 import h5py
 
-
+from scipy.io import loadmat
 def fill_in_nans(depth):
     # a boolean array of (width, height) which False where there are
     # missing values and True where there are valid (non-missing) values
@@ -349,12 +349,18 @@ class RGBDImage(object):
             mask_image_path2 = \
                 scene_folder + '/images/mask_%s.png' % dictionary['id']
 
+
         if os.path.exists(mask_image_path):
             im.mask = scipy.misc.imread(mask_image_path) == 255
         elif os.path.exists(mask_image_path2):
             im.mask = scipy.misc.imread(mask_image_path2) == 255
         else:
             print "Couldn't load ", mask_image_path
+
+        if original_nyu:
+            # load mask from NYU ground truth...
+            structure = loadmat(depth_image_path.replace('depth8.png', 'structure.mat'))['imgStructureLabelsOrig']
+            im.mask = structure>=3
 
         # setting the frame id
         im.frame_id = dictionary['id']

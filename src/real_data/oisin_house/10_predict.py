@@ -30,10 +30,12 @@ elif parameters['testing_data'] == 'synthetic':
 elif parameters['testing_data'] == 'nyu_cad':
     import nyu_cad_paths as paths
 elif parameters['testing_data'] == 'nyu_cad_silberman':
+    print "Filder"
     import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
+print len(paths.test_data)
 render_top_view = True
 #
 # print "WAITING"
@@ -58,6 +60,16 @@ if __name__ == '__main__':
         #     m.voxlet_params['size'] = 0.003
 
         def process_sequence(sequence):
+            print "-> Creating folder"
+            fpath = paths.prediction_folderpath % \
+                (parameters['batch_name'], sequence['name'])
+            if not os.path.exists(fpath):
+                os.makedirs(fpath)
+
+            prediction_savepath = fpath + params['name'] + '.pkl'
+            if os.path.exists(prediction_savepath) and len(sys.argv) > 2:
+                print "Skipping"
+                return
 
             print "-> Loading ", sequence['name']
             sc = scene.Scene(params['mu'], [])
@@ -71,11 +83,6 @@ if __name__ == '__main__':
             print sc.im.depth.min()
             print sc.im.depth.mean()
 
-            print "-> Creating folder"
-            fpath = paths.prediction_folderpath % \
-                (parameters['batch_name'], sequence['name'])
-            if not os.path.exists(fpath):
-                os.makedirs(fpath)
 
             if 'ground_truth' in params and params['ground_truth']:
                 # import pdb; pdb.set_trace()
@@ -91,6 +98,7 @@ if __name__ == '__main__':
                 pred_voxlets = sc.im_tsdf
 
             else:
+                tic = time()
                 print "-> Setting up the reconstruction object"
                 rec = voxlets.Reconstructer()
                 rec.set_scene(sc)
@@ -106,7 +114,7 @@ if __name__ == '__main__':
                 print "-> Doing prediction, type ", params['name']
                 # parameters from the yaml file are passed as separate arguments to voxlets
                 pred_voxlets = rec.fill_in_output_grid(**params['reconstruction_params'])
-
+                print "TOOK %f seconds" % (time() - tic)
                 # print "Saving the average - can remove this, just for testing"
                 # avg = rec.average
                 # with open(fpath + params['name'] + '_full.pkl', 'w') as f:
@@ -141,7 +149,7 @@ if __name__ == '__main__':
                 #     with open(prediction_savepath.replace('.pkl', '_average.pkl'), 'w') as f:
                 #         pickle.dump(rec.average, f, -1)
 
-            prediction_savepath = fpath + params['name'] + '.pkl'
+
             print "-> Saving the prediction to ", prediction_savepath
 
             with open(prediction_savepath, 'w') as f:

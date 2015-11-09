@@ -80,13 +80,45 @@ voxlet_sizes:
         # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25, 0.5]
     #
-    # short_no_segment:
-    #     name: 'short_no_segment'
+    # short_0.001:
+    #     name: 'short_0.001'
     #     tall_voxlets: False
     #     one_side_bins: 20
     #     shape: [20, 40, 20]
     #       # edge size of a single voxel
-    #     # size: 0.0175
+    #     size: 0.001
+    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
+    #     # z height of centre takes into account the origin offset
+    #     relative_centre: [0.5, 0.25, 0.5]
+    #
+    # short_0.0025:
+    #     name: 'short_0.0025'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #       # edge size of a single voxel
+    #     size: 0.0025
+    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
+    #     # z height of centre takes into account the origin offset
+    #     relative_centre: [0.5, 0.25, 0.5]
+    #
+    # short_0.005:
+    #     name: 'short_0.005'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #       # edge size of a single voxel
+    #     size: 0.005
+    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
+    #     # z height of centre takes into account the origin offset
+    #     relative_centre: [0.5, 0.25, 0.5]
+    #
+    # short_0.0075:
+    #     name: 'short_0.0075'
+    #     tall_voxlets: False
+    #     one_side_bins: 20
+    #     shape: [20, 40, 20]
+    #       # edge size of a single voxel
     #     size: 0.0075
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
@@ -102,72 +134,68 @@ voxlet_sizes:
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-
-    # short_0.005:
-    #     name: 'short_0.005'
-    #     tall_voxlets: False
+    #
+    #
+    # tall_0.001:
+    #     name: 'tall_0.001'
+    #     tall_voxlets: True
     #     one_side_bins: 20
-    #     shape: [20, 40, 20]
+    #     shape: [20, 40, 50]
     #       # edge size of a single voxel
-    #     size: 0.005
+    #     size: 0.001
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-
-    # short_0.0125:
-    #     name: 'short_0.0125'
-    #     tall_voxlets: False
+	# 	tall_voxlet_height: 0.05
+    #
+    # tall_0.0025:
+    #     name: 'tall_0.0025'
+    #     tall_voxlets: True
     #     one_side_bins: 20
-    #     shape: [20, 40, 20]
-    #       # edge size of a single voxel
-    #     size: 0.0125
-    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
-    #     # z height of centre takes into account the origin offset
-    #     relative_centre: [0.5, 0.25, 0.5]
-
-    # short_0.00125:
-    #     name: 'short_0.00125'
-    #     tall_voxlets: False
-    #     one_side_bins: 20
-    #     shape: [20, 40, 20]
-    #       # edge size of a single voxel
-    #     size: 0.00125
-    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
-    #     # z height of centre takes into account the origin offset
-    #     relative_centre: [0.5, 0.25, 0.5]
-
-    # short_0.0025:
-    #     name: 'short_0.0025'
-    #     tall_voxlets: False
-    #     one_side_bins: 20
-    #     shape: [20, 40, 20]
+    #     shape: [20, 40, 50]
     #       # edge size of a single voxel
     #     size: 0.0025
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-
-    # short_0.002:
-    #     name: 'short_0.002'
-    #     tall_voxlets: False
+	# 	tall_voxlet_height: 0.125
+    #
+    # tall_0.005:
+    #     name: 'tall_0.005'
+    #     tall_voxlets: True
     #     one_side_bins: 20
-    #     shape: [20, 40, 20]
+    #     shape: [20, 40, 50]
     #       # edge size of a single voxel
-    #     size: 0.002
+    #     size: 0.005
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-
-    # short_0.004:
-    #     name: 'short_0.004'
-    #     tall_voxlets: False
+	# 	tall_voxlet_height: 0.25
+    #
+    # tall_0.0075:
+    #     name: 'tall_0.0075'
+    #     tall_voxlets: True
     #     one_side_bins: 20
-    #     shape: [20, 40, 20]
+    #     shape: [20, 40, 50]
     #       # edge size of a single voxel
-    #     size: 0.004
+    #     size: 0.0075
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
+	# 	tall_voxlet_height: 0.25
+    #
+    # tall_0.01:
+    #     name: 'tall_0.01'
+    #     tall_voxlets: True
+    #     one_side_bins: 20
+    #     shape: [20, 40, 50]
+    #       # edge size of a single voxel
+    #     size: 0.01
+    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
+    #     # z height of centre takes into account the origin offset
+    #     relative_centre: [0.5, 0.25, 0.5]
+	# 	tall_voxlet_height: 0.375
+
 
     tall:
         name: 'tall'

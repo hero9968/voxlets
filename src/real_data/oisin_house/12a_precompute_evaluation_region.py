@@ -72,23 +72,33 @@ def get_nyu_within_walls(sequence_name, sc):
 
 def process_sequence(sequence):
 
+    savepath = paths.evaluation_region_path % (
+        parameters['batch_name'], sequence['name'])
+    #
+    # if os.path.exists(savepath):
+    #     print "Skipping ", sequence['name']
+    #     return
+
     print "-> Loading ground truth", sequence['name']
     sys.stdout.flush()
 
-    fpath = paths.prediction_folderpath % (
-        parameters['batch_name'], sequence['name'])
-    gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
+    # fpath = paths.prediction_folderpath % (
+    #     parameters['batch_name'], sequence['name'])
+    # print fpath
+    sc = scene.Scene(parameters['general_params']['mu'], [])
+    sc.load_sequence(
+        sequence, frame_nos=0, segment_with_gt=False,
+        segment=False, original_nyu=parameters['original_nyu'])
 
     if parameters['testing_data'] == 'nyu_cad' and parameters['evaluate_inside_room_only']:
-        extra_mask = get_nyu_within_walls(sequence['name'], gt_scene)
+        extra_mask = get_nyu_within_walls(sequence['name'], sc)
     else:
         extra_mask = None
 
-    evaluation_region = gt_scene.form_evaluation_region()
+    evaluation_region = sc.form_evaluation_region()
 
     # now save the evaluation region
-    savepath = paths.evaluation_region_path % (
-        parameters['batch_name'], sequence['name'])
+
     print "Saving to ", savepath
     # pickle.dump(evaluation_region, open(savepath, 'w'), -1)
     scipy.io.savemat(savepath, {'evaluation_region':evaluation_region})

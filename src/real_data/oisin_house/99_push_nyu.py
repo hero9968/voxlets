@@ -16,12 +16,12 @@ savedir = '/home/michael/prism/data5/projects/depth_completion/cvpr2016/nyu/from
 # savedir = '/home/michael/Desktop/tmp_prism/'
 
 #
-# def copy_flipped_obj(from_path, to_path):
-# 	ms = mesh.Mesh()
-# 	ms.load_from_obj(from_path)
-# 	ms.vertices[:, 0] *= -1
-# 	ms.write_to_obj(to_path)
-#
+def copy_flipped_obj(from_path, to_path):
+	ms = mesh.Mesh()
+	ms.load_from_obj(from_path)
+	ms.vertices[:, 0] *= -1
+	ms.write_to_obj(to_path)
+
 #
 # def copy_flipped_im(from_path, to_path):
 # 	im = imread(from_path)
@@ -52,7 +52,7 @@ for sequence in paths.test_data:
 
 	if os.path.exists(from_path):
 		shutil.copy(from_path, to_path)
-		shutil.copy(from_path_obj, to_path_obj)
+		copy_flipped_obj(from_path_obj, to_path_obj)
 	else:
 		print "Failed", from_path
 
@@ -66,15 +66,17 @@ for sequence in paths.test_data:
 	# gen_renderpath = gen_renderpath.replace('%s.png', '/images/')
 	print gen_renderpath
 
+	gen_renderpath = paths.voxlet_prediction_img_path % \
+		(parameters['batch_name'], sequence['name'], '%s')
 
-	in_path = gen_renderpath + 'depth.png'
+	in_path = gen_renderpath % 'input_depth'
 	shutil.copy(in_path, save_path)
 
-	in_path = gen_renderpath + 'rgb.png'
+	in_path = gen_renderpath % 'input'
 	shutil.copy(in_path, save_path)
 
-	in_path = gen_renderpath + 'rgb_real.png'
-	shutil.copy(in_path, save_path)
+	# in_path = gen_renderpath + 'rgb_real.png'
+	# shutil.copy(in_path, save_path)
 
 	# now do nyu input...
 

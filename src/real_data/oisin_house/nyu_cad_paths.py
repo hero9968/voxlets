@@ -41,7 +41,7 @@ test_data = test_data[:system_setup.max_test_sequences]
 # all_train_data = [tt for tt in all_train_data if 'bedroom' in tt['scene']]
 
 if system_setup.small_sample:
-    all_train_data = all_train_data[:system_setup.max_sequences]
+    all_train_data = all_train_data[system_setup.max_sequences:]
 
 print "There are %d train sequences" % len(all_train_data)
 print "There are %d test sequences" % len(test_data)

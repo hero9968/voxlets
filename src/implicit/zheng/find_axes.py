@@ -12,6 +12,9 @@ sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/implicit/'))
 from common import scene, voxel_data
 from features import line_casting
 
+from copy import deepcopy
+from scipy.ndimage.interpolation import zoom
+
 
 def fibonacci_sphere(samples=1,randomize=False):
     '''
@@ -99,7 +102,13 @@ def find_axes(norms_in):
     return R
 
 
-def process_scene(sc, threshold=3, skip_segment=0):
+def process_scene(sc, threshold=3, skip_segment=0, resize=None):
+
+    # resizing...
+    if resize is not None:
+        sc = deepcopy(sc)
+        sc.gt_tsdf.V = zoom(sc.gt_tsdf.V.astype(np.float32), resize)
+        sc.gt_tsdf.vox_size /= resize
 
     segments = np.unique(sc.gt_im_label)
     accumulator = sc.gt_tsdf.blank_copy()
@@ -132,14 +141,14 @@ def process_scene(sc, threshold=3, skip_segment=0):
 
         # print "Norm sum is ", sc.im.depth.sum()
         R = find_axes(norms)
-        print R, inlying_pixels.sum()
+        # print R, inlying_pixels.sum()
         del inlying_pixels
-        print "Finding axes took", time() - tic; tic = time()
+        # print "Finding axes took", time() - tic; tic = time()
 
         # first rotate all the voxels
         world_voxels = sc.gt_tsdf.world_meshgrid()
         rotated_voxels = np.dot(R, world_voxels.T).T
-        print "Rotating voxels took", time() - tic; tic = time()
+        # print "Rotating voxels took", time() - tic; tic = time()
 
         # now find the extents of this rotated grid...
         min_grid = rotated_voxels.min(axis=0)
@@ -154,7 +163,7 @@ def process_scene(sc, threshold=3, skip_segment=0):
         new_origin = np.dot(np.linalg.inv(R), offset)
         known_full.set_origin(new_origin, np.linalg.inv(R))
         known_full.V = np.zeros(grid_size)
-        print "Next bit took", time() - tic; tic = time()
+        # print "Next bit took", time() - tic; tic = time()
 
         # but I want to find the voxels which correspond to the edge of this segment
         region_edges = sc.im_visible.copy()
@@ -175,18 +184,18 @@ def process_scene(sc, threshold=3, skip_segment=0):
             where_inside_image = np.where(inside_image)[0]
             region_edges.V.ravel()[where_inside_image[labs!=seg]] = 0
 
-        print "Projections took", time() - tic; tic = time()
+        # print "Projections took", time() - tic; tic = time()
 
         known_full.fill_from_grid(region_edges)
         del(region_edges)
-        print "Rotating 1 took", time() - tic; tic = time()
+        # print "Rotating 1 took", time() - tic; tic = time()
         # also need to rotate a copy of the empty grid
         empty_voxels = sc.im_tsdf.copy()
         empty_voxels.V = empty_voxels.V > 0
         known_empty = known_full.blank_copy()
         known_empty.fill_from_grid(empty_voxels)
         del(empty_voxels)
-        print "Rotating 2 took", time() - tic; tic = time()
+        # print "Rotating 2 took", time() - tic; tic = time()
 
         # (if desired I could crop this grid down...)
 
@@ -196,7 +205,7 @@ def process_scene(sc, threshold=3, skip_segment=0):
             just_manhatten=True)
         del(known_empty)
         del(distances)
-        print "Line casting took", time() - tic; tic = time()
+        # print "Line casting took", time() - tic; tic = time()
 
         # now running the zheng thresholding
         # only using certain directions from all the directions I have computed!
@@ -216,7 +225,10 @@ def process_scene(sc, threshold=3, skip_segment=0):
 
         accumulator.V = np.logical_or(rotated_back.V > 0, accumulator.V > 0)
         del(rotated_back)
-        print "Accumulating took", time() - tic; tic = time()
+        # print "Accumulating took", time() - tic; tic = time()
 
+    if resize is not None:
+        accumulator.V = zoom(accumulator.V.astype(np.float32), 1/resize, order=0)
+        accumulator.vox_size *= resize
 
     return accumulator

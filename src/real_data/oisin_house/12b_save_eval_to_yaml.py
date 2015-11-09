@@ -1,4 +1,3 @@
-
 import numpy as np
 import cPickle as pickle
 import sys
@@ -30,9 +29,22 @@ else:
 
 def process_sequence(sequence):
 
-    print "-> Loading ground truth", sequence['name']
     fpath = paths.prediction_folderpath % (parameters['batch_name'], sequence['name'])
-    gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
+    # print fpath
+
+    results_savepath = fpath + "../eval_%s.yaml" % \
+        'short_tall_samples_0.025_pointwise'
+    # print results_savepath
+    # if os.path.exists(results_savepath):
+    #     print "Skipping ",
+    #     return
+
+    print "-> Loading ground truth", sequence['name']
+    try:
+        gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
+    except:
+        print "FAILED", fpath + 'ground_truth.pkl'
+        return
 
     # Path where any renders will be saved to
     gen_renderpath = paths.voxlet_prediction_img_path % \
@@ -44,11 +56,23 @@ def process_sequence(sequence):
             if test_params['name'] == 'ground_truth' or test_params['name'] == 'visible':
                 continue
 
+            results_savepath = fpath + "../eval_%s.yaml" % test_params['name']
+            if os.path.exists(results_savepath):
+                continue
+
             print "Loading ", test_params['name']
 
             prediction_savepath = fpath + test_params['name'] + '.pkl'
 
-            prediction = pickle.load(open(prediction_savepath))
+            if not os.path.exists(prediction_savepath):
+                print "Could not find", prediction_savepath
+                continue
+
+            try:
+                prediction = pickle.load(open(prediction_savepath))
+            except:
+                print "FAILED", prediction_savepath
+                continue
 
             evaluation_region_loadpath = paths.evaluation_region_path % (
                 parameters['batch_name'], sequence['name'])
@@ -59,7 +83,6 @@ def process_sequence(sequence):
             result = gt_scene.evaluate_prediction(prediction.V,
                 voxels_to_evaluate=evaluation_region)
 
-            results_savepath = fpath + "../eval_%s.yaml" % test_params['name']
             yaml.dump(result, open(results_savepath, 'w'))
 
 

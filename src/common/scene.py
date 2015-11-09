@@ -235,7 +235,8 @@ class Scene(object):
                 raise Exception("Sample rate is zero sum, cannot sample any points")
 
             scipy.io.savemat('/tmp/samples.mat', {'sr':sample_rate})
-            sample_rate /= sample_rate.sum()
+            sample_rate = sample_rate.astype(np.float64)
+            sample_rate /= sample_rate.sum().astype(np.float64)
 
             samples = np.random.choice(shape[0]*shape[1], num_to_sample, p=sample_rate.flatten())
             self.sampled_idxs = np.array(np.unravel_index(samples, shape)).T
@@ -348,6 +349,14 @@ class Scene(object):
         self.im = images.RGBDImage.load_from_dict(
             sequence['folder'] + sequence['scene'], self.frame_data,
             original_nyu=original_nyu)
+
+        if original_nyu:
+            fx_rgb = 5.1885790117450188e+02;
+            fy_rgb = 5.1946961112127485e+02;
+            cx_rgb = 3.2558244941119034e+02;
+            cy_rgb = 2.5373616633400465e+02;
+            K = np.array([[fx_rgb, 0, cx_rgb], [0, fy_rgb, cy_rgb], [0, 0, 1]])
+            self.im.cam.set_intrinsics(K)
 
         # while I'm here - might as well save the image as a voxel grid
         if carve:
@@ -745,7 +754,8 @@ class Scene(object):
         return results
 
 
-    def render_visible(self, savepath, xy_centre=True, keep_obj=False):
+    def render_visible(self, savepath, xy_centre=True, keep_obj=False,
+            save_obj=True, actually_render=True, flip=True):
 
         H, W = self.im.depth.shape
 
@@ -758,10 +768,19 @@ class Scene(object):
         # remove triangles with too big a jump
         gradx, grady = np.gradient(self.im.depth[:-1, :])
         grad = np.sqrt(gradx**2 + grady**2)
-        jumps = grad > 0.01
+        jumps = grad > 0.05
         jumps = binary_dilation(jumps)
 
-        idxs = idxs[~np.logical_or(right_col, jumps.ravel())]
+        # rmeove edges
+        edges = self.im.depth.copy()[:-1, :] * 0
+        edges[:15, :] = 1
+        edges[-15:, :] = 1
+        edges[:, -15:] = 1
+        edges[:, :15] = 1
+
+        print right_col.shape, jumps.ravel().shape, edges.ravel().shape
+        idxs = idxs[~np.logical_or.reduce(
+            (right_col, jumps.ravel(), edges.ravel()==1))]
 
         # combine all the triangles
         tris = np.vstack([idxs, idxs + W, idxs + W + 1]).T
@@ -772,6 +791,9 @@ class Scene(object):
         ms.faces = all_tris
         ms.vertices = self.im.get_world_xyz()
 
+        if flip:
+            ms.vertices[:, 0] *= -1
+
         # Now do blender render and copy the obj file if needed...
         if xy_centre:
             # T = ms.vertices[:, :2]
@@ -781,23 +803,27 @@ class Scene(object):
             ms.vertices[:, 2] -= 0.05
             ms.vertices *= 1.5
 
-        print "Saving to ", savepath + '.obj'
-        ms.write_to_obj(savepath + '.obj')
+        if save_obj:
+            print "Saving to ", savepath + '.obj'
+            ms.write_to_obj(savepath + '.obj')
 
         blend_path = os.path.expanduser('~/projects/shape_sharing/src/'
             'rendered_scenes/spinaround/spin.blend')
         blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/'
             'rendered_scenes/spinaround/blender_spinaround_frame.py')
 
-        subenv = os.environ.copy()
-        subenv['BLENDERSAVEFILE'] = savepath
-        sp.call(['blender',
-                 blend_path,
-                 "-b", "-P",
-                 blend_py_path],
-                 env=subenv,
-                 stdout=open(os.devnull, 'w'),
-                 close_fds=True)
+        if actually_render:
+            subenv = os.environ.copy()
+            subenv['BLENDERSAVEFILE'] = savepath
+            sp.call(['blender',
+                     blend_path,
+                     "-b", "-P",
+                     blend_py_path],
+                     env=subenv,
+                     stdout=open(os.devnull, 'w'),
+                     close_fds=True)
 
         if not keep_obj:
             os.remove(savepath + '.obj')
+
+        return ms

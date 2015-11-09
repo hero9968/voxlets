@@ -16,14 +16,18 @@ import find_axes
 
 parameters = yaml.load(open('../implicit_params.yaml'))
 
-plot_segmentation = False
+plot_segmentation = True
 the_zheng_parameter = 2
 modelname = 'zheng_' + str(the_zheng_parameter)
-render = False
+render = True
 
 def process_sequence(sequence):
 
     print "Loading sequence %s" % sequence['name']
+    print sequence
+    sequence['folder'] = '/media/michael/Seagate/phd_projects/volume_completion_data/data/oisin_house/' + \
+        sequence['folder'].split('/')[-2] + '/'
+    print sequence
 
     # this is where to save the results...
     results_foldername = \
@@ -69,9 +73,14 @@ def process_sequence(sequence):
         dict(gt=sc.gt_tsdf.V, pred=pred_grid.V),
         do_compression=True)
 
+    pred_grid2 = pred_grid.copy()
+    pred_grid2.V[sc.im_tsdf > 0] = np.nanmax(pred_grid2.V)
+
     if render:
         print "Doing the rendering"
         pred_grid.render_view(results_foldername + 'prediction_render.png',
+            xy_centre=True, ground_height=0.03, keep_obj=True)
+        pred_grid2.render_view(results_foldername + 'prediction_render2.png',
             xy_centre=True, ground_height=0.03, keep_obj=True)
         sc.im_tsdf.render_view(results_foldername + 'visible_render.png',
             xy_centre=True, keep_obj=True)
@@ -79,12 +88,12 @@ def process_sequence(sequence):
             xy_centre=True, keep_obj=True)
 
     print "Evaluating"
-    results = sc.evaluate_prediction(pred_grid.V)
+    results = sc.evaluate_prediction(pred_grid2.V)
     yaml.dump(results, open(results_foldername + 'eval.yaml', 'w'))
 
 
 # need to import these *after* the pool helper has been defined
-if True:
+if 0:
     import multiprocessing
     mapper = multiprocessing.Pool(6).map
 else:

@@ -42,15 +42,25 @@ def process_sequence(sequence):
         if test_params['name'] == 'ground_truth' or test_params['name'] == 'visible':
             continue
 
-
         results_savepath = fpath + "../eval_%s.yaml" % test_params['name']
-        results = yaml.load(open(results_savepath))
-        results_dict[test_params['name']] = results
+        if not os.path.exists(results_savepath):
+            print "Not fiund ", results_savepath
+            results_dict[test_params['name']] = {
+                'iou': np.nan, 'precision': np.nan, 'recall': np.nan}
+        else:
+
+            results = yaml.load(open(results_savepath))
+            results_dict[test_params['name']] = results
 
     # loading zheng predictions from the yaml files
     try:
+        if parameters['original_nyu']:
+            zheng_name = "zheng_2_real"
+        else:
+            zheng_name = "zheng_2"
+
         results_dict["zheng_2"] = yaml.load(open(
-            paths.implicit_predictions_dir % ("zheng_2", sequence['name']) + 'eval.yaml'))
+            paths.implicit_predictions_dir % (zheng_name, sequence['name']) + 'eval.yaml'))
     except:
         results_dict["zheng_2"] = {
             'iou': np.nan, 'precision': np.nan, 'recall': np.nan}
@@ -74,7 +84,7 @@ def get_mean_score(test, all_scores, score_type):
         if score_type in sc[test]:
             all_this_scores.append(sc[test][score_type])
 
-    return np.array(all_this_scores).mean()
+    return np.nanmean(np.array(all_this_scores))
 
 
 

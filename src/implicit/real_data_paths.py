@@ -8,10 +8,10 @@ host_name = socket.gethostname()
 print host_name
 
 if host_name == 'troll' or host_name == 'biryani':
-    data_folder = '/media/ssd/data/oisin_house/'
+    data_folder = '/media/michael/Seagate/phd_projects/volume_completion_data/data/oisin_house/'
     converter_path = ''
 else:
-    data_folder = '/Users/Michael/projects/shape_sharing/data/oisin_house/'
+    data_folder = '/media/michael/Seagate/phd_projects/volume_completion_data/data/oisin_house/'
     converter_path = '/Users/Michael/projects/InfiniTAM_Alt/convertor/voxels_to_ply.py'
 
 raw_data = data_folder + 'data2/'
@@ -69,5 +69,3 @@ implicit_folder = data_folder + 'implicit/'
 implicit_model_dir = implicit_folder + 'models/%s/'
 implicit_training_dir = implicit_folder + 'models/%s/training_data/'
 implicit_predictions_dir = implicit_folder + 'models/%s/predictions/%s/'
-
-

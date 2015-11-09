@@ -58,7 +58,7 @@ def process_sequence(sequence):
         if test_params['name'] == 'ground_truth':
             continue
 
-        prediction_savepath = fpath + test_params['name'] + '.pkl'
+        prediction_savepath = fpath + test_params['name'] + '_keeping_existing.pkl'
         if os.path.exists(prediction_savepath):
 
             prediction = pickle.load(open(prediction_savepath))

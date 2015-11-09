@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     # loop over each test time in the testing parameters:
     params = [xx for xx in parameters['tests']
-        if xx['name'] == 'short_samples_no_segment'][0]
+        if xx['name'] == 'short_and_tall_samples_no_segment'][0]
 
     # print "--> DOING TEST: ", params['name']
 
@@ -54,13 +54,13 @@ if __name__ == '__main__':
     models = [pickle.load(open(vox_model_path % name))
               for name in params['models_to_use']]
 
-    # for alpha in [10000]:#0.0, 5, 10, 50, 100, 500, 1000]:
-    for weight_empty_lower in np.arange(0, 1, 0.1):
+    for alpha in [0.0, 5, 10, 50, 100, 250, 500, 1000, 10000]:
+    # for weight_empty_lower in np.arange(0, 1, 0.1):
 
-        # print "-->> Alpha is ", alpha
-        print "Weight empty lower is ", weight_empty_lower
-        # params['reconstruction_params']['weight_parameter'] = alpha
-        params['reconstruction_params']['weight_empty_lower'] = weight_empty_lower
+        print "-->> Alpha is ", alpha
+        # print "Weight empty lower is ", weight_empty_lower
+        params['reconstruction_params']['weight_parameter'] = alpha
+        # params['reconstruction_params']['weight_empty_lower'] = weight_empty_lower
 
         def process_sequence(sequence):
 
@@ -94,7 +94,7 @@ if __name__ == '__main__':
             # parameters from the yaml file are passed as separate arguments to voxlets
             pred_voxlets = rec.fill_in_output_grid(**params['reconstruction_params'])
 
-            prediction_savepath = fpath + params['name'] + ('_%0.3f_weight_empty_lower.pkl' % weight_empty_lower)
+            prediction_savepath = fpath + params['name'] + ('_%0.3f_alpha.pkl' % alpha)
             print "-> Saving the prediction to ", prediction_savepath
 
             with open(prediction_savepath, 'w') as f:
