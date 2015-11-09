@@ -1,0 +1,82 @@
+testing_data: 'nyu_cad_silberman'
+# batch_name: 'nyu_cad_silberman'
+batch_name: 'nyu_cad_silberman_original'
+original_nyu: True
+
+general_params: &DEFAULT_GENERAL
+    # number of points to sample from image at test time
+    number_samples: 2000
+
+    # which models to load...
+    # models_to_use: ['short_cobweb', 'tall_cobweb']
+    models_to_use: ['short_samples_0.025', 'tall_samples_0.025']
+    model_probabilities: [0.5, 0.5]
+
+    # how deep to go in the forest
+    max_depth: 30
+
+    # I know, this should be taken from the models...
+    mu: 0.1
+
+default_reconstruction_params: &DEFAULT_RECONSTRUCTION
+    weight_empty_lower: 0.5
+    weight_predictions: True
+    weight_parameter: 100.0
+
+    # when accumulating, how many predictions should have been made at a point
+    # before we make any sort of prediction at a point
+    min_countV: 3
+
+    # bad to have this repeated
+    cobweb_offset: 0.01
+    # cobweb_use_mask: False
+    vox_num_rings: 10
+    vox_radius: 0.035
+    samples_out_of_range_feature: -0.1
+
+# rendering parameters...
+render_without_excess_removed: True
+render_normal: True
+
+evaluate_inside_room_only: True
+
+tests:
+  #
+  # - name: 'short_samples_0.02_pointwise'
+  #   models_to_use: ['short_samples_0.02']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       distance_measure: 'pointwise'
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+  - name: 'ground_truth'
+    <<: *DEFAULT_GENERAL
+    ground_truth: True
+    reconstruction_params:
+        <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'visible'
+  #   <<: *DEFAULT_GENERAL
+  #   visible: True
+  #   reconstruction_params:
+  #    <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'ground_truth_oracle'
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #       oracle: 'gt'
+
+  - name: 'short_tall_samples_0.025_pointwise'
+    models_to_use: ['short_samples_0.025', 'tall_samples_0.025']
+    <<: *DEFAULT_GENERAL
+    reconstruction_params:
+        distance_measure: 'pointwise'
+        <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'tall_samples_0.02_pointwise'
+  #   models_to_use: ['tall_samples_0.02']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       distance_measure: 'pointwise'
+  #       <<: *DEFAULT_RECONSTRUCTION
