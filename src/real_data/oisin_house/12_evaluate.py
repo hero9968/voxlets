@@ -20,6 +20,7 @@ else:
 parameters = yaml.load(open(parameters_path))
 
 plot_gt_oracle = False
+print_rankings = False
 
 if parameters['testing_data'] == 'oisin_house':
     import real_data_paths as paths
@@ -58,7 +59,7 @@ def process_sequence(sequence):
         if test_params['name'] == 'ground_truth':
             continue
 
-        prediction_savepath = fpath + test_params['name'] + '_keeping_existing.pkl'
+        prediction_savepath = fpath + test_params['name'] + '.pkl'# + '_keeping_existing.pkl'
         if os.path.exists(prediction_savepath):
 
             prediction = pickle.load(open(prediction_savepath))
@@ -165,11 +166,11 @@ if __name__ == '__main__':
         iou_idxs = np.argsort(all_ious)[::-1]
 
         # now printing these best and worst results to screen...
-        print "\n\tRank \t IOU   \t us/zheng_2 \t Name "
-        print "\t" + "-" * 40
-        for count, val in enumerate(iou_idxs):
-            if 1:#count == all_ious.shape[0] // 2 or count < 5 or count > len(all_ious) - 5:
-            # scene_name = results[val]['name']
+        if print_rankings:#count == all_ious.shape[0] // 2 or count < 5 or count > len(all_ious) - 5:
+            print "\n\tRank \t IOU   \t us/zheng_2 \t Name "
+            print "\t" + "-" * 40
+            for count, val in enumerate(iou_idxs):
+                # scene_name = results[val]['name']
                 scene_name = paths.test_data[val]['name']
                 this_iou = all_ious[val]
                 us_v_zheng_2 = this_iou / results[val]['zheng_2']['iou']

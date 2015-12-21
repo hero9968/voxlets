@@ -207,6 +207,8 @@ class Fusion(VoxelAccumulator):
         if temp.max() > 1.0:
             factor = temp.max()
             temp /= factor
+        else:
+            factor = 1.0
         temp_denoised = \
             denoise_bilateral(temp, sigma_range=30, sigma_spatial=4.5)
         temp_denoised[np.isnan(depth)] = np.nan

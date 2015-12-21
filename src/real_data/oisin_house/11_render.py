@@ -31,9 +31,9 @@ else:
 # options for rendering
 render_top_view = False
 # combining_renders = True
-render_keeping_existing = True
+render_keeping_existing = False
 do_write_input_images = False
-render_the_normal_thing = False
+render_the_normal_thing = True
 
 def write_input_images(sc, gen_renderpath):
     scipy.misc.imsave(gen_renderpath % 'input', sc.im.rgb)
@@ -115,7 +115,7 @@ def process_sequence(sequence):
 
     fpath = paths.prediction_folderpath % (parameters['batch_name'], sequence['name'])
     if not os.path.exists(fpath + 'ground_truth.pkl'):
-        print "Cannot find"
+        print "Cannot find", fpath
         return
     # gt_scene = pickle.load(open(fpath + 'ground_truth.pkl'))
 
@@ -140,9 +140,10 @@ def process_sequence(sequence):
             print "Loading ", test_params['name']
 
             prediction_savepath = fpath + test_params['name'] + '.pkl'
-
-            if not os.path.exists(prediction_savepath) and test_params['name'] != 'visible':
-                continue
+            print prediction_savepath
+            #
+            # if not os.path.exists(prediction_savepath) and test_params['name'] != 'visible':
+            #     continue
 
             if test_params['name']=='visible':
                 savepath = gen_renderpath % test_params['name']
@@ -169,9 +170,9 @@ def process_sequence(sequence):
                             print "Saving to ", savepath
                     else:
                         prediction.render_view(gen_renderpath % test_params['name'],
-                            xy_centre=False, ground_height=ground_height,
+                            xy_centre=True, ground_height=0.03,
                             keep_obj=True, actually_render=False,
-                            flip=True)
+                            flip=False)
                         print "Saving to ", gen_renderpath % test_params['name']
 
             # maybe I also want to render other types of prediction
@@ -181,7 +182,7 @@ def process_sequence(sequence):
                 prediction_savepath = fpath + test_params['name'] + '_keeping_existing.pkl'
 
                 if not os.path.exists(prediction_savepath):
-                    print "Cannot find!"
+                    print "Cannot find!", prediction_savepath
                     continue
 
                 prediction = pickle.load(open(prediction_savepath))
@@ -198,7 +199,7 @@ def process_sequence(sequence):
                 #
 
             # maybe I also want to render other types of prediction
-            if parameters['render_without_excess_removed']:
+            if 0:#parameters['render_without_excess_removed']:
 
                 print "Rendering without excess removed"
                 prediction_savepath = fpath + test_params['name'] + '_average.pkl'

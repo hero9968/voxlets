@@ -154,6 +154,10 @@ if __name__ == '__main__':
 
             with open(prediction_savepath, 'w') as f:
                 pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            print "-> Saving the voxlet counts"
+            rec.save_voxlet_counts(fpath + 'voxlet_counts.csv')
+
         print "--> Doing test type ", params['name']
 
         tic = time()

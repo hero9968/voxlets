@@ -359,8 +359,8 @@ class RGBDImage(object):
 
         if original_nyu:
             # load mask from NYU ground truth...
-            structure = loadmat(depth_image_path.replace('depth8.png', 'structure.mat'))['imgStructureLabelsOrig']
-            im.mask = structure>=3
+            # structure = loadmat(depth_image_path.replace('depth8.png', 'structure.mat'))['imgStructureLabelsOrig']
+            im.mask = ~np.isnan(im.depth)  #structure>=3
 
         # setting the frame id
         im.frame_id = dictionary['id']

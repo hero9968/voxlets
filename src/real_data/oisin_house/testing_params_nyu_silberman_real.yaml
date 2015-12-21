@@ -1,6 +1,6 @@
 testing_data: 'nyu_cad_silberman'
 # batch_name: 'nyu_cad_silberman'
-batch_name: 'nyu_cad_silberman_original'
+batch_name: 'nyu_cad_silberman_original_full_sample'
 original_nyu: True
 
 general_params: &DEFAULT_GENERAL

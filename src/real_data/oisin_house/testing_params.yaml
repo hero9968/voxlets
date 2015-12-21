@@ -36,7 +36,6 @@ default_reconstruction_params: &DEFAULT_RECONSTRUCTION
 # rendering parameters...
 render_without_excess_removed: True
 render_normal: True
-
 original_nyu: False
 
 tests:
@@ -47,20 +46,62 @@ tests:
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
   #
-  # - name: 'visible'
+  # # - name: 'visible'
   #   <<: *DEFAULT_GENERAL
   #   visible: True
   #   reconstruction_params:
   #       <<: *DEFAULT_RECONSTRUCTION
 
   # - name: 'bounding_box'
-
+  # #
   - name: 'short_and_tall_samples_no_segment'
     models_to_use: ['short_samples_no_segment', 'tall_samples_no_segment']
     <<: *DEFAULT_GENERAL
     reconstruction_params:
         <<: *DEFAULT_RECONSTRUCTION
   #
+  # - name: 'short_and_tall_0.001'
+  #   models_to_use: ['short_samples_0.001', 'tall_samples_0.001']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  # #
+  # - name: 'short_and_tall_0.0125'
+  #   models_to_use: ['short_samples_0.0125', 'tall_samples_0.0125']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+
+  # - name: 'short_and_tall_0.0025'
+  #   models_to_use: ['short_samples_0.0025', 'tall_samples_0.0025']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'short_and_tall_0.005'
+  #   models_to_use: ['short_samples_0.005', 'tall_samples_0.005']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'short_and_tall_0.0075'
+  #   models_to_use: ['short_samples_0.0075', 'tall_samples_0.0075']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'short_and_tall_0.01'
+  #   models_to_use: ['short_samples_0.01', 'tall_samples_0.01']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  #
+  # - name: 'short_and_tall_samples_no_segment'
+  #   models_to_use: ['short_samples_no_segment', 'tall_samples_no_segment']
+  #   <<: *DEFAULT_GENERAL
+  #   reconstruction_params:
+  #       <<: *DEFAULT_RECONSTRUCTION
+  # #
   # - name: 'pca_oracle'
   #   <<: *DEFAULT_GENERAL
   #   reconstruction_params:

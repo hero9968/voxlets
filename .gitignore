@@ -30,5 +30,3 @@ temp.*
 /src/implicit/features/line_casting_cython.c
 *.ipynb
 /media/report_extra/
-*.docx
-*.idea

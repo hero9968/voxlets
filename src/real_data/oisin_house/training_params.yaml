@@ -79,7 +79,7 @@ voxlet_sizes:
         # centre is relative to the ijk origin at the bottom corner of the voxlet
         # z height of centre takes into account the origin offset
         relative_centre: [0.5, 0.25, 0.5]
-    #
+
     # short_0.001:
     #     name: 'short_0.001'
     #     tall_voxlets: False
@@ -134,7 +134,17 @@ voxlet_sizes:
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-    #
+    short_0.0125:
+        name: 'short_0.0125'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+          # edge size of a single voxel
+        size: 0.0125
+        # centre is relative to the ijk origin at the bottom corner of the voxlet
+        # z height of centre takes into account the origin offset
+        relative_centre: [0.5, 0.25, 0.5]
+
     #
     # tall_0.001:
     #     name: 'tall_0.001'
@@ -146,7 +156,7 @@ voxlet_sizes:
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-	# 	tall_voxlet_height: 0.05
+    #     tall_voxlet_height: 0.05
     #
     # tall_0.0025:
     #     name: 'tall_0.0025'
@@ -158,7 +168,7 @@ voxlet_sizes:
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-	# 	tall_voxlet_height: 0.125
+    #     tall_voxlet_height: 0.125
     #
     # tall_0.005:
     #     name: 'tall_0.005'
@@ -170,7 +180,7 @@ voxlet_sizes:
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-	# 	tall_voxlet_height: 0.25
+    #     tall_voxlet_height: 0.25
     #
     # tall_0.0075:
     #     name: 'tall_0.0075'
@@ -182,7 +192,7 @@ voxlet_sizes:
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-	# 	tall_voxlet_height: 0.25
+    #     tall_voxlet_height: 0.375
     #
     # tall_0.01:
     #     name: 'tall_0.01'
@@ -194,20 +204,33 @@ voxlet_sizes:
     #     # centre is relative to the ijk origin at the bottom corner of the voxlet
     #     # z height of centre takes into account the origin offset
     #     relative_centre: [0.5, 0.25, 0.5]
-	# 	tall_voxlet_height: 0.375
+    #     tall_voxlet_height: 0.5
 
 
-    tall:
-        name: 'tall'
+    tall_0.0125:
+        name: 'tall_0.0125'
         tall_voxlets: True
         one_side_bins: 20
         shape: [20, 40, 50]
           # edge size of a single voxel
-        size: 0.0075
+        size: 0.625
         # centre is relative to the ijk origin at the bottom corner of the voxlet
         # z height of centre takes into account the origin offset
-        relative_centre: [0.5, 0.25]
-        tall_voxlet_height: 0.375
+        relative_centre: [0.5, 0.25, 0.5]
+        tall_voxlet_height: 0.5
+
+    #
+    # tall:
+    #     name: 'tall'
+    #     tall_voxlets: True
+    #     one_side_bins: 20
+    #     shape: [20, 40, 50]
+    #       # edge size of a single voxel
+    #     size: 0.0075
+    #     # centre is relative to the ijk origin at the bottom corner of the voxlet
+    #     # z height of centre takes into account the origin offset
+    #     relative_centre: [0.5, 0.25]
+    #     tall_voxlet_height: 0.375
     #
     # tall_no_segment:
     #     name: 'tall_no_segment'
@@ -234,15 +257,78 @@ models_to_train:
 #     feature: 'samples'
 #     forest:
 #         <<: *DEFAULT_FOREST
+#
+# -   name: 'short_samples_0.001'
+#     voxlet_type: 'short_0.001'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'tall_samples_0.001'
+#     voxlet_type: 'tall_0.001'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'short_samples_0.0025'
+#     voxlet_type: 'short_0.0025'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'tall_samples_0.0025'
+#     voxlet_type: 'tall_0.0025'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+#
+# -   name: 'short_samples_0.005'
+#     voxlet_type: 'short_0.005'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'tall_samples_0.005'
+#     voxlet_type: 'tall_0.005'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+#
+# -   name: 'short_samples_0.0075'
+#     voxlet_type: 'short_0.0075'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'tall_samples_0.0075'
+#     voxlet_type: 'tall_0.0075'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+#
+# -   name: 'short_samples_0.01'
+#     voxlet_type: 'short_0.01'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
+#
+# -   name: 'tall_samples_0.01'
+#     voxlet_type: 'tall_0.01'
+#     feature: 'samples'
+#     forest:
+#         <<: *DEFAULT_FOREST
 
--   name: 'short_samples'
-    voxlet_type: 'short'
+-   name: 'short_samples_0.0125'
+    voxlet_type: 'short_0.0125'
     feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST
 
--   name: 'tall_samples'
-    voxlet_type: 'tall'
+-   name: 'tall_samples_0.0125'
+    voxlet_type: 'tall_0.0125'
     feature: 'samples'
     forest:
         <<: *DEFAULT_FOREST

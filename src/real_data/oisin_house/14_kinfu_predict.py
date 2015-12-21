@@ -49,7 +49,7 @@ def process_sequence(sequence):
     if sequence['scene'] not in ['saved_00211']:
         return
 
-    sequence['frames'] = range(200, 5)
+    sequence['frames'] = range(0, 20, 5)
 
     #range(0, 150, 10)[::-1]#[0, 25, 50, 75, 100, 125, 150, 175, 200]
     #[524, 522, 520, 518, 515, 512, 510, 508, 505, 502, 500, 495, 490, 485, 480] #
@@ -95,8 +95,7 @@ def process_sequence(sequence):
 
     rec = voxlets.Reconstructer()
     # rec.set_scene(sc)
-    # rec.initialise_output_grid(gt_grid=sc.gt_tsdf,
-    #     keep_explicit_count=parameters['default_reconstruction_params']['weight_predictions'])
+    rec.initialise_output_grid(gt_grid=sc.gt_tsdf,    keep_explicit_count=parameters['default_reconstruction_params']['weight_predictions'])
     rec.set_model(models)
     rec.mu = train_parameters['mu']
 
@@ -104,10 +103,10 @@ def process_sequence(sequence):
 
 
     # temp...
-    parameters['general_params']['number_samples'] = 30
+    parameters['general_params']['number_samples'] = 300
 
     for count, frame_num in enumerate(sequence['frames']):
-        count += 10
+        # count += 10
 
         # setting up the scene with the current image...
 
@@ -139,29 +138,30 @@ def process_sequence(sequence):
 
         # make predictions which match the current kinfu grid..
         # add these predictions into the prediction grid
-
-        # forming th Reconstructer object and doing prediction
-        if not hasattr(rec, 'accum'):
-            keep_explicit_count = \
-                parameters['default_reconstruction_params']['weight_predictions']
-            rec.initialise_output_grid(gt_grid=sc.gt_tsdf,
-                keep_explicit_count=keep_explicit_count)
-
+        # #
+        # # # forming th Reconstructer object and doing prediction
+        # # if not hasattr(rec, 'accum'):
+        # #     keep_explicit_count = \
+        # #         parameters['default_reconstruction_params']['weight_predictions']
+        # #     rec.initialise_output_grid(gt_grid=sc.gt_tsdf,
+        # #         keep_explicit_count=keep_explicit_count)
+        # #
         sc.current_kinfu = carver.accum.get_current_tsdf()
+        # #
+        if count != 0 and count != 3:
+            rec.set_model_probabilities(
+                parameters['general_params']['model_probabilities'])
+            rec.set_model(models)
+            rec.set_scene(sc)
+            prediction_grid = rec.fill_in_output_grid(
+                **parameters['default_reconstruction_params'])
+                # scene_grid_for_comparison='current_kinfu',
 
-        rec.set_model_probabilities(
-            parameters['general_params']['model_probabilities'])
-        rec.set_model(models)
-        rec.set_scene(sc)
-        prediction_grid = rec.fill_in_output_grid(
-            **parameters['default_reconstruction_params'])
-            # scene_grid_for_comparison='current_kinfu',
-
-        # now add the latest observations into the prediction grid
-        if put_in_observed:
-            to_update = ~np.isnan(sc.current_kinfu.V)
-            print "Num nans", np.isnan(sc.current_kinfu.V).sum()
-            prediction_grid.V[to_update] = sc.current_kinfu.V[to_update]
+        # # now add the latest observations into the prediction grid
+        # if put_in_observed:
+        #     to_update = ~np.isnan(sc.current_kinfu.V)
+        #     print "Num nans", np.isnan(sc.current_kinfu.V).sum()
+        #     prediction_grid.V[to_update] = sc.current_kinfu.V[to_update]
 
         # save the kinfu grid and the prediction grid
         # pickle.dump(open('/tmp/'))
@@ -172,21 +172,22 @@ def process_sequence(sequence):
         print gen_renderpath[:-6]
         if not os.path.exists(gen_renderpath[:-6]):
             os.makedirs(gen_renderpath[:-6])
-
-        # render view of predictoin
-        savepath1 = gen_renderpath % ('prediction_%04d_%04d.png' % (count, frame_num))
-        prediction_grid.render_view(savepath1,
-            xy_centre=True, ground_height=0.03, keep_obj=True)
+        #
+        # # render view of predictoin
+        if count != 0 and count != 3:
+            savepath1 = gen_renderpath % ('prediction_%04d.png' % (count))
+            prediction_grid.render_view(savepath1,
+                xy_centre=True, ground_height=0.03, keep_obj=True)
 
         # render view of kinfu
-        savepath2 = gen_renderpath % ('kinfu_%04d_%04d.png' % (count, frame_num))
+        savepath2 = gen_renderpath % ('kinfu_%04d.png' % (count))
         sc.current_kinfu.render_view(savepath2,
             xy_centre=True, ground_height=0.03, keep_obj=True)
 
-        savepath3 = gen_renderpath % ('input_%04d_%04d.png' % (count, frame_num))
+        savepath3 = gen_renderpath % ('input_%04d.png' % (count))
         scipy.misc.imsave(savepath3, sc.im.rgb)
 
-        savepath4 = gen_renderpath % ('depth_%04d_%04d.png' % (count, frame_num))
+        savepath4 = gen_renderpath % ('depth_%04dd.png' % (count))
         plt.imshow(sc.im.depth)
         plt.axis('off')
         plt.savefig(savepath4, bbox_inches='tight', pad_inches=0)
@@ -196,4 +197,4 @@ def process_sequence(sequence):
 
 import multiprocessing
 pool = multiprocessing.Pool(8)
-pool.map_async(process_sequence, paths.test_data).get(9999999)
+map(process_sequence, paths.test_data)
