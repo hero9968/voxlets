@@ -37,6 +37,8 @@ with open(yaml_test_location, 'r') as f:
 test_data = test_data[:system_setup.max_test_sequences]
 
 if system_setup.small_sample:
+    all_train_data = all_train_data[1:system_setup.max_sequences_small]
+else:
     all_train_data = all_train_data[:system_setup.max_sequences]
 
 # saving...
