@@ -1,0 +1,150 @@
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.7761163527368098, precision: 0.930648586832217, recall: 0.8237590831857128}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.7551009592453231, precision: 0.8253012048192772, recall: 0.8987573329969091}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.677291256676975, precision: 0.9311977581291975, recall: 0.712969813554306}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.8229307665313079, precision: 0.9195563273766175, recall: 0.8867700286316245}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.7913931115517367, precision: 0.9389234495617474, recall: 0.834344998451533}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.5267325415044748, precision: 0.8250990202209715, recall: 0.5929365941350512}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.5918433553470049, precision: 0.7589967608689192, recall: 0.7288058210871736}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.43995728739978296, precision: 0.9203530101069284, recall: 0.4573711124456334}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.6997096834613223, precision: 0.8176744186046512, recall: 0.8290612516644474}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.6557590250246471, precision: 0.8999107631192608, recall: 0.7073490813648294}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.5932979542925618, precision: 0.722765308516462, recall: 0.7680970717788181}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.646983134966224, precision: 0.8796626054358013, recall: 0.7098058986639778}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.21512923786806398, precision: 0.9345167317818923, recall: 0.21842183622828784}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.6998459582993123, precision: 0.933036315482336, recall: 0.7368565655133296}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.4773418684243884, precision: 0.8889085597946358, recall: 0.5076246482551772}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.5115892789731974, precision: 0.7950874173739586, recall: 0.5892857142857143}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.45034226708434855, precision: 0.7248535213240271, recall: 0.5431995101898015}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.6935840310467498, precision: 0.8135530710951413, recall: 0.824667279058341}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.6392650489260505, precision: 0.9012150590446091, recall: 0.6874348449309357}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.47761590106944773, precision: 0.7607253053806162, recall: 0.5620510898757104}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.7026401009934684, precision: 0.8333919247946043, recall: 0.8174689331919948}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.5173423423423423, precision: 0.7190322869153027, recall: 0.6484252127273461}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.5742374127159132, precision: 0.8203176269851686, recall: 0.6568575932737782}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.582899224225162, precision: 0.8915862938706488, recall: 0.6273659584337532}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.47337857131398686, precision: 0.9046013304313173, recall: 0.498252427184466}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.753685934940323, precision: 0.9421717294846165, recall: 0.7902421069851137}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.7361810788681183, precision: 0.9376900233330977, recall: 0.7740471604505924}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.6682097967206331, precision: 0.8157936282403461, recall: 0.7869456627680312}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.7727912448010755, precision: 0.9422936543510277, recall: 0.811181178753335}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}
+- !!python/object/apply:collections.OrderedDict
+  - - - bounding_box
+      - {iou: 0.6776539309769327, precision: 0.8997736518036628, recall: 0.7329826054440189}
+    - - zheng_2
+      - {iou: .nan, precision: .nan, recall: .nan}

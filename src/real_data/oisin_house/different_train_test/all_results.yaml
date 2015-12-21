@@ -1,0 +1,120 @@
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.12461789043284588, iou: 0.5136780722065003, precision: 0.5579489090189321,
+        recall: 0.8662015111528867}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.11363571021952146, iou: 0.4845711209072248, precision: 0.5094820266062836,
+        recall: 0.9083454235791333}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.12578780796273017, iou: 0.5743007448304599, precision: 0.6598838949069363,
+        recall: 0.815773897602841}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.07472689402314475, iou: 0.671146398140976, precision: 0.7033444273074113,
+        recall: 0.9361460753065745}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.2093309285507572, iou: 0.48237720488466757, precision: 0.6173455212269393,
+        recall: 0.6881232579746052}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.1403991089576599, iou: 0.48221288840414916, precision: 0.559022920477779,
+        recall: 0.7782480056926707}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.14006477526208155, iou: 0.5187135465233211, precision: 0.5908201091257446,
+        recall: 0.8095306035097731}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.3573975948536942, iou: 0.3181190318899766, precision: 0.6451691483206967,
+        recall: 0.3855798802569562}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.10965862256088743, iou: 0.46860573876836736, precision: 0.506721044045677,
+        recall: 0.8616844207723036}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.21530464862875695, iou: 0.4869067959133861, precision: 0.6796787539547335,
+        recall: 0.6319123902615621}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.15984456743284872, iou: 0.5056980056980057, precision: 0.5659410525516692,
+        recall: 0.8261074327506441}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.0872510438993629, iou: 0.3846554260495643, precision: 0.4110675760653993,
+        recall: 0.8568691706579279}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.2528953956447913, iou: 0.4014676904260379, precision: 0.5600166818319685,
+        recall: 0.5864416873449132}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.255347470222887, iou: 0.5218901365894685, precision: 0.8113559322033899,
+        recall: 0.5939627056154283}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.34315473900783894, iou: 0.34287527847959476, precision: 0.5674473212630539,
+        recall: 0.46420206581630075}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.2735702830433151, iou: 0.3615267359300413, precision: 0.5398807919250007,
+        recall: 0.5225243506493507}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.33579285373029655, iou: 0.4024501025201796, precision: 0.609213240349671,
+        recall: 0.5424997813347328}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.34144379967988386, iou: 0.4387400303917444, precision: 0.6909587485296305,
+        recall: 0.5458546068231825}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.27857721951686343, iou: 0.4587483455218792, precision: 0.7190787543484639,
+        recall: 0.5589164712014595}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.24701505480659536, iou: 0.39023321790646254, precision: 0.5403055772174566,
+        recall: 0.5841921179189308}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.4571621174484974, iou: 0.3341924846865837, precision: 0.6462326970418499,
+        recall: 0.4090218265878236}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.1275450727474445, iou: 0.4826422141352231, precision: 0.542930245084837,
+        recall: 0.8129612453119329}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.13498834858998174, iou: 0.4386986553016386, precision: 0.47980792413405127,
+        recall: 0.8366088631984586}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.2876640385429326, iou: 0.4855261180948565, precision: 0.7381411639298495,
+        recall: 0.5865560115764317}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.28674441483618746, iou: 0.3833922710967512, precision: 0.6085323749722384,
+        recall: 0.5089067116926973}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.10908950496373263, iou: 0.46437850403391223, precision: 0.5119340736646399,
+        recall: 0.8333060690332079}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.1781284944875282, iou: 0.5518030973451328, precision: 0.6952237599475966,
+        recall: 0.7278789470612269}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.13294875221978972, iou: 0.5689597082664447, precision: 0.6196015798674811,
+        recall: 0.8743908382066277}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.31251670696028994, iou: 0.5017935394720653, precision: 0.780043549905838,
+        recall: 0.5844973375814435}
+- !!python/object/apply:collections.OrderedDict
+  - - - cross_training
+      - {auc: 0.25936404048132283, iou: 0.4933326210065178, precision: 0.7422035751028807,
+        recall: 0.595347697703506}
