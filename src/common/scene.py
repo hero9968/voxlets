@@ -2,31 +2,38 @@
 Class for data about a scene, i.e. a voxel grid plus frames with camera poses
 '''
 
+# standard libraries, plotting and system libraries
 import numpy as np
+import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import subprocess as sp
+from copy import deepcopy, copy
+import time
+
+# IO
+import cPickle as pickle
+import yaml
+from yaml import CLoader
+import scipy.misc
+import h5py
+import scipy.io
+
+# Image processing and machine learning
 from skimage.morphology import binary_erosion, binary_dilation, disk
 import sklearn.metrics  # for evaluation
 import skimage.measure
+from scipy.ndimage.interpolation import zoom
+
+# Custom libraries
 import voxel_data
 import images
 import features
 import carving
-import cPickle as pickle
-import yaml
-from yaml import CLoader
-from copy import deepcopy
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import os
-import scipy.misc
 import mesh
-import h5py
-import scipy.io
-import time
-import subprocess as sp
+import camera
 import rendering
-from copy import copy
-from scipy.ndimage.interpolation import zoom
 
 
 class Scene(object):
@@ -71,108 +78,6 @@ class Scene(object):
                     frames = frames[frame_idxs]
 
         return frames
-
-    def load_bigbird_matrices(self, folder, modelname, imagename):
-        '''
-        loads the extrinsics and intrinsics for a bigbird camera
-        camera name is something like 'NP5'
-        '''
-        cameraname, angle = imagename.split('_')
-
-        # loading the pose and calibration files
-        calib = h5py.File(folder + modelname + "/calibration.h5", 'r')
-        pose_path = paths.bigbird_folder + modelname + "/poses/NP5_" + angle + "_pose.h5"
-        pose = h5py.File(pose_path, 'r')
-
-        # extracting extrinsic and intrinsic matrices
-        np5_to_this_camera = np.array(calib['H_' + cameraname + '_from_NP5'])
-        mesh_to_np5 = np.linalg.inv(np.array(pose['H_table_from_reference_camera']))
-
-        intrinsics = np.array(calib[cameraname + '_depth_K'])
-
-        # applying to the camera
-        # self.set_extrinsics(np5_to_this_camera.dot(mesh_to_np5))
-        # self.set_intrinsics(intrinsics)
-        return np5_to_this_camera.dot(mesh_to_np5), intrinsics
-        calib.close()
-        pose.close()
-
-
-    def load_bb_sequence(self, sequence, voxel_normals=True):
-        '''
-        load from the bigbird dataset
-        '''
-        # self.sequence = sequence
-        # rgbpath = sequence['folder'] + '/' + sequence['scene'] + '/' + sequence['pose_id'] + '.jpg'
-        # depthpath = sequence['folder'] + '/' + sequence['scene'] + '/' + sequence['pose_id'] + '.h5'
-        # maskpath = sequence['folder'] + '/' + sequence['scene'] + '/masks/' + sequence['pose_id'] + '_mask.pbm'
-
-        # self.im = images.RGBDImage()
-        # self.im.rgb = zoom(scipy.misc.imread(rgbpath), (0.5, 0.5, 1.0))[:480, :, :]
-        # # self.im.load_mask_from_pbm()
-        # self.im.load_depth_from_h5(depthpath)
-
-        # self.im.load_mask_from_pbm(maskpath, 0.5)
-        # self.im.mask = self.im.mask[:480, :]
-        # # self.im.mask[np.isnan(self.im.depth)] = 0
-
-        # self.im.cam = mesh.Camera()
-        # mats = self.load_bigbird_matrices(sequence['folder'], sequence['scene'], sequence['pose_id'])
-        # self.im.cam.set_extrinsics(mats[0])
-        # self.im.cam.set_intrinsics(mats[1])
-
-
-        # print self.im.rgb
-        matpath = sequence['folder'] + '/' + sequence['scene'] + '/' + sequence['pose_id'] + '.mat'
-        D = scipy.io.loadmat(matpath)
-        left, right, top, bottom = D['aabb'][0]
-        # print D.keys()
-        self.im = images.RGBDImage()
-        self.im.depth = np.nan * np.zeros((480, 640))
-        self.im.depth[top:bottom+1, left:right+1] = D['orig_d']
-
-        self.im.rgb = D['rgb']
-        # np.zeros((480, 640, 3)).astype(np.uint8)
-        # self.im.rgb[top:bottom+1, left:right+1] =
-        # print self.im.rgb.shape
-
-        # clean up the mask
-        thresh = np.median(D['orig_d'].flatten()[D['mask'].flatten()==1]) + 0.2
-        temp_mask = np.logical_and.reduce((D['orig_d'] < thresh, D['orig_d'] >0, D['mask']==1))
-
-        self.TT = np.zeros((480, 640)).astype(np.uint8)
-        self.TT[top:bottom+1, left:right+1] = D['mask']
-
-        self.im.mask = np.zeros((480, 640))
-        # .astype(np.uint8)
-        self.im.mask[top:bottom+1, left:right+1] = temp_mask
-
-        self.im.depth[self.im.depth==0] = np.nan
-        # + 0.02
-        # self.im.rgb = D['rgb']
-
-        self.im.cam = mesh.Camera()
-        self.im.cam.load_bigbird_matrices(sequence['folder'], sequence['scene'], sequence['pose_id'])
-
-        # self.im.cam.set_extrinsics(np.linalg.inv(D['T'][0][0][2]).T)
-
-        # self.im.cam.set_intrinsics(D['T'][0][0][1])
-        # print D['T'][0][0][1]
-        # print D['T'][0][0][2]
-
-        self.gt_im_label = copy(self.im.mask) + 100
-        # extr = D['T'][0][0][2].T
-
-        # ne = features.Normals()
-        rec_mask = np.zeros((480, 640))
-        rec_mask[top:bottom+1, left:right+1] = 1
-        self.im.normals = np.zeros((480*640, 3)) * np.nan
-        old_shape = [3, D['mask'].shape[1], D['mask'].shape[0]]
-        self.im.normals[rec_mask.flatten()==1, :] = D['norms'].T.reshape(old_shape).transpose((0, 2, 1)).reshape((3, -1)).T
-        # self.im.mask = np.logical_and(self.im.mask, ~np.isnan(self.im.normals[:, 2].reshape(self.im.depth.shape)))
-
-        # np.any(np.abs(self.im.normals)==1, axis
-
 
     def sample_points(self, num_to_sample, sample_grid_size=None, additional_mask=None, nyu=False):
         '''
@@ -268,24 +173,6 @@ class Scene(object):
     #     # self.im_tsdf, self.im_visible = carver.fuse(self.mu)
     #     # norm_engine = features.Normals()
     #     # self.im.normals = norm_engine.voxel_normals(self.im, self.im_tsdf)
-
-    def populate_from_vox_file(self, filepath):
-        '''
-        Loads 3d locations from my custom .vox file.
-        My .vox file is almost but not quite a yaml
-        Seemed that using pyyaml was incredibly slow so did this instead... bit of a hack!2
-        '''
-        f = open(filepath, 'r')
-        f.readline() # origin:
-        self.set_origin(np.array(f.readline().split(" ")).astype(float))
-        f.readline() # extents:
-        f.readline() # extents - don't care about this
-        f.readline() # voxel_size:
-        self.set_voxel_size(float(f.readline().strip()))
-        f.readline() # vox:
-        idx = np.array([line.split() for line in f]).astype(int)
-        f.close()
-        self.init_and_populate(idx)
 
     def _apply_normalised_homo_transform(self, xyz, trans):
         '''

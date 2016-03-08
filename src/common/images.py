@@ -11,16 +11,16 @@ import yaml
 import os
 import time
 import sys
-import mesh
-import features
-import scene
-
 from skimage.restoration import denoise_bilateral
 import scipy.interpolate
-
 import h5py
-
 from scipy.io import loadmat
+from scipy.ndimage.filters import median_filter
+
+import camera
+import scene
+
+
 def fill_in_nans(depth):
     # a boolean array of (width, height) which False where there are
     # missing values and True where there are valid (non-missing) values
@@ -44,7 +44,6 @@ def fill_in_nans(depth):
     depth[xymis[0], xymis[1]] = guesses
     return depth
 
-from scipy.ndimage.filters import median_filter
 
 def filter_depth(depth):
     temp = fill_in_nans(depth)
@@ -74,12 +73,12 @@ class RGBDImage(object):
         self.assert_depth_rgb_equal()
 
     def load_depth_from_img(self, depth_path):
-        self._clear_cache
+        self._clear_cache()
         self.depth = scipy.misc.imread(depth_path)
         self.assert_depth_rgb_equal()
 
     def load_depth_from_h5(self, depth_path):
-        self._clear_cache
+        self._clear_cache()
         f = h5py.File(depth_path, 'r')
         self.depth = np.array(f['depth']).astype(np.float32) / 10000
         self.depth[self.depth == 0] = np.nan
@@ -106,7 +105,7 @@ class RGBDImage(object):
 
     def load_depth_from_pgm(self, pgm_path):
         ''' the kinfu routine hack i made does pgm like this'''
-        self._clear_cache
+        self._clear_cache()
 
         with open(pgm_path, 'r') as f:
             if f.readline().strip() == 'P5':
@@ -126,15 +125,6 @@ class RGBDImage(object):
             self.depth = self.depth.astype(np.float32)
             self.depth[self.depth == 0] = np.nan
 
-    def load_depth_from_dat(self, fpath):
-        '''
-        used for aaron's data
-        '''
-        with open(fpath) as f:
-            f.read(8)
-            self.depth = \
-                np.fromfile(f, dtype=np.float32).reshape(480, 640)
-
     def load_depth_from_mat(self, fpath):
         '''
         used for nyu data
@@ -142,13 +132,6 @@ class RGBDImage(object):
         self.depth = scipy.io.loadmat(fpath)['depth']
         self.depth[self.depth == 0] = np.nan
         print "Loaded depth of shape ", self.depth.shape
-
-    # def write_depth_to_pgm(self, pgm_path):
-    #     with open(pgm_path, 'w') as f:
-    #         f.write('P5\n')
-    #         f.write(str(self.depth.shape[1]) + ' ' + str(self.depth.shape[0]) + '\n')
-    #         f.write('\n')
-    #         self.depth.astype(np.float16).tofile(f, format=('>u2'))
 
     def load_kinect_defaults(self):
         '''
@@ -186,29 +169,6 @@ class RGBDImage(object):
 
         if hasattr(self, 'mask'):
             print "Mask has shape: " + str(self.mask.shape)
-
-    def compute_edges_and_angles(self, edge_threshold=0.5):
-        '''
-        computes edges in some manner...
-        uses a simple method. Real images should overwrite this function
-        to use a more complex edge and angle detection
-        '''
-        temp_depth = np.copy(self.depth)
-        temp_depth[np.isnan(temp_depth)] = 10.0
-        # import pdb; pdb.set_trace()
-
-        #Ix = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=1, dy=0, ksize=3)
-        #Iy = cv2.Sobel(temp_depth, ddepth=cv2.CV_32F, dx=0, dy=1, ksize=3)
-        raise Exception('Need to replace these with skimage alternatives...')
-
-        self.angles = np.rad2deg(np.arctan2(Iy, Ix))
-        self.angles[np.isnan(self.depth)] = np.nan
-
-        self.edges = np.array((Ix**2 + Iy**2) > edge_threshold**2)
-        self.edges = scipy.ndimage.morphology.binary_dilation(self.edges)
-
-    def set_angles_to_zero(self):
-        self.angles *= 0
 
     def reproject_3d(self):
         '''
@@ -270,32 +230,25 @@ class RGBDImage(object):
         self.K = K
         self.inv_K = np.linalg.inv(K)
 
-
     def load_depth_from_h5(self, depth_path):
-        self._clear_cache
+        self._clear_cache()
         f = h5py.File(depth_path, 'r')
         self.depth = np.array(f['depth']).astype(np.float32) / 10000
         self.depth[self.depth == 0] = np.nan
         self.assert_depth_rgb_equal()
 
-
     def disp_channels(self):
         '''plots both the depth and rgb and mask next to each other'''
-
         plt.clf()
-        plt.subplot(221)
+        plt.subplot(131)
         plt.imshow(self.rgb)
-        plt.subplot(222)
+        plt.subplot(132)
         plt.imshow(self.depth)
-        plt.subplot(223)
+        plt.subplot(133)
         plt.imshow(self.mask)
-        plt.subplot(224)
-        if hasattr(self, 'edges') and self.edges:
-            plt.imshow(self.edges)
-            plt.show()
 
     @classmethod
-    def load_from_dict(cls, scene_folder, dictionary, original_nyu):
+    def load_from_dict(cls, scene_folder, dictionary, original_nyu=False):
         '''
         loads an image as defined in 'dictionary', containing entries
         describing where the data is stored, camera parameters etc.
@@ -336,7 +289,7 @@ class RGBDImage(object):
         extrinsics = np.array(dictionary['pose']).reshape((4, 4))
         intrinsics = np.array(dictionary['intrinsics']).reshape((3, 3))
 
-        cam = mesh.Camera()
+        cam = camera.Camera()
         cam.set_extrinsics(extrinsics)
         cam.set_intrinsics(intrinsics)
         im.set_camera(cam)
@@ -348,7 +301,6 @@ class RGBDImage(object):
                 scene_folder + '/frames/mask_%s.png' % dictionary['id']
             mask_image_path2 = \
                 scene_folder + '/images/mask_%s.png' % dictionary['id']
-
 
         if os.path.exists(mask_image_path):
             im.mask = scipy.misc.imread(mask_image_path) == 255
@@ -422,7 +374,6 @@ class RGBDVideo():
     '''
     stores and loads a sequence of RGBD frames
     '''
-
     def __init__(self):
         pass
         self.reset()
@@ -452,8 +403,7 @@ class RGBDVideo():
 
     def play(self, fps=2.0):
         '''
-        plays video in a shitty way.
-        Should fix this to be smooth and nice but not sure I can be bothered
+        Should fix this to be smooth and nice but this is low priority
         '''
         pause = 1.0 / float(fps)
 
@@ -484,7 +434,6 @@ class RGBDVideo():
         vid = cls()
         vid.frames = ims
         return vid
-
 
 
 class Rgbd_region(object):

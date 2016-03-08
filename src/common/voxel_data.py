@@ -1,28 +1,19 @@
-'''
-The idea here is to have a voxel class, which stores the prediction results.
-Will happily construct the voxels from the front and back renders
-In an ideal world, perhaps should inherit from a more generic voxel class
-I haven't thought about this yet though...
-'''
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
-
-import numpy as np
-from scipy.ndimage.morphology import distance_transform_edt
-
-import skimage.measure
-import copy
-from numbers import Number
-import sklearn.metrics
-import cPickle as pickle
-import subprocess as sp
-import shutil
-import rendering
-import mesh
 import os
 import sys
+import numpy as np
+import copy
+from numbers import Number
+import cPickle as pickle
+import yaml
+import subprocess as sp
+from scipy.ndimage.morphology import distance_transform_edt
+from scipy.io import loadmat, savemat
+
+import rendering
+import mesh
 
 
 def load_voxels(loadpath):
@@ -36,20 +27,34 @@ class Voxels(object):
     '''
 
     def __init__(self, size, datatype):
-        '''initialise the numpy voxel grid to the correct size'''
+        '''Initialise the numpy voxel grid to the correct size'''
         assert np.prod(size) < 500e6    # check to catch excess allocation
         self.V = np.zeros(size, datatype)
 
+    @classmethod
+    def load_from_mat(cls, mat_path):
+        '''
+        Initialises and loads from a mat file
+        '''
+        vox = cls()
+        vox.__dict__ = loadmat(mat_path)
+        return vox
+
+    def save_to_mat(self, mat_path, clear_cache=True):
+        '''
+        Dumps internals to a mat file
+        '''
+        if clear_cache:
+            self._clear_cache()
+
+        savemat(mat_path, self.__dict__)
+
     def copy(self):
-        '''
-        returns a deep copy of self
-        '''
+        '''Returns a deep copy of self'''
         return copy.deepcopy(self)
 
     def blank_copy(self):
-        '''
-        returns a copy of self, but with all voxels empty
-        '''
+        '''Returns a copy of self, but with all voxels empty'''
         temp = copy.deepcopy(self)
         # not using temp.V*=0 in case nans are present
         temp.V = np.zeros(temp.V.shape, temp.V.dtype)
@@ -60,7 +65,7 @@ class Voxels(object):
 
     def set_indicated_voxels(self, binary_array, values):
         '''
-        helper function to set the values in V indicated in
+        Helper function to set the values in V indicated in
         the binary array to the values given in values.
         Question: Should values == length(binary_array) or
         should values == sum(binary_array)??
@@ -69,7 +74,7 @@ class Voxels(object):
 
     def get_indicated_voxels(self, binary_array):
         '''
-        helper function to set the values in V indicated in
+        Helper function to set the values in V indicated in
         the binary array to the values given in values.
         Question: Should values == length(binary_array) or
         should values == sum(binary_array)??
@@ -78,8 +83,8 @@ class Voxels(object):
 
     def get_idxs(self, ijk, check_bounds=False):
         '''
-        helper function to get the values indicated in the nx3 ijk array
-        if check_bounds, then returns a nan for each out of range location
+        Helper function to get the values indicated in the nx3 ijk array.
+        If check_bounds, then returns a nan for each out of range location
         '''
         assert ijk.shape[1] == 3
         if check_bounds:
@@ -92,7 +97,7 @@ class Voxels(object):
 
     def set_idxs(self, ijk, values, check_bounds=False):
         '''
-        helper function to set the values indicated in the nx3 ijk array
+        Helper function to set the values indicated in the nx3 ijk array
         to the values in the n-long vector of values
         '''
         assert ijk.shape[1] == 3
@@ -109,7 +114,7 @@ class Voxels(object):
 
     def find_valid_idx(self, idx):
         '''
-        returns a logical array the same length as idx, with true
+        Returns a logical array the same length as idx, with true
         where idx is within the range of self.V, and false otherwise
         '''
         return np.logical_and.reduce((idx[:, 0] < self.V.shape[0],
@@ -121,8 +126,8 @@ class Voxels(object):
 
     def extract_from_indices(self, idxs, check_bounds=False):
         '''
-        helper function to extract the points referred
-        to by the 3D indices ;idxs
+        Helper function to extract the points referred
+        to by the 3D indices 'idxs'
         If check_bound is true, then will check all the idxs to see if they are valid
         invalid idxs will get a nan returned
         (Could also make it so invalid idxs don't get anything returned...)
@@ -212,34 +217,30 @@ class WorldVoxels(Voxels):
     def __init__(self):
         pass
 
+    @classmethod
+    def load_from_dat(cls, dat_file, meta_yaml_file):
+        '''
+        Initialise and load data from a binary dat file, and load
+        metadata from a yaml file. This is a very efficient file format
+        when compared to pkl, mat etc
+        '''
+        meta = yaml.load(open(meta_yaml_file))
+        print meta
+        vox = cls()
+        vox.R = np.array(meta['R']).reshape((3, 3))
+        vox.origin = np.array(meta['T'])
+        vox.vox_size = meta['voxelsize']
+        vox.V = np.fromfile(dat_file, dtype=np.float16).reshape(meta['shape'])
+        return vox
+
     def init_and_populate(self, indices):
-        '''initialises the grid and populates, based on the indices in idx
-        waits until now to initialise so it can be the correct size
+        '''
+        Initialises the grid and populates, based on the indices in idx
+        Waits until now to initialise so it can be the correct size
         '''
         grid_size = np.max(indices, axis=0)+1
-        print grid_size
         Voxels.__init__(self, grid_size, np.int8)
-        #print indices[:, 0]
         self.V[indices[:, 0], indices[:, 1], indices[:, 2]] = 1
-
-
-    def populate_from_vox_file(self, filepath):
-        '''
-        Loads 3d locations from my custom .vox file.
-        My .vox file is almost but not quite a yaml
-        Seemed that using pyyaml was incredibly slow so did this instead... bit of a hack!2
-        '''
-        f = open(filepath, 'r')
-        f.readline() # origin:
-        self.set_origin(np.array(f.readline().split(" ")).astype(float))
-        f.readline() # extents:
-        f.readline() # extents - don't care about this
-        f.readline() # voxel_size:
-        self.set_voxel_size(float(f.readline().strip()))
-        f.readline() # vox:
-        idx = np.array([line.split() for line in f]).astype(int)
-        f.close()
-        self.init_and_populate(idx)
 
     def set_voxel_size(self, vox_size):
         '''should be scalar'''
@@ -272,33 +273,6 @@ class WorldVoxels(Voxels):
         if hasattr(self, '_cached_idx_meshgrid'):
             self._cached_idx_meshgrid = []
 
-    def init_and_populate(self, indices):
-        '''initialises the grid and populates, based on the indices in idx
-        waits until now to initialise so it can be the correct size
-        '''
-        grid_size = np.max(indices, axis=0)+1
-        Voxels.__init__(self, grid_size, np.int8)
-        #print indices[:, 0]
-        self.V[indices[:, 0], indices[:, 1], indices[:, 2]] = 1
-
-    def populate_from_vox_file(self, filepath):
-        '''
-        Loads 3d locations from my custom .vox file.
-        My .vox file is almost but not quite a yaml
-        Seemed that using pyyaml was incredibly slow so did this instead... bit of a hack!2
-        '''
-        f = open(filepath, 'r')
-        f.readline() # origin:
-        self.set_origin(np.array(f.readline().split(" ")).astype(float))
-        f.readline() # extents:
-        f.readline() # extents - don't care about this
-        f.readline() # voxel_size:
-        self.set_voxel_size(float(f.readline().strip()))
-        f.readline() # vox:
-        idx = np.array([line.split() for line in f]).astype(int)
-        f.close()
-        self.init_and_populate(idx)
-
     def idx_to_world(self, idx):
         '''
         converts an nx3 integer array, [i, j, k] coordinate to real-world 3D locations
@@ -309,11 +283,6 @@ class WorldVoxels(Voxels):
 
         # applying scaling
         scaled_idx = (idx.astype(float)+0.5) * self.vox_size
-
-        # rotate the grid points under the rotation R
-#       if (count_grid.R == np.eye(3)).all():
-#           scaled_rotated_idx = scaled_idx
-#       else:
         scaled_rotated_idx = np.dot(self.R, scaled_idx.T).T
 
         # applying the real-world offset
@@ -337,15 +306,9 @@ class WorldVoxels(Voxels):
 
         # finally rotating
         # note that (doing transpose twice seems to be quicker than np.dot(xyz, inv_R.T) )
-#       if (self.inv_R == np.eye(3)).all():
-#           scaled_translated_rotated_xyz = scaled_translated_xyz
-#       else:
         scaled_translated_rotated_xyz = np.dot(self.inv_R, scaled_translated_xyz.T).T
 
         idx = np.floor(scaled_translated_rotated_xyz).astype(np.int)
-    #   print self.origin
-    #   print self.inv_R
-    #   print self.vox_size
 
         if detect_out_of_range:
             valid = self.find_valid_idx(idx)
@@ -388,7 +351,7 @@ class WorldVoxels(Voxels):
             len(self._cached_idx_meshgrid) > 0 and \
             self._cached_idx_meshgrid.any()
         if not has_cached:
-            # 0.5 offset beacuse we ant the centre of the voxels
+            # 0.5 offset beacuse we want the centre of the voxels
             A, B, C = np.mgrid[0:self.V.shape[0],
                                0:self.V.shape[1],
                                0:self.V.shape[2]]
@@ -464,17 +427,9 @@ class WorldVoxels(Voxels):
             self_idx = self.idx_meshgrid()
             self_world_xyz = self.world_meshgrid()
 
-            # convert the indices to world xyz space
-            #self_grid_in_sbox_idx, valid = input_grid.world_to_idx(self_world_xyz, True)
-            #print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
-
-            #output_idxs = self_grid_in_sbox_idx[valid, :]
-            #occupied_values = input_grid.extract_from_indices(output_idxs)
-
             # 2) Warp into idx space of input_grid and
             # 3) See which are valid idxs in input_grid
             valid_values, valid, _ = input_grid.just_valid_world_to_idx(self_world_xyz)
-            #self.set_indicated_voxels(valid, occupied_values)
 
             # 4) Replace these values in self
             if combine == 'sum':
@@ -509,7 +464,6 @@ class WorldVoxels(Voxels):
             #print input_grid.V.shape
 
             # now see which of these are valid...
-            #print  world_xy_in_input_grid_idx[:, 0] >= 0
             valid_ij_logical = np.logical_and.reduce((world_xy_in_input_grid_idx[:, 0] >= 0,
                                           world_xy_in_input_grid_idx[:, 0] < input_grid.V.shape[0],
                                           world_xy_in_input_grid_idx[:, 1] >= 0,
@@ -533,13 +487,6 @@ class WorldVoxels(Voxels):
 
             # keeps track of what the current slice in the shoebox is
             current_shoebox_slice = np.nan
-            #
-            # if weights:
-            #     import pdb; pdb.set_trace()
-
-            # try saving up all the valid idxs
-            #valid_ijs = np.empty((valid_k_idxs.shape[0]*valid_ij.shape[0], 3))
-            #valid_data = []
 
             for world_slice_idx in valid_k_idxs:
 
@@ -609,9 +556,7 @@ class WorldVoxels(Voxels):
         render a single view of a voxel grid, using blender...
         ground height is in meters
         '''
-        # convert nans to the minimum
         temp = self.copy()
-        #temp.V[np.isnan(temp.V)] = temp.V[~np.isnan(temp.V)].min()
 
         # put in a ground plane...
         if ground_height:
@@ -620,8 +565,6 @@ class WorldVoxels(Voxels):
             temp_slice = temp.V[:, :, height_voxels]
             temp_slice[np.isnan(temp_slice)] = 10
             temp.V[:, :, height_voxels] = temp_slice
-
-        # temp.V[:, :, 5] = 10
 
         #pickle.dump(self, open('/tmp/temp_voxel_grid.pkl', 'w'), protocol=pickle.HIGHEST_PROTOCOL)
         print "Generating mesh...",
@@ -632,11 +575,9 @@ class WorldVoxels(Voxels):
         ms.remove_nan_vertices()
 
         if xy_centre:
-            # T = ms.vertices[:, :2]
             cen = temp.origin + (np.array(temp.V.shape) * temp.vox_size) / 2.0
             ms.vertices[:, :2] -= cen[:2]
             ms.vertices[:, 2] -= 0.05
-            # ms.vertices *= 1.5
 
         if flip:
             ms.vertices[:, 0] *= -1
@@ -665,10 +606,6 @@ class WorldVoxels(Voxels):
 
         if not keep_obj:
             os.remove(savepath + '.obj')
-
-        #now copy file from /tmp/.png to the savepath...
-        # print "Moving render to " + savepath
-        # shutil.move('/tmp/.png', savepath)
 
     def project_unobserved_voxels(self, im):
         # project the nan voxels from grid into the image...
@@ -727,18 +664,6 @@ class UprightAccumulator(WorldVoxels):
             if true, then only add in the 'occupied' and the narrow band from the
             prediction.
         '''
-
-        # convert the indices to world xyz space
-        #output_grid_in_voxlet_idx, valid = voxlet.world_to_idx(self.world_meshgrid(), True)
-
-        #print "There are " + str(np.sum(valid)) + " valid voxels out of " + str(np.prod(valid.shape))
-
-        # get the idxs in the output space and the values in the input space
-        #output_idxs = output_grid_in_voxlet_idx[valid, :]
-        #occupied_values = voxlet.extract_from_indices(output_idxs)
-
-        #self.sumV[valid.reshape(self.V.shape)] += occupied_values
-        #self.countV[valid.reshape(self.V.shape)] += 1
         if accum_only_predict_true:
 
             self_world_xyz = self.world_meshgrid()
@@ -760,27 +685,6 @@ class UprightAccumulator(WorldVoxels):
 
         elif weights is not None:
             # # Doing the accumulation in a naive way here...
-
-            # self_world_xyz = self.world_meshgrid()
-            # self_idx = self.idx_meshgrid()
-
-            # # 2) Warp into idx space of input_grid and
-            # # 3) See which are valid idxs in input_grid
-            # data_to_insert, valid, voxlet_idxs = \
-            #     voxlet.just_valid_world_to_idx(self_world_xyz)
-
-            # # print "Of the %d voxels in the voxlet, %d fall within the accumulation grid" % \
-            # #     (voxlet.V.size, voxlet_idxs.shape[0])
-            # sys.stdout.write('.')
-            # sys.stdout.flush()
-
-            # # This is a bit of a bodge but is needed to get the correct items from the weights...
-            # weights_to_use = weights.reshape(voxlet.V.shape)[
-            #     voxlet_idxs[:, 0], voxlet_idxs[:, 1], voxlet_idxs[:, 2]]
-
-            # self.sumV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += \
-            #     data_to_insert * weights_to_use
-            # self.countV[self_idx[valid, 0], self_idx[valid, 1], self_idx[valid, 2]] += weights_to_use
             weights_grid = voxlet.blank_copy()
             weights_grid.V = weights.reshape(weights_grid.V.shape)
             self.fill_from_grid(voxlet, method='axis_aligned',
@@ -836,7 +740,6 @@ class ShoeBox(WorldVoxels):
         '''
         assumes already set 'voxelsize', also 'grid_centre_from_grid_origin',
         also the actual size of the grid
-        This is pretty uncharted territory now!
         '''
         assert updir.shape[0] == 3
         assert normal.shape[0] == 3
