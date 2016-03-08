@@ -1,4 +1,0 @@
-mu: 0.025
-
-segmentation:
-    norm_diff: 0.01
