@@ -1,2 +1,0 @@
-scp -p build/writeup.pdf mfirman@newgate.cs.ucl.ac.uk:/cs/research/vecg/prism/data1/PrismGroupMeetings/mfirman/paper_draft.pdf
-scp -p build/writeup_graveyard.pdf mfirman@newgate.cs.ucl.ac.uk:/cs/research/vecg/prism/data1/PrismGroupMeetings/mfirman/graveyard.pdf

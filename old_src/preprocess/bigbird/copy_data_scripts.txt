@@ -1,8 +1,0 @@
-# copy data from troll to here:
-rsync trolld:/mnt/scratch/mfirman/data/structured/combined_features/* /Users/Michael/projects/shape_sharing/data/structured/combined_features/
-
-# copy rf models from troll to here:
-rsync trolld:/mnt/scratch/mfirman/data/structured/rf_models/* /Users/Michael/projects/shape_sharing/data/structured/rf_models/
-
-
-# Can use -t to preserve timestamps

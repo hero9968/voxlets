@@ -1,1 +1,0 @@
-pdflatex -output-directory=build/ formula.tex 
