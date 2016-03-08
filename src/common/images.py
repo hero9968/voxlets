@@ -1,24 +1,30 @@
 '''
 classes etc for dealing with depth images
 '''
+
+# Standard and plotting
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.misc
-import scipy.io
-import scipy.ndimage
-from copy import deepcopy
-import yaml
 import os
 import time
 import sys
-from skimage.restoration import denoise_bilateral
-import scipy.interpolate
+from copy import deepcopy
+
+# IO
+import scipy.misc
+import scipy.io
+import yaml
 import h5py
 from scipy.io import loadmat
+
+# Image manipulation
+import scipy.ndimage
+from skimage.restoration import denoise_bilateral
+import scipy.interpolate
 from scipy.ndimage.filters import median_filter
 
+# Custom
 import camera
-import scene
 
 
 def fill_in_nans(depth):

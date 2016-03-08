@@ -1,3 +1,4 @@
+# Standard and plotting
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -6,13 +7,17 @@ import sys
 import numpy as np
 import copy
 from numbers import Number
+import subprocess as sp
+
+# IO
 import cPickle as pickle
 import yaml
-import subprocess as sp
-from scipy.ndimage.morphology import distance_transform_edt
 from scipy.io import loadmat, savemat
 
-import rendering
+# Image and voxel manipulation
+from scipy.ndimage.morphology import distance_transform_edt
+
+# Custom
 import mesh
 
 
@@ -593,7 +598,7 @@ class WorldVoxels(Voxels):
             blend_py_path = os.path.expanduser('~/projects/shape_sharing/src/rendered_scenes/spinaround/blender_spinaround_frame.py')
             subenv = os.environ.copy()
             subenv['BLENDERSAVEFILE'] = savepath
-            sp.call([rendering.blender_path,
+            sp.call(['blender',
                      blend_path,
                      "-b", "-P",
                      blend_py_path],
