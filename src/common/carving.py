@@ -200,7 +200,6 @@ class Fusion(VoxelAccumulator):
 
     def _filter_depth(self, depth):
         temp = self._fill_in_nans(depth)
-        print "Max min", temp.max(), temp.min()
         if temp.max() > 1.0:
             factor = temp.max()
             temp /= factor
@@ -251,8 +250,6 @@ class Fusion(VoxelAccumulator):
         else:
             # ...according to eqn 9 and the text after eqn 12 (of Kinfu)
             valid_voxels_s = surface_to_voxel_dist_s <= mu
-
-        print "There are %d valid voxels" % valid_voxels_s.sum()
 
         # truncating the distance
         truncated_distance_s = -self.truncate(surface_to_voxel_dist_s, mu)
