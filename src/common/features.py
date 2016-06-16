@@ -5,6 +5,7 @@ from sklearn.neighbors import KDTree
 from copy import copy, deepcopy
 import carving
 
+
 class CobwebEngine(object):
     '''
     A different type of patch engine, only looking at points in the compass directions

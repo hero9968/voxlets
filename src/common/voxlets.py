@@ -21,11 +21,6 @@ import random
 import scipy.misc
 import matplotlib.pyplot as plt
 
-sys.path.append(os.path.expanduser(
-    '~/projects/shape_sharing/src/rendered_scenes/visualisation'))
-
-from rendering import plot_mesh, render_leaf_nodes, render_single_voxlet
-
 
 class VoxletPredictor(object):
     '''
