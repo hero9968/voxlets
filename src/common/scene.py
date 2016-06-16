@@ -32,7 +32,6 @@ import features
 import carving
 import mesh
 import camera
-import rendering
 
 
 class Scene(object):

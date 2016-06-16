@@ -1,6 +1,5 @@
 '''
-Loads in the combined sboxes and clusters them to form a dictionary
-smaller
+Forms a PCA model over training voxlets
 '''
 import numpy as np
 import cPickle as pickle
@@ -11,25 +10,18 @@ import yaml
 import functools
 from sklearn.decomposition import RandomizedPCA
 
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
-from common import scene, rendering
-
+sys.path.append('../..')
+from common import scene
 import system_setup
 
 if len(sys.argv) > 1:
     parameters_path = sys.argv[1]
 else:
-    parameters_path = './training_params_nyu.yaml'
+    parameters_path = './training_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 if parameters['training_data'] == 'oisin_house':
     import real_data_paths as paths
-elif parameters['training_data'] == 'synthetic':
-    import synthetic_paths as paths
-elif parameters['training_data'] == 'nyu_cad':
-    import nyu_cad_paths as paths
-elif parameters['training_data'] == 'nyu_cad_silberman':
-    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
@@ -67,7 +59,6 @@ def fit_and_save_pca(np_array, savepath):
 
 def process_sequence(sequence, voxlet_params):
 
-    print sequence
     if not os.path.exists(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.pkl'):
         print "Failed"
         return
@@ -105,35 +96,11 @@ def extract_all_voxlets(voxlet_params_in):
     else:
         voxlet_list = map(func, train_data_to_use)
 
-    print "length is ", len(voxlet_list)
+    print "Total scenes processed: ", len(voxlet_list)
     np_voxlets = np.vstack(voxlet_list).astype(np.float16)
 
     print "-> Shoeboxes are shape " + str(np_voxlets.shape)
     return np_voxlets
-
-
-def render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath):
-    # render views of some of the extracted voxlets to a folder for inspection
-
-    num_to_render = 20
-    idxs = np.random.choice(np_voxlets.shape[0], num_to_render)
-
-    if not os.path.exists(folderpath):
-        os.makedirs(folderpath)
-
-    for count, idx in enumerate(idxs):
-        # doing 3d render
-        arrs = (np_voxlets[idx].reshape(voxlet_params['shape']),
-                np_masks[idx].reshape(voxlet_params['shape']))
-
-        height = voxlet_params['name'].partition("_")[0]
-        savepath = folderpath + '/%03d_voxlet.png' % count
-        rendering.render_single_voxlet(
-            arrs[0], savepath, height=height, speed='quick')
-
-        # saving the slice
-        savepath = folderpath + '/%03d_slice.png' % count
-        rendering.plot_slices(arrs[0], arrs[1], savepath)
 
 
 if __name__ == '__main__':
@@ -155,10 +122,7 @@ if __name__ == '__main__':
         np_masks = np.isnan(np_voxlets).astype(np.float16)
         np_voxlets[np_masks == 1] = parameters['mu']
 
-        # print "-> Rendering"
-        # folderpath = pca_savefolder + '/renders/' + voxlet_name + '/'
-        # render_some_voxlets(np_voxlets, np_masks, voxlet_params, folderpath)
-
+        # trick to save memory during PCA
         tmp_savepath = '/tmp/masks.npy'
         np.save(tmp_savepath, np_masks)
 
@@ -168,7 +132,6 @@ if __name__ == '__main__':
         fit_and_save_pca(np_voxlets, pca_savefolder + 'voxlets_pca.pkl')
 
         np_masks = np.load(tmp_savepath)
-
         fit_and_save_pca(np_masks, pca_savefolder + 'masks_pca.pkl')
 
         del np_voxlets, np_masks
