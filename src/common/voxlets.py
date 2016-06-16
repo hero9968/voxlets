@@ -693,12 +693,12 @@ class Reconstructer(object):
             self.keeping_existing.V += 0.5
 
         # good for memory...
-        if True:
-            average.sumV = []
-            average.countV = []
-
-            if hasattr(average, 'explicit_countV'):
-                average.explicit_countV = []
+        # if True:
+        #     average.sumV = []
+        #     average.countV = []
+        #
+        #     if hasattr(average, 'explicit_countV'):
+        #         average.explicit_countV = []
 
         if min_countV is not None:
             # replace all the 'unknown' areas with empty space.
