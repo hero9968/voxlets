@@ -121,8 +121,8 @@ if __name__ == '__main__':
         print "--> Doing test type ", params['name']
 
         tic = time()
-        print "WARNING - smallsequence" * 10
-        paths.test_data = paths.test_data[:10]
+        # print "WARNING - smallsequence" * 10
+        # paths.test_data = paths.test_data
 
         if system_setup.multicore:
             # need to import this *after* the pool helper has been defined
