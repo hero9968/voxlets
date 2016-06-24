@@ -1,6 +1,11 @@
-# (Partial) code for upcoming CVPR 2016 paper
+# Code for upcoming CVPR 2016 paper
 
-**Currently, we are just releasing code for loading and manipulating the dataset. Full code will be released shortly**
+    @inproceedings{firman-cvpr-2016,
+      author = {Michael Firman and Diego Thomas and Simon Julier and Akihiro Sugimoto},
+      title = {{Structured Completion of Unobserved Voxels from a Single Depth Image}},
+      booktitle = {Computer Vision and Pattern Recognition (CVPR)},
+      year = {2016}
+    }
 
 ## Downloading the dataset
 
@@ -25,7 +30,7 @@ The code is roughly divided into three areas:
     - `mesh.py` - a class for 3D mesh data, including IO and marching cubes conversion
     - `voxel_data.py` - classes for 3D voxel grids, including various manipulation routines and ability to copy data between grids at different locations in world space
 
-2. `src/experiments/` - Contains scripts for loading data, performing processing and saving files out. **Coming soon**
+2. `src/pipeline/` - Contains scripts for loading data, performing processing and saving files out. The pipeline as described in the CVPR paper.
 
 3. `src/examples/` - iPython notebooks containing examples of use of the data and code.
 

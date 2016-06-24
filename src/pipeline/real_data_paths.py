@@ -70,8 +70,8 @@ for t in scenes:
 # models_folder = data_folder + 'models/%s/'
 #
 # training_data_folder = data_folder + 'training_voxlets/%s/'
-models_folder = 'data/models/%s/'
-training_data_folder = 'data/training_voxlets/%s/'
+models_folder = '../../data/models/%s/'
+training_data_folder = '../../data/training_voxlets/%s/'
 
 voxlets_dictionary_path = training_data_folder + 'dictionary/'
 voxlets_data_path = training_data_folder + 'training_voxlets/'
@@ -83,13 +83,13 @@ evaluation_data_path = models_folder + 'model_evaluation_voxlets/'
 #
 # # voxlet_prediction_image_path = base_path + "/voxlets/bigbird/predictions/%s/%s_%s.png"
 # voxlet_prediction_img_path = data_folder + '/predictions/%s/%s/%s.png'
-voxlet_prediction_img_path = 'data/predictions/%s/%s/%s.png'
+voxlet_prediction_img_path = '../../data/predictions/%s/%s/%s.png'
 #
 # evaluation_region_path = data_folder + '/predictions/%s/%s/evaluation_region.mat'
 #
 # # first %s is the test batch category name, second is the sequence name
 # prediction_folderpath = data_folder + '/predictions/%s/%s/pickles/'
-prediction_folderpath = 'data/predictions/%s/%s/pickles/'
+prediction_folderpath = '../../data/predictions/%s/%s/pickles/'
 #
 # scores_path = data_folder + '/predictions/%s/%s/scores.yaml'
 #
