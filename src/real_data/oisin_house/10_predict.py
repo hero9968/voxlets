@@ -7,6 +7,7 @@ import numpy as np
 import cPickle as pickle
 import sys
 import os
+import shutil
 from time import time
 import yaml
 import functools
@@ -111,6 +112,9 @@ if __name__ == '__main__':
                         pickle.dump(rec.keeping_existing, f, -1)
 
             print "-> Saving the prediction to ", prediction_savepath
+            print "-> Copying the ground truth "
+            shutil.copy(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.pkl',
+                        fpath + 'ground_truth.pkl')
 
             with open(prediction_savepath, 'w') as f:
                 pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)
