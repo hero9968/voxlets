@@ -9,25 +9,17 @@ from time import time
 import system_setup
 import yaml
 import functools
-import scipy.io
-
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+sys.path.append('../..')
 from common import scene, features
 
 if len(sys.argv) > 1:
     parameters_path = sys.argv[1]
 else:
-    parameters_path = './training_params_nyu.yaml'
+    parameters_path = './training_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 if parameters['training_data'] == 'oisin_house':
     import real_data_paths as paths
-elif parameters['training_data'] == 'synthetic':
-    import synthetic_paths as paths
-elif parameters['training_data'] == 'nyu_cad':
-    import nyu_cad_paths as paths
-elif parameters['training_data'] == 'nyu_cad_silberman':
-    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
@@ -38,41 +30,30 @@ def sbox_flatten(sbox):
 
 
 # where to log the failures
-logf = open('/home/michael/Desktop/failure_log.txt', 'w')
+logf = open('data/failure_log.txt', 'w')
 
 cobwebengine = features.CobwebEngine(parameters['cobweb_offset'],
-    mask=parameters['cobweb_use_mask'])
+    use_mask=parameters['cobweb_use_mask'])
 sampleengine = features.SampledFeatures(
     parameters['vox_num_rings'], parameters['vox_radius'])
 
 def process_sequence(sequence, pca, mask_pca, voxlet_params):
 
-    print "-> Processing " + sequence['name']
+    print "--> Processing " + sequence['name']
 
     sc = scene.Scene(parameters['mu'], voxlet_params)
     sc.load_sequence(sequence, frame_nos=0,
         segment_with_gt=parameters['segment_with_gt'],
         segment=parameters['segment_scene'])
-    try:
-        pass
-    except:
-        print "FAILED"
-        logf.write(sequence['name'] + '\n')
-        return
 
     # sampling locations to get the voxlets from
-    # import pdb; pdb.set_trace()
     idxs = sc.sample_points(parameters['number_points_from_each_image'],
                       additional_mask=sc.gt_im_label != 0,
                       nyu='nyu_cad' in parameters['training_data'])
 
-    # save these to a temp file
-    scipy.io.savemat(paths.data_folder + 'tmp_idxs.mat', {'idxs':idxs})
-
-    print "-> Extracting shoeboxes and features..."
-    t1 = time()
     gt_shoeboxes = [sc.extract_single_voxlet(
-        idx, extract_from=parameters['extract_from'], post_transform=sbox_flatten) for idx in idxs]
+        idx, extract_from=parameters['extract_from'], post_transform=sbox_flatten)
+        for idx in idxs]
     np_sboxes = np.vstack(gt_shoeboxes)
 
     cobwebengine.set_image(sc.im)
@@ -93,19 +74,16 @@ def process_sequence(sequence, pca, mask_pca, voxlet_params):
     np_sboxes = pca.transform(np_sboxes)
     np_masks = mask_pca.transform(np_masks)
 
-    print "...Shoeboxes are shape ", np_sboxes.shape
-    print "Took %f s" % (time() - t1)
-
     savefolder = paths.voxlets_data_path % voxlet_params['name']
     if not os.path.exists(savefolder):
         os.makedirs(savefolder)
 
     savepath = savefolder + sequence['name'] + '.pkl'
-    print "-> Saving to " + savepath
+    print "--> Saving to " + savepath
 
     D = dict(shoeboxes=np_sboxes, masks=np_masks, cobweb=np_cobweb, samples=np_samples, idxs=idxs)
     with open(savepath, 'w') as f:
-        pickle.dump(D, f, protocol=pickle.HIGHEST_PROTOCOL)
+         pickle.dump(D, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':

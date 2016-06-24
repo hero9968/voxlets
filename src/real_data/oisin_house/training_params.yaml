@@ -1,0 +1,99 @@
+mu: 0.025
+voxel_size: 0.005
+training_data: 'oisin_house'
+
+pca:
+    number_points_from_each_image: 10
+    number_dims: 20
+
+    # max number of examples to use for pca
+    subsample_length: 1000
+
+    # use fewer sequences for pca then for the main training, for memory reasons
+    # however, should ensure these are taken evenly through the training set
+    # in case there is inherent ordering to the training data
+    max_sequences: 10
+
+number_points_from_each_image: 20
+
+# cobweb features (not used in CVPR paper)
+cobweb_offset: 0.01
+cobweb_use_mask: True
+
+# voxel sampling features
+vox_num_rings: 10
+vox_radius: 0.0075
+samples_out_of_range_feature: 0.025
+
+# # do we presegment?
+segment_scene: True
+segment_with_gt: True
+extract_from: 'gt_tsdf'
+# nb gt_tsdf is actually the segmented tsdf... actual_tsdf is the actual gt_tsdf
+
+ml_type: 'forest'
+
+forest: &DEFAULT_FOREST
+    num_tests: 100
+    min_sample_cnt: 5
+    max_depth: 15
+    num_trees: 10
+    bag_size: 0.5
+    train_parallel: True
+    njobs: 4
+
+    # structured learning params
+    #pca_dims: 5
+    num_dims_for_pca: 100 # number of dimensions that pca gets reduced to
+    sub_sample_exs_pca: True  # can also subsample the number of exs we use for PCA
+    num_exs_for_pca: 5000
+
+    oob_score: True
+    oob_importance: False
+
+    my_bagging: True
+
+    subsample_length: 100000
+
+# setting some voxlet params here
+# NOTE BE VERY CAREFUL IF EDITING THESE
+# NOTE SERIOUSLY
+# NOTE SERIOUSLY PLEASE YOU SCREW THIS UP EVERY TIME
+voxlet_sizes:
+    short:
+        name: 'short'
+        tall_voxlets: False
+        one_side_bins: 20
+        shape: [20, 40, 20]
+          # edge size of a single voxel
+        # size: 0.0175
+        size: 0.0075
+        # centre is relative to the ijk origin at the bottom corner of the voxlet
+        # z height of centre takes into account the origin offset
+        relative_centre: [0.5, 0.25, 0.5]
+
+    tall:
+        name: 'tall'
+        tall_voxlets: True
+        one_side_bins: 20
+        shape: [20, 40, 50]
+          # edge size of a single voxel
+        size: 0.0075
+        # centre is relative to the ijk origin at the bottom corner of the voxlet
+        # z height of centre takes into account the origin offset
+        relative_centre: [0.5, 0.25]
+        tall_voxlet_height: 0.375
+
+models_to_train:
+
+-   name: 'short_samples'
+    voxlet_type: 'short'
+    feature: 'samples'
+    forest:
+        <<: *DEFAULT_FOREST
+
+-   name: 'tall_samples'
+    voxlet_type: 'tall'
+    feature: 'samples'
+    forest:
+        <<: *DEFAULT_FOREST

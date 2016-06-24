@@ -13,25 +13,16 @@ import gc
 if len(sys.argv) > 1:
     parameters_path = sys.argv[1]
 else:
-    parameters_path = './training_params_nyu.yaml'
+    parameters_path = './training_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 if parameters['training_data'] == 'oisin_house':
     import real_data_paths as paths
-elif parameters['training_data'] == 'synthetic':
-    import synthetic_paths as paths
-elif parameters['training_data'] == 'nyu_cad':
-    import nyu_cad_paths as paths
-elif parameters['training_data'] == 'nyu_cad_silberman':
-    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
-sys.path.append(os.path.expanduser('~/projects/shape_sharing/src/'))
+sys.path.append('../..')
 from common import voxlets
-
-if system_setup.small_sample:
-    print "WARNING: Just computing on a small sample"
 
 
 def load_training_data(voxlet_name, feature_name, num_scenes=None):

@@ -363,7 +363,6 @@ class RGBDImage(object):
             im_idx[:, 2] > 0, im_idx[:, 2] < vgrid.V.shape[2]))
         temp_labels = \
             vgrid.V[im_idx[to_use, 0], im_idx[to_use, 1], im_idx[to_use, 2]]
-        print to_use.shape, self.mask.shape
 
         labels = deepcopy(self.mask).astype(int) * np.nan
         labels[to_use.reshape(self.mask.shape)] = temp_labels
