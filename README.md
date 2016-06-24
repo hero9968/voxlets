@@ -1,4 +1,4 @@
-# Code for upcoming CVPR 2016 paper
+# Depth Completion Code
 
     @inproceedings{firman-cvpr-2016,
       author = {Michael Firman and Diego Thomas and Simon Julier and Akihiro Sugimoto},
