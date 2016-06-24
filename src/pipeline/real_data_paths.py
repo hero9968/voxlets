@@ -3,9 +3,10 @@ import yaml
 import system_setup
 from copy import deepcopy
 
-data_folder = '/media/michael/Seagate/phd_projects/volume_completion_data/data/oisin_house/'
+# data_folder = '/media/michael/Seagate/phd_projects/volume_completion_data/data/oisin_house/'
+data_folder = '/home/michael/Dropbox/Public/for_release/'
 
-raw_data = data_folder + 'data2/'
+raw_data = data_folder + 'fold_2/'
 
 scene_names = [o
           for o in os.listdir(raw_data)
@@ -38,9 +39,15 @@ if system_setup.small_sample:
 # fix the paths...
 for item in all_train_data:
     item['folder'] = data_folder + item['folder'].split('/')[-2] + '/'
+    item['folder'] = item['folder'].replace('data2', 'fold_2')
+    item['folder'] = item['folder'].replace('data', 'fold_0')
+    item['folder'] = item['folder'].replace('data1', 'fold_1')
 
 for item in test_data:
     item['folder'] = data_folder + item['folder'].split('/')[-2] + '/'
+    item['folder'] = item['folder'].replace('data2', 'fold_2')
+    item['folder'] = item['folder'].replace('data', 'fold_0')
+    item['folder'] = item['folder'].replace('data1', 'fold_1')
 
 sequences = []
 for t in scenes:

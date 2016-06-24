@@ -9,7 +9,7 @@ from time import time
 import system_setup
 import yaml
 import functools
-sys.path.append('../..')
+sys.path.append('..')
 from common import scene, features
 
 if len(sys.argv) > 1:

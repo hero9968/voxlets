@@ -9,7 +9,7 @@ import system_setup
 import collections
 import scipy.io
 
-sys.path.append(os.path.expanduser("~/projects/shape_sharing/src/"))
+sys.path.append("..")
 from common import voxlets, scene, mesh
 
 

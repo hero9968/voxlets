@@ -10,7 +10,7 @@ import yaml
 import functools
 from sklearn.decomposition import RandomizedPCA
 
-sys.path.append('../..')
+sys.path.append('..')
 from common import scene
 import system_setup
 
@@ -58,10 +58,10 @@ def fit_and_save_pca(np_array, savepath):
 
 
 def process_sequence(sequence, voxlet_params):
-
-    if not os.path.exists(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.pkl'):
-        print "Failed"
-        return
+    # 
+    # if not os.path.exists(sequence['folder'] + sequence['scene'] + '/tsdf.dat'):
+    #     print "Failed"
+    #     return
 
     print "--> Processing " + sequence['scene']
     sc = scene.Scene(parameters['mu'], voxlet_params)

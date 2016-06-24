@@ -12,7 +12,7 @@ from time import time
 import yaml
 import functools
 from copy import deepcopy
-sys.path.append('../../')
+sys.path.append('..')
 from common import voxlets, scene
 import system_setup
 

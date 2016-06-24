@@ -21,7 +21,7 @@ if parameters['training_data'] == 'oisin_house':
 else:
     raise Exception('Unknown training data')
 
-sys.path.append('../..')
+sys.path.append('..')
 from common import voxlets
 
 

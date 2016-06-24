@@ -230,7 +230,6 @@ class WorldVoxels(Voxels):
         when compared to pkl, mat etc
         '''
         meta = yaml.load(open(meta_yaml_file))
-        print meta
         vox = cls()
         vox.R = np.array(meta['R']).reshape((3, 3))
         vox.origin = np.array(meta['T'])

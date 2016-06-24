@@ -7,7 +7,7 @@ import yaml
 import system_setup
 import scipy.misc
 import matplotlib.pyplot as plt
-sys.path.append('../..')
+sys.path.append('..')
 from common import voxlets, scene
 
 if len(sys.argv) > 1:

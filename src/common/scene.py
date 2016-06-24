@@ -133,26 +133,25 @@ class Scene(object):
         self.sequence = sequence
 
         # load in the ground truth grid for this scene, and converting nans
-        vox_location = sequence['folder'] + sequence['scene'] + \
-            '/ground_truth_tsdf.pkl'
+        voxel_data_path = sequence['folder'] + sequence['scene'] + '/tsdf.dat'
+        voxel_meta_path = sequence['folder'] + sequence['scene'] + '/tsdf_meta.yaml'
 
-        self.set_gt_tsdf(voxel_data.load_voxels(vox_location))
+        self.gt_tsdf = voxel_data.WorldVoxels.load_from_dat(
+            voxel_data_path, voxel_meta_path)
 
         # this i s a nasty hack, which I have to do because I was foolish and carved
         # each set of data with a different offset.
         # I never got round to recarving, and it takes a while...
         # The floor height is the number of voxels which contain floor, starting at
         # the bottom of the voxel grid.
-        if sequence['folder'].endswith('ta/'):
+        if sequence['folder'].endswith('_0/'):
             # one bit of traingin data
             floor_height = 5
-        elif sequence['folder'].endswith('ta1/'):
+        elif sequence['folder'].endswith('_1/'):
             floor_height = 7
-        elif sequence['folder'].endswith('ta2/'):
+        elif sequence['folder'].endswith('_2/'):
             # other bit of training data
             floor_height = 7
-        else:
-            floor_height = None
 
         self.floor_height = floor_height
 
