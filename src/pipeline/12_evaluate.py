@@ -16,7 +16,7 @@ from common import voxlets, scene, mesh
 if len(sys.argv) > 1:
     parameters_path = sys.argv[1]
 else:
-    parameters_path = './testing_params_nyu.yaml'
+    parameters_path = './testing_params.yaml'
 parameters = yaml.load(open(parameters_path))
 
 plot_gt_oracle = False
@@ -24,12 +24,6 @@ print_rankings = False
 
 if parameters['testing_data'] == 'oisin_house':
     import real_data_paths as paths
-elif parameters['testing_data'] == 'synthetic':
-    import synthetic_paths as paths
-elif parameters['testing_data'] == 'nyu_cad':
-    import nyu_cad_paths as paths
-elif parameters['testing_data'] == 'nyu_cad_silberman':
-    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 

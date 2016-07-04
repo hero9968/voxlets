@@ -113,8 +113,8 @@ if __name__ == '__main__':
 
             print "-> Saving the prediction to ", prediction_savepath
             print "-> Copying the ground truth "
-            shutil.copy(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.pkl',
-                        fpath + 'ground_truth.pkl')
+            shutil.copy(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.mat',
+                        fpath + 'ground_truth.mat')
 
             with open(prediction_savepath, 'w') as f:
                 pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)

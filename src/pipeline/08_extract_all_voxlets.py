@@ -30,7 +30,7 @@ def sbox_flatten(sbox):
 
 
 # where to log the failures
-logf = open('data/failure_log.txt', 'w')
+logf = open('../../data/failure_log.txt', 'w')
 
 cobwebengine = features.CobwebEngine(parameters['cobweb_offset'],
     use_mask=parameters['cobweb_use_mask'])
