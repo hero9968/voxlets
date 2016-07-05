@@ -24,6 +24,8 @@ print_rankings = False
 
 if parameters['testing_data'] == 'oisin_house':
     import real_data_paths as paths
+elif parameters['training_data'] == 'nyu_cad_silberman':
+    import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
 
