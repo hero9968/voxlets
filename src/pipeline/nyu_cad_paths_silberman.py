@@ -32,7 +32,7 @@ for idx in range(len(test_data)):
     test_data[idx]['folder'] = data_folder + 'renders_for_release/'
 
 if system_setup.small_sample:
-    all_train_data = all_train_data[:system_setup.max_sequences]
+    all_train_data = all_train_data[:200]
 
 print "There are %d train sequences" % len(all_train_data)
 print "There are %d test sequences" % len(test_data)
