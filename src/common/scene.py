@@ -152,6 +152,8 @@ class Scene(object):
         elif sequence['folder'].endswith('_2/'):
             # other bit of training data
             floor_height = 7
+        else:
+            floor_height = 0
 
         self.floor_height = floor_height
 

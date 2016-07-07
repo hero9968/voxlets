@@ -237,6 +237,20 @@ class WorldVoxels(Voxels):
         vox.V = np.fromfile(dat_file, dtype=np.float16).reshape(meta['shape'])
         return vox
 
+    def save_to_dat(self, dat_file, meta_yaml_file=None):
+        '''
+        Serialises the grid data to a dat file (V) and optionally a meta file,
+        (R, T and vox size)
+        '''
+        self.V.astype(np.float16).tofile(dat_file)
+
+        if meta_yaml_file is not None:
+            meta = {'T': self.origin.tolist(),
+                    'R': self.R.tolist(),
+                    'voxelsize': float(self.vox_size),
+                    'shape': self.V.shape}
+            yaml.dump(meta, open(meta_yaml_file, 'w'))
+
     def init_and_populate(self, indices):
         '''
         Initialises the grid and populates, based on the indices in idx

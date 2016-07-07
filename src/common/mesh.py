@@ -2,6 +2,8 @@ import numpy as np
 #https://github.com/dranjan/python-plyfile
 from skimage.measure import marching_cubes
 
+class Camera(object):
+    pass
 
 class Mesh(object):
     '''
