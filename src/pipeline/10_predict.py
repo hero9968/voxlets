@@ -24,7 +24,7 @@ parameters = yaml.load(open(parameters_path))
 
 if parameters['testing_data'] == 'oisin_house':
     import real_data_paths as paths
-elif parameters['training_data'] == 'nyu_cad_silberman':
+elif parameters['testing_data'] == 'nyu_cad_silberman':
     import nyu_cad_paths_silberman as paths
 else:
     raise Exception('Unknown training data')
@@ -114,15 +114,13 @@ if __name__ == '__main__':
                         pickle.dump(rec.keeping_existing, f, -1)
 
             print "-> Saving the prediction to ", prediction_savepath
-            print "-> Copying the ground truth "
-            shutil.copy(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.mat',
-                        fpath + 'ground_truth.mat')
+            # print "-> Copying the ground truth "
+            # shutil.copy(sequence['folder'] + sequence['scene'] + '/ground_truth_tsdf.mat',
+            #             fpath + 'ground_truth.mat')
 
             with open(prediction_savepath, 'w') as f:
                 pickle.dump(pred_voxlets, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-            print "-> Saving the voxlet counts"
-            rec.save_voxlet_counts(fpath + 'voxlet_counts.csv')
 
         print "--> Doing test type ", params['name']
 

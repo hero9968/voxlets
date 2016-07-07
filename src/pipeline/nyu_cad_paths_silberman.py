@@ -28,6 +28,9 @@ with open(yaml_train_location, 'r') as f:
 with open(yaml_test_location, 'r') as f:
     test_data = yaml.load(f)
 
+for idx in range(len(test_data)):
+    test_data[idx]['folder'] = data_folder + 'renders_for_release/'
+
 if system_setup.small_sample:
     all_train_data = all_train_data[:system_setup.max_sequences]
 
