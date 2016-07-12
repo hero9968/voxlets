@@ -12,7 +12,7 @@ if True:
     max_test_sequences = 500
     cores = 7
     testing_cores = 6
-    multicore = False
+    multicore = 1
 else:
     small_sample = True
     max_sequences = 4

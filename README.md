@@ -15,7 +15,7 @@ https://dl.dropboxusercontent.com/u/495646/voxlets_dataset.zip
 
 This is a 395MB zip file. You will have to change some of the paths in `src/pipeline/real_data_paths.py` to the location you have extracted the dataset to.
 
-## Getting started with the tabletop, dataset
+### Getting started with the tabletop dataset
 
 An example iPython notebook file loading a ground truth TSDF grid and plotting on the same axes as a depth image is given in `src/examples/Voxel_data_io_example.ipynb`
 
@@ -39,12 +39,12 @@ The code is roughly divided into three areas:
 
 3. `src/examples/` - iPython notebooks containing examples of use of the data and code.
 
-## Prerequisites
+### Prerequisites
 
 I have run this code using a fairly up-to-date version of Anaconda on Ubuntu 14.04. This probably includes everything you need.
 
 
-## How to run the pipeline on the tabletop dataset
+### How to run the pipeline on the tabletop dataset
 
 Navigate to `src/pipeline`
 
@@ -55,7 +55,7 @@ Navigate to `src/pipeline`
     >> python 11_render.py
 
 
-## How to run the pipeline on the synthetic NYU dataset
+### How to run the pipeline on the synthetic NYU dataset
 
 Navigate to `src/pipeline`
 
@@ -66,7 +66,9 @@ Navigate to `src/pipeline`
     >> python 11_render.py testing_params_nyu_silberman.yaml
 
 
-## Precomputed predictions for the tabletop dataset
+## Precomputed predictions
+
+### ... for the tabletop dataset
 
 You can download our voxelised predictions on the tabletop dataset from here:
 
@@ -74,6 +76,6 @@ https://dl.dropboxusercontent.com/u/495646/voxlets/voxlets_results.zip
 
 This is a 40MB zip file. An example of loading and visualising the predictions are given in the `examples` folder.
 
-## Precomputed predictions for the NYU dataset...
+### ...for the NYU dataset
 
 ...coming soon!
