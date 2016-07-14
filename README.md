@@ -11,7 +11,7 @@
 
 The tabletop dataset can be downloaded from:
 
-https://dl.dropboxusercontent.com/u/495646/voxlets_dataset.zip
+https://dl.dropboxusercontent.com/u/495646/voxlets/voxlets_dataset.zip
 
 This is a 395MB zip file. You will have to change some of the paths in `src/pipeline/real_data_paths.py` to the location you have extracted the dataset to.
 
