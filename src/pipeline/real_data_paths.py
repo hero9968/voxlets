@@ -91,7 +91,7 @@ voxlet_prediction_img_path = '../../data/predictions/%s/%s/%s.png'
 # prediction_folderpath = data_folder + '/predictions/%s/%s/pickles/'
 prediction_folderpath = '../../data/predictions/%s/%s/pickles/'
 #
-# scores_path = data_folder + '/predictions/%s/%s/scores.yaml'
+scores_path = data_folder + '/predictions/%s/%s/scores.yaml'
 #
 # # final %s is the actual test being done
 # prediction_path = data_folder + '/predictions/%s/%s/%s.pkl'
